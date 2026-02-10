@@ -3,12 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "echo 'db lint placeholder'",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run tests/**/*.test.ts",
-    "test:integration": "vitest run tests/**/*.integration.test.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run tests/rls.integration.test.ts",
     "migration:validate": "tsx scripts/validate-migrations.ts"
   },
   "dependencies": {

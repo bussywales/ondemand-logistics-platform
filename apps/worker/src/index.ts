@@ -12,6 +12,7 @@ type OutboxMessage = {
 };
 
 const logger = createLogger({ name: "worker" });
+let workerPool: Pool | undefined;
 
 const config = {
   databaseUrl: process.env.DATABASE_URL,
@@ -19,13 +20,6 @@ const config = {
   batchSize: Number(process.env.OUTBOX_BATCH_SIZE ?? 20),
   maxRetries: Number(process.env.OUTBOX_MAX_RETRIES ?? 10)
 };
-
-if (!config.databaseUrl) {
-  logger.error("DATABASE_URL is required");
-  process.exit(1);
-}
-
-const pool = new Pool({ connectionString: config.databaseUrl, max: 5 });
 
 function computeRetrySeconds(retryCount: number): number {
   const bounded = Math.min(retryCount, 6);
@@ -128,6 +122,12 @@ async function processOneBatch(client: PoolClient): Promise<number> {
 }
 
 async function runWorker() {
+  if (!config.databaseUrl) {
+    throw new Error("DATABASE_URL is required");
+  }
+
+  workerPool = new Pool({ connectionString: config.databaseUrl, max: 5 });
+
   logger.info(
     {
       poll_interval_ms: config.pollIntervalMs,
@@ -138,7 +138,7 @@ async function runWorker() {
   );
 
   while (true) {
-    const client = await pool.connect();
+    const client = await workerPool.connect();
     try {
       await client.query("begin");
       const handled = await processOneBatch(client);
@@ -158,8 +158,11 @@ async function runWorker() {
 }
 
 async function shutdown() {
-  logger.info("worker_sigterm_received");
-  await pool.end();
+  logger.info("worker_shutdown_requested");
+  if (workerPool) {
+    await workerPool.end();
+    workerPool = undefined;
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
