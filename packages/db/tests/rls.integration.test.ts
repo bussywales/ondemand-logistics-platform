@@ -43,7 +43,14 @@ beforeAll(async () => {
     return;
   }
 
-  client = new Client({ connectionString });
+  const useInsecureSsl =
+    process.env.TEST_DATABASE_SSL_INSECURE === "true" ||
+    connectionString.includes("supabase.co");
+
+  client = new Client({
+    connectionString,
+    ssl: useInsecureSsl ? { rejectUnauthorized: false } : undefined
+  });
   await client.connect();
 
   const ids = {
@@ -65,11 +72,20 @@ beforeAll(async () => {
   await client.query(
     `insert into public.users (id, email, display_name)
      values
-      ($1, 'consumer-a@example.com', 'Consumer A'),
-      ($2, 'consumer-b@example.com', 'Consumer B'),
-      ($3, 'driver@example.com', 'Driver One'),
-      ($4, 'operator-a@example.com', 'Operator A')`,
-    [ids.consumerA, ids.consumerB, ids.driverUser, ids.operatorA]
+      ($1, $5, 'Consumer A'),
+      ($2, $6, 'Consumer B'),
+      ($3, $7, 'Driver One'),
+      ($4, $8, 'Operator A')`,
+    [
+      ids.consumerA,
+      ids.consumerB,
+      ids.driverUser,
+      ids.operatorA,
+      `consumer-a+${ids.consumerA}@example.com`,
+      `consumer-b+${ids.consumerB}@example.com`,
+      `driver+${ids.driverUser}@example.com`,
+      `operator+${ids.operatorA}@example.com`
+    ]
   );
 
   await client.query(
@@ -80,11 +96,20 @@ beforeAll(async () => {
 
   await client.query(
     `insert into public.org_memberships (org_id, user_id, role)
-     values
-      ($1, $2, 'CONSUMER'),
-      ($1, $3, 'BUSINESS_OPERATOR'),
-      ($2, $4, 'CONSUMER')`,
-    [ids.orgA, ids.consumerA, ids.operatorA, ids.consumerB]
+     values ($1, $2, 'CONSUMER')`,
+    [ids.orgA, ids.consumerA]
+  );
+
+  await client.query(
+    `insert into public.org_memberships (org_id, user_id, role)
+     values ($1, $2, 'BUSINESS_OPERATOR')`,
+    [ids.orgA, ids.operatorA]
+  );
+
+  await client.query(
+    `insert into public.org_memberships (org_id, user_id, role)
+     values ($1, $2, 'CONSUMER')`,
+    [ids.orgB, ids.consumerB]
   );
 
   await client.query(
@@ -101,15 +126,7 @@ beforeAll(async () => {
     ) values
       ($1, $3, $4, $5, 'ASSIGNED', 'Pickup A', 'Dropoff A', 6.5, 1200, 'BIKE', 'idem-a-12345', $4),
       ($2, $6, $7, null, 'CREATED', 'Pickup B', 'Dropoff B', 4.2, 1000, 'CAR', 'idem-b-12345', $7)`,
-    [
-      ids.jobA,
-      ids.jobB,
-      ids.orgA,
-      ids.consumerA,
-      ids.driverId,
-      ids.orgB,
-      ids.consumerB
-    ]
+    [ids.jobA, ids.jobB, ids.orgA, ids.consumerA, ids.driverId, ids.orgB, ids.consumerB]
   );
 
   await client.query("commit");
@@ -120,16 +137,21 @@ afterAll(async () => {
     return;
   }
 
-  await client.query("begin");
-  await client.query("delete from public.jobs where id = $1 or id = $2", [seed.jobA, seed.jobB]);
-  await client.query("delete from public.drivers where id = $1", [seed.driverId]);
-  await client.query("delete from public.org_memberships where org_id = $1 or org_id = $2", [seed.orgA, seed.orgB]);
-  await client.query("delete from public.orgs where id = $1 or id = $2", [seed.orgA, seed.orgB]);
-  await client.query(
-    "delete from public.users where id = $1 or id = $2 or id = $3 or id = $4",
-    [seed.consumerA, seed.consumerB, seed.driverUser, seed.operatorA]
-  );
-  await client.query("commit");
+  try {
+    await client.query("begin");
+    await client.query("delete from public.jobs where id = $1 or id = $2", [seed.jobA, seed.jobB]);
+    await client.query("delete from public.drivers where id = $1", [seed.driverId]);
+    await client.query("delete from public.org_memberships where org_id = $1 or org_id = $2", [seed.orgA, seed.orgB]);
+    await client.query("delete from public.orgs where id = $1 or id = $2", [seed.orgA, seed.orgB]);
+    await client.query(
+      "delete from public.users where id = $1 or id = $2 or id = $3 or id = $4",
+      [seed.consumerA, seed.consumerB, seed.driverUser, seed.operatorA]
+    );
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  }
 
   await client.end();
 });
