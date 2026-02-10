@@ -9,7 +9,7 @@
     "start:dev": "tsx watch src/index.ts",
     "lint": "echo 'worker lint placeholder'",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "pnpm --filter @shipwright/observability build && vitest run",
     "test:integration": "vitest run"
   },
   "dependencies": {
