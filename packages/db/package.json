@@ -1,0 +1,17 @@
+{
+  "name": "@shipwright/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "echo 'db lint placeholder'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run tests/**/*.test.ts",
+    "test:integration": "vitest run tests/**/*.integration.test.ts",
+    "migration:validate": "tsx scripts/validate-migrations.ts"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

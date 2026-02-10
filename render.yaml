@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: api-staging
+    runtime: node
+    rootDir: .
+    plan: starter
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm --filter @shipwright/api build
+    startCommand: pnpm --filter @shipwright/api start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+
+  - type: worker
+    name: worker-staging
+    runtime: node
+    rootDir: .
+    plan: starter
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm --filter @shipwright/worker build
+    startCommand: pnpm --filter @shipwright/worker start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: OUTBOX_POLL_INTERVAL_MS
+        value: 2000
+      - key: OUTBOX_BATCH_SIZE
+        value: 20
