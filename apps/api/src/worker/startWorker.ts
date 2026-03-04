@@ -14,6 +14,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 export async function startWorker(logger?: AppLogger) {
+  console.log("WORKER: started");
   const baseLogger = (logger ?? createLogger({ name: "api" })).child({
     component: "worker"
   });
@@ -33,6 +34,7 @@ export async function startWorker(logger?: AppLogger) {
       workerStarting = false;
       return;
     } catch (err) {
+      console.error("WORKER: start failed", err);
       baseLogger.error({ err }, "worker_start_failed");
       await sleep(WORKER_RETRY_DELAY_MS);
     }
