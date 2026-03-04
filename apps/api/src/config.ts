@@ -1,3 +1,5 @@
+import { createLogger } from "@shipwright/observability";
+
 export type AppConfig = {
   port: number;
   databaseUrl: string;
@@ -7,16 +9,20 @@ export type AppConfig = {
 };
 
 export function readConfig(): AppConfig {
-  const databaseUrl = process.env.DATABASE_URL;
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const logger = createLogger({ name: "api" });
+  const requiredKeys = ["DATABASE_URL", "SUPABASE_URL", "REDIS_URL"] as const;
+  const missingKeys = requiredKeys.filter((key) => {
+    const value = process.env[key];
+    return !value || value.trim().length === 0;
+  });
 
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required");
+  if (missingKeys.length > 0) {
+    logger.error({ missing_keys: missingKeys }, "missing_env_vars");
+    throw new Error(`Missing required environment variables: ${missingKeys.join(", ")}`);
   }
 
-  if (!supabaseUrl) {
-    throw new Error("SUPABASE_URL is required");
-  }
+  const databaseUrl = process.env.DATABASE_URL as string;
+  const supabaseUrl = process.env.SUPABASE_URL as string;
 
   return {
     port: Number(process.env.PORT ?? 10000),
