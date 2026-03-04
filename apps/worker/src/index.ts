@@ -11,22 +11,38 @@ type OutboxMessage = {
   retry_count: number;
 };
 
-const logger = createLogger({ name: "worker" });
-let workerPool: Pool | undefined;
+type AppLogger = ReturnType<typeof createLogger>;
 
-const config = {
-  databaseUrl: process.env.DATABASE_URL,
+const defaultLogger = createLogger({ name: "worker" });
+let activeLogger: AppLogger = defaultLogger;
+let workerPool: Pool | undefined;
+let workerRunning = false;
+
+const baseConfig = {
   pollIntervalMs: Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2000),
   batchSize: Number(process.env.OUTBOX_BATCH_SIZE ?? 20),
   maxRetries: Number(process.env.OUTBOX_MAX_RETRIES ?? 10)
 };
+type WorkerConfig = typeof baseConfig & { databaseUrl: string };
 
 function computeRetrySeconds(retryCount: number): number {
   const bounded = Math.min(retryCount, 6);
   return 2 ** bounded;
 }
 
-async function dispatchSideEffect(message: OutboxMessage): Promise<void> {
+function readWorkerConfig(): WorkerConfig {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required");
+  }
+
+  return {
+    ...baseConfig,
+    databaseUrl
+  };
+}
+
+async function dispatchSideEffect(message: OutboxMessage, logger: AppLogger): Promise<void> {
   logger.info(
     {
       event_type: message.event_type,
@@ -41,7 +57,11 @@ async function dispatchSideEffect(message: OutboxMessage): Promise<void> {
   return;
 }
 
-async function processOneBatch(client: PoolClient): Promise<number> {
+async function processBatchWithLogger(
+  client: PoolClient,
+  config: WorkerConfig,
+  logger: AppLogger
+): Promise<number> {
   const { rows } = await client.query<OutboxMessage>(
     `select id, aggregate_type, aggregate_id, event_type, payload, retry_count
      from public.outbox_messages
@@ -55,7 +75,7 @@ async function processOneBatch(client: PoolClient): Promise<number> {
 
   for (const message of rows) {
     try {
-      await dispatchSideEffect(message);
+      await dispatchSideEffect(message, logger);
 
       await client.query(
         `update public.outbox_messages
@@ -121,11 +141,7 @@ async function processOneBatch(client: PoolClient): Promise<number> {
   return rows.length;
 }
 
-async function runWorker() {
-  if (!config.databaseUrl) {
-    throw new Error("DATABASE_URL is required");
-  }
-
+async function runWorker(config: WorkerConfig, logger: AppLogger) {
   workerPool = new Pool({ connectionString: config.databaseUrl, max: 5 });
 
   logger.info(
@@ -141,7 +157,7 @@ async function runWorker() {
     const client = await workerPool.connect();
     try {
       await client.query("begin");
-      const handled = await processOneBatch(client);
+      const handled = await processBatchWithLogger(client, config, logger);
       await client.query("commit");
 
       if (handled === 0) {
@@ -158,18 +174,38 @@ async function runWorker() {
 }
 
 async function shutdown() {
-  logger.info("worker_shutdown_requested");
+  activeLogger.info("worker_shutdown_requested");
+  workerRunning = false;
   if (workerPool) {
     await workerPool.end();
     workerPool = undefined;
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  runWorker().catch((error) => {
-    logger.error({ err: error }, "worker_fatal");
-    process.exit(1);
+export function startWorker(logger?: AppLogger) {
+  if (workerRunning) {
+    activeLogger.warn("worker_already_started");
+    return;
+  }
+
+  const scopedLogger = (logger ?? defaultLogger).child({ component: "worker" });
+  activeLogger = scopedLogger;
+  workerRunning = true;
+
+  const config = readWorkerConfig();
+  void runWorker(config, scopedLogger).catch((error) => {
+    workerRunning = false;
+    scopedLogger.error({ err: error }, "worker_fatal");
   });
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try {
+    startWorker();
+  } catch (error) {
+    defaultLogger.error({ err: error }, "worker_fatal");
+    process.exit(1);
+  }
 
   process.on("SIGTERM", async () => {
     await shutdown();

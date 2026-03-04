@@ -4,6 +4,7 @@ import { AppModule } from "./app.module.js";
 import { readConfig } from "./config.js";
 import { createLogger, requestContextMiddleware } from "@shipwright/observability";
 import { GlobalExceptionFilter } from "./errors/global-exception.filter.js";
+import { startWorker } from "worker";
 
 async function bootstrap() {
   const logger = createLogger({ name: "api" });
@@ -20,6 +21,7 @@ async function bootstrap() {
   const port = config.port;
   await app.listen(port, "0.0.0.0");
   logger.info({ port, host: "0.0.0.0" }, "api_started");
+  startWorker(logger);
 }
 
 bootstrap().catch((error) => {
