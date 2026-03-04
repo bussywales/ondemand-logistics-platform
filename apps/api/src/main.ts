@@ -6,7 +6,7 @@ import { createLogger, requestContextMiddleware } from "@shipwright/observabilit
 import { GlobalExceptionFilter } from "./errors/global-exception.filter.js";
 
 async function bootstrap() {
-  const config = readConfig();
+  readConfig();
   const logger = createLogger({ name: "api" });
 
   const app = await NestFactory.create(AppModule, {
@@ -16,8 +16,9 @@ async function bootstrap() {
   app.use(requestContextMiddleware(logger));
   app.useGlobalFilters(new GlobalExceptionFilter(logger));
 
-  await app.listen(config.port, "0.0.0.0");
-  logger.info({ port: config.port }, "api_started");
+  const port = Number(process.env.PORT ?? 10000);
+  await app.listen(port, "0.0.0.0");
+  logger.info({ port, host: "0.0.0.0" }, "api_started");
 }
 
 bootstrap().catch((error) => {

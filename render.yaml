@@ -4,10 +4,12 @@ services:
     runtime: node
     rootDir: .
     plan: starter
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm --filter @shipwright/api build
-    startCommand: pnpm --filter @shipwright/api start
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter api build
+    startCommand: pnpm --filter api start:prod
     healthCheckPath: /healthz
     envVars:
+      - key: APP_ENV
+        value: staging
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -15,6 +17,10 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: REDIS_URL
         sync: false
       - key: SUPABASE_JWT_AUDIENCE
         value: authenticated
@@ -24,12 +30,20 @@ services:
     runtime: node
     rootDir: .
     plan: starter
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm --filter @shipwright/worker build
-    startCommand: pnpm --filter @shipwright/worker start
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter worker build
+    startCommand: pnpm --filter worker start:prod
     envVars:
+      - key: APP_ENV
+        value: staging
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: REDIS_URL
         sync: false
       - key: OUTBOX_POLL_INTERVAL_MS
         value: 2000

@@ -19,7 +19,7 @@ export function readConfig(): AppConfig {
   }
 
   return {
-    port: Number(process.env.PORT ?? 3000),
+    port: Number(process.env.PORT ?? 10000),
     databaseUrl,
     supabaseUrl,
     supabaseJwtIssuer: process.env.SUPABASE_JWT_ISSUER ?? `${supabaseUrl}/auth/v1`,
