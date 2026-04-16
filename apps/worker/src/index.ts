@@ -12,6 +12,8 @@ type OutboxMessage = {
 };
 
 type AppLogger = ReturnType<typeof createLogger>;
+const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+const LOOP_YIELD_MS = 100;
 
 const defaultLogger = createLogger({ name: "worker" });
 let activeLogger: AppLogger = defaultLogger;
@@ -40,6 +42,32 @@ function readWorkerConfig(): WorkerConfig {
     ...baseConfig,
     databaseUrl
   };
+}
+
+async function applyWorkerSystemContext(client: PoolClient, logger: AppLogger) {
+  logger.info(
+    {
+      step: "apply_system_context",
+      system_actor_id: SYSTEM_ACTOR_ID
+    },
+    "worker_context_init"
+  );
+
+  await client.query(
+    `select
+       set_config('request.jwt.claim.role', 'service_role', true),
+       set_config('request.jwt.claim.sub', $1, true),
+       set_config('request.jwt.claim.email', 'system@shipwright.local', true),
+       set_config('request.jwt.claims', $2, true)`,
+    [
+      SYSTEM_ACTOR_ID,
+      JSON.stringify({
+        role: "service_role",
+        sub: SYSTEM_ACTOR_ID,
+        email: "system@shipwright.local"
+      })
+    ]
+  );
 }
 
 async function dispatchSideEffect(message: OutboxMessage, logger: AppLogger): Promise<void> {
@@ -154,21 +182,36 @@ async function runWorker(config: WorkerConfig, logger: AppLogger) {
   );
 
   while (true) {
-    const client = await workerPool.connect();
+    let client: PoolClient | undefined;
     try {
+      logger.info({ batch_size: config.batchSize }, "worker_poll_tick");
+      logger.info({ step: "pool_connect" }, "worker_db_connect_start");
+      client = await workerPool.connect();
       await client.query("begin");
+      await applyWorkerSystemContext(client, logger);
       const handled = await processBatchWithLogger(client, config, logger);
       await client.query("commit");
 
       if (handled === 0) {
+        logger.info({ poll_interval_ms: config.pollIntervalMs }, "worker_idle");
         await delay(config.pollIntervalMs);
+        continue;
       }
+
+      await delay(LOOP_YIELD_MS);
     } catch (error) {
-      await client.query("rollback");
-      logger.error({ err: error }, "worker_loop_failed");
+      if (client) {
+        try {
+          await client.query("rollback");
+        } catch (rollbackError) {
+          logger.error({ err: rollbackError }, "worker_rollback_failed");
+        }
+      }
+
+      logger.error({ err: error }, "worker_error");
       await delay(config.pollIntervalMs);
     } finally {
-      client.release();
+      client?.release();
     }
   }
 }
@@ -192,7 +235,16 @@ export function startWorker(logger?: AppLogger) {
   activeLogger = scopedLogger;
   workerRunning = true;
 
-  const config = readWorkerConfig();
+  let config: WorkerConfig;
+
+  try {
+    config = readWorkerConfig();
+  } catch (error) {
+    workerRunning = false;
+    scopedLogger.error({ err: error }, "worker_fatal");
+    return;
+  }
+
   void runWorker(config, scopedLogger).catch((error) => {
     workerRunning = false;
     scopedLogger.error({ err: error }, "worker_fatal");

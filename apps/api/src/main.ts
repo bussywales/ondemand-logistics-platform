@@ -34,7 +34,7 @@ async function bootstrap() {
   setTimeout(() => {
     try {
       console.log("BOOT: starting worker");
-      const p = startWorker();
+      const p: unknown = startWorker();
       if (p && typeof (p as { catch?: (handler: (error: unknown) => void) => void }).catch === "function") {
         (p as Promise<unknown>).catch((err) => {
           console.error("WORKER: async failure", err);
