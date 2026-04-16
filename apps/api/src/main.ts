@@ -9,14 +9,14 @@ import { startWorker } from "./worker/startWorker.js";
 async function bootstrap() {
   console.log("BOOT: start");
   const logger = createLogger({ name: "api" });
-  const config = readConfig();
+  readConfig();
   console.log("BOOT: config ok");
   logger.info({ port: process.env.PORT }, "config_loaded");
-  process.on("unhandledRejection", (reason) => {
-    logger.error({ reason }, "unhandled_rejection");
+  process.on("unhandledRejection", (err) => {
+    console.error("UNHANDLED REJECTION", err);
   });
   process.on("uncaughtException", (err) => {
-    logger.error({ err }, "uncaught_exception");
+    console.error("UNCAUGHT EXCEPTION", err);
   });
 
   const app = await NestFactory.create(AppModule, {
@@ -29,23 +29,21 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 10000);
   console.log("BOOT: will listen", port);
   await app.listen(port, "0.0.0.0");
-  console.log("BOOT: listening", port);
+  console.log("BOOT: api_started on port", port);
   logger.info({ port, host: "0.0.0.0" }, "api_started");
   setTimeout(() => {
     try {
       console.log("BOOT: starting worker");
-      const p = startWorker(logger);
+      const p = startWorker();
       if (p && typeof (p as { catch?: (handler: (error: unknown) => void) => void }).catch === "function") {
         (p as Promise<unknown>).catch((err) => {
-          console.error("WORKER: failed async", err);
-          logger.error({ err }, "worker_failed");
+          console.error("WORKER: async failure", err);
         });
       }
     } catch (err) {
-      console.error("WORKER: failed sync", err);
-      logger.error({ err }, "worker_failed_sync");
+      console.error("WORKER: sync failure", err);
     }
-  }, 0);
+  }, 2000);
 }
 
 bootstrap().catch((error) => {

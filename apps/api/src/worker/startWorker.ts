@@ -34,7 +34,7 @@ export async function startWorker(logger?: AppLogger) {
       workerStarting = false;
       return;
     } catch (err) {
-      console.error("WORKER: start failed", err);
+      console.error("WORKER: error", err);
       baseLogger.error({ err }, "worker_start_failed");
       await sleep(WORKER_RETRY_DELAY_MS);
     }
