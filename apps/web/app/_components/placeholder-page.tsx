@@ -6,6 +6,7 @@ export function PlaceholderPage(props: {
   title: string;
   body: string;
   children?: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <main className="internal-shell">
@@ -15,12 +16,16 @@ export function PlaceholderPage(props: {
         <p>{props.body}</p>
         {props.children ? <div className="route-card-body">{props.children}</div> : null}
         <div className="hero-actions">
-          <Link className="button button-primary" href="/">
-            Back to Homepage
-          </Link>
-          <Link className="button button-secondary" href="/contact">
-            Contact Team
-          </Link>
+          {props.actions ?? (
+            <>
+              <Link className="button button-primary" href="/">
+                Back to Homepage
+              </Link>
+              <Link className="button button-secondary" href="/contact">
+                Contact Team
+              </Link>
+            </>
+          )}
         </div>
       </section>
     </main>

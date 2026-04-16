@@ -743,3 +743,420 @@ h3 {
     padding: 1.5rem;
   }
 }
+
+.onboarding-shell {
+  width: min(1100px, calc(100% - 2rem));
+}
+
+.onboarding-card {
+  display: grid;
+  gap: 1.5rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow);
+}
+
+.onboarding-heading {
+  margin-bottom: 0;
+}
+
+.onboarding-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.role-card,
+.app-panel,
+.form-card {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: var(--shadow);
+}
+
+.role-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1.2rem;
+  border-radius: 24px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.role-card strong {
+  font-size: 1.15rem;
+}
+
+.role-card span:last-child,
+.onboarding-panel-copy p,
+.stack-list,
+.support-note,
+.detail-list dt,
+.detail-list dd,
+.timeline-row span,
+.job-row p,
+.metric-card p,
+.empty-state p,
+.form-card p,
+.form-card summary,
+.form-card label span {
+  color: var(--muted);
+}
+
+.role-card-eyebrow,
+.metric-label {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.role-card-active {
+  border-color: rgba(15, 106, 74, 0.32);
+  background: rgba(245, 251, 247, 0.96);
+}
+
+.role-card-muted {
+  opacity: 0.82;
+}
+
+.onboarding-panel {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.onboarding-panel-copy,
+.sidebar-card,
+.compose-card,
+.jobs-panel,
+.detail-card,
+.detail-hero,
+.metric-card,
+.onboarding-guard,
+.app-loading-card {
+  padding: 1.4rem;
+  border-radius: 26px;
+}
+
+.stack-list {
+  margin: 1rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.form-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.4rem;
+  border-radius: 26px;
+}
+
+.form-card label,
+.sidebar-card label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.form-card input,
+.form-card textarea,
+.form-card select,
+.sidebar-card input,
+.sidebar-card textarea,
+.compose-form input,
+.compose-form select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.82rem 0.95rem;
+  border: 1px solid rgba(17, 32, 25, 0.12);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.form-card textarea,
+.sidebar-card textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.inline-details {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(17, 32, 25, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 248, 0.9);
+}
+
+.inline-details summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.form-grid-two,
+.form-grid-three,
+.coordinate-grid,
+.metrics-grid,
+.detail-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-grid-two,
+.detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid-three,
+.metrics-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.coordinate-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-error,
+.form-error-banner {
+  color: #9f2f2f;
+  font-weight: 600;
+}
+
+.form-error-banner {
+  padding: 1rem 1.2rem;
+  border-radius: 20px;
+  background: rgba(204, 78, 78, 0.08);
+  border: 1px solid rgba(204, 78, 78, 0.18);
+}
+
+.consumer-card {
+  align-content: start;
+}
+
+.app-shell {
+  width: min(1240px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+}
+
+.loading-shell {
+  padding-top: 4rem;
+}
+
+.app-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.3rem 1.5rem;
+  border-radius: 28px;
+  margin-bottom: 1rem;
+}
+
+.app-topbar h1,
+.onboarding-panel-copy h2,
+.compose-card h2,
+.jobs-panel h2,
+.detail-hero h2,
+.detail-card h3 {
+  font-size: clamp(1.55rem, 3vw, 2.3rem);
+  margin-top: 0.35rem;
+}
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.app-nav-link,
+.mode-chip,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 32, 25, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.app-nav-link.active,
+.mode-chip-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #f7fbf8;
+}
+
+.mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.mode-chip {
+  cursor: pointer;
+}
+
+.mode-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.status-badge {
+  width: fit-content;
+}
+
+.status-neutral {
+  background: rgba(17, 32, 25, 0.06);
+  color: var(--ink);
+}
+
+.status-positive {
+  background: rgba(19, 163, 111, 0.12);
+  border-color: rgba(19, 163, 111, 0.18);
+  color: var(--accent-strong);
+}
+
+.status-negative {
+  background: rgba(204, 78, 78, 0.12);
+  border-color: rgba(204, 78, 78, 0.18);
+  color: #8f2323;
+}
+
+.button-block {
+  width: 100%;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.app-sidebar,
+.app-main,
+.dashboard-stack,
+.jobs-list,
+.timeline-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel-heading-row,
+.compose-actions,
+.job-row,
+.detail-statuses {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.compose-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.jobs-list {
+  margin-top: 1rem;
+}
+
+.job-row {
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(17, 32, 25, 0.08);
+  border-radius: 20px;
+  background: rgba(247, 251, 248, 0.92);
+}
+
+.job-row strong,
+.detail-list dd,
+.timeline-row strong,
+.metric-card strong {
+  font-size: 1rem;
+}
+
+.job-row-meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.4rem;
+}
+
+.empty-state {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.2rem;
+  border: 1px dashed rgba(17, 32, 25, 0.18);
+  border-radius: 20px;
+  background: rgba(247, 251, 248, 0.8);
+}
+
+.detail-list {
+  display: grid;
+  gap: 0.85rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.detail-list div {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  background: rgba(247, 251, 248, 0.88);
+  border: 1px solid rgba(17, 32, 25, 0.08);
+}
+
+.compact-grid {
+  margin: 0.8rem 0;
+}
+
+@media (max-width: 980px) {
+  .onboarding-role-grid,
+  .onboarding-panel,
+  .app-grid,
+  .metrics-grid,
+  .form-grid-three,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .onboarding-shell,
+  .app-shell {
+    width: min(100% - 1rem, 1240px);
+  }
+
+  .app-topbar,
+  .panel-heading-row,
+  .compose-actions,
+  .job-row,
+  .detail-statuses {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .form-grid-two,
+  .coordinate-grid {
+    grid-template-columns: 1fr;
+  }
+}
