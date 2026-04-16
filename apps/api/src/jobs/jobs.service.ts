@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
+  CancelJobSchema,
   CreateJobRequestSchema,
   JobSchema,
   JobTrackingSchema,
@@ -66,6 +67,10 @@ type TrackingJobRow = JobRow & {
   driver_last_location_at: string | null;
 };
 
+type CancelJobRow = JobRow & {
+  operator_role: "BUSINESS_OPERATOR" | "ADMIN" | null;
+};
+
 type TimelineRow = {
   id: number;
   event_type: string;
@@ -101,6 +106,8 @@ const ACCESS_CONDITION = `(
     )
   )
 )`;
+
+const CANCELLABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "DISPATCH_FAILED"] as const;
 
 @Injectable()
 export class JobsService {
@@ -347,6 +354,148 @@ export class JobsService {
     });
   }
 
+  async cancelJob(jobId: string, input: unknown, userId: string, idempotencyKey: string) {
+    const parsed = CancelJobSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_job_cancel_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    const requestId = getRequestContext()?.requestId ?? randomUUID();
+
+    return this.pg.withIdempotency({
+      actorId: userId,
+      endpoint: `/v1/jobs/${jobId}/cancel`,
+      idempotencyKey,
+      execute: async (client) => {
+        const jobResult = await client.query<CancelJobRow>(
+          `select ${JOB_COLUMNS},
+                  (
+                    select m.role::text
+                    from public.org_memberships m
+                    where m.org_id = j.org_id
+                      and m.user_id = $2
+                      and m.is_active = true
+                      and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+                    limit 1
+                  ) as operator_role
+           from public.jobs j
+           where j.id = $1
+           for update`,
+          [jobId, userId]
+        );
+
+        if ((jobResult.rowCount ?? 0) !== 1) {
+          throw new NotFoundException("job_not_found");
+        }
+
+        const job = jobResult.rows[0];
+        const actorRole = job.operator_role ?? (job.consumer_id === userId ? "CONSUMER" : null);
+        if (!actorRole) {
+          throw new ForbiddenException("job_cancel_not_allowed");
+        }
+
+        if (!CANCELLABLE_JOB_STATUSES.includes(job.status as (typeof CANCELLABLE_JOB_STATUSES)[number])) {
+          throw new ConflictException("job_not_cancelable");
+        }
+
+        const updated = await client.query<JobRow>(
+          `update public.jobs
+           set status = 'CANCELLED',
+               cancelled_at = now(),
+               cancelled_by_user_id = $1,
+               cancellation_reason = $2,
+               cancellation_actor_role = $3,
+               cancellation_settlement_code = $4,
+               cancellation_settlement_note = $5,
+               cancellation_fee_cents = 0,
+               cancellation_refund_cents = 0,
+               updated_at = now()
+           where id = $6
+           returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
+          [
+            userId,
+            parsed.data.reason,
+            actorRole,
+            parsed.data.settlementPolicyCode,
+            parsed.data.settlementNote ?? null,
+            jobId
+          ]
+        );
+
+        if (job.assigned_driver_id) {
+          await client.query(
+            `update public.drivers
+             set active_job_id = null
+             where id = $1
+               and active_job_id = $2`,
+            [job.assigned_driver_id, jobId]
+          );
+        }
+
+        await client.query(
+          `update public.job_offers
+           set status = 'EXPIRED',
+               responded_at = coalesce(responded_at, now())
+           where job_id = $1
+             and status = 'OFFERED'`,
+          [jobId]
+        );
+
+        await this.insertJobEvent(client, {
+          jobId,
+          eventType: "JOB_CANCELLED",
+          actorId: userId,
+          payload: {
+            requestId,
+            fromStatus: job.status,
+            reason: parsed.data.reason,
+            actorRole,
+            settlementPolicyCode: parsed.data.settlementPolicyCode
+          }
+        });
+
+        await this.insertAuditLog(client, {
+          requestId,
+          actorId: userId,
+          orgId: job.org_id,
+          entityType: "job",
+          entityId: jobId,
+          action: "job_cancelled",
+          metadata: {
+            fromStatus: job.status,
+            reason: parsed.data.reason,
+            actorRole,
+            settlementPolicyCode: parsed.data.settlementPolicyCode,
+            settlementNote: parsed.data.settlementNote ?? null
+          }
+        });
+
+        await this.insertOutboxMessage(client, {
+          aggregateType: "job",
+          aggregateId: jobId,
+          eventType: "NOTIFY_JOB_CANCELLED",
+          payload: {
+            requestId,
+            jobId,
+            actorId: userId,
+            actorRole,
+            reason: parsed.data.reason,
+            status: "CANCELLED"
+          },
+          idempotencyKey: `notify-job-cancelled:${jobId}:${idempotencyKey}`
+        });
+
+        return {
+          responseCode: 200,
+          body: this.mapJob(updated.rows[0])
+        };
+      }
+    });
+  }
+
   private async loadQuote(quoteId: string) {
     const result = await this.pg.query<QuoteRecord>(
       `select id, org_id, created_by_user_id, distance_miles, eta_minutes, vehicle_type,
@@ -470,6 +619,38 @@ export class JobsService {
         input.entityId,
         input.action,
         JSON.stringify(input.metadata)
+      ]
+    );
+  }
+
+  private async insertOutboxMessage(
+    client: PoolClient,
+    input: {
+      aggregateType: string;
+      aggregateId: string;
+      eventType: string;
+      payload: Record<string, unknown>;
+      idempotencyKey: string;
+      nextAttemptAt?: string;
+    }
+  ) {
+    await client.query(
+      `insert into public.outbox_messages (
+         aggregate_type,
+         aggregate_id,
+         event_type,
+         payload,
+         idempotency_key,
+         next_attempt_at
+       ) values ($1, $2, $3, $4::jsonb, $5, coalesce($6::timestamptz, now()))
+       on conflict (event_type, idempotency_key) do nothing`,
+      [
+        input.aggregateType,
+        input.aggregateId,
+        input.eventType,
+        JSON.stringify(input.payload),
+        input.idempotencyKey,
+        input.nextAttemptAt ?? null
       ]
     );
   }

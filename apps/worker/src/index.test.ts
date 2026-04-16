@@ -196,6 +196,7 @@ describe("dispatchSideEffect", () => {
       },
       { match: "insert into public.job_events" },
       { match: "insert into public.audit_log" },
+      { match: "insert into public.outbox_messages" },
       { match: "from public.drivers d", result: { rows: [{ driver_id: "driver-2", user_id: "user-2", latest_latitude: null, latest_longitude: null, reliability_score: "0.500" }] } },
       {
         match: "insert into public.job_offers",

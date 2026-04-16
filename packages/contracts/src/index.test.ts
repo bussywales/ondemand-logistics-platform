@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  CancelJobSchema,
   CreateJobRequestSchema,
+  CreateProofOfDeliverySchema,
   CreateQuoteSchema,
   JobTrackingSchema,
   JobStatusSchema,
-  PaginatedJobsSchema
+  PaginatedJobsSchema,
+  ProofOfDeliveryUploadUrlResponseSchema
 } from "./index.js";
 
 describe("CreateQuoteSchema", () => {
@@ -102,6 +105,42 @@ describe("read models", () => {
           payload: { offerId: "abc" }
         }
       ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses proof of delivery payloads", () => {
+    const parsed = CreateProofOfDeliverySchema.safeParse({
+      photoUrl: "https://example.com/pod.jpg",
+      recipientName: "Alex",
+      deliveryNote: "Left with front desk",
+      coordinates: { latitude: 51.5, longitude: -0.1 },
+      otpVerified: false
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses proof of delivery upload responses", () => {
+    const parsed = ProofOfDeliveryUploadUrlResponseSchema.safeParse({
+      jobId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      storageBucket: "proof-of-delivery",
+      storagePath: "jobs/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b/pod.jpg",
+      uploadMethod: "PUT",
+      uploadUrl: "https://example.supabase.co/storage/v1/object/proof-of-delivery/jobs/pod.jpg",
+      photoUrl: "https://example.supabase.co/storage/v1/object/public/proof-of-delivery/jobs/pod.jpg",
+      expiresAt: new Date().toISOString()
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses cancel job payloads", () => {
+    const parsed = CancelJobSchema.safeParse({
+      reason: "Store closed early",
+      settlementPolicyCode: "PENDING_PAYMENT_RULES",
+      settlementNote: "No payment capture yet"
     });
 
     expect(parsed.success).toBe(true);

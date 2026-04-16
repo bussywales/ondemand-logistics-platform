@@ -43,4 +43,22 @@ export class JobsController {
   async getTracking(@Param("jobId") jobId: string, @RequestUser() user: AuthenticatedUser) {
     return this.jobsService.getTracking(jobId, user.id);
   }
+
+  @Post("jobs/:jobId/cancel")
+  @HttpCode(200)
+  async cancelJob(
+    @Param("jobId") jobId: string,
+    @Body() body: unknown,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.jobsService.cancelJob(jobId, body, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
 }

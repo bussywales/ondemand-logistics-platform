@@ -1,4 +1,4 @@
-# Setup Runbook (Phase 2A Read + Progression MVP)
+# Setup Runbook (Phase 2B POD + Cancellation MVP)
 
 ## 1) Provision staging infrastructure
 
@@ -14,6 +14,7 @@
    - `packages/db/migrations/0003_rls_recursion_fix.sql`
    - `packages/db/migrations/0004_phase1_dispatch.sql`
    - `packages/db/migrations/0005_phase2a_reads_and_progression.sql`
+   - `packages/db/migrations/0006_phase2b_pod_cancellation_notifications.sql`
 
 ### Upstash Redis (staging)
 1. Create Redis database: `ondemand-logistics-staging`.
@@ -38,12 +39,15 @@
   - `DATABASE_URL`
   - `SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
+  - `SUPABASE_ANON_KEY` for local/staging auth fixture seeding
   - `REDIS_URL`
   - `SUPABASE_JWT_AUDIENCE=authenticated`
   - `OUTBOX_POLL_INTERVAL_MS=2000`
   - `OUTBOX_BATCH_SIZE=20`
   - `OUTBOX_MAX_RETRIES=10`
   - `DISPATCH_OFFER_TTL_SECONDS=30`
+  - `POD_STORAGE_BUCKET=proof-of-delivery`
+  - `POD_UPLOAD_URL_TTL_SECONDS=900`
 
 ### Vercel: `ondemand-logistics-platform-web`
 - Root directory: repo root (`.`)
@@ -65,6 +69,8 @@
   - driver availability and location updates
   - offer accept / reject
   - driver status progression transitions
+  - proof of delivery upload reservation and record
+  - job cancellation
   - outbox worker dispatch / expiry processing
 - Read APIs enforce actor visibility in server-side query filters without weakening SQL policies.
 - Row-level policies remain defined only in SQL migrations.
@@ -84,7 +90,25 @@ Expected shape:
 {"status":"ok","service":"api","requestId":"<uuid>"}
 ```
 
-## 5) CI/CD checks
+## 5) Protected endpoint fixtures
+
+Seed or refresh staging auth fixtures locally:
+
+```bash
+SUPABASE_URL=... \
+SUPABASE_ANON_KEY=... \
+DATABASE_URL=... \
+pnpm fixtures:staging-auth
+```
+
+The fixture script creates or reuses:
+- `staging-business-operator@shipwright.local`
+- `staging-driver@shipwright.local`
+- `staging-consumer@shipwright.local`
+
+It prints current user ids, the seeded driver id, the seeded org id, and current bearer tokens for sample curls.
+
+## 6) CI/CD checks
 
 Required GitHub Actions checks:
 - `lint`
@@ -93,11 +117,14 @@ Required GitHub Actions checks:
 - `migration validation`
 - `build`
 
-## 6) Constraints enforced in this phase
+## 7) Constraints enforced in this phase
 
 - Versioned deterministic pricing with quote persistence.
 - Single pickup to single drop jobs only.
 - Hard distance cap at 12 miles, premium flag for 8-12 miles.
 - Driver availability, location, sequential offers, reject-driven redispatch, and guarded status progression.
+- Proof of delivery is required before `DELIVERED`.
+- Cancellation is restricted to consumer/business actors and pre-drop states only.
+- Notification hooks are durable outbox messages; provider fan-out remains deferred.
 - Idempotent writes, append-only audit trails, transactional outbox side effects.
 - Structured logs with `request_id`; worker failures are non-fatal to HTTP serving.

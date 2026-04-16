@@ -10,18 +10,23 @@ import {
 import { randomUUID } from "node:crypto";
 import {
   AcceptDriverOfferResponseSchema,
+  CreateProofOfDeliverySchema,
   DriverOfferSchema,
   DriverStateSchema,
   JobSchema,
   OfferDecisionSchema,
   PaginatedJobsSchema,
+  ProofOfDeliverySchema,
+  ProofOfDeliveryUploadUrlResponseSchema,
   UpdateDriverAvailabilitySchema,
   UpdateDriverLocationSchema,
   type DriverAvailabilityStatus,
   type DriverOfferDto,
   type DriverStateDto,
   type JobDto,
-  type PaginatedJobsDto
+  type PaginatedJobsDto,
+  type ProofOfDeliveryDto,
+  type ProofOfDeliveryUploadUrlResponse
 } from "@shipwright/contracts";
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
@@ -89,6 +94,19 @@ type JobRow = {
   created_at: string;
 };
 
+type ProofOfDeliveryRow = {
+  id: string;
+  job_id: string;
+  delivered_by_driver_id: string;
+  photo_url: string | null;
+  recipient_name: string | null;
+  delivery_note: string | null;
+  delivered_at: string;
+  latitude: string | null;
+  longitude: string | null;
+  otp_verified: boolean;
+};
+
 const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
   j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
   j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
@@ -102,6 +120,9 @@ const ACTIVE_DRIVER_JOB_STATUSES = ["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", 
 export class DriverService {
   private readonly logger = createLogger({ name: "api-driver" });
   private readonly locationThrottleMs = Number(process.env.DRIVER_LOCATION_THROTTLE_MS ?? 5000);
+  private readonly podStorageBucket = process.env.POD_STORAGE_BUCKET ?? "proof-of-delivery";
+  private readonly podUploadUrlTtlSeconds = Number(process.env.POD_UPLOAD_URL_TTL_SECONDS ?? 900);
+  private readonly supabaseUrl = process.env.SUPABASE_URL?.trim() || "https://example.supabase.co";
 
   constructor(private readonly pg: PgService) {}
 
@@ -347,6 +368,20 @@ export class DriverService {
           }
         });
 
+        await this.insertOutboxMessage(client, {
+          aggregateType: "job",
+          aggregateId: offer.job_id,
+          eventType: "NOTIFY_JOB_ASSIGNED",
+          payload: {
+            requestId,
+            jobId: offer.job_id,
+            offerId,
+            driverId: driver.id,
+            status: "ASSIGNED"
+          },
+          idempotencyKey: `notify-job-assigned:${offer.job_id}:${offerId}`
+        });
+
         return {
           responseCode: 200,
           body: AcceptDriverOfferResponseSchema.parse({
@@ -419,29 +454,33 @@ export class DriverService {
           }
         });
 
+        await this.insertOutboxMessage(client, {
+          aggregateType: "job",
+          aggregateId: offer.job_id,
+          eventType: "NOTIFY_JOB_REDISPATCH_REQUESTED",
+          payload: {
+            requestId,
+            jobId: offer.job_id,
+            offerId,
+            driverId: driver.id,
+            trigger: "offer_rejected"
+          },
+          idempotencyKey: `notify-redispatch:${offer.job_id}:${offerId}:rejected`
+        });
+
         if (offer.job_status === "REQUESTED" && !offer.assigned_driver_id) {
-          await client.query(
-            `insert into public.outbox_messages (
-               aggregate_type,
-               aggregate_id,
-               event_type,
-               payload,
-               idempotency_key
-             ) values ($1, $2, $3, $4::jsonb, $5)
-             on conflict (event_type, idempotency_key) do nothing`,
-            [
-              "job",
-              offer.job_id,
-              "JOB_DISPATCH_REQUESTED",
-              JSON.stringify({
-                jobId: offer.job_id,
-                requestId,
-                trigger: "offer_rejected",
-                rejectedOfferId: offerId
-              }),
-              `redispatch:${offer.job_id}:${offerId}`
-            ]
-          );
+          await this.insertOutboxMessage(client, {
+            aggregateType: "job",
+            aggregateId: offer.job_id,
+            eventType: "JOB_DISPATCH_REQUESTED",
+            payload: {
+              jobId: offer.job_id,
+              requestId,
+              trigger: "offer_rejected",
+              rejectedOfferId: offerId
+            },
+            idempotencyKey: `redispatch:${offer.job_id}:${offerId}`
+          });
         }
 
         return {
@@ -511,7 +550,8 @@ export class DriverService {
       fromStatus: "ASSIGNED",
       toStatus: "EN_ROUTE_PICKUP",
       eventType: "JOB_EN_ROUTE_PICKUP",
-      action: "job_en_route_pickup"
+      action: "job_en_route_pickup",
+      notificationEventType: "NOTIFY_JOB_EN_ROUTE_PICKUP"
     });
   }
 
@@ -524,7 +564,8 @@ export class DriverService {
       fromStatus: "EN_ROUTE_PICKUP",
       toStatus: "PICKED_UP",
       eventType: "JOB_PICKED_UP",
-      action: "job_picked_up"
+      action: "job_picked_up",
+      notificationEventType: "NOTIFY_JOB_PICKED_UP"
     });
   }
 
@@ -537,7 +578,8 @@ export class DriverService {
       fromStatus: "PICKED_UP",
       toStatus: "EN_ROUTE_DROP",
       eventType: "JOB_EN_ROUTE_DROP",
-      action: "job_en_route_drop"
+      action: "job_en_route_drop",
+      notificationEventType: "NOTIFY_JOB_EN_ROUTE_DROP"
     });
   }
 
@@ -550,7 +592,129 @@ export class DriverService {
       fromStatus: "EN_ROUTE_DROP",
       toStatus: "DELIVERED",
       eventType: "JOB_DELIVERED",
-      action: "job_delivered"
+      action: "job_delivered",
+      notificationEventType: "NOTIFY_JOB_DELIVERED",
+      requireProofOfDelivery: true
+    });
+  }
+
+  async createProofOfDeliveryUploadUrl(
+    jobId: string,
+    userId: string,
+    idempotencyKey: string
+  ): Promise<{ replay: boolean; responseCode: number; body: ProofOfDeliveryUploadUrlResponse }> {
+    const driver = await this.getDriverByUserId(userId);
+
+    return this.pg.withIdempotency({
+      actorId: userId,
+      endpoint: `/v1/driver/me/jobs/${jobId}/proof-of-delivery/upload-url`,
+      idempotencyKey,
+      execute: async (client) => {
+        await this.loadAssignedJobForUpdate(client, jobId, driver.id, ["EN_ROUTE_DROP"]);
+
+        const storagePath = `jobs/${jobId}/${randomUUID()}.jpg`;
+        return {
+          responseCode: 200,
+          body: ProofOfDeliveryUploadUrlResponseSchema.parse({
+            jobId,
+            storageBucket: this.podStorageBucket,
+            storagePath,
+            uploadMethod: "PUT",
+            uploadUrl: `${this.supabaseUrl}/storage/v1/object/${this.podStorageBucket}/${storagePath}`,
+            photoUrl: `${this.supabaseUrl}/storage/v1/object/public/${this.podStorageBucket}/${storagePath}`,
+            expiresAt: new Date(Date.now() + this.podUploadUrlTtlSeconds * 1000).toISOString()
+          })
+        };
+      }
+    });
+  }
+
+  async createProofOfDelivery(
+    jobId: string,
+    input: unknown,
+    userId: string,
+    idempotencyKey: string
+  ): Promise<{ replay: boolean; responseCode: number; body: ProofOfDeliveryDto }> {
+    const parsed = CreateProofOfDeliverySchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_proof_of_delivery_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    const requestId = getRequestContext()?.requestId ?? randomUUID();
+    const driver = await this.getDriverByUserId(userId);
+
+    return this.pg.withIdempotency({
+      actorId: userId,
+      endpoint: `/v1/driver/me/jobs/${jobId}/proof-of-delivery`,
+      idempotencyKey,
+      execute: async (client) => {
+        const job = await this.loadAssignedJobForUpdate(client, jobId, driver.id, ["EN_ROUTE_DROP"]);
+        const existing = await client.query(`select id from public.proof_of_delivery where job_id = $1`, [jobId]);
+        if ((existing.rowCount ?? 0) > 0) {
+          throw new ConflictException("proof_of_delivery_already_exists");
+        }
+
+        const created = await client.query<ProofOfDeliveryRow>(
+          `insert into public.proof_of_delivery (
+             job_id,
+             delivered_by_driver_id,
+             photo_url,
+             recipient_name,
+             delivery_note,
+             delivered_at,
+             latitude,
+             longitude,
+             otp_verified
+           ) values ($1, $2, $3, $4, $5, now(), $6, $7, $8)
+           returning id, job_id, delivered_by_driver_id, photo_url, recipient_name, delivery_note,
+                     delivered_at, latitude, longitude, otp_verified`,
+          [
+            jobId,
+            driver.id,
+            parsed.data.photoUrl ?? null,
+            parsed.data.recipientName ?? null,
+            parsed.data.deliveryNote ?? null,
+            parsed.data.coordinates?.latitude ?? null,
+            parsed.data.coordinates?.longitude ?? null,
+            parsed.data.otpVerified ?? false
+          ]
+        );
+
+        await this.insertJobEvent(client, {
+          jobId,
+          eventType: "JOB_PROOF_OF_DELIVERY_RECORDED",
+          actorId: userId,
+          payload: {
+            requestId,
+            proofOfDeliveryId: created.rows[0].id,
+            hasPhoto: Boolean(parsed.data.photoUrl),
+            recipientName: parsed.data.recipientName ?? null
+          }
+        });
+
+        await this.insertAuditLog(client, {
+          requestId,
+          actorId: userId,
+          orgId: job.org_id,
+          entityType: "proof_of_delivery",
+          entityId: created.rows[0].id,
+          action: "proof_of_delivery_recorded",
+          metadata: {
+            jobId,
+            driverId: driver.id,
+            hasPhoto: Boolean(parsed.data.photoUrl),
+            otpVerified: parsed.data.otpVerified ?? false
+          }
+        });
+
+        return {
+          responseCode: 201,
+          body: this.mapProofOfDelivery(created.rows[0])
+        };
+      }
     });
   }
 
@@ -563,6 +727,8 @@ export class DriverService {
     toStatus: string;
     eventType: string;
     action: string;
+    notificationEventType?: string;
+    requireProofOfDelivery?: boolean;
   }) {
     const requestId = getRequestContext()?.requestId ?? randomUUID();
     const driver = await this.getDriverByUserId(input.userId);
@@ -572,21 +738,20 @@ export class DriverService {
       endpoint: input.endpoint,
       idempotencyKey: input.idempotencyKey,
       execute: async (client) => {
-        const jobResult = await client.query<JobRow>(
-          `select ${JOB_COLUMNS}
-           from public.jobs j
-           where j.id = $1 and j.assigned_driver_id = $2
-           for update`,
-          [input.jobId, driver.id]
-        );
+        const job = await this.loadAssignedJobForUpdate(client, input.jobId, driver.id, [input.fromStatus]);
 
-        if ((jobResult.rowCount ?? 0) !== 1) {
-          throw new NotFoundException("job_not_found");
-        }
+        if (input.requireProofOfDelivery) {
+          const proofResult = await client.query(
+            `select 1
+             from public.proof_of_delivery
+             where job_id = $1
+               and delivered_by_driver_id = $2`,
+            [input.jobId, driver.id]
+          );
 
-        const job = jobResult.rows[0];
-        if (job.status !== input.fromStatus) {
-          throw new ConflictException("invalid_job_status_transition");
+          if ((proofResult.rowCount ?? 0) !== 1) {
+            throw new ConflictException("proof_of_delivery_required");
+          }
         }
 
         const updated = await client.query<JobRow>(
@@ -633,6 +798,21 @@ export class DriverService {
           }
         });
 
+        if (input.notificationEventType) {
+          await this.insertOutboxMessage(client, {
+            aggregateType: "job",
+            aggregateId: input.jobId,
+            eventType: input.notificationEventType,
+            payload: {
+              requestId,
+              jobId: input.jobId,
+              driverId: driver.id,
+              status: input.toStatus
+            },
+            idempotencyKey: `${input.notificationEventType.toLowerCase()}:${input.jobId}:${input.idempotencyKey}`
+          });
+        }
+
         return {
           responseCode: 200,
           body: this.mapJob(updated.rows[0])
@@ -668,6 +848,32 @@ export class DriverService {
     }
 
     return offerResult.rows[0];
+  }
+
+  private async loadAssignedJobForUpdate(
+    client: PoolClient,
+    jobId: string,
+    driverId: string,
+    expectedStatuses: string[]
+  ) {
+    const jobResult = await client.query<JobRow>(
+      `select ${JOB_COLUMNS}
+       from public.jobs j
+       where j.id = $1 and j.assigned_driver_id = $2
+       for update`,
+      [jobId, driverId]
+    );
+
+    if ((jobResult.rowCount ?? 0) !== 1) {
+      throw new NotFoundException("job_not_found");
+    }
+
+    const job = jobResult.rows[0];
+    if (!expectedStatuses.includes(job.status)) {
+      throw new ConflictException("invalid_job_status_transition");
+    }
+
+    return job;
   }
 
   private async getDriverByUserId(userId: string) {
@@ -744,6 +950,26 @@ export class DriverService {
     });
   }
 
+  private mapProofOfDelivery(row: ProofOfDeliveryRow): ProofOfDeliveryDto {
+    return ProofOfDeliverySchema.parse({
+      id: row.id,
+      jobId: row.job_id,
+      deliveredByDriverId: row.delivered_by_driver_id,
+      photoUrl: row.photo_url,
+      recipientName: row.recipient_name,
+      deliveryNote: row.delivery_note,
+      deliveredAt: row.delivered_at,
+      coordinates:
+        row.latitude && row.longitude
+          ? {
+              latitude: Number(row.latitude),
+              longitude: Number(row.longitude)
+            }
+          : null,
+      otpVerified: row.otp_verified
+    });
+  }
+
   private async insertJobEvent(
     client: PoolClient,
     input: { jobId: string; eventType: string; actorId: string | null; payload: Record<string, unknown> }
@@ -785,6 +1011,38 @@ export class DriverService {
         input.entityId,
         input.action,
         JSON.stringify(input.metadata)
+      ]
+    );
+  }
+
+  private async insertOutboxMessage(
+    client: PoolClient,
+    input: {
+      aggregateType: string;
+      aggregateId: string;
+      eventType: string;
+      payload: Record<string, unknown>;
+      idempotencyKey: string;
+      nextAttemptAt?: string;
+    }
+  ) {
+    await client.query(
+      `insert into public.outbox_messages (
+         aggregate_type,
+         aggregate_id,
+         event_type,
+         payload,
+         idempotency_key,
+         next_attempt_at
+       ) values ($1, $2, $3, $4::jsonb, $5, coalesce($6::timestamptz, now()))
+       on conflict (event_type, idempotency_key) do nothing`,
+      [
+        input.aggregateType,
+        input.aggregateId,
+        input.eventType,
+        JSON.stringify(input.payload),
+        input.idempotencyKey,
+        input.nextAttemptAt ?? null
       ]
     );
   }

@@ -1,4 +1,23 @@
-# API Runbook (Phase 2A)
+# API Runbook (Phase 2B)
+
+## Auth fixtures
+
+Seed or refresh staging auth fixtures:
+
+```bash
+SUPABASE_URL=... \
+SUPABASE_ANON_KEY=... \
+DATABASE_URL=... \
+pnpm fixtures:staging-auth
+```
+
+The script prints:
+- `BUSINESS_OPERATOR_JWT`
+- `DRIVER_JWT`
+- `CONSUMER_JWT`
+- `ORG_ID`
+- `DRIVER_ID`
+- `CONSUMER_USER_ID`
 
 ## Core write flow
 
@@ -80,6 +99,19 @@ curl -X POST "$API_BASE_URL/v1/driver/me/offers/$OFFER_ID/reject" \
   -H "x-idempotency-key: driver-offer-reject-001"
 ```
 
+### Cancel job
+```bash
+curl -X POST "$API_BASE_URL/v1/jobs/$JOB_ID/cancel" \
+  -H "authorization: Bearer $CONSUMER_JWT" \
+  -H "content-type: application/json" \
+  -H "x-idempotency-key: job-cancel-001" \
+  -d '{
+    "reason": "Store closed early",
+    "settlementPolicyCode": "PENDING_PAYMENT_RULES",
+    "settlementNote": "No payment capture yet"
+  }'
+```
+
 ## Read APIs
 
 ### Read a single job
@@ -136,6 +168,32 @@ curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/en-route-drop" \
 ```
 
 ### EN_ROUTE_DROP -> DELIVERED
+First reserve or decide the photo location:
+
+```bash
+curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/proof-of-delivery/upload-url" \
+  -H "authorization: Bearer $DRIVER_JWT" \
+  -H "x-idempotency-key: pod-upload-001"
+```
+
+Then record proof of delivery:
+
+```bash
+curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/proof-of-delivery" \
+  -H "authorization: Bearer $DRIVER_JWT" \
+  -H "content-type: application/json" \
+  -H "x-idempotency-key: pod-record-001" \
+  -d '{
+    "photoUrl": "'$PHOTO_URL'",
+    "recipientName": "Alex",
+    "deliveryNote": "Left with front desk",
+    "coordinates": {"latitude": 51.5101, "longitude": -0.1342},
+    "otpVerified": false
+  }'
+```
+
+Only after POD exists:
+
 ```bash
 curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/delivered" \
   -H "authorization: Bearer $DRIVER_JWT" \

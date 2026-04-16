@@ -152,9 +152,9 @@ describe("DriverService", () => {
     const result = await service.rejectOffer(OFFER_ID, ACTOR_ID, "idem-offer-reject");
 
     expect(result.body.status).toBe("REJECTED");
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes("insert into public.outbox_messages"))).toBe(
-      true
-    );
+    expect(
+      clientQuery.mock.calls.filter(([sql]) => String(sql).includes("insert into public.outbox_messages")).length
+    ).toBe(2);
   });
 
   it("allows valid driver status transitions", async () => {
@@ -184,6 +184,7 @@ describe("DriverService", () => {
     const clientQuery = vi
       .fn()
       .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "EN_ROUTE_DROP" })] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ exists: 1 }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "DELIVERED" })] })
       .mockResolvedValue({ rowCount: 1, rows: [] });
 
@@ -195,5 +196,60 @@ describe("DriverService", () => {
       String(sql).includes("update public.drivers")
     );
     expect(driverUpdateCall?.[1]?.[0]).toBeNull();
+  });
+
+  it("blocks delivered transition when proof of delivery is missing", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "EN_ROUTE_DROP" })] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const { service } = makeService(clientQuery);
+
+    await expect(service.transitionToDelivered(JOB_ID, ACTOR_ID, "idem-transition-pod")).rejects.toThrow(
+      new ConflictException("proof_of_delivery_required")
+    );
+  });
+
+  it("records proof of delivery before delivery completion", async () => {
+    const deliveredAt = new Date().toISOString();
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "EN_ROUTE_DROP" })] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: "f4ff3dbd-d246-4db4-9367-4718dff7ef5f",
+            job_id: JOB_ID,
+            delivered_by_driver_id: DRIVER_ID,
+            photo_url: "https://example.com/pod.jpg",
+            recipient_name: "Alex",
+            delivery_note: "Left with front desk",
+            delivered_at: deliveredAt,
+            latitude: "51.500000",
+            longitude: "-0.100000",
+            otp_verified: false
+          }
+        ]
+      })
+      .mockResolvedValue({ rowCount: 1, rows: [] });
+
+    const { service } = makeService(clientQuery);
+    const result = await service.createProofOfDelivery(
+      JOB_ID,
+      {
+        photoUrl: "https://example.com/pod.jpg",
+        recipientName: "Alex",
+        deliveryNote: "Left with front desk",
+        coordinates: { latitude: 51.5, longitude: -0.1 }
+      },
+      ACTOR_ID,
+      "idem-pod-1"
+    );
+
+    expect(result.body.jobId).toBe(JOB_ID);
+    expect(result.body.photoUrl).toBe("https://example.com/pod.jpg");
   });
 });

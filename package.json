@@ -8,7 +8,8 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:integration": "pnpm -r test:integration",
-    "migration:validate": "pnpm --filter @shipwright/db migration:validate"
+    "migration:validate": "pnpm --filter @shipwright/db migration:validate",
+    "fixtures:staging-auth": "tsx scripts/seed-staging-auth-fixtures.ts"
   },
   "devDependencies": {
     "@types/pg": "^8.15.5",

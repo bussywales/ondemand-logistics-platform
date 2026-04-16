@@ -227,10 +227,60 @@ export const JobTrackingSchema = z.object({
 });
 export type JobTrackingDto = z.infer<typeof JobTrackingSchema>;
 
+export const ProofOfDeliverySchema = z.object({
+  id: z.string().uuid(),
+  jobId: z.string().uuid(),
+  deliveredByDriverId: z.string().uuid(),
+  photoUrl: z.string().url().nullable(),
+  recipientName: z.string().min(2).nullable(),
+  deliveryNote: z.string().min(3).max(1000).nullable(),
+  deliveredAt: IsoDateTimeSchema,
+  coordinates: CoordinatesSchema.nullable(),
+  otpVerified: z.boolean()
+});
+export type ProofOfDeliveryDto = z.infer<typeof ProofOfDeliverySchema>;
+
+export const CreateProofOfDeliverySchema = z.object({
+  photoUrl: z.string().url().nullable().optional(),
+  recipientName: z.string().min(2).max(120).nullable().optional(),
+  deliveryNote: z.string().min(3).max(1000).nullable().optional(),
+  coordinates: CoordinatesSchema.nullable().optional(),
+  otpVerified: z.boolean().optional().default(false)
+});
+export type CreateProofOfDeliveryInput = z.infer<typeof CreateProofOfDeliverySchema>;
+
+export const ProofOfDeliveryUploadUrlResponseSchema = z.object({
+  jobId: z.string().uuid(),
+  storageBucket: z.string().min(2),
+  storagePath: z.string().min(3),
+  uploadMethod: z.literal("PUT"),
+  uploadUrl: z.string().url(),
+  photoUrl: z.string().url(),
+  expiresAt: IsoDateTimeSchema.nullable()
+});
+export type ProofOfDeliveryUploadUrlResponse = z.infer<typeof ProofOfDeliveryUploadUrlResponseSchema>;
+
+export const CancellationActorRoleSchema = z.enum(["CONSUMER", "BUSINESS_OPERATOR", "ADMIN"]);
+export type CancellationActorRole = z.infer<typeof CancellationActorRoleSchema>;
+
+export const CancelJobSchema = z.object({
+  reason: z.string().min(3).max(500),
+  settlementPolicyCode: z.string().min(3).max(64).default("PENDING_PAYMENT_RULES"),
+  settlementNote: z.string().min(3).max(500).nullable().optional()
+});
+export type CancelJobInput = z.infer<typeof CancelJobSchema>;
+
 export const OutboxEventTypeSchema = z.enum([
   "FOUNDATION_WRITE_RECORDED",
   "JOB_DISPATCH_REQUESTED",
-  "JOB_OFFER_EXPIRY_CHECK"
+  "JOB_OFFER_EXPIRY_CHECK",
+  "NOTIFY_JOB_ASSIGNED",
+  "NOTIFY_JOB_REDISPATCH_REQUESTED",
+  "NOTIFY_JOB_EN_ROUTE_PICKUP",
+  "NOTIFY_JOB_PICKED_UP",
+  "NOTIFY_JOB_EN_ROUTE_DROP",
+  "NOTIFY_JOB_DELIVERED",
+  "NOTIFY_JOB_CANCELLED"
 ]);
 export type OutboxEventType = z.infer<typeof OutboxEventTypeSchema>;
 

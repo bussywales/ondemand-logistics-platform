@@ -173,4 +173,39 @@ export class DriverController {
 
     return result.body;
   }
+
+  @Post("jobs/:jobId/proof-of-delivery/upload-url")
+  @HttpCode(200)
+  async createProofOfDeliveryUploadUrl(
+    @Param("jobId") jobId: string,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.driverService.createProofOfDeliveryUploadUrl(jobId, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @Post("jobs/:jobId/proof-of-delivery")
+  @HttpCode(201)
+  async createProofOfDelivery(
+    @Param("jobId") jobId: string,
+    @Body() body: unknown,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.driverService.createProofOfDelivery(jobId, body, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
 }

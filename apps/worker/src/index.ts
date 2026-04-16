@@ -536,6 +536,20 @@ async function handleOfferExpiryCheck(
     }
   });
 
+  await enqueueOutboxMessage(client, {
+    aggregateType: "job",
+    aggregateId: job.id,
+    eventType: "NOTIFY_JOB_REDISPATCH_REQUESTED",
+    payload: {
+      requestId,
+      jobId: job.id,
+      offerId,
+      driverId: offer.driver_id,
+      trigger: "offer_expired"
+    },
+    idempotencyKey: `notify-redispatch:${job.id}:${offerId}:expired`
+  });
+
   if (job.status !== "REQUESTED" || job.assigned_driver_id) {
     logger.info({ job_id: job.id, status: job.status }, "dispatch_expiry_job_not_requestable");
     return;

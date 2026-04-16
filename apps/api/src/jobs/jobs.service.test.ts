@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { JobsService } from "./jobs.service.js";
 
@@ -138,5 +138,100 @@ describe("JobsService", () => {
     expect(tracking.jobId).toBe(JOB_ID);
     expect(tracking.assignedDriver?.displayName).toBe("Driver One");
     expect(tracking.timeline).toHaveLength(2);
+  });
+
+  it("blocks cancellation for unauthorized actors", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
+        execute({
+          query: vi.fn().mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [createJobRow({ consumer_id: DRIVER_USER_ID, operator_role: null })]
+          })
+        })
+      )
+    };
+
+    const service = new JobsService(pg as never);
+
+    await expect(
+      service.cancelJob(
+        JOB_ID,
+        { reason: "Customer changed mind", settlementPolicyCode: "PENDING_PAYMENT_RULES" },
+        ACTOR_ID,
+        "idem-cancel-1"
+      )
+    ).rejects.toThrow(new ForbiddenException("job_cancel_not_allowed"));
+  });
+
+  it("rejects cancellation after pickup", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
+        execute({
+          query: vi.fn().mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [createJobRow({ status: "PICKED_UP", consumer_id: ACTOR_ID, operator_role: null })]
+          })
+        })
+      )
+    };
+
+    const service = new JobsService(pg as never);
+
+    await expect(
+      service.cancelJob(
+        JOB_ID,
+        { reason: "Customer changed mind", settlementPolicyCode: "PENDING_PAYMENT_RULES" },
+        ACTOR_ID,
+        "idem-cancel-2"
+      )
+    ).rejects.toThrow(new ConflictException("job_not_cancelable"));
+  });
+
+  it("clears active_job_id and enqueues notification on cancellation", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          createJobRow({
+            status: "ASSIGNED",
+            assigned_driver_id: DRIVER_ID,
+            consumer_id: ACTOR_ID,
+            operator_role: null
+          })
+        ]
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [createJobRow({ status: "CANCELLED", assigned_driver_id: DRIVER_ID })]
+      })
+      .mockResolvedValue({ rowCount: 1, rows: [] });
+
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+
+    const service = new JobsService(pg as never);
+    const result = await service.cancelJob(
+      JOB_ID,
+      { reason: "Store closed early", settlementPolicyCode: "PENDING_PAYMENT_RULES" },
+      ACTOR_ID,
+      "idem-cancel-3"
+    );
+
+    expect(result.body.status).toBe("CANCELLED");
+    const driverUpdateCall = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes("update public.drivers")
+    );
+    expect(driverUpdateCall?.[1]).toEqual([DRIVER_ID, JOB_ID]);
+    const outboxCall = clientQuery.mock.calls.find(
+      ([sql, params]) =>
+        String(sql).includes("insert into public.outbox_messages") && params?.[2] === "NOTIFY_JOB_CANCELLED"
+    );
+    expect(outboxCall).toBeTruthy();
   });
 });

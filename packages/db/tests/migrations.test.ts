@@ -9,11 +9,12 @@ describe("migration files", () => {
       .filter((name) => name.endsWith(".sql"))
       .sort();
 
-    expect(files.length).toBeGreaterThanOrEqual(5);
+    expect(files.length).toBeGreaterThanOrEqual(6);
     expect(files[0]).toBe("0001_foundations_schema.sql");
     expect(files[1]).toBe("0002_rls_policies.sql");
     expect(files[2]).toBe("0003_rls_recursion_fix.sql");
     expect(files[3]).toBe("0004_phase1_dispatch.sql");
     expect(files[4]).toBe("0005_phase2a_reads_and_progression.sql");
+    expect(files[5]).toBe("0006_phase2b_pod_cancellation_notifications.sql");
   });
 });
