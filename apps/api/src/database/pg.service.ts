@@ -2,11 +2,22 @@ import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import {
   Pool,
   type PoolClient,
+  type PoolConfig,
   type QueryResult,
   type QueryResultRow
 } from "pg";
-import { createPgPoolConfig } from "@shipwright/db";
 import { readConfig } from "../config.js";
+
+function createPgPoolConfig(connectionString: string, max: number): PoolConfig {
+  const url = new URL(connectionString);
+  url.searchParams.delete("sslmode");
+
+  return {
+    connectionString: url.toString(),
+    max,
+    ssl: { rejectUnauthorized: false }
+  };
+}
 
 @Injectable()
 export class PgService implements OnModuleDestroy {

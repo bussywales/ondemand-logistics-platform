@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "pnpm --filter @shipwright/observability build && pnpm --filter @shipwright/db build && tsc -p tsconfig.json",
+    "build": "pnpm --filter @shipwright/observability build && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "start:prod": "node dist/index.js",
     "start:dev": "tsx watch src/index.ts",
@@ -22,7 +22,6 @@
     "test:integration": "vitest run"
   },
   "dependencies": {
-    "@shipwright/db": "workspace:*",
     "@shipwright/observability": "workspace:*",
     "pg": "^8.13.1"
   }

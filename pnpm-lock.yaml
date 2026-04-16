@@ -47,9 +47,6 @@ importers:
       '@shipwright/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@shipwright/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@shipwright/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -103,9 +100,6 @@ importers:
 
   apps/worker:
     dependencies:
-      '@shipwright/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@shipwright/observability':
         specifier: workspace:*
         version: link:../../packages/observability

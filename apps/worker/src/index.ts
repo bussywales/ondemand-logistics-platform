@@ -1,6 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { Pool, type PoolClient } from "pg";
-import { createPgPoolConfig } from "@shipwright/db";
+import { Pool, type PoolClient, type PoolConfig } from "pg";
 import { createLogger } from "@shipwright/observability";
 
 type OutboxMessage = {
@@ -27,6 +26,17 @@ const baseConfig = {
   maxRetries: Number(process.env.OUTBOX_MAX_RETRIES ?? 10)
 };
 type WorkerConfig = typeof baseConfig & { databaseUrl: string };
+
+function createPgPoolConfig(connectionString: string, max: number): PoolConfig {
+  const url = new URL(connectionString);
+  url.searchParams.delete("sslmode");
+
+  return {
+    connectionString: url.toString(),
+    max,
+    ssl: { rejectUnauthorized: false }
+  };
+}
 
 function computeRetrySeconds(retryCount: number): number {
   const bounded = Math.min(retryCount, 6);
