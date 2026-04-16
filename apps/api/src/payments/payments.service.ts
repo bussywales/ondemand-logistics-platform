@@ -1,8 +1,10 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
   UnprocessableEntityException
 } from "@nestjs/common";
@@ -125,6 +127,8 @@ const JOB_PAYMENT_ACCESS = `(
   )
 )`;
 
+export const PAYMENT_PROVIDER = Symbol("PAYMENT_PROVIDER");
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = createLogger({ name: "api-payments" });
@@ -133,6 +137,8 @@ export class PaymentsService {
 
   constructor(
     private readonly pg: PgService,
+    @Optional()
+    @Inject(PAYMENT_PROVIDER)
     provider?: PaymentProvider
   ) {
     this.provider =

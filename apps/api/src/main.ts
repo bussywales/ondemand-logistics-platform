@@ -21,7 +21,8 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, {
     logger: false,
-    rawBody: true
+    rawBody: true,
+    abortOnError: false
   });
 
   app.use(requestContextMiddleware(logger));
