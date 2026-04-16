@@ -270,10 +270,114 @@ export const CancelJobSchema = z.object({
 });
 export type CancelJobInput = z.infer<typeof CancelJobSchema>;
 
+export const PaymentProviderSchema = z.enum(["stripe"]);
+export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
+
+export const PaymentStatusSchema = z.enum([
+  "REQUIRES_PAYMENT_METHOD",
+  "REQUIRES_CONFIRMATION",
+  "AUTHORIZED",
+  "CAPTURED",
+  "PARTIALLY_REFUNDED",
+  "REFUNDED",
+  "FAILED",
+  "CANCELLED"
+]);
+export type PaymentStatus = z.infer<typeof PaymentStatusSchema>;
+
+export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
+export type RefundStatus = z.infer<typeof RefundStatusSchema>;
+
+export const PayoutLedgerStatusSchema = z.enum(["PENDING", "READY", "PAID", "FAILED", "CANCELLED"]);
+export type PayoutLedgerStatus = z.infer<typeof PayoutLedgerStatusSchema>;
+
+export const PaymentSchema = z.object({
+  id: z.string().uuid(),
+  jobId: z.string().uuid(),
+  provider: PaymentProviderSchema,
+  providerPaymentIntentId: z.string().nullable(),
+  status: PaymentStatusSchema,
+  amountAuthorizedCents: CurrencyAmountSchema,
+  amountCapturedCents: CurrencyAmountSchema,
+  amountRefundedCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  customerTotalCents: CurrencyAmountSchema,
+  platformFeeCents: CurrencyAmountSchema,
+  payoutGrossCents: CurrencyAmountSchema,
+  settlementSnapshot: z.record(z.string(), z.unknown()),
+  clientSecret: z.string().nullable(),
+  lastError: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type PaymentDto = z.infer<typeof PaymentSchema>;
+
+export const PaymentEventSchema = z.object({
+  id: z.number().int().nonnegative(),
+  paymentId: z.string().uuid().nullable(),
+  jobId: z.string().uuid().nullable(),
+  eventType: z.string().min(3),
+  previousStatus: PaymentStatusSchema.nullable(),
+  nextStatus: PaymentStatusSchema.nullable(),
+  providerEventId: z.string().nullable(),
+  payload: z.record(z.string(), z.unknown()),
+  createdAt: IsoDateTimeSchema
+});
+export type PaymentEventDto = z.infer<typeof PaymentEventSchema>;
+
+export const RefundSchema = z.object({
+  id: z.string().uuid(),
+  paymentId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  providerRefundId: z.string().nullable(),
+  status: RefundStatusSchema,
+  amountCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  reasonCode: z.string().min(2),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type RefundDto = z.infer<typeof RefundSchema>;
+
+export const PayoutLedgerSchema = z.object({
+  id: z.string().uuid(),
+  jobId: z.string().uuid(),
+  driverId: z.string().uuid(),
+  status: PayoutLedgerStatusSchema,
+  grossPayoutCents: CurrencyAmountSchema,
+  holdReason: z.string().nullable(),
+  releasedAt: IsoDateTimeSchema.nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type PayoutLedgerDto = z.infer<typeof PayoutLedgerSchema>;
+
+export const JobPaymentSummarySchema = z.object({
+  payment: PaymentSchema,
+  refunds: z.array(RefundSchema),
+  payoutLedger: PayoutLedgerSchema.nullable()
+});
+export type JobPaymentSummaryDto = z.infer<typeof JobPaymentSummarySchema>;
+
+export const AuthorizeJobPaymentSchema = z.object({
+  paymentMethodId: z.string().min(3).max(128)
+});
+export type AuthorizeJobPaymentInput = z.infer<typeof AuthorizeJobPaymentSchema>;
+
+export const StripeWebhookAckSchema = z.object({
+  received: z.boolean(),
+  duplicate: z.boolean().default(false),
+  eventId: z.string().min(3)
+});
+export type StripeWebhookAck = z.infer<typeof StripeWebhookAckSchema>;
+
 export const OutboxEventTypeSchema = z.enum([
   "FOUNDATION_WRITE_RECORDED",
   "JOB_DISPATCH_REQUESTED",
   "JOB_OFFER_EXPIRY_CHECK",
+  "PAYMENT_INTENT_CREATE_REQUESTED",
+  "PAYMENT_CAPTURE_REQUESTED",
+  "PAYMENT_CANCELLATION_SETTLEMENT_REQUESTED",
   "NOTIFY_JOB_ASSIGNED",
   "NOTIFY_JOB_REDISPATCH_REQUESTED",
   "NOTIFY_JOB_EN_ROUTE_PICKUP",

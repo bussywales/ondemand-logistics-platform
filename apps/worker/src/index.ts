@@ -1,6 +1,12 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { Pool, type PoolClient, type PoolConfig } from "pg";
 import { createLogger } from "@shipwright/observability";
+import {
+  StripePaymentProvider,
+  determineCancellationSettlement,
+  type InternalPaymentStatus,
+  type PaymentProvider
+} from "@shipwright/payments";
 
 type OutboxMessage = {
   id: string;
@@ -47,12 +53,40 @@ type OfferState = {
   expires_at: string;
 };
 
+type PaymentWorkItem = {
+  id: string;
+  job_id: string;
+  provider: "stripe";
+  provider_payment_intent_id: string | null;
+  status: InternalPaymentStatus;
+  amount_authorized_cents: number;
+  amount_captured_cents: number;
+  amount_refunded_cents: number;
+  currency: string;
+  customer_total_cents: number;
+  platform_fee_cents: number;
+  payout_gross_cents: number;
+  settlement_snapshot: Record<string, unknown>;
+  client_secret: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+  consumer_id: string;
+  job_status: string;
+  assigned_driver_id: string | null;
+  org_id: string | null;
+};
+
 type AppLogger = ReturnType<typeof createLogger>;
 const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
 const LOOP_YIELD_MS = 100;
 const OFFER_TTL_SECONDS = Number(process.env.DISPATCH_OFFER_TTL_SECONDS ?? 30);
 
 const defaultLogger = createLogger({ name: "worker" });
+let paymentProvider: PaymentProvider = new StripePaymentProvider({
+  secretKey: process.env.STRIPE_SECRET_KEY,
+  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET
+});
 let activeLogger: AppLogger = defaultLogger;
 let workerPool: Pool | undefined;
 let workerRunning = false;
@@ -194,6 +228,101 @@ async function enqueueOutboxMessage(
       JSON.stringify(input.payload),
       input.idempotencyKey,
       input.nextAttemptAt ?? null
+    ]
+  );
+}
+
+async function insertPaymentEvent(
+  client: PoolClient,
+  input: {
+    paymentId: string | null;
+    jobId: string | null;
+    eventType: string;
+    previousStatus: InternalPaymentStatus | null;
+    nextStatus: InternalPaymentStatus | null;
+    providerEventId: string | null;
+    payload: Record<string, unknown>;
+    requestId?: string;
+  }
+) {
+  await client.query(
+    `insert into public.payment_events (
+       payment_id,
+       job_id,
+       event_type,
+       previous_status,
+       next_status,
+       provider_event_id,
+       payload,
+       request_id
+     ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)`,
+    [
+      input.paymentId,
+      input.jobId,
+      input.eventType,
+      input.previousStatus,
+      input.nextStatus,
+      input.providerEventId,
+      JSON.stringify(input.payload),
+      input.requestId ?? input.payload.requestId ?? null
+    ]
+  );
+}
+
+async function loadPaymentWorkItem(client: PoolClient, paymentId: string): Promise<PaymentWorkItem | null> {
+  const result = await client.query<PaymentWorkItem>(
+    `select p.id, p.job_id, p.provider, p.provider_payment_intent_id, p.status,
+            p.amount_authorized_cents, p.amount_captured_cents, p.amount_refunded_cents,
+            p.currency, p.customer_total_cents, p.platform_fee_cents, p.payout_gross_cents,
+            p.settlement_snapshot, p.client_secret, p.last_error, p.created_at, p.updated_at,
+            j.consumer_id, j.status as job_status, j.assigned_driver_id, j.org_id
+     from public.payments p
+     join public.jobs j on j.id = p.job_id
+     where p.id = $1
+     for update of p, j`,
+    [paymentId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+async function updatePaymentFromProviderSnapshot(
+  client: PoolClient,
+  paymentId: string,
+  snapshot: {
+    providerPaymentIntentId: string;
+    status: InternalPaymentStatus;
+    amountAuthorizedCents: number;
+    amountCapturedCents: number;
+    amountRefundedCents: number;
+    currency: string;
+    clientSecret: string | null;
+  },
+  settlementSnapshot?: Record<string, unknown>
+) {
+  await client.query(
+    `update public.payments
+     set provider_payment_intent_id = $1,
+         status = $2,
+         amount_authorized_cents = $3,
+         amount_captured_cents = $4,
+         amount_refunded_cents = $5,
+         currency = $6,
+         client_secret = $7,
+         settlement_snapshot = coalesce($8::jsonb, settlement_snapshot),
+         last_error = null,
+         updated_at = now()
+     where id = $9`,
+    [
+      snapshot.providerPaymentIntentId,
+      snapshot.status,
+      snapshot.amountAuthorizedCents,
+      snapshot.amountCapturedCents,
+      snapshot.amountRefundedCents,
+      snapshot.currency,
+      snapshot.clientSecret,
+      settlementSnapshot ? JSON.stringify(settlementSnapshot) : null,
+      paymentId
     ]
   );
 }
@@ -558,6 +687,334 @@ async function handleOfferExpiryCheck(
   await createSequentialOffer(client, job, requestId, logger);
 }
 
+async function upsertRefundRecord(
+  client: PoolClient,
+  input: {
+    payment: PaymentWorkItem;
+    amountCents: number;
+    reasonCode: string;
+    providerRefundId: string | null;
+    status: "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+  }
+) {
+  await client.query(
+    `insert into public.refunds (
+       payment_id,
+       job_id,
+       provider_refund_id,
+       status,
+       amount_cents,
+       currency,
+       reason_code,
+       failure_message
+     ) values ($1, $2, $3, $4, $5, $6, $7, null)
+     on conflict (provider_refund_id) do update
+     set status = excluded.status,
+         amount_cents = excluded.amount_cents,
+         updated_at = now()`,
+    [
+      input.payment.id,
+      input.payment.job_id,
+      input.providerRefundId,
+      input.status,
+      input.amountCents,
+      input.payment.currency,
+      input.reasonCode
+    ]
+  );
+}
+
+async function upsertPayoutLedgerReady(
+  client: PoolClient,
+  payment: PaymentWorkItem,
+  requestId: string,
+  logger: AppLogger
+) {
+  if (!payment.assigned_driver_id) {
+    logger.info({ job_id: payment.job_id }, "payout_ready_skipped_no_driver");
+    return;
+  }
+
+  await client.query(
+    `insert into public.payout_ledger (
+       job_id,
+       driver_id,
+       payment_id,
+       status,
+       gross_payout_cents,
+       hold_reason,
+       released_at
+     ) values ($1, $2, $3, 'READY', $4, null, null)
+     on conflict (job_id) do update
+     set payment_id = excluded.payment_id,
+         driver_id = excluded.driver_id,
+         status = 'READY',
+         gross_payout_cents = excluded.gross_payout_cents,
+         hold_reason = null,
+         updated_at = now()`,
+    [payment.job_id, payment.assigned_driver_id, payment.id, payment.payout_gross_cents]
+  );
+
+  await insertAuditLog(client, {
+    requestId,
+    actorId: null,
+    orgId: payment.org_id,
+    entityType: "payout_ledger",
+    entityId: payment.job_id,
+    action: "payout_ledger_ready",
+    metadata: {
+      jobId: payment.job_id,
+      driverId: payment.assigned_driver_id,
+      grossPayoutCents: payment.payout_gross_cents
+    }
+  });
+}
+
+async function handlePaymentIntentCreateRequested(
+  client: PoolClient,
+  message: OutboxMessage,
+  logger: AppLogger
+) {
+  const paymentId = String(message.payload.paymentId ?? message.aggregate_id);
+  const requestId = String(message.payload.requestId ?? message.id);
+  const payment = await loadPaymentWorkItem(client, paymentId);
+
+  if (!payment) {
+    logger.warn({ payment_id: paymentId }, "payment_missing");
+    return;
+  }
+
+  if (payment.provider_payment_intent_id) {
+    logger.info({ payment_id: paymentId, provider_payment_intent_id: payment.provider_payment_intent_id }, "payment_intent_already_exists");
+    return;
+  }
+
+  if (!paymentProvider.isConfigured()) {
+    await insertPaymentEvent(client, {
+      paymentId: payment.id,
+      jobId: payment.job_id,
+      eventType: "PAYMENT_PROVIDER_NOT_CONFIGURED",
+      previousStatus: payment.status,
+      nextStatus: payment.status,
+      providerEventId: null,
+      payload: { requestId, provider: payment.provider },
+      requestId
+    });
+    logger.info({ payment_id: payment.id }, "payment_provider_not_configured");
+    return;
+  }
+
+  const snapshot = await paymentProvider.createPaymentIntent({
+    amountCents: payment.customer_total_cents,
+    currency: payment.currency,
+    jobId: payment.job_id,
+    paymentId: payment.id,
+    consumerId: payment.consumer_id,
+    description: `Shipwright job ${payment.job_id}`,
+    idempotencyKey: `payment-intent-create:${payment.id}`
+  });
+
+  await updatePaymentFromProviderSnapshot(client, payment.id, snapshot);
+  await insertPaymentEvent(client, {
+    paymentId: payment.id,
+    jobId: payment.job_id,
+    eventType: "PAYMENT_INTENT_CREATED",
+    previousStatus: payment.status,
+    nextStatus: snapshot.status,
+    providerEventId: null,
+    payload: {
+      requestId,
+      providerPaymentIntentId: snapshot.providerPaymentIntentId
+    },
+    requestId
+  });
+}
+
+async function handlePaymentCaptureRequested(
+  client: PoolClient,
+  message: OutboxMessage,
+  logger: AppLogger
+) {
+  const paymentId = String(message.payload.paymentId ?? message.aggregate_id);
+  const requestId = String(message.payload.requestId ?? message.id);
+  const payment = await loadPaymentWorkItem(client, paymentId);
+
+  if (!payment) {
+    logger.warn({ payment_id: paymentId }, "payment_missing");
+    return;
+  }
+
+  if (payment.job_status !== "DELIVERED") {
+    logger.info({ payment_id: payment.id, job_status: payment.job_status }, "payment_capture_skipped_job_not_delivered");
+    return;
+  }
+
+  if (payment.status !== "AUTHORIZED" || !payment.provider_payment_intent_id) {
+    logger.info({ payment_id: payment.id, payment_status: payment.status }, "payment_capture_skipped_not_authorized");
+    return;
+  }
+
+  if (!paymentProvider.isConfigured()) {
+    throw new Error("stripe_provider_not_configured");
+  }
+
+  const snapshot = await paymentProvider.capturePaymentIntent({
+    providerPaymentIntentId: payment.provider_payment_intent_id,
+    idempotencyKey: `payment-capture:${payment.id}:${message.id}`
+  });
+
+  await updatePaymentFromProviderSnapshot(client, payment.id, snapshot);
+  await insertPaymentEvent(client, {
+    paymentId: payment.id,
+    jobId: payment.job_id,
+    eventType: "PAYMENT_CAPTURED",
+    previousStatus: payment.status,
+    nextStatus: snapshot.status,
+    providerEventId: null,
+    payload: {
+      requestId,
+      providerPaymentIntentId: snapshot.providerPaymentIntentId,
+      amountCapturedCents: snapshot.amountCapturedCents
+    },
+    requestId
+  });
+
+  if (snapshot.status === "CAPTURED") {
+    await upsertPayoutLedgerReady(
+      client,
+      {
+        ...payment,
+        amount_authorized_cents: snapshot.amountAuthorizedCents,
+        amount_captured_cents: snapshot.amountCapturedCents,
+        amount_refunded_cents: snapshot.amountRefundedCents,
+        status: snapshot.status
+      },
+      requestId,
+      logger
+    );
+  }
+}
+
+async function handlePaymentCancellationSettlementRequested(
+  client: PoolClient,
+  message: OutboxMessage,
+  logger: AppLogger
+) {
+  const paymentId = String(message.payload.paymentId ?? message.aggregate_id);
+  const requestId = String(message.payload.requestId ?? message.id);
+  const payment = await loadPaymentWorkItem(client, paymentId);
+
+  if (!payment) {
+    logger.warn({ payment_id: paymentId }, "payment_missing");
+    return;
+  }
+
+  const settlement = determineCancellationSettlement({
+    jobStatus: payment.job_status,
+    customerTotalCents: payment.customer_total_cents,
+    platformFeeCents: payment.platform_fee_cents,
+    driverPayoutGrossCents: payment.payout_gross_cents,
+    paymentStatus: payment.status,
+    amountCapturedCents: payment.amount_captured_cents,
+    amountAuthorizedCents: payment.amount_authorized_cents
+  });
+
+  if (settlement.providerAction === "CANCEL_AUTHORIZATION" && payment.provider_payment_intent_id && paymentProvider.isConfigured()) {
+    const snapshot = await paymentProvider.cancelPaymentIntent({
+      providerPaymentIntentId: payment.provider_payment_intent_id,
+      idempotencyKey: `payment-cancel:${payment.id}:${message.id}`
+    });
+    await updatePaymentFromProviderSnapshot(client, payment.id, snapshot, settlement.snapshot);
+  } else if (settlement.providerAction === "CAPTURE_CANCELLATION_FEE" && payment.provider_payment_intent_id && paymentProvider.isConfigured()) {
+    const snapshot = await paymentProvider.capturePaymentIntent({
+      providerPaymentIntentId: payment.provider_payment_intent_id,
+      amountToCaptureCents: settlement.cancellationFeeCents,
+      idempotencyKey: `payment-cancellation-fee:${payment.id}:${message.id}`
+    });
+    await updatePaymentFromProviderSnapshot(client, payment.id, snapshot, settlement.snapshot);
+  } else if (settlement.providerAction === "REFUND_CAPTURED_PAYMENT" && payment.provider_payment_intent_id && paymentProvider.isConfigured()) {
+    const refund = await paymentProvider.refundPaymentIntent({
+      providerPaymentIntentId: payment.provider_payment_intent_id,
+      amountCents: settlement.refundAmountCents,
+      reason: "requested_by_customer",
+      idempotencyKey: `payment-refund:${payment.id}:${message.id}`
+    });
+
+    await upsertRefundRecord(client, {
+      payment,
+      amountCents: refund.amountCents,
+      reasonCode: settlement.settlementCode,
+      providerRefundId: refund.providerRefundId,
+      status: refund.status
+    });
+
+    const nextStatus =
+      payment.amount_captured_cents === refund.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED";
+    await client.query(
+      `update public.payments
+       set amount_refunded_cents = greatest(amount_refunded_cents, $1),
+           status = $2,
+           settlement_snapshot = $3::jsonb,
+           updated_at = now()
+       where id = $4`,
+      [refund.amountCents, nextStatus, JSON.stringify(settlement.snapshot), payment.id]
+    );
+  } else {
+    await client.query(
+      `update public.payments
+       set status = case
+             when status in ('CAPTURED', 'PARTIALLY_REFUNDED', 'REFUNDED') then status
+             else 'CANCELLED'
+           end,
+           settlement_snapshot = $1::jsonb,
+           updated_at = now()
+       where id = $2`,
+      [JSON.stringify(settlement.snapshot), payment.id]
+    );
+  }
+
+  await client.query(
+    `update public.jobs
+     set cancellation_settlement_code = $1,
+         cancellation_fee_cents = $2,
+         cancellation_refund_cents = $3,
+         cancellation_settlement_snapshot = $4::jsonb,
+         updated_at = now()
+     where id = $5`,
+    [
+      settlement.settlementCode,
+      settlement.cancellationFeeCents,
+      settlement.refundAmountCents,
+      JSON.stringify(settlement.snapshot),
+      payment.job_id
+    ]
+  );
+
+  await insertPaymentEvent(client, {
+    paymentId: payment.id,
+    jobId: payment.job_id,
+    eventType: "PAYMENT_CANCELLATION_SETTLED",
+    previousStatus: payment.status,
+    nextStatus:
+      settlement.providerAction === "REFUND_CAPTURED_PAYMENT"
+        ? payment.amount_captured_cents === settlement.refundAmountCents
+          ? "REFUNDED"
+          : "PARTIALLY_REFUNDED"
+        : settlement.providerAction === "CAPTURE_CANCELLATION_FEE"
+          ? "CAPTURED"
+          : settlement.providerAction === "CANCEL_AUTHORIZATION"
+            ? "CANCELLED"
+            : payment.status,
+    providerEventId: null,
+    payload: {
+      requestId,
+      settlementCode: settlement.settlementCode,
+      providerAction: settlement.providerAction
+    },
+    requestId
+  });
+}
+
 export async function dispatchSideEffect(
   client: PoolClient,
   message: OutboxMessage,
@@ -579,6 +1036,15 @@ export async function dispatchSideEffect(
       return;
     case "JOB_OFFER_EXPIRY_CHECK":
       await handleOfferExpiryCheck(client, message, logger);
+      return;
+    case "PAYMENT_INTENT_CREATE_REQUESTED":
+      await handlePaymentIntentCreateRequested(client, message, logger);
+      return;
+    case "PAYMENT_CAPTURE_REQUESTED":
+      await handlePaymentCaptureRequested(client, message, logger);
+      return;
+    case "PAYMENT_CANCELLATION_SETTLEMENT_REQUESTED":
+      await handlePaymentCancellationSettlementRequested(client, message, logger);
       return;
     default:
       logger.info({ event_type: message.event_type }, "outbox_dispatch_noop");
@@ -768,3 +1234,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { computeRetrySeconds, createSequentialOffer, handleDispatchRequested, handleOfferExpiryCheck };
+
+export function setPaymentProviderForTests(provider: PaymentProvider) {
+  paymentProvider = provider;
+}

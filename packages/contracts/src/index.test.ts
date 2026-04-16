@@ -4,9 +4,11 @@ import {
   CreateJobRequestSchema,
   CreateProofOfDeliverySchema,
   CreateQuoteSchema,
+  JobPaymentSummarySchema,
   JobTrackingSchema,
   JobStatusSchema,
   PaginatedJobsSchema,
+  PaymentStatusSchema,
   ProofOfDeliveryUploadUrlResponseSchema
 } from "./index.js";
 
@@ -141,6 +143,39 @@ describe("read models", () => {
       reason: "Store closed early",
       settlementPolicyCode: "PENDING_PAYMENT_RULES",
       settlementNote: "No payment capture yet"
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses payment status values", () => {
+    expect(PaymentStatusSchema.parse("AUTHORIZED")).toBe("AUTHORIZED");
+    expect(PaymentStatusSchema.parse("CAPTURED")).toBe("CAPTURED");
+  });
+
+  it("parses job payment summaries", () => {
+    const parsed = JobPaymentSummarySchema.safeParse({
+      payment: {
+        id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        jobId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        provider: "stripe",
+        providerPaymentIntentId: "pi_123",
+        status: "AUTHORIZED",
+        amountAuthorizedCents: 1600,
+        amountCapturedCents: 0,
+        amountRefundedCents: 0,
+        currency: "gbp",
+        customerTotalCents: 1600,
+        platformFeeCents: 500,
+        payoutGrossCents: 1100,
+        settlementSnapshot: {},
+        clientSecret: null,
+        lastError: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      refunds: [],
+      payoutLedger: null
     });
 
     expect(parsed.success).toBe(true);

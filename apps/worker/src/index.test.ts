@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { computeRetrySeconds, dispatchSideEffect } from "./index.js";
+import { computeRetrySeconds, dispatchSideEffect, setPaymentProviderForTests } from "./index.js";
 
 function createLoggerStub() {
   return {
@@ -224,6 +224,132 @@ describe("dispatchSideEffect", () => {
         aggregate_id: "offer-9",
         event_type: "JOB_OFFER_EXPIRY_CHECK",
         payload: { offerId: "offer-9", requestId: "req-9" },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("creates payout readiness after successful payment capture", async () => {
+    setPaymentProviderForTests({
+      provider: "stripe",
+      isConfigured: () => true,
+      createPaymentIntent: vi.fn(),
+      authorizePaymentIntent: vi.fn(),
+      capturePaymentIntent: vi.fn().mockResolvedValue({
+        provider: "stripe",
+        providerPaymentIntentId: "pi_123",
+        status: "CAPTURED",
+        amountAuthorizedCents: 1600,
+        amountCapturedCents: 1600,
+        amountRefundedCents: 0,
+        currency: "gbp",
+        captureMethod: "manual",
+        clientSecret: null,
+        rawPayload: {}
+      }),
+      cancelPaymentIntent: vi.fn(),
+      refundPaymentIntent: vi.fn(),
+      verifyWebhookSignature: vi.fn()
+    } as never);
+
+    const client = createClientStub([
+      {
+        match: "from public.payments p",
+        result: {
+          rows: [
+            {
+              id: "pay-1",
+              job_id: "job-5",
+              provider: "stripe",
+              provider_payment_intent_id: "pi_123",
+              status: "AUTHORIZED",
+              amount_authorized_cents: 1600,
+              amount_captured_cents: 0,
+              amount_refunded_cents: 0,
+              currency: "gbp",
+              customer_total_cents: 1600,
+              platform_fee_cents: 500,
+              payout_gross_cents: 1100,
+              settlement_snapshot: {},
+              client_secret: null,
+              last_error: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              consumer_id: "consumer-1",
+              job_status: "DELIVERED",
+              assigned_driver_id: "driver-1",
+              org_id: "org-1"
+            }
+          ]
+        }
+      },
+      { match: "update public.payments" },
+      { match: "insert into public.payment_events" },
+      { match: "insert into public.payout_ledger" },
+      { match: "insert into public.audit_log" }
+    ]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-pay-1",
+        aggregate_type: "payment",
+        aggregate_id: "pay-1",
+        event_type: "PAYMENT_CAPTURE_REQUESTED",
+        payload: { paymentId: "pay-1", requestId: "req-pay-1" },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("does not create payout ledger when payment is not authorized", async () => {
+    const client = createClientStub([
+      {
+        match: "from public.payments p",
+        result: {
+          rows: [
+            {
+              id: "pay-2",
+              job_id: "job-6",
+              provider: "stripe",
+              provider_payment_intent_id: "pi_456",
+              status: "REQUIRES_PAYMENT_METHOD",
+              amount_authorized_cents: 0,
+              amount_captured_cents: 0,
+              amount_refunded_cents: 0,
+              currency: "gbp",
+              customer_total_cents: 1600,
+              platform_fee_cents: 500,
+              payout_gross_cents: 1100,
+              settlement_snapshot: {},
+              client_secret: null,
+              last_error: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              consumer_id: "consumer-1",
+              job_status: "DELIVERED",
+              assigned_driver_id: "driver-1",
+              org_id: "org-1"
+            }
+          ]
+        }
+      }
+    ]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-pay-2",
+        aggregate_type: "payment",
+        aggregate_id: "pay-2",
+        event_type: "PAYMENT_CAPTURE_REQUESTED",
+        payload: { paymentId: "pay-2", requestId: "req-pay-2" },
         retry_count: 0
       },
       createLoggerStub()

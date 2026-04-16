@@ -60,8 +60,11 @@ function makeService(clientQuery: ReturnType<typeof vi.fn>) {
       ...(await execute({ query: clientQuery }))
     }))
   };
+  const payments = {
+    enqueueCaptureForDeliveredJob: vi.fn().mockResolvedValue(undefined)
+  };
 
-  return { service: new DriverService(pg as never), pg };
+  return { service: new DriverService(pg as never, payments as never), pg, payments };
 }
 
 describe("DriverService", () => {
@@ -188,7 +191,7 @@ describe("DriverService", () => {
       .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "DELIVERED" })] })
       .mockResolvedValue({ rowCount: 1, rows: [] });
 
-    const { service } = makeService(clientQuery);
+    const { service, payments } = makeService(clientQuery);
     const result = await service.transitionToDelivered(JOB_ID, ACTOR_ID, "idem-transition-3");
 
     expect(result.body.status).toBe("DELIVERED");
@@ -196,6 +199,7 @@ describe("DriverService", () => {
       String(sql).includes("update public.drivers")
     );
     expect(driverUpdateCall?.[1]?.[0]).toBeNull();
+    expect(payments.enqueueCaptureForDeliveredJob).toHaveBeenCalledOnce();
   });
 
   it("blocks delivered transition when proof of delivery is missing", async () => {

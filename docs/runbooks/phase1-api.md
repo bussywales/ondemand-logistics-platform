@@ -1,4 +1,4 @@
-# API Runbook (Phase 2B)
+# API Runbook (Phase 3)
 
 ## Auth fixtures
 
@@ -43,6 +43,9 @@ curl -X POST "$API_BASE_URL/v1/quotes" \
 ### Create job request
 - `POST /v1/jobs`
 - Requires: bearer token, `x-idempotency-key`, valid `quoteId`
+- Side effects:
+  - creates internal payment record
+  - enqueues Stripe payment-intent creation if Stripe is configured
 
 ```bash
 curl -X POST "$API_BASE_URL/v1/jobs" \
@@ -144,6 +147,23 @@ curl "$API_BASE_URL/v1/jobs/$JOB_ID/tracking" \
   -H "authorization: Bearer $CONSUMER_JWT"
 ```
 
+### Payment summary
+```bash
+curl "$API_BASE_URL/v1/jobs/$JOB_ID/payment" \
+  -H "authorization: Bearer $CONSUMER_JWT"
+```
+
+### Payment authorize
+```bash
+curl -X POST "$API_BASE_URL/v1/jobs/$JOB_ID/payment/authorize" \
+  -H "authorization: Bearer $CONSUMER_JWT" \
+  -H "content-type: application/json" \
+  -H "x-idempotency-key: payment-authorize-001" \
+  -d '{
+    "paymentMethodId": "pm_card_visa"
+  }'
+```
+
 ## Driver status progression
 
 ### ASSIGNED -> EN_ROUTE_PICKUP
@@ -213,3 +233,55 @@ Dispatch-specific logs:
 - `dispatch_offer_created`
 - `dispatch_no_candidate`
 - `outbox_dispatch_success`
+
+Payment-specific logs:
+- `PAYMENT_INTENT_CREATE_REQUESTED`
+- `PAYMENT_CAPTURE_REQUESTED`
+- `PAYMENT_CANCELLATION_SETTLEMENT_REQUESTED`
+
+## Payment state machine
+
+- `REQUIRES_PAYMENT_METHOD`: internal payment exists, no authorized funds yet
+- `REQUIRES_CONFIRMATION`: payment intent exists but still needs confirmation work
+- `AUTHORIZED`: Stripe manual-capture authorization is in place
+- `CAPTURED`: funds captured after delivery completion
+- `PARTIALLY_REFUNDED`: some captured funds refunded
+- `REFUNDED`: captured funds fully refunded
+- `FAILED`: provider authorization or reconciliation failed
+- `CANCELLED`: authorization or intent cancelled without capture
+
+## Cancellation settlement matrix
+
+- `REQUESTED` or `DISPATCH_FAILED`
+  - code: `BEFORE_ASSIGNMENT_FULL_RELEASE`
+  - customer retained: `0`
+  - refund: full captured amount
+  - payout impact: `0`
+- `ASSIGNED` or `EN_ROUTE_PICKUP`
+  - code: `AFTER_ASSIGNMENT_CANCELLATION_FEE`
+  - customer retained: cancellation fee policy, collected only if payment is authorizable/captured
+  - refund: captured minus fee
+  - payout impact: snapshot only for now, no payout ledger entry
+- `PICKED_UP` or later
+  - code: `IN_PROGRESS_MANUAL_REVIEW`
+  - cancellation endpoint remains blocked
+  - settlement logic is reserved for manual review paths
+
+## Stripe webhook route
+
+```bash
+stripe listen --forward-to "$API_BASE_URL/v1/webhooks/stripe"
+```
+
+Stripe events handled idempotently:
+- `payment_intent.succeeded`
+- `payment_intent.amount_capturable_updated`
+- `payment_intent.payment_failed`
+- `payment_intent.canceled`
+- `refund.updated`
+
+## Payout readiness
+
+- Successful delivery plus successful payment capture creates or updates a `payout_ledger` row in `READY`
+- Cancelled or unpaid jobs do not create payout readiness entries
+- Actual bank payout automation remains out of scope for this phase

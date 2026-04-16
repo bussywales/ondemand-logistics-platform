@@ -31,6 +31,7 @@ import {
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
 import { PgService } from "../database/pg.service.js";
+import { PaymentsService } from "../payments/payments.service.js";
 
 type DriverRecord = {
   id: string;
@@ -124,7 +125,10 @@ export class DriverService {
   private readonly podUploadUrlTtlSeconds = Number(process.env.POD_UPLOAD_URL_TTL_SECONDS ?? 900);
   private readonly supabaseUrl = process.env.SUPABASE_URL?.trim() || "https://example.supabase.co";
 
-  constructor(private readonly pg: PgService) {}
+  constructor(
+    private readonly pg: PgService,
+    private readonly payments: PaymentsService
+  ) {}
 
   async updateAvailability(input: unknown, userId: string, idempotencyKey: string) {
     const parsed = UpdateDriverAvailabilitySchema.safeParse(input);
@@ -810,6 +814,14 @@ export class DriverService {
               status: input.toStatus
             },
             idempotencyKey: `${input.notificationEventType.toLowerCase()}:${input.jobId}:${input.idempotencyKey}`
+          });
+        }
+
+        if (input.toStatus === "DELIVERED") {
+          await this.payments.enqueueCaptureForDeliveredJob(client, {
+            jobId: input.jobId,
+            requestId,
+            idempotencyKey: input.idempotencyKey
           });
         }
 

@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @shipwright/contracts build && pnpm --filter @shipwright/observability build && pnpm --filter worker build && tsc -p tsconfig.build.json",
+    "build": "pnpm --filter @shipwright/contracts build && pnpm --filter @shipwright/observability build && pnpm --filter @shipwright/payments build && pnpm --filter worker build && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "start:dev": "tsx watch src/main.ts",
     "lint": "echo 'api lint placeholder'",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm --filter @shipwright/contracts build && pnpm --filter @shipwright/observability build && vitest run",
+    "test": "pnpm --filter @shipwright/contracts build && pnpm --filter @shipwright/observability build && pnpm --filter @shipwright/payments build && vitest run",
     "test:integration": "vitest run"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "@nestjs/platform-express": "^11.0.11",
     "@shipwright/contracts": "workspace:*",
     "@shipwright/observability": "workspace:*",
+    "@shipwright/payments": "workspace:*",
     "worker": "workspace:*",
     "express": "^5.1.0",
     "jose": "^5.9.6",

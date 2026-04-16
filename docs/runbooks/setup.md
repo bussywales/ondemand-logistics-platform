@@ -1,4 +1,4 @@
-# Setup Runbook (Phase 2B POD + Cancellation MVP)
+# Setup Runbook (Phase 3 Payments Foundation MVP)
 
 ## 1) Provision staging infrastructure
 
@@ -15,6 +15,7 @@
    - `packages/db/migrations/0004_phase1_dispatch.sql`
    - `packages/db/migrations/0005_phase2a_reads_and_progression.sql`
    - `packages/db/migrations/0006_phase2b_pod_cancellation_notifications.sql`
+   - `packages/db/migrations/0007_phase3_payments_foundation.sql`
 
 ### Upstash Redis (staging)
 1. Create Redis database: `ondemand-logistics-staging`.
@@ -48,6 +49,10 @@
   - `DISPATCH_OFFER_TTL_SECONDS=30`
   - `POD_STORAGE_BUCKET=proof-of-delivery`
   - `POD_UPLOAD_URL_TTL_SECONDS=900`
+  - `PAYMENT_CURRENCY=gbp`
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+  - `STRIPE_PUBLISHABLE_KEY` only needed later for browser flows
 
 ### Vercel: `ondemand-logistics-platform-web`
 - Root directory: repo root (`.`)
@@ -71,6 +76,7 @@
   - driver status progression transitions
   - proof of delivery upload reservation and record
   - job cancellation
+  - payment creation, authorization, webhook reconciliation, refunds, payout readiness
   - outbox worker dispatch / expiry processing
 - Read APIs enforce actor visibility in server-side query filters without weakening SQL policies.
 - Row-level policies remain defined only in SQL migrations.
@@ -108,7 +114,17 @@ The fixture script creates or reuses:
 
 It prints current user ids, the seeded driver id, the seeded org id, and current bearer tokens for sample curls.
 
-## 6) CI/CD checks
+## 6) Stripe webhook workflow
+
+Local or staging webhook forwarding:
+
+```bash
+stripe listen --forward-to https://<api-staging-domain>/v1/webhooks/stripe
+```
+
+Use the signing secret emitted by Stripe CLI or dashboard as `STRIPE_WEBHOOK_SECRET`.
+
+## 7) CI/CD checks
 
 Required GitHub Actions checks:
 - `lint`
@@ -117,7 +133,7 @@ Required GitHub Actions checks:
 - `migration validation`
 - `build`
 
-## 7) Constraints enforced in this phase
+## 8) Constraints enforced in this phase
 
 - Versioned deterministic pricing with quote persistence.
 - Single pickup to single drop jobs only.
@@ -126,5 +142,7 @@ Required GitHub Actions checks:
 - Proof of delivery is required before `DELIVERED`.
 - Cancellation is restricted to consumer/business actors and pre-drop states only.
 - Notification hooks are durable outbox messages; provider fan-out remains deferred.
+- Payment provider calls are centralized behind a Stripe abstraction and webhook verification path.
+- Payment capture happens only after delivered jobs with POD; payout ledger readiness depends on successful capture.
 - Idempotent writes, append-only audit trails, transactional outbox side effects.
 - Structured logs with `request_id`; worker failures are non-fatal to HTTP serving.

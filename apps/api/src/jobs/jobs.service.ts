@@ -19,6 +19,7 @@ import {
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
 import { PgService } from "../database/pg.service.js";
+import { PaymentsService } from "../payments/payments.service.js";
 
 type QuoteRecord = {
   id: string;
@@ -113,7 +114,10 @@ const CANCELLABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "D
 export class JobsService {
   private readonly logger = createLogger({ name: "api-jobs" });
 
-  constructor(private readonly pg: PgService) {}
+  constructor(
+    private readonly pg: PgService,
+    private readonly payments: PaymentsService
+  ) {}
 
   async createJobRequest(input: unknown, userId: string, idempotencyKey: string) {
     const parsed = CreateJobRequestSchema.safeParse(input);
@@ -244,6 +248,15 @@ export class JobsService {
               `dispatch:${job.id}`
             ]
           );
+
+          await this.payments.createPaymentForJob(client, {
+            jobId: job.id,
+            consumerId: payload.consumerId,
+            customerTotalCents: job.customer_total_cents,
+            platformFeeCents: job.platform_fee_cents,
+            payoutGrossCents: job.driver_payout_gross_cents,
+            requestId
+          });
 
           return {
             responseCode: 201,
@@ -401,6 +414,12 @@ export class JobsService {
           throw new ConflictException("job_not_cancelable");
         }
 
+        const settlement = await this.payments.previewCancellationSettlementForJob(client, {
+          jobId,
+          jobStatus: job.status,
+          driverPayoutGrossCents: job.driver_payout_gross_cents
+        });
+
         const updated = await client.query<JobRow>(
           `update public.jobs
            set status = 'CANCELLED',
@@ -410,17 +429,21 @@ export class JobsService {
                cancellation_actor_role = $3,
                cancellation_settlement_code = $4,
                cancellation_settlement_note = $5,
-               cancellation_fee_cents = 0,
-               cancellation_refund_cents = 0,
+               cancellation_fee_cents = $6,
+               cancellation_refund_cents = $7,
+               cancellation_settlement_snapshot = $8::jsonb,
                updated_at = now()
-           where id = $6
+           where id = $9
            returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
           [
             userId,
             parsed.data.reason,
             actorRole,
-            parsed.data.settlementPolicyCode,
+            settlement.settlementCode,
             parsed.data.settlementNote ?? null,
+            settlement.cancellationFeeCents,
+            settlement.refundAmountCents,
+            JSON.stringify(settlement.snapshot),
             jobId
           ]
         );
@@ -453,7 +476,7 @@ export class JobsService {
             fromStatus: job.status,
             reason: parsed.data.reason,
             actorRole,
-            settlementPolicyCode: parsed.data.settlementPolicyCode
+            settlementPolicyCode: settlement.settlementCode
           }
         });
 
@@ -468,7 +491,7 @@ export class JobsService {
             fromStatus: job.status,
             reason: parsed.data.reason,
             actorRole,
-            settlementPolicyCode: parsed.data.settlementPolicyCode,
+            settlementPolicyCode: settlement.settlementCode,
             settlementNote: parsed.data.settlementNote ?? null
           }
         });
@@ -486,6 +509,12 @@ export class JobsService {
             status: "CANCELLED"
           },
           idempotencyKey: `notify-job-cancelled:${jobId}:${idempotencyKey}`
+        });
+
+        await this.payments.enqueueCancellationSettlement(client, {
+          jobId,
+          requestId,
+          idempotencyKey
         });
 
         return {

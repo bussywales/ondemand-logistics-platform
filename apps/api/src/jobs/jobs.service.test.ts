@@ -37,6 +37,60 @@ function createJobRow(overrides: Record<string, unknown> = {}) {
 }
 
 describe("JobsService", () => {
+  it("creates a payment record when a job is created", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: QUOTE_ID,
+          org_id: null,
+          created_by_user_id: ACTOR_ID,
+          distance_miles: "4.25",
+          eta_minutes: 18,
+          vehicle_type: "BIKE",
+          customer_total_cents: 1600,
+          driver_payout_gross_cents: 980,
+          platform_fee_cents: 620,
+          pricing_version: "phase1_test_v1",
+          premium_distance_flag: false
+        }
+      ]
+    });
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [createJobRow()] })
+      .mockResolvedValue({ rowCount: 1, rows: [] });
+    const payments = {
+      createPaymentForJob: vi.fn().mockResolvedValue(undefined),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+    const pg = {
+      query,
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.createJobRequest(
+      {
+        consumerId: ACTOR_ID,
+        quoteId: QUOTE_ID,
+        pickupAddress: "101 Main St",
+        dropoffAddress: "202 Oak Ave",
+        pickupCoordinates: { latitude: 51.5, longitude: -0.1 },
+        dropoffCoordinates: { latitude: 51.51, longitude: -0.09 }
+      },
+      ACTOR_ID,
+      "idem-job-payment-1"
+    );
+
+    expect(result.body.id).toBe(JOB_ID);
+    expect(payments.createPaymentForJob).toHaveBeenCalledOnce();
+  });
+
   it("returns cached idempotent responses on retry", async () => {
     const pg = {
       query: vi.fn().mockResolvedValue({
@@ -63,8 +117,13 @@ describe("JobsService", () => {
         body: { id: JOB_ID }
       })
     };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
 
-    const service = new JobsService(pg as never);
+    const service = new JobsService(pg as never, payments as never);
     const result = await service.createJobRequest(
       {
         consumerId: ACTOR_ID,
@@ -87,8 +146,13 @@ describe("JobsService", () => {
     const pg = {
       query: vi.fn().mockResolvedValue({ rowCount: 0, rows: [] })
     };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
 
-    const service = new JobsService(pg as never);
+    const service = new JobsService(pg as never, payments as never);
 
     await expect(service.getJob(JOB_ID, ACTOR_ID)).rejects.toThrow(NotFoundException);
   });
@@ -131,8 +195,13 @@ describe("JobsService", () => {
           ]
         })
     };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
 
-    const service = new JobsService(pg as never);
+    const service = new JobsService(pg as never, payments as never);
     const tracking = await service.getTracking(JOB_ID, ACTOR_ID);
 
     expect(tracking.jobId).toBe(JOB_ID);
@@ -151,8 +220,13 @@ describe("JobsService", () => {
         })
       )
     };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
 
-    const service = new JobsService(pg as never);
+    const service = new JobsService(pg as never, payments as never);
 
     await expect(
       service.cancelJob(
@@ -175,8 +249,13 @@ describe("JobsService", () => {
         })
       )
     };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
 
-    const service = new JobsService(pg as never);
+    const service = new JobsService(pg as never, payments as never);
 
     await expect(
       service.cancelJob(
@@ -214,8 +293,18 @@ describe("JobsService", () => {
         ...(await execute({ query: clientQuery }))
       }))
     };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn().mockResolvedValue({
+        settlementCode: "AFTER_ASSIGNMENT_CANCELLATION_FEE",
+        cancellationFeeCents: 250,
+        refundAmountCents: 0,
+        snapshot: { phase: "AFTER_ASSIGNMENT_BEFORE_PICKUP" }
+      }),
+      enqueueCancellationSettlement: vi.fn()
+    };
 
-    const service = new JobsService(pg as never);
+    const service = new JobsService(pg as never, payments as never);
     const result = await service.cancelJob(
       JOB_ID,
       { reason: "Store closed early", settlementPolicyCode: "PENDING_PAYMENT_RULES" },

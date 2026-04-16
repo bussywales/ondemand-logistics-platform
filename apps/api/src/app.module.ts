@@ -14,6 +14,8 @@ import { JobsController } from "./jobs/jobs.controller.js";
 import { JobsService } from "./jobs/jobs.service.js";
 import { DriverController } from "./driver/driver.controller.js";
 import { DriverService } from "./driver/driver.service.js";
+import { PaymentsController } from "./payments/payments.controller.js";
+import { PaymentsService } from "./payments/payments.service.js";
 
 @Module({
   imports: [],
@@ -22,7 +24,8 @@ import { DriverService } from "./driver/driver.service.js";
     FoundationsController,
     QuotesController,
     JobsController,
-    DriverController
+    DriverController,
+    PaymentsController
   ],
   providers: [
     PgService,
@@ -31,6 +34,7 @@ import { DriverService } from "./driver/driver.service.js";
     QuotesService,
     JobsService,
     DriverService,
+    PaymentsService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard
