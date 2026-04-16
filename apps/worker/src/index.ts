@@ -1,5 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { Pool, type PoolClient } from "pg";
+import { createPgPoolConfig } from "@shipwright/db";
 import { createLogger } from "@shipwright/observability";
 
 type OutboxMessage = {
@@ -45,6 +46,7 @@ function readWorkerConfig(): WorkerConfig {
 }
 
 async function applyWorkerSystemContext(client: PoolClient, logger: AppLogger) {
+  logger.info({ step: "session_init" }, "worker_session_init_start");
   logger.info(
     {
       step: "apply_system_context",
@@ -68,6 +70,8 @@ async function applyWorkerSystemContext(client: PoolClient, logger: AppLogger) {
       })
     ]
   );
+
+  logger.info({ step: "session_init" }, "worker_session_init_ok");
 }
 
 async function dispatchSideEffect(message: OutboxMessage, logger: AppLogger): Promise<void> {
@@ -170,7 +174,7 @@ async function processBatchWithLogger(
 }
 
 async function runWorker(config: WorkerConfig, logger: AppLogger) {
-  workerPool = new Pool({ connectionString: config.databaseUrl, max: 5 });
+  workerPool = new Pool(createPgPoolConfig(config.databaseUrl, 5));
 
   logger.info(
     {
@@ -187,6 +191,7 @@ async function runWorker(config: WorkerConfig, logger: AppLogger) {
       logger.info({ batch_size: config.batchSize }, "worker_poll_tick");
       logger.info({ step: "pool_connect" }, "worker_db_connect_start");
       client = await workerPool.connect();
+      logger.info({ step: "pool_connect" }, "worker_db_connect_ok");
       await client.query("begin");
       await applyWorkerSystemContext(client, logger);
       const handled = await processBatchWithLogger(client, config, logger);

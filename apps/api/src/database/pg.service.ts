@@ -5,6 +5,7 @@ import {
   type QueryResult,
   type QueryResultRow
 } from "pg";
+import { createPgPoolConfig } from "@shipwright/db";
 import { readConfig } from "../config.js";
 
 @Injectable()
@@ -13,10 +14,12 @@ export class PgService implements OnModuleDestroy {
 
   constructor() {
     const config = readConfig();
-    this.pool = new Pool({
-      connectionString: config.databaseUrl,
-      max: Number(process.env.DATABASE_POOL_SIZE ?? 10)
-    });
+    this.pool = new Pool(
+      createPgPoolConfig(
+        config.databaseUrl,
+        Number(process.env.DATABASE_POOL_SIZE ?? 10)
+      )
+    );
   }
 
   query<T extends QueryResultRow = QueryResultRow>(
