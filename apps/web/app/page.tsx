@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const valueCards = [
   {
     title: "For Businesses",
@@ -109,12 +111,12 @@ export default function HomePage() {
               dispatch in minutes, track every job live, and complete every drop with proof.
             </p>
             <div className="hero-actions">
-              <a className="button button-primary" href="#contact">
+              <Link className="button button-primary" href="/get-started">
                 Get Started
-              </a>
-              <a className="button button-secondary" href="mailto:hello@shipwright.local?subject=Book%20a%20Demo">
+              </Link>
+              <Link className="button button-secondary" href="/demo">
                 Book a Demo
-              </a>
+              </Link>
             </div>
             <p className="trust-line">
               Built for business-owned food delivery and local retail logistics.
@@ -129,12 +131,19 @@ export default function HomePage() {
               </div>
               <h2>See the job move in real time.</h2>
               <div className="preview-shell">
+                <div className="preview-reference">
+                  <div>
+                    <span className="preview-label">Order reference</span>
+                    <strong>SW-2481-FOOD</strong>
+                  </div>
+                  <span className="preview-route-tag">Single drop</span>
+                </div>
                 <div className="preview-header">
                   <div>
                     <p className="preview-label">Job status</p>
                     <strong>Driver assigned</strong>
                   </div>
-                  <div className="preview-status">
+                  <div className="preview-status preview-status-live">
                     <span className="signal-dot" />
                     En route
                   </div>
@@ -147,6 +156,16 @@ export default function HomePage() {
                   <div className="preview-stat">
                     <span className="preview-label">Driver matched</span>
                     <strong>Bike courier</strong>
+                  </div>
+                </div>
+                <div className="preview-grid preview-grid-meta">
+                  <div className="preview-stat">
+                    <span className="preview-label">Pickup window</span>
+                    <strong>4:10 PM</strong>
+                  </div>
+                  <div className="preview-stat">
+                    <span className="preview-label">Distance</span>
+                    <strong>4.8 miles</strong>
                   </div>
                 </div>
                 <div className="preview-eta">
@@ -256,27 +275,34 @@ export default function HomePage() {
             body="Stop relying on guesswork. Start dispatching with clarity, speed, and full visibility."
           />
           <div className="hero-actions">
-            <a className="button button-primary" href="#contact">
+            <Link className="button button-primary" href="/get-started">
               Get Started
-            </a>
-            <a className="button button-secondary" href="mailto:hello@shipwright.local">
+            </Link>
+            <Link className="button button-secondary" href="/contact">
               Talk to Us
-            </a>
+            </Link>
           </div>
         </div>
       </section>
 
       <footer className="site-footer">
-        <div>
-          <strong>ShipWright</strong>
-          <p>On-demand delivery for food and local goods.</p>
+        <div className="footer-brand">
+          <p className="eyebrow">ShipWright</p>
+          <strong>Delivery operations software for food and local retail.</strong>
+          <p>
+            Built for teams that need dispatch visibility, clearer driver coordination,
+            and accountable delivery completion.
+          </p>
         </div>
-        <nav aria-label="Footer">
-          <a href="/">Home</a>
-          <a href="#businesses">For Businesses</a>
-          <a href="#drivers">For Drivers</a>
-          <a href="#contact">Contact</a>
-        </nav>
+        <div className="footer-links-group">
+          <span className="footer-heading">Explore</span>
+          <nav aria-label="Footer">
+            <a href="/">Home</a>
+            <a href="#businesses">For Businesses</a>
+            <a href="#drivers">For Drivers</a>
+            <Link href="/contact">Contact</Link>
+          </nav>
+        </div>
       </footer>
     </main>
   );
