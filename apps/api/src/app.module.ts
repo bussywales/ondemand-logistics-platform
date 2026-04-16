@@ -8,14 +8,29 @@ import { RbacGuard } from "./security/rbac.guard.js";
 import { IdempotencyGuard } from "./security/idempotency.guard.js";
 import { FoundationsController } from "./foundations/foundations.controller.js";
 import { FoundationsService } from "./foundations/foundations.service.js";
+import { QuotesController } from "./quotes/quotes.controller.js";
+import { QuotesService } from "./quotes/quotes.service.js";
+import { JobsController } from "./jobs/jobs.controller.js";
+import { JobsService } from "./jobs/jobs.service.js";
+import { DriverController } from "./driver/driver.controller.js";
+import { DriverService } from "./driver/driver.service.js";
 
 @Module({
   imports: [],
-  controllers: [HealthController, FoundationsController],
+  controllers: [
+    HealthController,
+    FoundationsController,
+    QuotesController,
+    JobsController,
+    DriverController
+  ],
   providers: [
     PgService,
     AuthService,
     FoundationsService,
+    QuotesService,
+    JobsService,
+    DriverService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard

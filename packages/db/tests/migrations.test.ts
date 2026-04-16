@@ -9,9 +9,10 @@ describe("migration files", () => {
       .filter((name) => name.endsWith(".sql"))
       .sort();
 
-    expect(files.length).toBeGreaterThanOrEqual(2);
+    expect(files.length).toBeGreaterThanOrEqual(4);
     expect(files[0]).toBe("0001_foundations_schema.sql");
     expect(files[1]).toBe("0002_rls_policies.sql");
     expect(files[2]).toBe("0003_rls_recursion_fix.sql");
+    expect(files[3]).toBe("0004_phase1_dispatch.sql");
   });
 });

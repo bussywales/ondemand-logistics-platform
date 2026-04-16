@@ -1,9 +1,9 @@
-# Phase 1 Follow-ups
+# Phase 2 Follow-ups
 
-1. Dispatch matching engine (bike/car eligibility, distance heuristics, acceptance windows).
-2. Platform pricing engine with configurable rate cards and policy controls.
-3. Consumer and business job creation APIs + dashboard UX with branded tracking flow.
-4. Driver app APIs for offers, status transitions, and payout transparency payloads.
-5. Payment rails integration and ledgering for payout reconciliation.
-6. SLA alerts, dead-letter handling, and replay tooling for outbox failures.
-7. Production readiness: autoscaling rules, SLO dashboards, incident runbooks.
+1. Replace placeholder reliability ranking with operational scoring and availability freshness weighting.
+2. Add explicit driver reject endpoint and manual redispatch / cancellation controls.
+3. Introduce dead-letter tooling and replay admin flows for dispatch/outbox failures.
+4. Add customer and business read APIs for quote lookup, job tracking, and assignment visibility.
+5. Add pricing configuration storage instead of hard-coded rate cards.
+6. Add Redis-backed timing/coalescing if sequential offer volume makes Postgres-only timers insufficient.
+7. Add payment, ledger, and payout reconciliation flows once job lifecycle expands beyond assignment.

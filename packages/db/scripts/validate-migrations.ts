@@ -14,6 +14,8 @@ const requiredTables = [
   "driver_verifications",
   "driver_vehicle",
   "jobs",
+  "quotes",
+  "job_offers",
   "job_events",
   "audit_log",
   "outbox_messages"
