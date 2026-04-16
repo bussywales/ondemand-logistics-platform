@@ -156,4 +156,78 @@ describe("dispatchSideEffect", () => {
 
     expect(client.remainingSteps()).toBe(0);
   });
+
+  it("redispatches after an expired offer", async () => {
+    const client = createClientStub([
+      {
+        match: "from public.job_offers o",
+        result: {
+          rows: [
+            {
+              offer_id: "offer-9",
+              job_id: "job-9",
+              driver_id: "driver-old",
+              status: "OFFERED",
+              expires_at: new Date(Date.now() - 5_000).toISOString()
+            }
+          ]
+        }
+      },
+      { match: "update public.job_offers", result: { rowCount: 1, rows: [] } },
+      {
+        match: "from public.jobs",
+        result: {
+          rows: [
+            {
+              id: "job-9",
+              org_id: "org-1",
+              consumer_id: "consumer-1",
+              assigned_driver_id: null,
+              status: "REQUESTED",
+              vehicle_required: "CAR",
+              distance_miles: "6.8",
+              eta_minutes: 22,
+              driver_payout_gross_cents: 1300,
+              pickup_latitude: "51.500000",
+              pickup_longitude: "-0.100000"
+            }
+          ]
+        }
+      },
+      { match: "insert into public.job_events" },
+      { match: "insert into public.audit_log" },
+      { match: "from public.drivers d", result: { rows: [{ driver_id: "driver-2", user_id: "user-2", latest_latitude: null, latest_longitude: null, reliability_score: "0.500" }] } },
+      {
+        match: "insert into public.job_offers",
+        result: {
+          rows: [
+            {
+              id: "offer-10",
+              driver_id: "driver-2",
+              expires_at: new Date(Date.now() + 30_000).toISOString()
+            }
+          ]
+        }
+      },
+      { match: "update public.jobs" },
+      { match: "insert into public.job_events" },
+      { match: "insert into public.audit_log" },
+      { match: "insert into public.outbox_messages" }
+    ]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-3",
+        aggregate_type: "job_offer",
+        aggregate_id: "offer-9",
+        event_type: "JOB_OFFER_EXPIRY_CHECK",
+        payload: { offerId: "offer-9", requestId: "req-9" },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+  });
 });

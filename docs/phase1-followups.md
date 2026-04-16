@@ -1,9 +1,9 @@
-# Phase 2 Follow-ups
+# Remaining Blockers Before Payments / POD
 
-1. Replace placeholder reliability ranking with operational scoring and availability freshness weighting.
-2. Add explicit driver reject endpoint and manual redispatch / cancellation controls.
-3. Introduce dead-letter tooling and replay admin flows for dispatch/outbox failures.
-4. Add customer and business read APIs for quote lookup, job tracking, and assignment visibility.
-5. Add pricing configuration storage instead of hard-coded rate cards.
-6. Add Redis-backed timing/coalescing if sequential offer volume makes Postgres-only timers insufficient.
-7. Add payment, ledger, and payout reconciliation flows once job lifecycle expands beyond assignment.
+1. Add business and consumer cancellation paths with explicit refund/no-refund policy hooks.
+2. Add proof-of-delivery artifacts and signed completion confirmation before payout release.
+3. Replace hard-coded pricing constants with configurable rate cards and policy controls.
+4. Add dead-letter, replay, and operator remediation tooling for outbox / dispatch failures.
+5. Add notification delivery for offer lifecycle, status progression, and branded customer tracking updates.
+6. Add payment, ledger, and payout reconciliation flows once delivery completion is the settlement trigger.
+7. Add seeded staging auth fixtures or test users so protected staging endpoint checks can be exercised automatically.

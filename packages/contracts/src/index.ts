@@ -17,9 +17,14 @@ export type DriverAvailabilityStatus = z.infer<typeof DriverAvailabilityStatusSc
 export const JobStatusSchema = z.enum([
   "REQUESTED",
   "ASSIGNED",
+  "EN_ROUTE_PICKUP",
+  "PICKED_UP",
+  "EN_ROUTE_DROP",
+  "DELIVERED",
+  "CANCELLED",
+  "DISPATCH_FAILED",
   "IN_PROGRESS",
-  "COMPLETED",
-  "CANCELLED"
+  "COMPLETED"
 ]);
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 
@@ -53,6 +58,7 @@ const CoordinatesSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180)
 });
+const IsoDateTimeSchema = z.string();
 
 export const QuoteBreakdownLineSchema = z.object({
   code: z.string().min(2),
@@ -88,7 +94,7 @@ export const QuoteSchema = z.object({
   breakdownLines: z.array(QuoteBreakdownLineSchema),
   pricingVersion: z.string().min(3),
   premiumDistanceFlag: z.boolean(),
-  createdAt: z.string()
+  createdAt: IsoDateTimeSchema
 });
 export type QuoteDto = z.infer<typeof QuoteSchema>;
 
@@ -108,7 +114,7 @@ export const JobSchema = z.object({
   orgId: z.string().uuid().nullable(),
   consumerId: z.string().uuid(),
   assignedDriverId: z.string().uuid().nullable(),
-  quoteId: z.string().uuid(),
+  quoteId: z.string().uuid().nullable(),
   status: JobStatusSchema,
   pickupAddress: z.string(),
   dropoffAddress: z.string(),
@@ -123,9 +129,17 @@ export const JobSchema = z.object({
   pricingVersion: z.string().min(3),
   premiumDistanceFlag: z.boolean(),
   createdByUserId: z.string().uuid(),
-  createdAt: z.string()
+  createdAt: IsoDateTimeSchema
 });
 export type JobDto = z.infer<typeof JobSchema>;
+
+export const PaginatedJobsSchema = z.object({
+  items: z.array(JobSchema),
+  page: z.number().int().min(1),
+  limit: z.number().int().min(1).max(100),
+  hasMore: z.boolean()
+});
+export type PaginatedJobsDto = z.infer<typeof PaginatedJobsSchema>;
 
 export const UpdateDriverAvailabilitySchema = z.object({
   availability: DriverAvailabilityStatusSchema
@@ -142,8 +156,8 @@ export const DriverStateSchema = z.object({
   driverId: z.string().uuid(),
   availability: DriverAvailabilityStatusSchema,
   latestLocation: CoordinatesSchema.nullable(),
-  availableSince: z.string().nullable(),
-  lastLocationAt: z.string().nullable()
+  availableSince: IsoDateTimeSchema.nullable(),
+  lastLocationAt: IsoDateTimeSchema.nullable()
 });
 export type DriverStateDto = z.infer<typeof DriverStateSchema>;
 
@@ -151,7 +165,7 @@ export const DriverOfferSchema = z.object({
   offerId: z.string().uuid(),
   jobId: z.string().uuid(),
   status: JobOfferStatusSchema,
-  expiresAt: z.string(),
+  expiresAt: IsoDateTimeSchema,
   distanceMiles: DistanceMilesSchema,
   etaMinutes: EtaMinutesSchema,
   payoutGrossCents: CurrencyAmountSchema,
@@ -160,10 +174,12 @@ export const DriverOfferSchema = z.object({
 });
 export type DriverOfferDto = z.infer<typeof DriverOfferSchema>;
 
-export const AcceptDriverOfferSchema = z.object({
-  offerId: z.string().uuid()
+export const OfferDecisionSchema = z.object({
+  offerId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  status: z.literal("REJECTED")
 });
-export type AcceptDriverOfferInput = z.infer<typeof AcceptDriverOfferSchema>;
+export type OfferDecisionDto = z.infer<typeof OfferDecisionSchema>;
 
 export const AcceptDriverOfferResponseSchema = z.object({
   offerId: z.string().uuid(),
@@ -174,6 +190,42 @@ export const AcceptDriverOfferResponseSchema = z.object({
   payoutGrossCents: CurrencyAmountSchema
 });
 export type AcceptDriverOfferResponse = z.infer<typeof AcceptDriverOfferResponseSchema>;
+
+export const TrackingDriverSummarySchema = z.object({
+  driverId: z.string().uuid(),
+  userId: z.string().uuid(),
+  displayName: z.string().min(2),
+  latestLocation: CoordinatesSchema.nullable(),
+  lastLocationAt: IsoDateTimeSchema.nullable()
+});
+export type TrackingDriverSummaryDto = z.infer<typeof TrackingDriverSummarySchema>;
+
+export const JobTimelineEventSchema = z.object({
+  id: z.number().int().nonnegative(),
+  eventType: z.string().min(2),
+  actorId: z.string().uuid().nullable(),
+  createdAt: IsoDateTimeSchema,
+  payload: z.record(z.string(), z.unknown())
+});
+export type JobTimelineEventDto = z.infer<typeof JobTimelineEventSchema>;
+
+export const JobTrackingSchema = z.object({
+  jobId: z.string().uuid(),
+  status: JobStatusSchema,
+  pickup: z.object({
+    address: z.string(),
+    coordinates: CoordinatesSchema
+  }),
+  dropoff: z.object({
+    address: z.string(),
+    coordinates: CoordinatesSchema
+  }),
+  etaMinutes: EtaMinutesSchema,
+  premiumDistanceFlag: z.boolean(),
+  assignedDriver: TrackingDriverSummarySchema.nullable(),
+  timeline: z.array(JobTimelineEventSchema)
+});
+export type JobTrackingDto = z.infer<typeof JobTrackingSchema>;
 
 export const OutboxEventTypeSchema = z.enum([
   "FOUNDATION_WRITE_RECORDED",

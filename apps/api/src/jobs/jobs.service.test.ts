@@ -1,11 +1,42 @@
+import { NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { JobsService } from "./jobs.service.js";
 
 const ACTOR_ID = "9d90d9cb-aaed-494e-aebf-d0f02b9618fe";
 const QUOTE_ID = "07ce83ef-3d05-4f78-9f5f-a21191f2d07e";
 const JOB_ID = "c028cb10-f12f-4300-8f0b-6d398e3dd870";
+const DRIVER_ID = "708ddf09-159f-4f8a-9147-c0d85f7e608e";
+const DRIVER_USER_ID = "9f114315-f1e6-4e4d-ae6f-aae01682a4c6";
 
-describe("JobsService#createJobRequest", () => {
+function createJobRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: JOB_ID,
+    org_id: null,
+    consumer_id: ACTOR_ID,
+    assigned_driver_id: null,
+    quote_id: QUOTE_ID,
+    status: "REQUESTED",
+    pickup_address: "101 Main St",
+    dropoff_address: "202 Oak Ave",
+    pickup_latitude: "51.500000",
+    pickup_longitude: "-0.100000",
+    dropoff_latitude: "51.510000",
+    dropoff_longitude: "-0.090000",
+    distance_miles: "4.25",
+    eta_minutes: 18,
+    vehicle_required: "BIKE",
+    customer_total_cents: 1600,
+    driver_payout_gross_cents: 980,
+    platform_fee_cents: 620,
+    pricing_version: "phase1_test_v1",
+    premium_distance_flag: false,
+    created_by_user_id: ACTOR_ID,
+    created_at: new Date().toISOString(),
+    ...overrides
+  };
+}
+
+describe("JobsService", () => {
   it("returns cached idempotent responses on retry", async () => {
     const pg = {
       query: vi.fn().mockResolvedValue({
@@ -50,5 +81,62 @@ describe("JobsService#createJobRequest", () => {
     expect(result.replay).toBe(true);
     expect(result.body).toEqual({ id: JOB_ID });
     expect(pg.withIdempotency).toHaveBeenCalledOnce();
+  });
+
+  it("blocks unauthorized reads when no accessible job row exists", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({ rowCount: 0, rows: [] })
+    };
+
+    const service = new JobsService(pg as never);
+
+    await expect(service.getJob(JOB_ID, ACTOR_ID)).rejects.toThrow(NotFoundException);
+  });
+
+  it("returns normalized tracking payloads", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            createJobRow({
+              status: "ASSIGNED",
+              assigned_driver_id: DRIVER_ID,
+              driver_user_id: DRIVER_USER_ID,
+              driver_display_name: "Driver One",
+              driver_latest_latitude: "51.499000",
+              driver_latest_longitude: "-0.101000",
+              driver_last_location_at: new Date().toISOString()
+            })
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 2,
+          rows: [
+            {
+              id: 2,
+              event_type: "JOB_ASSIGNED",
+              actor_id: DRIVER_USER_ID,
+              created_at: new Date().toISOString(),
+              payload: { offerId: "offer-1" }
+            },
+            {
+              id: 1,
+              event_type: "JOB_REQUESTED",
+              actor_id: ACTOR_ID,
+              created_at: new Date().toISOString(),
+              payload: { quoteId: QUOTE_ID }
+            }
+          ]
+        })
+    };
+
+    const service = new JobsService(pg as never);
+    const tracking = await service.getTracking(JOB_ID, ACTOR_ID);
+
+    expect(tracking.jobId).toBe(JOB_ID);
+    expect(tracking.assignedDriver?.displayName).toBe("Driver One");
+    expect(tracking.timeline).toHaveLength(2);
   });
 });

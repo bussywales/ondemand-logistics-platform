@@ -2,13 +2,18 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnprocessableEntityException
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
   CreateJobRequestSchema,
   JobSchema,
-  type JobDto
+  JobTrackingSchema,
+  PaginatedJobsSchema,
+  type JobDto,
+  type JobTrackingDto,
+  type PaginatedJobsDto
 } from "@shipwright/contracts";
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
@@ -33,7 +38,7 @@ type JobRow = {
   org_id: string | null;
   consumer_id: string;
   assigned_driver_id: string | null;
-  quote_id: string;
+  quote_id: string | null;
   status: string;
   pickup_address: string;
   dropoff_address: string;
@@ -52,6 +57,50 @@ type JobRow = {
   created_by_user_id: string;
   created_at: string;
 };
+
+type TrackingJobRow = JobRow & {
+  driver_user_id: string | null;
+  driver_display_name: string | null;
+  driver_latest_latitude: string | null;
+  driver_latest_longitude: string | null;
+  driver_last_location_at: string | null;
+};
+
+type TimelineRow = {
+  id: number;
+  event_type: string;
+  actor_id: string | null;
+  created_at: string;
+  payload: Record<string, unknown>;
+};
+
+const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
+  j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
+  j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
+  j.vehicle_required, j.customer_total_cents, j.driver_payout_gross_cents,
+  j.platform_fee_cents, j.pricing_version, j.premium_distance_flag,
+  j.created_by_user_id, j.created_at`;
+
+const ACCESS_CONDITION = `(
+  j.consumer_id = $2
+  or exists (
+    select 1
+    from public.drivers d
+    where d.id = j.assigned_driver_id
+      and d.user_id = $2
+  )
+  or (
+    j.org_id is not null
+    and exists (
+      select 1
+      from public.org_memberships m
+      where m.org_id = j.org_id
+        and m.user_id = $2
+        and m.is_active = true
+        and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+    )
+  )
+)`;
 
 @Injectable()
 export class JobsService {
@@ -118,12 +167,7 @@ export class JobsService {
                $1, $2, 'REQUESTED', $3, $4, $5, $6, $7, $8,
                $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, now()
              )
-             returning id, org_id, consumer_id, assigned_driver_id, quote_id, status,
-               pickup_address, dropoff_address, pickup_latitude, pickup_longitude,
-               dropoff_latitude, dropoff_longitude, distance_miles, eta_minutes,
-               vehicle_required, customer_total_cents, driver_payout_gross_cents,
-               platform_fee_cents, pricing_version, premium_distance_flag,
-               created_by_user_id, created_at`,
+             returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
             [
               orgId ?? null,
               payload.consumerId,
@@ -211,6 +255,98 @@ export class JobsService {
     return result;
   }
 
+  async getJob(jobId: string, userId: string): Promise<JobDto> {
+    const row = await this.loadAuthorizedJob(jobId, userId);
+    return this.mapJob(row);
+  }
+
+  async listBusinessJobs(userId: string, page: number, limit: number): Promise<PaginatedJobsDto> {
+    const safePage = this.normalizePage(page);
+    const safeLimit = this.normalizeLimit(limit);
+    const offset = (safePage - 1) * safeLimit;
+
+    const result = await this.pg.query<JobRow>(
+      `select ${JOB_COLUMNS}
+       from public.jobs j
+       where j.org_id is not null
+         and exists (
+           select 1
+           from public.org_memberships m
+           where m.org_id = j.org_id
+             and m.user_id = $1
+             and m.is_active = true
+             and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+         )
+       order by j.created_at desc
+       limit $2 offset $3`,
+      [userId, safeLimit + 1, offset]
+    );
+
+    const items = result.rows.slice(0, safeLimit).map((row) => this.mapJob(row));
+    return PaginatedJobsSchema.parse({
+      items,
+      page: safePage,
+      limit: safeLimit,
+      hasMore: result.rows.length > safeLimit
+    });
+  }
+
+  async getTracking(jobId: string, userId: string): Promise<JobTrackingDto> {
+    const job = await this.loadAuthorizedTrackingJob(jobId, userId);
+    const timeline = await this.pg.query<TimelineRow>(
+      `select id, event_type, actor_id, created_at, payload
+       from public.job_events
+       where job_id = $1
+       order by created_at desc
+       limit 20`,
+      [jobId]
+    );
+
+    return JobTrackingSchema.parse({
+      jobId: job.id,
+      status: job.status,
+      pickup: {
+        address: job.pickup_address,
+        coordinates: {
+          latitude: Number(job.pickup_latitude),
+          longitude: Number(job.pickup_longitude)
+        }
+      },
+      dropoff: {
+        address: job.dropoff_address,
+        coordinates: {
+          latitude: Number(job.dropoff_latitude),
+          longitude: Number(job.dropoff_longitude)
+        }
+      },
+      etaMinutes: job.eta_minutes,
+      premiumDistanceFlag: job.premium_distance_flag,
+      assignedDriver:
+        job.assigned_driver_id && job.driver_user_id && job.driver_display_name
+          ? {
+              driverId: job.assigned_driver_id,
+              userId: job.driver_user_id,
+              displayName: job.driver_display_name,
+              latestLocation:
+                job.driver_latest_latitude && job.driver_latest_longitude
+                  ? {
+                      latitude: Number(job.driver_latest_latitude),
+                      longitude: Number(job.driver_latest_longitude)
+                    }
+                  : null,
+              lastLocationAt: job.driver_last_location_at
+            }
+          : null,
+      timeline: timeline.rows.map((event) => ({
+        id: event.id,
+        eventType: event.event_type,
+        actorId: event.actor_id,
+        createdAt: event.created_at,
+        payload: event.payload
+      }))
+    });
+  }
+
   private async loadQuote(quoteId: string) {
     const result = await this.pg.query<QuoteRecord>(
       `select id, org_id, created_by_user_id, distance_miles, eta_minutes, vehicle_type,
@@ -221,7 +357,7 @@ export class JobsService {
       [quoteId]
     );
 
-    if (result.rowCount !== 1) {
+    if ((result.rowCount ?? 0) !== 1) {
       throw new ConflictException("quote_not_found");
     }
 
@@ -237,9 +373,60 @@ export class JobsService {
       [orgId, userId]
     );
 
-    if (membership.rowCount === 0) {
+    if ((membership.rowCount ?? 0) === 0) {
       throw new ForbiddenException("org_operator_required");
     }
+  }
+
+  private async loadAuthorizedJob(jobId: string, userId: string) {
+    const result = await this.pg.query<JobRow>(
+      `select ${JOB_COLUMNS}
+       from public.jobs j
+       where j.id = $1
+         and ${ACCESS_CONDITION}`,
+      [jobId, userId]
+    );
+
+    if ((result.rowCount ?? 0) !== 1) {
+      throw new NotFoundException("job_not_found");
+    }
+
+    return result.rows[0];
+  }
+
+  private async loadAuthorizedTrackingJob(jobId: string, userId: string) {
+    const result = await this.pg.query<TrackingJobRow>(
+      `select ${JOB_COLUMNS},
+              du.id as driver_user_id,
+              du.display_name as driver_display_name,
+              d.latest_latitude as driver_latest_latitude,
+              d.latest_longitude as driver_latest_longitude,
+              d.last_location_at as driver_last_location_at
+       from public.jobs j
+       left join public.drivers d on d.id = j.assigned_driver_id
+       left join public.users du on du.id = d.user_id
+       where j.id = $1
+         and ${ACCESS_CONDITION}`,
+      [jobId, userId]
+    );
+
+    if ((result.rowCount ?? 0) !== 1) {
+      throw new NotFoundException("job_not_found");
+    }
+
+    return result.rows[0];
+  }
+
+  private normalizePage(page: number) {
+    return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  }
+
+  private normalizeLimit(limit: number) {
+    if (!Number.isFinite(limit)) {
+      return 20;
+    }
+
+    return Math.min(Math.max(Math.floor(limit), 1), 100);
   }
 
   private async insertJobEvent(

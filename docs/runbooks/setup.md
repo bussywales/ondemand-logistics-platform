@@ -1,4 +1,4 @@
-# Setup Runbook (Phase 1 Dispatch MVP)
+# Setup Runbook (Phase 2A Read + Progression MVP)
 
 ## 1) Provision staging infrastructure
 
@@ -13,6 +13,7 @@
    - `packages/db/migrations/0002_rls_policies.sql`
    - `packages/db/migrations/0003_rls_recursion_fix.sql`
    - `packages/db/migrations/0004_phase1_dispatch.sql`
+   - `packages/db/migrations/0005_phase2a_reads_and_progression.sql`
 
 ### Upstash Redis (staging)
 1. Create Redis database: `ondemand-logistics-staging`.
@@ -62,8 +63,10 @@
   - quote creation
   - job request creation
   - driver availability and location updates
-  - driver offer acceptance
+  - offer accept / reject
+  - driver status progression transitions
   - outbox worker dispatch / expiry processing
+- Read APIs enforce actor visibility in server-side query filters without weakening SQL policies.
 - Row-level policies remain defined only in SQL migrations.
 
 ## 4) Required staging verification
@@ -95,6 +98,6 @@ Required GitHub Actions checks:
 - Versioned deterministic pricing with quote persistence.
 - Single pickup to single drop jobs only.
 - Hard distance cap at 12 miles, premium flag for 8-12 miles.
-- Driver availability, location, and sequential dispatch offers.
+- Driver availability, location, sequential offers, reject-driven redispatch, and guarded status progression.
 - Idempotent writes, append-only audit trails, transactional outbox side effects.
 - Structured logs with `request_id`; worker failures are non-fatal to HTTP serving.

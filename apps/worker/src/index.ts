@@ -291,7 +291,8 @@ async function markDispatchFailed(
 ) {
   await client.query(
     `update public.jobs
-     set dispatch_failed_at = now(),
+     set status = 'DISPATCH_FAILED',
+         dispatch_failed_at = now(),
          updated_at = now()
      where id = $1`,
     [job.id]
@@ -370,7 +371,8 @@ async function createSequentialOffer(
 
   await client.query(
     `update public.jobs
-     set dispatch_failed_at = null,
+     set status = 'REQUESTED',
+         dispatch_failed_at = null,
          updated_at = now()
      where id = $1`,
     [job.id]
@@ -443,7 +445,7 @@ async function handleDispatchRequested(
     return;
   }
 
-  if (job.status !== "REQUESTED" || job.assigned_driver_id) {
+  if (!["REQUESTED", "DISPATCH_FAILED"].includes(job.status) || job.assigned_driver_id) {
     logger.info({ job_id: job.id, status: job.status }, "dispatch_skipped_job_not_requestable");
     return;
   }
@@ -751,4 +753,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { computeRetrySeconds, createSequentialOffer, handleDispatchRequested };
+export { computeRetrySeconds, createSequentialOffer, handleDispatchRequested, handleOfferExpiryCheck };

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CreateJobRequestSchema, CreateQuoteSchema } from "./index.js";
+import {
+  CreateJobRequestSchema,
+  CreateQuoteSchema,
+  JobTrackingSchema,
+  JobStatusSchema,
+  PaginatedJobsSchema
+} from "./index.js";
 
 describe("CreateQuoteSchema", () => {
   it("allows quotes at or below the hard cap", () => {
@@ -38,6 +44,64 @@ describe("CreateJobRequestSchema", () => {
       dropoffAddress: "202 Oak Ave",
       pickupCoordinates: { latitude: 51.5, longitude: -0.1 },
       dropoffCoordinates: { latitude: 51.51, longitude: -0.09 }
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+});
+
+describe("JobStatusSchema", () => {
+  it("includes the phase 2 progression statuses", () => {
+    expect(JobStatusSchema.parse("EN_ROUTE_PICKUP")).toBe("EN_ROUTE_PICKUP");
+    expect(JobStatusSchema.parse("PICKED_UP")).toBe("PICKED_UP");
+    expect(JobStatusSchema.parse("EN_ROUTE_DROP")).toBe("EN_ROUTE_DROP");
+    expect(JobStatusSchema.parse("DELIVERED")).toBe("DELIVERED");
+    expect(JobStatusSchema.parse("DISPATCH_FAILED")).toBe("DISPATCH_FAILED");
+  });
+});
+
+describe("read models", () => {
+  it("parses paginated job responses", () => {
+    const parsed = PaginatedJobsSchema.safeParse({
+      items: [],
+      page: 1,
+      limit: 20,
+      hasMore: false
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses tracking payloads", () => {
+    const parsed = JobTrackingSchema.safeParse({
+      jobId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      status: "ASSIGNED",
+      pickup: {
+        address: "101 Main St",
+        coordinates: { latitude: 51.5, longitude: -0.1 }
+      },
+      dropoff: {
+        address: "202 Oak Ave",
+        coordinates: { latitude: 51.51, longitude: -0.09 }
+      },
+      etaMinutes: 20,
+      premiumDistanceFlag: false,
+      assignedDriver: {
+        driverId: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+        userId: "1cc3382c-f799-4856-b537-dbd61c851075",
+        displayName: "Driver One",
+        latestLocation: null,
+        lastLocationAt: null
+      },
+      timeline: [
+        {
+          id: 1,
+          eventType: "JOB_ASSIGNED",
+          actorId: "1cc3382c-f799-4856-b537-dbd61c851075",
+          createdAt: new Date().toISOString(),
+          payload: { offerId: "abc" }
+        }
+      ]
     });
 
     expect(parsed.success).toBe(true);

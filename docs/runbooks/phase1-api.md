@@ -1,11 +1,10 @@
-# Phase 1 API Runbook
+# API Runbook (Phase 2A)
 
-## Endpoints
+## Core write flow
 
 ### Create quote
 - `POST /v1/quotes`
 - Requires: bearer token, `x-idempotency-key`
-- Output: persisted pricing snapshot including `pricingVersion`, `premiumDistanceFlag`, totals, and breakdown lines.
 
 ```bash
 curl -X POST "$API_BASE_URL/v1/quotes" \
@@ -25,7 +24,6 @@ curl -X POST "$API_BASE_URL/v1/quotes" \
 ### Create job request
 - `POST /v1/jobs`
 - Requires: bearer token, `x-idempotency-key`, valid `quoteId`
-- Output: `REQUESTED` job with persisted quote snapshot fields.
 
 ```bash
 curl -X POST "$API_BASE_URL/v1/jobs" \
@@ -42,10 +40,9 @@ curl -X POST "$API_BASE_URL/v1/jobs" \
   }'
 ```
 
-### Update driver availability
-- `PATCH /v1/driver/me/availability`
-- Requires: driver bearer token, `x-idempotency-key`
+## Driver offer flow
 
+### Update driver availability
 ```bash
 curl -X PATCH "$API_BASE_URL/v1/driver/me/availability" \
   -H "authorization: Bearer $DRIVER_JWT" \
@@ -55,10 +52,6 @@ curl -X PATCH "$API_BASE_URL/v1/driver/me/availability" \
 ```
 
 ### Update driver location
-- `POST /v1/driver/me/location`
-- Requires: driver bearer token, `x-idempotency-key`
-- Notes: throttled by `DRIVER_LOCATION_THROTTLE_MS`.
-
 ```bash
 curl -X POST "$API_BASE_URL/v1/driver/me/location" \
   -H "authorization: Bearer $DRIVER_JWT" \
@@ -68,24 +61,85 @@ curl -X POST "$API_BASE_URL/v1/driver/me/location" \
 ```
 
 ### List driver offers
-- `GET /v1/driver/me/offers`
-- Requires: driver bearer token
-- Output includes payout, distance, ETA, pickup, and drop before acceptance.
-
 ```bash
 curl "$API_BASE_URL/v1/driver/me/offers" \
   -H "authorization: Bearer $DRIVER_JWT"
 ```
 
 ### Accept driver offer
-- `POST /v1/driver/me/offers/:offerId/accept`
-- Requires: driver bearer token, `x-idempotency-key`
-- Output includes payout, distance, and ETA snapshot.
-
 ```bash
 curl -X POST "$API_BASE_URL/v1/driver/me/offers/$OFFER_ID/accept" \
   -H "authorization: Bearer $DRIVER_JWT" \
   -H "x-idempotency-key: driver-offer-accept-001"
+```
+
+### Reject driver offer
+```bash
+curl -X POST "$API_BASE_URL/v1/driver/me/offers/$OFFER_ID/reject" \
+  -H "authorization: Bearer $DRIVER_JWT" \
+  -H "x-idempotency-key: driver-offer-reject-001"
+```
+
+## Read APIs
+
+### Read a single job
+```bash
+curl "$API_BASE_URL/v1/jobs/$JOB_ID" \
+  -H "authorization: Bearer $CONSUMER_JWT"
+```
+
+### Business job list
+```bash
+curl "$API_BASE_URL/v1/business/jobs?page=1&limit=20" \
+  -H "authorization: Bearer $BUSINESS_OPERATOR_JWT"
+```
+
+### Driver current job
+```bash
+curl "$API_BASE_URL/v1/driver/me/jobs/current" \
+  -H "authorization: Bearer $DRIVER_JWT"
+```
+
+### Driver job history
+```bash
+curl "$API_BASE_URL/v1/driver/me/jobs/history?page=1&limit=20" \
+  -H "authorization: Bearer $DRIVER_JWT"
+```
+
+### Tracking view
+```bash
+curl "$API_BASE_URL/v1/jobs/$JOB_ID/tracking" \
+  -H "authorization: Bearer $CONSUMER_JWT"
+```
+
+## Driver status progression
+
+### ASSIGNED -> EN_ROUTE_PICKUP
+```bash
+curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/en-route-pickup" \
+  -H "authorization: Bearer $DRIVER_JWT" \
+  -H "x-idempotency-key: job-status-001"
+```
+
+### EN_ROUTE_PICKUP -> PICKED_UP
+```bash
+curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/picked-up" \
+  -H "authorization: Bearer $DRIVER_JWT" \
+  -H "x-idempotency-key: job-status-002"
+```
+
+### PICKED_UP -> EN_ROUTE_DROP
+```bash
+curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/en-route-drop" \
+  -H "authorization: Bearer $DRIVER_JWT" \
+  -H "x-idempotency-key: job-status-003"
+```
+
+### EN_ROUTE_DROP -> DELIVERED
+```bash
+curl -X POST "$API_BASE_URL/v1/driver/me/jobs/$JOB_ID/delivered" \
+  -H "authorization: Bearer $DRIVER_JWT" \
+  -H "x-idempotency-key: job-status-004"
 ```
 
 ## Worker log progression

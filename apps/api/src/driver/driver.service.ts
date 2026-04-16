@@ -12,12 +12,16 @@ import {
   AcceptDriverOfferResponseSchema,
   DriverOfferSchema,
   DriverStateSchema,
+  JobSchema,
+  OfferDecisionSchema,
+  PaginatedJobsSchema,
   UpdateDriverAvailabilitySchema,
   UpdateDriverLocationSchema,
-  type AcceptDriverOfferResponse,
+  type DriverAvailabilityStatus,
   type DriverOfferDto,
   type DriverStateDto,
-  type DriverAvailabilityStatus
+  type JobDto,
+  type PaginatedJobsDto
 } from "@shipwright/contracts";
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
@@ -30,6 +34,7 @@ type DriverRecord = {
   latest_longitude: string | null;
   available_since: string | null;
   last_location_at: string | null;
+  active_job_id: string | null;
 };
 
 type OfferRow = {
@@ -43,6 +48,55 @@ type OfferRow = {
   pickup_address: string;
   dropoff_address: string;
 };
+
+type OfferOwnershipRow = {
+  offer_id: string;
+  job_id: string;
+  org_id: string | null;
+  driver_id: string;
+  driver_user_id: string;
+  status: string;
+  expires_at: string;
+  distance_miles_snapshot: string;
+  eta_minutes_snapshot: number;
+  payout_gross_snapshot: number;
+  assigned_driver_id: string | null;
+  job_status: string;
+};
+
+type JobRow = {
+  id: string;
+  org_id: string | null;
+  consumer_id: string;
+  assigned_driver_id: string | null;
+  quote_id: string | null;
+  status: string;
+  pickup_address: string;
+  dropoff_address: string;
+  pickup_latitude: string;
+  pickup_longitude: string;
+  dropoff_latitude: string;
+  dropoff_longitude: string;
+  distance_miles: string;
+  eta_minutes: number;
+  vehicle_required: string;
+  customer_total_cents: number;
+  driver_payout_gross_cents: number;
+  platform_fee_cents: number;
+  pricing_version: string;
+  premium_distance_flag: boolean;
+  created_by_user_id: string;
+  created_at: string;
+};
+
+const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
+  j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
+  j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
+  j.vehicle_required, j.customer_total_cents, j.driver_payout_gross_cents,
+  j.platform_fee_cents, j.pricing_version, j.premium_distance_flag,
+  j.created_by_user_id, j.created_at`;
+
+const ACTIVE_DRIVER_JOB_STATUSES = ["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"] as const;
 
 @Injectable()
 export class DriverService {
@@ -72,16 +126,16 @@ export class DriverService {
         const updated = await client.query<DriverRecord>(
           `update public.drivers
            set availability_status = $1,
-               available_since = case when $1 = 'ONLINE' then now() else null end,
-               active_job_id = case when $1 = 'OFFLINE' then active_job_id else active_job_id end
+               available_since = case when $1 = 'ONLINE' then now() else null end
            where id = $2
-           returning id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at`,
+           returning id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at, active_job_id`,
           [parsed.data.availability, driver.id]
         );
 
         await this.insertAuditLog(client, {
           requestId,
           actorId: userId,
+          orgId: null,
           entityType: "driver",
           entityId: driver.id,
           action: "driver_availability_updated",
@@ -119,7 +173,7 @@ export class DriverService {
       idempotencyKey,
       execute: async (client) => {
         const locked = await client.query<DriverRecord>(
-          `select id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at
+          `select id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at, active_job_id
            from public.drivers
            where id = $1
            for update`,
@@ -140,13 +194,14 @@ export class DriverService {
                latest_longitude = $2,
                last_location_at = now()
            where id = $3
-           returning id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at`,
+           returning id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at, active_job_id`,
           [parsed.data.latitude, parsed.data.longitude, driver.id]
         );
 
         await this.insertAuditLog(client, {
           requestId,
           actorId: userId,
+          orgId: null,
           entityType: "driver",
           entityId: driver.id,
           action: "driver_location_updated",
@@ -206,38 +261,8 @@ export class DriverService {
       endpoint: `/v1/driver/me/offers/${offerId}/accept`,
       idempotencyKey,
       execute: async (client) => {
-        const offerResult = await client.query<{
-          offer_id: string;
-          job_id: string;
-          driver_id: string;
-          driver_user_id: string;
-          status: string;
-          expires_at: string;
-          distance_miles_snapshot: string;
-          eta_minutes_snapshot: number;
-          payout_gross_snapshot: number;
-        }>(
-          `select o.id as offer_id,
-                  o.job_id,
-                  o.driver_id,
-                  d.user_id as driver_user_id,
-                  o.status,
-                  o.expires_at,
-                  o.distance_miles_snapshot,
-                  o.eta_minutes_snapshot,
-                  o.payout_gross_snapshot
-           from public.job_offers o
-           join public.drivers d on d.id = o.driver_id
-           where o.id = $1
-           for update of o`,
-          [offerId]
-        );
+        const offer = await this.loadOfferForUpdate(client, offerId);
 
-        if (offerResult.rowCount !== 1) {
-          throw new NotFoundException("offer_not_found");
-        }
-
-        const offer = offerResult.rows[0];
         if (offer.driver_user_id !== userId || offer.driver_id !== driver.id) {
           throw new ForbiddenException("offer_not_owned_by_driver");
         }
@@ -266,7 +291,7 @@ export class DriverService {
           [driver.id, offer.job_id]
         );
 
-        if (jobUpdate.rowCount !== 1) {
+        if ((jobUpdate.rowCount ?? 0) !== 1) {
           throw new ConflictException("job_no_longer_assignable");
         }
 
@@ -278,7 +303,7 @@ export class DriverService {
           [offerId]
         );
 
-        if (accepted.rowCount !== 1) {
+        if ((accepted.rowCount ?? 0) !== 1) {
           throw new ConflictException("offer_already_processed");
         }
 
@@ -312,6 +337,7 @@ export class DriverService {
         await this.insertAuditLog(client, {
           requestId,
           actorId: userId,
+          orgId: offer.org_id,
           entityType: "job",
           entityId: offer.job_id,
           action: "job_offer_accepted",
@@ -321,18 +347,16 @@ export class DriverService {
           }
         });
 
-        const body = AcceptDriverOfferResponseSchema.parse({
-          offerId,
-          jobId: offer.job_id,
-          status: "ASSIGNED",
-          distanceMiles: Number(offer.distance_miles_snapshot),
-          etaMinutes: offer.eta_minutes_snapshot,
-          payoutGrossCents: offer.payout_gross_snapshot
-        });
-
         return {
           responseCode: 200,
-          body
+          body: AcceptDriverOfferResponseSchema.parse({
+            offerId,
+            jobId: offer.job_id,
+            status: "ASSIGNED",
+            distanceMiles: Number(offer.distance_miles_snapshot),
+            etaMinutes: offer.eta_minutes_snapshot,
+            payoutGrossCents: offer.payout_gross_snapshot
+          })
         };
       }
     });
@@ -340,19 +364,337 @@ export class DriverService {
     return result;
   }
 
+  async rejectOffer(offerId: string, userId: string, idempotencyKey: string) {
+    const requestId = getRequestContext()?.requestId ?? randomUUID();
+    const driver = await this.getDriverByUserId(userId);
+
+    return this.pg.withIdempotency({
+      actorId: userId,
+      endpoint: `/v1/driver/me/offers/${offerId}/reject`,
+      idempotencyKey,
+      execute: async (client) => {
+        const offer = await this.loadOfferForUpdate(client, offerId);
+
+        if (offer.driver_user_id !== userId || offer.driver_id !== driver.id) {
+          throw new ForbiddenException("offer_not_owned_by_driver");
+        }
+
+        if (offer.status !== "OFFERED") {
+          throw new ConflictException("offer_not_open");
+        }
+
+        const rejected = await client.query(
+          `update public.job_offers
+           set status = 'REJECTED', responded_at = now()
+           where id = $1 and status = 'OFFERED'
+           returning id`,
+          [offerId]
+        );
+
+        if ((rejected.rowCount ?? 0) !== 1) {
+          throw new ConflictException("offer_already_processed");
+        }
+
+        await this.insertJobEvent(client, {
+          jobId: offer.job_id,
+          eventType: "JOB_OFFER_REJECTED",
+          actorId: userId,
+          payload: {
+            requestId,
+            offerId,
+            driverId: driver.id
+          }
+        });
+
+        await this.insertAuditLog(client, {
+          requestId,
+          actorId: userId,
+          orgId: offer.org_id,
+          entityType: "job_offer",
+          entityId: offerId,
+          action: "job_offer_rejected",
+          metadata: {
+            jobId: offer.job_id,
+            driverId: driver.id
+          }
+        });
+
+        if (offer.job_status === "REQUESTED" && !offer.assigned_driver_id) {
+          await client.query(
+            `insert into public.outbox_messages (
+               aggregate_type,
+               aggregate_id,
+               event_type,
+               payload,
+               idempotency_key
+             ) values ($1, $2, $3, $4::jsonb, $5)
+             on conflict (event_type, idempotency_key) do nothing`,
+            [
+              "job",
+              offer.job_id,
+              "JOB_DISPATCH_REQUESTED",
+              JSON.stringify({
+                jobId: offer.job_id,
+                requestId,
+                trigger: "offer_rejected",
+                rejectedOfferId: offerId
+              }),
+              `redispatch:${offer.job_id}:${offerId}`
+            ]
+          );
+        }
+
+        return {
+          responseCode: 200,
+          body: OfferDecisionSchema.parse({
+            offerId,
+            jobId: offer.job_id,
+            status: "REJECTED"
+          })
+        };
+      }
+    });
+  }
+
+  async getCurrentJob(userId: string): Promise<JobDto | null> {
+    const driver = await this.getDriverByUserId(userId);
+    if (!driver.active_job_id) {
+      return null;
+    }
+
+    const result = await this.pg.query<JobRow>(
+      `select ${JOB_COLUMNS}
+       from public.jobs j
+       where j.id = $1
+         and j.assigned_driver_id = $2
+         and j.status = any($3::public.job_status[])`,
+      [driver.active_job_id, driver.id, ACTIVE_DRIVER_JOB_STATUSES]
+    );
+
+    if ((result.rowCount ?? 0) === 0) {
+      return null;
+    }
+
+    return this.mapJob(result.rows[0]);
+  }
+
+  async listJobHistory(userId: string, page: number, limit: number): Promise<PaginatedJobsDto> {
+    const driver = await this.getDriverByUserId(userId);
+    const safePage = this.normalizePage(page);
+    const safeLimit = this.normalizeLimit(limit);
+    const offset = (safePage - 1) * safeLimit;
+
+    const result = await this.pg.query<JobRow>(
+      `select ${JOB_COLUMNS}
+       from public.jobs j
+       where j.assigned_driver_id = $1
+         and ($2::uuid is null or j.id <> $2)
+       order by j.created_at desc
+       limit $3 offset $4`,
+      [driver.id, driver.active_job_id, safeLimit + 1, offset]
+    );
+
+    return PaginatedJobsSchema.parse({
+      items: result.rows.slice(0, safeLimit).map((row) => this.mapJob(row)),
+      page: safePage,
+      limit: safeLimit,
+      hasMore: result.rows.length > safeLimit
+    });
+  }
+
+  async transitionToEnRoutePickup(jobId: string, userId: string, idempotencyKey: string) {
+    return this.transitionJobStatus({
+      jobId,
+      userId,
+      idempotencyKey,
+      endpoint: `/v1/driver/me/jobs/${jobId}/en-route-pickup`,
+      fromStatus: "ASSIGNED",
+      toStatus: "EN_ROUTE_PICKUP",
+      eventType: "JOB_EN_ROUTE_PICKUP",
+      action: "job_en_route_pickup"
+    });
+  }
+
+  async transitionToPickedUp(jobId: string, userId: string, idempotencyKey: string) {
+    return this.transitionJobStatus({
+      jobId,
+      userId,
+      idempotencyKey,
+      endpoint: `/v1/driver/me/jobs/${jobId}/picked-up`,
+      fromStatus: "EN_ROUTE_PICKUP",
+      toStatus: "PICKED_UP",
+      eventType: "JOB_PICKED_UP",
+      action: "job_picked_up"
+    });
+  }
+
+  async transitionToEnRouteDrop(jobId: string, userId: string, idempotencyKey: string) {
+    return this.transitionJobStatus({
+      jobId,
+      userId,
+      idempotencyKey,
+      endpoint: `/v1/driver/me/jobs/${jobId}/en-route-drop`,
+      fromStatus: "PICKED_UP",
+      toStatus: "EN_ROUTE_DROP",
+      eventType: "JOB_EN_ROUTE_DROP",
+      action: "job_en_route_drop"
+    });
+  }
+
+  async transitionToDelivered(jobId: string, userId: string, idempotencyKey: string) {
+    return this.transitionJobStatus({
+      jobId,
+      userId,
+      idempotencyKey,
+      endpoint: `/v1/driver/me/jobs/${jobId}/delivered`,
+      fromStatus: "EN_ROUTE_DROP",
+      toStatus: "DELIVERED",
+      eventType: "JOB_DELIVERED",
+      action: "job_delivered"
+    });
+  }
+
+  private async transitionJobStatus(input: {
+    jobId: string;
+    userId: string;
+    idempotencyKey: string;
+    endpoint: string;
+    fromStatus: string;
+    toStatus: string;
+    eventType: string;
+    action: string;
+  }) {
+    const requestId = getRequestContext()?.requestId ?? randomUUID();
+    const driver = await this.getDriverByUserId(input.userId);
+
+    return this.pg.withIdempotency({
+      actorId: input.userId,
+      endpoint: input.endpoint,
+      idempotencyKey: input.idempotencyKey,
+      execute: async (client) => {
+        const jobResult = await client.query<JobRow>(
+          `select ${JOB_COLUMNS}
+           from public.jobs j
+           where j.id = $1 and j.assigned_driver_id = $2
+           for update`,
+          [input.jobId, driver.id]
+        );
+
+        if ((jobResult.rowCount ?? 0) !== 1) {
+          throw new NotFoundException("job_not_found");
+        }
+
+        const job = jobResult.rows[0];
+        if (job.status !== input.fromStatus) {
+          throw new ConflictException("invalid_job_status_transition");
+        }
+
+        const updated = await client.query<JobRow>(
+          `update public.jobs
+           set status = $1,
+               updated_at = now()
+           where id = $2
+           returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
+          [input.toStatus, input.jobId]
+        );
+
+        await client.query(
+          `update public.drivers
+           set active_job_id = $1,
+               availability_status = 'OFFLINE',
+               available_since = null
+           where id = $2`,
+          [input.toStatus === "DELIVERED" ? null : input.jobId, driver.id]
+        );
+
+        await this.insertJobEvent(client, {
+          jobId: input.jobId,
+          eventType: input.eventType,
+          actorId: input.userId,
+          payload: {
+            requestId,
+            fromStatus: input.fromStatus,
+            toStatus: input.toStatus,
+            driverId: driver.id
+          }
+        });
+
+        await this.insertAuditLog(client, {
+          requestId,
+          actorId: input.userId,
+          orgId: updated.rows[0].org_id,
+          entityType: "job",
+          entityId: input.jobId,
+          action: input.action,
+          metadata: {
+            fromStatus: input.fromStatus,
+            toStatus: input.toStatus,
+            driverId: driver.id
+          }
+        });
+
+        return {
+          responseCode: 200,
+          body: this.mapJob(updated.rows[0])
+        };
+      }
+    });
+  }
+
+  private async loadOfferForUpdate(client: PoolClient, offerId: string) {
+    const offerResult = await client.query<OfferOwnershipRow>(
+      `select o.id as offer_id,
+              o.job_id,
+              j.org_id,
+              o.driver_id,
+              d.user_id as driver_user_id,
+              o.status,
+              o.expires_at,
+              o.distance_miles_snapshot,
+              o.eta_minutes_snapshot,
+              o.payout_gross_snapshot,
+              j.assigned_driver_id,
+              j.status as job_status
+       from public.job_offers o
+       join public.drivers d on d.id = o.driver_id
+       join public.jobs j on j.id = o.job_id
+       where o.id = $1
+       for update of o, j`,
+      [offerId]
+    );
+
+    if ((offerResult.rowCount ?? 0) !== 1) {
+      throw new NotFoundException("offer_not_found");
+    }
+
+    return offerResult.rows[0];
+  }
+
   private async getDriverByUserId(userId: string) {
     const result = await this.pg.query<DriverRecord>(
-      `select id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at
+      `select id, availability_status, latest_latitude, latest_longitude, available_since, last_location_at, active_job_id
        from public.drivers
        where user_id = $1 and is_active = true`,
       [userId]
     );
 
-    if (result.rowCount !== 1) {
+    if ((result.rowCount ?? 0) !== 1) {
       throw new ForbiddenException("driver_record_required");
     }
 
     return result.rows[0];
+  }
+
+  private normalizePage(page: number) {
+    return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  }
+
+  private normalizeLimit(limit: number) {
+    if (!Number.isFinite(limit)) {
+      return 20;
+    }
+
+    return Math.min(Math.max(Math.floor(limit), 1), 100);
   }
 
   private mapDriverState(row: DriverRecord): DriverStateDto {
@@ -368,6 +710,37 @@ export class DriverService {
           : null,
       availableSince: row.available_since,
       lastLocationAt: row.last_location_at
+    });
+  }
+
+  private mapJob(row: JobRow): JobDto {
+    return JobSchema.parse({
+      id: row.id,
+      orgId: row.org_id,
+      consumerId: row.consumer_id,
+      assignedDriverId: row.assigned_driver_id,
+      quoteId: row.quote_id,
+      status: row.status,
+      pickupAddress: row.pickup_address,
+      dropoffAddress: row.dropoff_address,
+      pickupCoordinates: {
+        latitude: Number(row.pickup_latitude),
+        longitude: Number(row.pickup_longitude)
+      },
+      dropoffCoordinates: {
+        latitude: Number(row.dropoff_latitude),
+        longitude: Number(row.dropoff_longitude)
+      },
+      distanceMiles: Number(row.distance_miles),
+      etaMinutes: row.eta_minutes,
+      vehicleRequired: row.vehicle_required,
+      customerTotalCents: row.customer_total_cents,
+      driverPayoutGrossCents: row.driver_payout_gross_cents,
+      platformFeeCents: row.platform_fee_cents,
+      pricingVersion: row.pricing_version,
+      premiumDistanceFlag: row.premium_distance_flag,
+      createdByUserId: row.created_by_user_id,
+      createdAt: row.created_at
     });
   }
 
@@ -387,6 +760,7 @@ export class DriverService {
     input: {
       requestId: string;
       actorId: string | null;
+      orgId: string | null;
       entityType: string;
       entityId: string;
       action: string;
@@ -402,10 +776,11 @@ export class DriverService {
          entity_id,
          action,
          metadata
-       ) values ($1, $2, null, $3, $4, $5, $6::jsonb)`,
+       ) values ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
       [
         input.requestId,
         input.actorId,
+        input.orgId,
         input.entityType,
         input.entityId,
         input.action,

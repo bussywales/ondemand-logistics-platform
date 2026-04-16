@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Res
 } from "@nestjs/common";
 import type { Response } from "express";
@@ -66,6 +67,105 @@ export class DriverController {
     @Res({ passthrough: true }) response: Response
   ) {
     const result = await this.driverService.acceptOffer(offerId, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @Post("offers/:offerId/reject")
+  @HttpCode(200)
+  async rejectOffer(
+    @Param("offerId") offerId: string,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.driverService.rejectOffer(offerId, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @Get("jobs/current")
+  async getCurrentJob(@RequestUser() user: AuthenticatedUser) {
+    return this.driverService.getCurrentJob(user.id);
+  }
+
+  @Get("jobs/history")
+  async listJobHistory(
+    @RequestUser() user: AuthenticatedUser,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    return this.driverService.listJobHistory(user.id, Number(page ?? "1"), Number(limit ?? "20"));
+  }
+
+  @Post("jobs/:jobId/en-route-pickup")
+  @HttpCode(200)
+  async transitionToEnRoutePickup(
+    @Param("jobId") jobId: string,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.driverService.transitionToEnRoutePickup(jobId, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @Post("jobs/:jobId/picked-up")
+  @HttpCode(200)
+  async transitionToPickedUp(
+    @Param("jobId") jobId: string,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.driverService.transitionToPickedUp(jobId, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @Post("jobs/:jobId/en-route-drop")
+  @HttpCode(200)
+  async transitionToEnRouteDrop(
+    @Param("jobId") jobId: string,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.driverService.transitionToEnRouteDrop(jobId, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @Post("jobs/:jobId/delivered")
+  @HttpCode(200)
+  async transitionToDelivered(
+    @Param("jobId") jobId: string,
+    @Headers("x-idempotency-key") idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.driverService.transitionToDelivered(jobId, user.id, idempotencyKey);
     if (result.replay) {
       response.status(result.responseCode);
       response.setHeader("x-idempotent-replay", "true");
