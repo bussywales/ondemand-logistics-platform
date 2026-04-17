@@ -3,19 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { fetchBusinessContext } from "../_lib/auth";
 import { authorizePayment, createLiveJob, getLiveJob, listLiveJobs } from "../_lib/api";
 import {
-  authorizeLocalJobPayment,
-  createLocalJob,
+  clearBusinessSession,
   formatCurrency,
   formatDateTime,
-  readBusinessProfile,
-  readJobs,
-  saveBusinessProfile,
-  saveJobs,
+  readBusinessSession,
+  saveBusinessSession,
   type AppJob,
-  type AppMode,
-  type BusinessProfile,
+  type BusinessSession,
   type DeliveryFormInput,
   type VehicleType
 } from "../_lib/product-state";
@@ -51,11 +48,10 @@ function statusTone(status: AppJob["status"] | AppJob["payment"]["status"]) {
 
 export function ProductShell(props: ProductShellProps) {
   const router = useRouter();
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [session, setSession] = useState<BusinessSession | null>(null);
   const [jobs, setJobs] = useState<AppJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
   const [deliveryForm, setDeliveryForm] = useState<DeliveryFormInput>(defaultForm);
-  const [appMode, setAppMode] = useState<AppMode>("staged");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -63,140 +59,90 @@ export function ProductShell(props: ProductShellProps) {
   const [paymentMethodId, setPaymentMethodId] = useState("pm_card_visa");
 
   useEffect(() => {
-    const nextProfile = readBusinessProfile();
-    const nextJobs = readJobs();
-    setProfile(nextProfile);
-    setJobs(nextJobs);
-    setAppMode(nextProfile?.authToken ? "live" : "staged");
-
-    if (nextProfile?.operatingCity === "London") {
-      setDeliveryForm(defaultForm);
-    }
-
+    const nextSession = readBusinessSession();
+    setSession(nextSession);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (loading || !profile?.authToken || appMode !== "live") {
+    if (!session) {
       return;
     }
 
-    void refreshLiveJobs(profile);
-  }, [loading, appMode]);
+    void refreshContextAndJobs(session);
+  }, [session?.accessToken]);
 
   useEffect(() => {
-    if (!props.jobId) {
+    if (!props.jobId || !session) {
       setSelectedJob(null);
       return;
     }
 
-    const local = jobs.find((job) => job.id === props.jobId) ?? null;
-    setSelectedJob(local);
-
-    if (profile?.authToken && appMode === "live") {
-      void refreshLiveJob(props.jobId, profile);
-    }
-  }, [props.jobId, jobs, profile, appMode]);
+    void refreshLiveJob(props.jobId, session);
+  }, [props.jobId, session?.accessToken]);
 
   const overview = useMemo(() => {
     const authorizedJobs = jobs.filter((job) => job.payment.status === "AUTHORIZED" || job.payment.status === "CAPTURED").length;
-    const liveJobs = jobs.filter((job) => job.mode === "live").length;
     return {
       totalJobs: jobs.length,
       authorizedJobs,
-      liveJobs
+      currentOrgName: session?.context.currentOrg?.name ?? "No org"
     };
-  }, [jobs]);
+  }, [jobs, session]);
 
-  async function refreshLiveJobs(currentProfile: BusinessProfile) {
+  async function refreshContextAndJobs(currentSession: BusinessSession) {
     try {
-      const liveJobs = await listLiveJobs(currentProfile);
-      setJobs((existing) => {
-        const stagedJobs = existing.filter((job) => job.mode === "staged");
-        const nextJobs = [...liveJobs, ...stagedJobs].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-        saveJobs(nextJobs);
-        return nextJobs;
-      });
+      const context = await fetchBusinessContext(currentSession.accessToken);
+      const nextSession = { ...currentSession, context };
+      setSession(saveBusinessSession(nextSession));
+      const liveJobs = await listLiveJobs(nextSession);
+      setJobs(liveJobs);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to load live jobs.");
+      setError(issue instanceof Error ? issue.message : "Unable to load business workspace.");
     }
   }
 
-  async function refreshLiveJob(jobId: string, currentProfile: BusinessProfile) {
+  async function refreshLiveJob(jobId: string, currentSession: BusinessSession) {
     try {
-      const job = await getLiveJob(currentProfile, jobId);
-      setJobs((existing) => {
-        const stagedJobs = existing.filter((item) => item.mode === "staged");
-        const withoutCurrent = stagedJobs.concat(existing.filter((item) => item.mode === "live" && item.id !== jobId));
-        const nextJobs = [job, ...withoutCurrent].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-        saveJobs(nextJobs);
-        return nextJobs;
-      });
+      const job = await getLiveJob(currentSession, jobId);
       setSelectedJob(job);
+      setJobs((current) => {
+        const nextJobs = [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+        return nextJobs;
+      });
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to refresh the selected job.");
+      setError(issue instanceof Error ? issue.message : "Unable to load the selected job.");
     }
-  }
-
-  function updateProfileField<K extends keyof BusinessProfile>(key: K, value: BusinessProfile[K]) {
-    setProfile((current) => {
-      const base = current ?? {
-        role: "business" as const,
-        businessName: "",
-        contactName: "",
-        email: "",
-        phone: "",
-        operatingCity: "London",
-        apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com",
-        authToken: "",
-        orgId: "",
-        consumerId: ""
-      };
-
-      const next = { ...base, [key]: value };
-      saveBusinessProfile(next);
-      return next;
-    });
   }
 
   async function handleCreateDelivery(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!session) {
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     try {
-      if (appMode === "live") {
-        if (!profile) {
-          throw new Error("Complete business onboarding before using live mode.");
+      const created = await createLiveJob(session, {
+        pickupAddress: deliveryForm.pickupAddress,
+        dropoffAddress: deliveryForm.dropoffAddress,
+        distanceMiles: deliveryForm.distanceMiles,
+        etaMinutes: deliveryForm.etaMinutes,
+        vehicleType: deliveryForm.vehicleType,
+        pickupCoordinates: {
+          latitude: deliveryForm.pickupLatitude,
+          longitude: deliveryForm.pickupLongitude
+        },
+        dropoffCoordinates: {
+          latitude: deliveryForm.dropoffLatitude,
+          longitude: deliveryForm.dropoffLongitude
         }
+      });
 
-        const created = await createLiveJob(profile, {
-          pickupAddress: deliveryForm.pickupAddress,
-          dropoffAddress: deliveryForm.dropoffAddress,
-          distanceMiles: deliveryForm.distanceMiles,
-          etaMinutes: deliveryForm.etaMinutes,
-          vehicleType: deliveryForm.vehicleType,
-          pickupCoordinates: {
-            latitude: deliveryForm.pickupLatitude,
-            longitude: deliveryForm.pickupLongitude
-          },
-          dropoffCoordinates: {
-            latitude: deliveryForm.dropoffLatitude,
-            longitude: deliveryForm.dropoffLongitude
-          }
-        });
-
-        const nextJobs = [created, ...jobs.filter((job) => job.id !== created.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-        setJobs(nextJobs);
-        saveJobs(nextJobs);
-        router.push(`/app/jobs/${created.id}`);
-      } else {
-        const created = createLocalJob(deliveryForm);
-        const nextJobs = [created, ...jobs].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-        setJobs(nextJobs);
-        saveJobs(nextJobs);
-        router.push(`/app/jobs/${created.id}`);
-      }
+      setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt)));
+      router.push(`/app/jobs/${created.id}`);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to create delivery.");
     } finally {
@@ -205,38 +151,37 @@ export function ProductShell(props: ProductShellProps) {
   }
 
   async function handleAuthorizePayment(job: AppJob) {
+    if (!session) {
+      return;
+    }
+
     setPaymentSubmitting(true);
     setError(null);
 
     try {
-      if (job.mode === "live") {
-        if (!profile) {
-          throw new Error("Complete business onboarding before authorizing payment.");
+      const payment = await authorizePayment(session, job.id, paymentMethodId.trim());
+      const nextJob = {
+        ...job,
+        payment: {
+          ...job.payment,
+          ...payment
         }
-
-        const payment = await authorizePayment(profile, job.id, paymentMethodId.trim());
-        const nextJob = {
-          ...job,
-          payment: {
-            ...job.payment,
-            ...payment
-          }
-        };
-        const nextJobs = jobs.map((item) => (item.id === job.id ? nextJob : item));
-        setJobs(nextJobs);
-        setSelectedJob(nextJob);
-        saveJobs(nextJobs);
-      } else {
-        const nextJob = authorizeLocalJobPayment(job.id);
-        const nextJobs = readJobs();
-        setJobs(nextJobs);
-        setSelectedJob(nextJob);
-      }
+      };
+      setSelectedJob(nextJob);
+      setJobs((current) => current.map((item) => (item.id === job.id ? nextJob : item)));
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to authorize payment.");
     } finally {
       setPaymentSubmitting(false);
     }
+  }
+
+  function handleSignOut() {
+    clearBusinessSession();
+    setSession(null);
+    setJobs([]);
+    setSelectedJob(null);
+    router.push("/get-started");
   }
 
   if (loading) {
@@ -247,21 +192,21 @@ export function ProductShell(props: ProductShellProps) {
     );
   }
 
-  if (!profile) {
+  if (!session) {
     return (
       <main className="app-shell loading-shell">
         <section className="app-panel onboarding-guard">
           <p className="eyebrow">Business onboarding required</p>
-          <h1>Start with the operating profile.</h1>
+          <h1>Sign in and create the business org first.</h1>
           <p>
-            This dashboard is wired for business users. Complete the staged onboarding first, then come back here to create deliveries and review payment state.
+            The dashboard now expects a real authenticated business session. Start from onboarding to create or resume the business operator account, then come back here.
           </p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/get-started">
               Go to Get Started
             </Link>
-            <Link className="button button-secondary" href="/demo">
-              View Demo Overview
+            <Link className="button button-secondary" href="/contact">
+              Talk to Team
             </Link>
           </div>
         </section>
@@ -269,16 +214,38 @@ export function ProductShell(props: ProductShellProps) {
     );
   }
 
+  if (!session.context.currentOrg) {
+    return (
+      <main className="app-shell loading-shell">
+        <section className="app-panel onboarding-guard">
+          <p className="eyebrow">Business org missing</p>
+          <h1>Finish onboarding before using the dashboard.</h1>
+          <p>
+            The account is authenticated, but there is no business org membership yet. Return to onboarding to create the organization and operator membership.
+          </p>
+          <div className="hero-actions">
+            <Link className="button button-primary" href="/get-started">
+              Complete Onboarding
+            </Link>
+            <button className="button button-secondary" onClick={handleSignOut} type="button">
+              Sign Out
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   const job = props.view === "job-detail" ? selectedJob : null;
-  const recentJobs = jobs.slice(0, 5);
+  const recentJobs = jobs.slice(0, props.view === "home" ? 5 : 20);
 
   return (
     <main className="app-shell">
       <header className="app-topbar app-panel">
         <div>
           <p className="eyebrow">Business workspace</p>
-          <h1>{profile.businessName || "ShipWright dashboard"}</h1>
-          <p className="section-copy">Dispatch deliveries, watch payment state, and keep the next handoff visible.</p>
+          <h1>{overview.currentOrgName}</h1>
+          <p className="section-copy">Dispatch deliveries, review tracking, and move jobs through payment authorization with real org access.</p>
         </div>
         <nav className="app-nav" aria-label="App navigation">
           <Link className={props.view === "home" ? "app-nav-link active" : "app-nav-link"} href="/app">
@@ -296,61 +263,35 @@ export function ProductShell(props: ProductShellProps) {
       <section className="app-grid">
         <aside className="app-sidebar">
           <div className="app-panel sidebar-card">
-            <p className="eyebrow">Workspace</p>
-            <h2>{profile.contactName}</h2>
-            <p>{profile.email}</p>
-            <p>{profile.operatingCity}</p>
-            <div className="mode-switch">
-              <button
-                className={`mode-chip ${appMode === "staged" ? "mode-chip-active" : ""}`}
-                onClick={() => setAppMode("staged")}
-                type="button"
-              >
-                Staged mode
-              </button>
-              <button
-                className={`mode-chip ${appMode === "live" ? "mode-chip-active" : ""}`}
-                disabled={!profile.authToken}
-                onClick={() => setAppMode("live")}
-                type="button"
-              >
-                Live API mode
-              </button>
-            </div>
+            <p className="eyebrow">Authenticated operator</p>
+            <h2>{session.context.displayName}</h2>
+            <p>{session.context.email}</p>
+            <p>{session.context.currentOrg.contactPhone ?? "Phone not set"}</p>
+            <p>{session.context.currentOrg.city ?? "City not set"}</p>
             <p className="support-note">
-              Staged mode is fully usable without auth. Live mode calls the real quote, job, tracking, and payment endpoints with your staging token.
+              Org-backed access is active. Quotes, jobs, tracking, and payment reads are now coming from the real API using the stored session.
             </p>
+            <button className="button button-secondary button-block" onClick={handleSignOut} type="button">
+              Sign Out
+            </button>
           </div>
 
           <div className="app-panel sidebar-card">
-            <p className="eyebrow">Live API settings</p>
+            <p className="eyebrow">Org summary</p>
             <label>
-              <span>API base URL</span>
-              <input
-                onChange={(event) => updateProfileField("apiBaseUrl", event.target.value)}
-                value={profile.apiBaseUrl}
-              />
+              <span>Organization</span>
+              <input readOnly value={session.context.currentOrg.name} />
             </label>
             <label>
-              <span>Bearer token</span>
-              <textarea
-                onChange={(event) => updateProfileField("authToken", event.target.value)}
-                rows={4}
-                value={profile.authToken}
-              />
+              <span>Contact email</span>
+              <input readOnly value={session.context.currentOrg.contactEmail ?? session.context.email} />
             </label>
-            <div className="form-grid-two compact-grid">
-              <label>
-                <span>Org ID</span>
-                <input onChange={(event) => updateProfileField("orgId", event.target.value)} value={profile.orgId} />
-              </label>
-              <label>
-                <span>Consumer ID</span>
-                <input onChange={(event) => updateProfileField("consumerId", event.target.value)} value={profile.consumerId} />
-              </label>
-            </div>
-            <button className="button button-secondary button-block" onClick={() => void refreshLiveJobs(profile)} type="button">
-              Refresh Live Jobs
+            <label>
+              <span>Membership role</span>
+              <input readOnly value={session.context.memberships[0]?.membership.role ?? "BUSINESS_OPERATOR"} />
+            </label>
+            <button className="button button-secondary button-block" onClick={() => void refreshContextAndJobs(session)} type="button">
+              Refresh Workspace
             </button>
           </div>
         </aside>
@@ -358,14 +299,14 @@ export function ProductShell(props: ProductShellProps) {
         <div className="app-main">
           <section className="metrics-grid">
             <article className="app-panel metric-card">
-              <span className="metric-label">Connection mode</span>
-              <strong>{appMode === "live" ? "Live API" : "Staged shell"}</strong>
-              <p>{appMode === "live" ? "Using backend quote, job, tracking, and payment reads." : "Using local staged state until auth is connected."}</p>
+              <span className="metric-label">Business org</span>
+              <strong>{overview.currentOrgName}</strong>
+              <p>Authenticated dashboard access is scoped to the onboarded operator membership.</p>
             </article>
             <article className="app-panel metric-card">
               <span className="metric-label">Jobs in workspace</span>
               <strong>{overview.totalJobs}</strong>
-              <p>{overview.liveJobs} live-backed jobs, {overview.totalJobs - overview.liveJobs} staged jobs.</p>
+              <p>Org-scoped jobs loaded from the backend business jobs endpoint.</p>
             </article>
             <article className="app-panel metric-card">
               <span className="metric-label">Payment readiness</span>
@@ -384,55 +325,31 @@ export function ProductShell(props: ProductShellProps) {
                     <p className="eyebrow">Create delivery</p>
                     <h2>Quote, request, and move into payment readiness.</h2>
                   </div>
-                  <span className={`status-badge ${appMode === "live" ? "status-positive" : "status-neutral"}`}>
-                    {appMode === "live" ? "Live backend enabled" : "Staged local flow"}
-                  </span>
+                  <span className="status-badge status-positive">Real org-backed flow</span>
                 </div>
                 <form className="compose-form" onSubmit={handleCreateDelivery}>
                   <div className="form-grid-two">
                     <label>
                       <span>Pickup address</span>
-                      <input
-                        onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupAddress: event.target.value }))}
-                        value={deliveryForm.pickupAddress}
-                      />
+                      <input onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupAddress: event.target.value }))} value={deliveryForm.pickupAddress} />
                     </label>
                     <label>
                       <span>Drop address</span>
-                      <input
-                        onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffAddress: event.target.value }))}
-                        value={deliveryForm.dropoffAddress}
-                      />
+                      <input onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffAddress: event.target.value }))} value={deliveryForm.dropoffAddress} />
                     </label>
                   </div>
                   <div className="form-grid-three">
                     <label>
                       <span>Distance (miles)</span>
-                      <input
-                        max="12"
-                        min="0.1"
-                        onChange={(event) => setDeliveryForm((current) => ({ ...current, distanceMiles: Number(event.target.value) }))}
-                        step="0.1"
-                        type="number"
-                        value={deliveryForm.distanceMiles}
-                      />
+                      <input max="12" min="0.1" onChange={(event) => setDeliveryForm((current) => ({ ...current, distanceMiles: Number(event.target.value) }))} step="0.1" type="number" value={deliveryForm.distanceMiles} />
                     </label>
                     <label>
                       <span>ETA (minutes)</span>
-                      <input
-                        min="1"
-                        onChange={(event) => setDeliveryForm((current) => ({ ...current, etaMinutes: Number(event.target.value) }))}
-                        step="1"
-                        type="number"
-                        value={deliveryForm.etaMinutes}
-                      />
+                      <input min="1" onChange={(event) => setDeliveryForm((current) => ({ ...current, etaMinutes: Number(event.target.value) }))} step="1" type="number" value={deliveryForm.etaMinutes} />
                     </label>
                     <label>
                       <span>Vehicle</span>
-                      <select
-                        onChange={(event) => setDeliveryForm((current) => ({ ...current, vehicleType: event.target.value as VehicleType }))}
-                        value={deliveryForm.vehicleType}
-                      >
+                      <select onChange={(event) => setDeliveryForm((current) => ({ ...current, vehicleType: event.target.value as VehicleType }))} value={deliveryForm.vehicleType}>
                         <option value="BIKE">Bike</option>
                         <option value="CAR">Car</option>
                       </select>
@@ -442,35 +359,15 @@ export function ProductShell(props: ProductShellProps) {
                     <label>
                       <span>Pickup coordinates</span>
                       <div className="coordinate-grid">
-                        <input
-                          onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupLatitude: Number(event.target.value) }))}
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.pickupLatitude}
-                        />
-                        <input
-                          onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupLongitude: Number(event.target.value) }))}
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.pickupLongitude}
-                        />
+                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupLatitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.pickupLatitude} />
+                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupLongitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.pickupLongitude} />
                       </div>
                     </label>
                     <label>
                       <span>Drop coordinates</span>
                       <div className="coordinate-grid">
-                        <input
-                          onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffLatitude: Number(event.target.value) }))}
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.dropoffLatitude}
-                        />
-                        <input
-                          onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffLongitude: Number(event.target.value) }))}
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.dropoffLongitude}
-                        />
+                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffLatitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.dropoffLatitude} />
+                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffLongitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.dropoffLongitude} />
                       </div>
                     </label>
                   </div>
@@ -478,11 +375,7 @@ export function ProductShell(props: ProductShellProps) {
                     <button className="button button-primary" disabled={submitting} type="submit">
                       {submitting ? "Creating delivery..." : "Create Delivery Request"}
                     </button>
-                    <p className="support-note">
-                      {appMode === "live"
-                        ? "Live mode calls quote, job create, payment read, and tracking endpoints."
-                        : "Staged mode mirrors the delivery and payment flow locally until auth is connected."}
-                    </p>
+                    <p className="support-note">This form now uses the onboarded org context automatically. No bearer token, org ID, or consumer ID fields are required in the UI.</p>
                   </div>
                 </form>
               </div>
@@ -500,7 +393,7 @@ export function ProductShell(props: ProductShellProps) {
                 {recentJobs.length === 0 ? (
                   <div className="empty-state">
                     <strong>No deliveries yet.</strong>
-                    <p>Create the first request above to generate quote, tracking, and payment state.</p>
+                    <p>Create the first request above to generate a live quote, job, tracking, and payment record.</p>
                   </div>
                 ) : (
                   <div className="jobs-list">
@@ -556,11 +449,7 @@ export function ProductShell(props: ProductShellProps) {
                       </div>
                       <div>
                         <dt>Latest coordinates</dt>
-                        <dd>
-                          {job.tracking.latestLocation
-                            ? `${job.tracking.latestLocation.latitude.toFixed(4)}, ${job.tracking.latestLocation.longitude.toFixed(4)}`
-                            : "No live coordinates yet"}
-                        </dd>
+                        <dd>{job.tracking.latestLocation ? `${job.tracking.latestLocation.latitude.toFixed(4)}, ${job.tracking.latestLocation.longitude.toFixed(4)}` : "No live coordinates yet"}</dd>
                       </div>
                     </dl>
                     <div className="timeline-list">
@@ -600,24 +489,13 @@ export function ProductShell(props: ProductShellProps) {
                     </dl>
                     <label>
                       <span>Payment method ID</span>
-                      <input
-                        onChange={(event) => setPaymentMethodId(event.target.value)}
-                        placeholder="pm_card_visa"
-                        value={paymentMethodId}
-                      />
+                      <input onChange={(event) => setPaymentMethodId(event.target.value)} placeholder="pm_card_visa" value={paymentMethodId} />
                     </label>
                     <div className="compose-actions">
-                      <button
-                        className="button button-primary"
-                        disabled={paymentSubmitting || job.payment.status === "AUTHORIZED" || job.payment.status === "CAPTURED"}
-                        onClick={() => void handleAuthorizePayment(job)}
-                        type="button"
-                      >
+                      <button className="button button-primary" disabled={paymentSubmitting || job.payment.status === "AUTHORIZED" || job.payment.status === "CAPTURED"} onClick={() => void handleAuthorizePayment(job)} type="button">
                         {paymentSubmitting ? "Authorizing..." : "Authorize Payment"}
                       </button>
-                      <p className="support-note">
-                        The button calls the backend payment authorization endpoint in live mode. In staged mode it advances the local payment state so the UI remains testable.
-                      </p>
+                      <p className="support-note">This button calls the real backend payment authorization endpoint using the authenticated business session.</p>
                     </div>
                     {job.payment.lastError ? <p className="form-error">{job.payment.lastError}</p> : null}
                   </article>

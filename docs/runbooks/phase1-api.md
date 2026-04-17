@@ -19,6 +19,38 @@ The script prints:
 - `DRIVER_ID`
 - `CONSUMER_USER_ID`
 
+## Business onboarding flow
+
+### Create or resume business org context
+
+Read current business context:
+
+```bash
+curl "$API_BASE_URL/v1/business/context" \
+  -H "authorization: Bearer $BUSINESS_OPERATOR_JWT"
+```
+
+Create the business org and operator membership for the authenticated user:
+
+```bash
+curl -X POST "$API_BASE_URL/v1/business/orgs" \
+  -H "authorization: Bearer $BUSINESS_OPERATOR_JWT" \
+  -H "content-type: application/json" \
+  -H "x-idempotency-key: business-org-001" \
+  -d '{
+    "businessName": "ShipWright Retail Ops",
+    "contactName": "Busayo Adewale",
+    "email": "staging-business-operator@shipwright.local",
+    "phone": "+44 20 7946 0958",
+    "city": "London"
+  }'
+```
+
+Expected result:
+- `currentOrg` is populated
+- `memberships[0].membership.role = BUSINESS_OPERATOR`
+- subsequent business job reads use that org-backed access automatically in the web app
+
 ## Core write flow
 
 ### Create quote
@@ -47,13 +79,15 @@ curl -X POST "$API_BASE_URL/v1/quotes" \
   - creates internal payment record
   - enqueues Stripe payment-intent creation if Stripe is configured
 
+For an onboarded business operator, `consumerId` is optional and defaults to the authenticated actor.
+
 ```bash
 curl -X POST "$API_BASE_URL/v1/jobs" \
-  -H "authorization: Bearer $CONSUMER_JWT" \
+  -H "authorization: Bearer $BUSINESS_OPERATOR_JWT" \
   -H "content-type: application/json" \
   -H "x-idempotency-key: job-req-001" \
   -d '{
-    "consumerId": "'$CONSUMER_USER_ID'",
+    "orgId": "'$ORG_ID'",
     "quoteId": "'$QUOTE_ID'",
     "pickupAddress": "101 Main St, London",
     "dropoffAddress": "202 Oak Ave, London",

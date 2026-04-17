@@ -91,6 +91,66 @@ describe("JobsService", () => {
     expect(payments.createPaymentForJob).toHaveBeenCalledOnce();
   });
 
+  it("defaults business-created jobs to the authenticated user when consumerId is omitted", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: QUOTE_ID,
+            org_id: "f6c5c290-5841-4b2d-b16c-cda4d0d3dfb7",
+            created_by_user_id: ACTOR_ID,
+            distance_miles: "4.25",
+            eta_minutes: 18,
+            vehicle_type: "BIKE",
+            customer_total_cents: 1600,
+            driver_payout_gross_cents: 980,
+            platform_fee_cents: 620,
+            pricing_version: "phase1_test_v1",
+            premium_distance_flag: false
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ role: "BUSINESS_OPERATOR" }] });
+
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [createJobRow({ org_id: "f6c5c290-5841-4b2d-b16c-cda4d0d3dfb7" })] })
+      .mockResolvedValue({ rowCount: 1, rows: [] });
+    const payments = {
+      createPaymentForJob: vi.fn().mockResolvedValue(undefined),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+    const pg = {
+      query,
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    await service.createJobRequest(
+      {
+        orgId: "f6c5c290-5841-4b2d-b16c-cda4d0d3dfb7",
+        quoteId: QUOTE_ID,
+        pickupAddress: "101 Main St",
+        dropoffAddress: "202 Oak Ave",
+        pickupCoordinates: { latitude: 51.5, longitude: -0.1 },
+        dropoffCoordinates: { latitude: 51.51, longitude: -0.09 }
+      },
+      ACTOR_ID,
+      "idem-job-business-1"
+    );
+
+    expect(payments.createPaymentForJob).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ consumerId: ACTOR_ID })
+    );
+  });
+
   it("returns cached idempotent responses on retry", async () => {
     const pg = {
       query: vi.fn().mockResolvedValue({

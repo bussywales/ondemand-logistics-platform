@@ -131,6 +131,7 @@ export class JobsService {
     const payload = parsed.data;
     const quote = await this.loadQuote(payload.quoteId);
     const orgId = payload.orgId ?? quote.org_id;
+    const consumerId = payload.consumerId ?? userId;
 
     if (quote.org_id !== orgId) {
       throw new ConflictException("quote_org_mismatch");
@@ -138,7 +139,10 @@ export class JobsService {
 
     if (orgId) {
       await this.assertOrgOperator(orgId, userId);
-    } else if (payload.consumerId !== userId || quote.created_by_user_id !== userId) {
+      if (payload.consumerId && payload.consumerId !== userId) {
+        throw new ForbiddenException("business_job_consumer_must_match_actor");
+      }
+    } else if (consumerId !== userId || quote.created_by_user_id !== userId) {
       throw new ForbiddenException("consumer_job_must_be_self_created");
     }
 
@@ -175,13 +179,13 @@ export class JobsService {
                premium_distance_flag,
                dispatch_requested_at
              ) values (
-               $1, $2, 'REQUESTED', $3, $4, $5, $6, $7, $8,
+              $1, $2, 'REQUESTED', $3, $4, $5, $6, $7, $8,
                $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, now()
              )
              returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
             [
               orgId ?? null,
-              payload.consumerId,
+              consumerId,
               payload.pickupAddress,
               payload.dropoffAddress,
               payload.pickupCoordinates.latitude,
@@ -223,7 +227,7 @@ export class JobsService {
             action: "job_requested",
             metadata: {
               quoteId: quote.id,
-              consumerId: payload.consumerId,
+              consumerId,
               vehicleRequired: quote.vehicle_type
             }
           });
@@ -251,7 +255,7 @@ export class JobsService {
 
           await this.payments.createPaymentForJob(client, {
             jobId: job.id,
-            consumerId: payload.consumerId,
+            consumerId,
             customerTotalCents: job.customer_total_cents,
             platformFeeCents: job.platform_fee_cents,
             payoutGrossCents: job.driver_payout_gross_cents,

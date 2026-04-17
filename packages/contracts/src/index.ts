@@ -100,7 +100,7 @@ export type QuoteDto = z.infer<typeof QuoteSchema>;
 
 export const CreateJobRequestSchema = z.object({
   orgId: z.string().uuid().nullable().optional(),
-  consumerId: z.string().uuid(),
+  consumerId: z.string().uuid().optional(),
   quoteId: z.string().uuid(),
   pickupAddress: z.string().min(3),
   dropoffAddress: z.string().min(3),
@@ -269,6 +269,52 @@ export const CancelJobSchema = z.object({
   settlementNote: z.string().min(3).max(500).nullable().optional()
 });
 export type CancelJobInput = z.infer<typeof CancelJobSchema>;
+
+export const CreateBusinessOrgSchema = z.object({
+  businessName: z.string().min(2).max(160),
+  contactName: z.string().min(2).max(160),
+  email: z.string().email(),
+  phone: z.string().min(7).max(32),
+  city: z.string().min(2).max(120)
+});
+export type CreateBusinessOrgInput = z.infer<typeof CreateBusinessOrgSchema>;
+
+export const OrgSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(2),
+  contactName: z.string().nullable(),
+  contactEmail: z.string().nullable(),
+  contactPhone: z.string().nullable(),
+  city: z.string().nullable(),
+  createdByUserId: z.string().uuid(),
+  createdAt: IsoDateTimeSchema
+});
+export type OrgSummaryDto = z.infer<typeof OrgSummarySchema>;
+
+export const OrgMembershipSummarySchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  userId: z.string().uuid(),
+  role: OrgRoleSchema,
+  isActive: z.boolean(),
+  createdAt: IsoDateTimeSchema
+});
+export type OrgMembershipSummaryDto = z.infer<typeof OrgMembershipSummarySchema>;
+
+export const BusinessContextSchema = z.object({
+  userId: z.string().uuid(),
+  email: z.string().email(),
+  displayName: z.string().min(2),
+  onboarded: z.boolean(),
+  currentOrg: OrgSummarySchema.nullable(),
+  memberships: z.array(
+    z.object({
+      membership: OrgMembershipSummarySchema,
+      org: OrgSummarySchema
+    })
+  )
+});
+export type BusinessContextDto = z.infer<typeof BusinessContextSchema>;
 
 export const PaymentProviderSchema = z.enum(["stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;

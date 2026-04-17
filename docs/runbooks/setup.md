@@ -64,6 +64,13 @@
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
+## 2.1) Business onboarding prerequisites
+
+- Browser onboarding uses Supabase email/password auth from the web app.
+- The frontend then calls the API with the issued bearer token to create the business org and operator membership.
+- For staging, ensure the Supabase project allows email/password signups for test users.
+- If you want repeatable seeded staging access instead of ad hoc signups, run the fixture script below.
+
 ## 3) Auth and service-role boundaries
 
 - API verifies Supabase JWTs against `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
@@ -113,6 +120,25 @@ The fixture script creates or reuses:
 - `staging-consumer@shipwright.local`
 
 It prints current user ids, the seeded driver id, the seeded org id, and current bearer tokens for sample curls.
+
+### Create a real staging business account manually
+
+1. Open `/get-started` in the deployed web app.
+2. Choose `Business`.
+3. Use `Create account` with:
+   - business name
+   - contact name
+   - email
+   - password
+   - phone
+   - city
+4. The web app will:
+   - create or sign in the Supabase auth user
+   - call `POST /v1/business/orgs`
+   - store the returned business context locally
+   - route into `/app`
+
+If the account already exists, switch to `Sign in`. If the account is authenticated but not yet onboarded, the same form will create the org on the next submit.
 
 ## 6) Stripe webhook workflow
 

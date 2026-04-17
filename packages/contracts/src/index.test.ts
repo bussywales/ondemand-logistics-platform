@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  BusinessContextSchema,
   CancelJobSchema,
+  CreateBusinessOrgSchema,
   CreateJobRequestSchema,
   CreateProofOfDeliverySchema,
   CreateQuoteSchema,
@@ -49,6 +51,76 @@ describe("CreateJobRequestSchema", () => {
       dropoffAddress: "202 Oak Ave",
       pickupCoordinates: { latitude: 51.5, longitude: -0.1 },
       dropoffCoordinates: { latitude: 51.51, longitude: -0.09 }
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("allows business-created jobs without an explicit consumer id", () => {
+    const parsed = CreateJobRequestSchema.safeParse({
+      orgId: "6e1f457f-383f-4458-99ca-e3429f2d4b4b",
+      quoteId: "38db8fef-ef0b-45ff-a88c-c5c8f4ca4766",
+      pickupAddress: "101 Main St",
+      dropoffAddress: "202 Oak Ave",
+      pickupCoordinates: { latitude: 51.5, longitude: -0.1 },
+      dropoffCoordinates: { latitude: 51.51, longitude: -0.09 }
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+});
+
+describe("Business onboarding schemas", () => {
+  it("parses business org creation payloads", () => {
+    const parsed = CreateBusinessOrgSchema.safeParse({
+      businessName: "ShipWright Retail Ops",
+      contactName: "Busayo Adewale",
+      email: "ops@example.com",
+      phone: "+44 20 7946 0958",
+      city: "London"
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses business context payloads", () => {
+    const parsed = BusinessContextSchema.safeParse({
+      userId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      email: "ops@example.com",
+      displayName: "Busayo Adewale",
+      onboarded: true,
+      currentOrg: {
+        id: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+        name: "ShipWright Retail Ops",
+        contactName: "Busayo Adewale",
+        contactEmail: "ops@example.com",
+        contactPhone: "+44 20 7946 0958",
+        city: "London",
+        createdByUserId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        createdAt: new Date().toISOString()
+      },
+      memberships: [
+        {
+          membership: {
+            id: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+            orgId: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+            userId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+            role: "BUSINESS_OPERATOR",
+            isActive: true,
+            createdAt: new Date().toISOString()
+          },
+          org: {
+            id: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+            name: "ShipWright Retail Ops",
+            contactName: "Busayo Adewale",
+            contactEmail: "ops@example.com",
+            contactPhone: "+44 20 7946 0958",
+            city: "London",
+            createdByUserId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+            createdAt: new Date().toISOString()
+          }
+        }
+      ]
     });
 
     expect(parsed.success).toBe(true);

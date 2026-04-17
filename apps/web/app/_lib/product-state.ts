@@ -1,5 +1,4 @@
 export type VehicleType = "BIKE" | "CAR";
-export type AppMode = "staged" | "live";
 export type Role = "business" | "driver" | "consumer";
 export type PaymentStatus =
   | "REQUIRES_PAYMENT_METHOD"
@@ -22,17 +21,42 @@ export type JobStatus =
   | "IN_PROGRESS"
   | "COMPLETED";
 
-export type BusinessProfile = {
-  role: "business";
-  businessName: string;
-  contactName: string;
-  email: string;
-  phone: string;
-  operatingCity: string;
-  apiBaseUrl: string;
-  authToken: string;
+export type OrgSummary = {
+  id: string;
+  name: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  city: string | null;
+  createdByUserId: string;
+  createdAt: string;
+};
+
+export type OrgMembershipSummary = {
+  id: string;
   orgId: string;
-  consumerId: string;
+  userId: string;
+  role: "BUSINESS_OPERATOR" | "ADMIN" | "CONSUMER" | "DRIVER";
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type BusinessContext = {
+  userId: string;
+  email: string;
+  displayName: string;
+  onboarded: boolean;
+  currentOrg: OrgSummary | null;
+  memberships: Array<{
+    membership: OrgMembershipSummary;
+    org: OrgSummary;
+  }>;
+};
+
+export type BusinessSession = {
+  accessToken: string;
+  refreshToken: string | null;
+  context: BusinessContext;
 };
 
 export type DriverProfile = {
@@ -41,8 +65,6 @@ export type DriverProfile = {
   phone: string;
   vehicleType: VehicleType;
 };
-
-export type OnboardingProfile = BusinessProfile | DriverProfile | null;
 
 export type DeliveryFormInput = {
   pickupAddress: string;
@@ -85,7 +107,6 @@ export type PaymentSummary = {
 
 export type AppJob = {
   id: string;
-  mode: AppMode;
   quoteId: string | null;
   status: JobStatus;
   pickupAddress: string;
@@ -103,11 +124,8 @@ export type AppJob = {
   payment: PaymentSummary;
 };
 
-const BUSINESS_PROFILE_KEY = "shipwright.business-profile.v1";
+const BUSINESS_SESSION_KEY = "shipwright.business-session.v2";
 const DRIVER_PROFILE_KEY = "shipwright.driver-profile.v1";
-const JOBS_KEY = "shipwright.jobs.v1";
-
-const defaultApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
 
 function hasWindow() {
   return typeof window !== "undefined";
@@ -134,6 +152,14 @@ function writeStorage<T>(key: string, value: T) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+export function clearStorage(key: string) {
+  if (!hasWindow()) {
+    return;
+  }
+
+  window.localStorage.removeItem(key);
+}
+
 export function createId(prefix: string) {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -157,26 +183,17 @@ export function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-export function readBusinessProfile(): BusinessProfile | null {
-  return readStorage<BusinessProfile | null>(BUSINESS_PROFILE_KEY, null);
+export function readBusinessSession(): BusinessSession | null {
+  return readStorage<BusinessSession | null>(BUSINESS_SESSION_KEY, null);
 }
 
-export function saveBusinessProfile(input: Omit<BusinessProfile, "role"> & { role?: "business" }) {
-  const profile: BusinessProfile = {
-    role: "business",
-    apiBaseUrl: input.apiBaseUrl?.trim() || defaultApiBaseUrl,
-    authToken: input.authToken?.trim() || "",
-    orgId: input.orgId?.trim() || "",
-    consumerId: input.consumerId?.trim() || "",
-    businessName: input.businessName.trim(),
-    contactName: input.contactName.trim(),
-    email: input.email.trim(),
-    phone: input.phone.trim(),
-    operatingCity: input.operatingCity.trim()
-  };
+export function saveBusinessSession(session: BusinessSession) {
+  writeStorage(BUSINESS_SESSION_KEY, session);
+  return session;
+}
 
-  writeStorage(BUSINESS_PROFILE_KEY, profile);
-  return profile;
+export function clearBusinessSession() {
+  clearStorage(BUSINESS_SESSION_KEY);
 }
 
 export function readDriverProfile(): DriverProfile | null {
@@ -193,136 +210,4 @@ export function saveDriverProfile(input: Omit<DriverProfile, "role"> & { role?: 
 
   writeStorage(DRIVER_PROFILE_KEY, profile);
   return profile;
-}
-
-export function readJobs(): AppJob[] {
-  return readStorage<AppJob[]>(JOBS_KEY, []);
-}
-
-export function saveJobs(jobs: AppJob[]) {
-  writeStorage(JOBS_KEY, jobs);
-}
-
-function inferTimeOfDay() {
-  const hour = new Date().getHours();
-  if (hour < 11) return "BREAKFAST";
-  if (hour < 14) return "LUNCH";
-  if (hour < 18) return "AFTERNOON";
-  if (hour < 23) return "DINNER";
-  return "OVERNIGHT";
-}
-
-export function buildLocalQuote(input: DeliveryFormInput) {
-  if (input.distanceMiles > 12) {
-    throw new Error("Distance exceeds the 12 mile service cap.");
-  }
-
-  const premiumDistanceFlag = input.distanceMiles > 8 && input.distanceMiles <= 12;
-  const baseCents = input.vehicleType === "CAR" ? 950 : 700;
-  const distanceComponent = Math.round(input.distanceMiles * (input.vehicleType === "CAR" ? 165 : 145));
-  const etaComponent = Math.round(input.etaMinutes * 18);
-  const premiumComponent = premiumDistanceFlag ? 350 : 0;
-  const customerTotalCents = baseCents + distanceComponent + etaComponent + premiumComponent;
-  const driverPayoutGrossCents = Math.round(customerTotalCents * 0.68);
-  const platformFeeCents = customerTotalCents - driverPayoutGrossCents;
-
-  return {
-    id: createId("quote"),
-    timeOfDay: inferTimeOfDay(),
-    pricingVersion: "web-staged-v1",
-    premiumDistanceFlag,
-    customerTotalCents,
-    driverPayoutGrossCents,
-    platformFeeCents
-  };
-}
-
-export function createLocalJob(input: DeliveryFormInput): AppJob {
-  const quote = buildLocalQuote(input);
-  const createdAt = new Date().toISOString();
-
-  return {
-    id: createId("job"),
-    mode: "staged",
-    quoteId: quote.id,
-    status: "REQUESTED",
-    pickupAddress: input.pickupAddress.trim(),
-    dropoffAddress: input.dropoffAddress.trim(),
-    distanceMiles: input.distanceMiles,
-    etaMinutes: input.etaMinutes,
-    vehicleRequired: input.vehicleType,
-    premiumDistanceFlag: quote.premiumDistanceFlag,
-    customerTotalCents: quote.customerTotalCents,
-    driverPayoutGrossCents: quote.driverPayoutGrossCents,
-    platformFeeCents: quote.platformFeeCents,
-    pricingVersion: quote.pricingVersion,
-    createdAt,
-    tracking: {
-      latestLocation: null,
-      assignedDriverName: null,
-      timeline: [
-        {
-          id: createId("timeline"),
-          eventType: "JOB_REQUESTED",
-          createdAt,
-          summary: "Delivery request created in staged mode."
-        }
-      ]
-    },
-    payment: {
-      id: createId("payment"),
-      status: "REQUIRES_PAYMENT_METHOD",
-      customerTotalCents: quote.customerTotalCents,
-      platformFeeCents: quote.platformFeeCents,
-      payoutGrossCents: quote.driverPayoutGrossCents,
-      amountAuthorizedCents: 0,
-      amountCapturedCents: 0,
-      amountRefundedCents: 0,
-      currency: "GBP",
-      clientSecret: null,
-      lastError: null
-    }
-  };
-}
-
-export function authorizeLocalJobPayment(jobId: string) {
-  const jobs = readJobs();
-  const nextJobs = jobs.map((job) => {
-    if (job.id !== jobId) {
-      return job;
-    }
-
-    return {
-      ...job,
-      payment: {
-        ...job.payment,
-        status: "AUTHORIZED" as const,
-        amountAuthorizedCents: job.customerTotalCents,
-        lastError: null
-      },
-      tracking: {
-        ...job.tracking,
-        timeline: [
-          {
-            id: createId("timeline"),
-            eventType: "PAYMENT_AUTHORIZED",
-            createdAt: new Date().toISOString(),
-            summary: "Payment authorized in staged mode."
-          },
-          ...job.tracking.timeline
-        ]
-      }
-    };
-  });
-
-  saveJobs(nextJobs);
-  return nextJobs.find((job) => job.id === jobId) ?? null;
-}
-
-export function upsertJob(job: AppJob) {
-  const jobs = readJobs();
-  const filtered = jobs.filter((item) => item.id !== job.id);
-  const nextJobs = [job, ...filtered].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-  saveJobs(nextJobs);
-  return nextJobs;
 }

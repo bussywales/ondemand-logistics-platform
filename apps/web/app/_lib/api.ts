@@ -1,7 +1,5 @@
-import type { AppJob, BusinessProfile, PaymentSummary, TimelineEvent, TrackingSummary, VehicleType } from "./product-state";
+import type { AppJob, BusinessSession, PaymentSummary, TimelineEvent, TrackingSummary, VehicleType } from "./product-state";
 import { createId } from "./product-state";
-
-type ApiConfig = Pick<BusinessProfile, "apiBaseUrl" | "authToken" | "orgId" | "consumerId">;
 
 type QuoteResponse = {
   id: string;
@@ -27,18 +25,13 @@ type JobResponse = {
   platformFeeCents: number;
   pricingVersion: string;
   createdAt: string;
-  assignedDriverId: string | null;
 };
 
 type JobsPageResponse = {
   items: JobResponse[];
-  page: number;
-  limit: number;
-  hasMore: boolean;
 };
 
 type TrackingResponse = {
-  status: AppJob["status"];
   etaMinutes: number;
   premiumDistanceFlag: boolean;
   assignedDriver: {
@@ -68,28 +61,18 @@ type PaymentResponse = {
   };
 };
 
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
+
 function normalizeBaseUrl(value: string) {
   return value.trim().replace(/\/$/, "");
 }
 
-function ensureLiveConfig(config: ApiConfig) {
-  if (!config.authToken.trim()) {
-    throw new Error("Live mode requires a bearer token.");
-  }
-
-  if (!config.consumerId.trim()) {
-    throw new Error("Live mode requires a consumer ID.");
-  }
-}
-
-async function apiFetch<T>(config: ApiConfig, path: string, init?: RequestInit): Promise<T> {
-  ensureLiveConfig(config);
-
-  const response = await fetch(`${normalizeBaseUrl(config.apiBaseUrl)}${path}`, {
+async function apiFetch<T>(session: BusinessSession, path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${normalizeBaseUrl(apiBaseUrl)}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${config.authToken.trim()}`,
+      authorization: `Bearer ${session.accessToken}`,
       ...(init?.headers ?? {})
     },
     cache: "no-store"
@@ -150,7 +133,6 @@ function toPaymentSummary(job: JobResponse, payment?: PaymentResponse | null): P
 function toAppJob(job: JobResponse, tracking?: TrackingResponse | null, payment?: PaymentResponse | null): AppJob {
   return {
     id: job.id,
-    mode: "live",
     quoteId: job.quoteId,
     status: job.status,
     pickupAddress: job.pickupAddress,
@@ -169,7 +151,7 @@ function toAppJob(job: JobResponse, tracking?: TrackingResponse | null, payment?
   };
 }
 
-export async function createLiveJob(config: ApiConfig, input: {
+export async function createLiveJob(session: BusinessSession, input: {
   pickupAddress: string;
   dropoffAddress: string;
   distanceMiles: number;
@@ -178,14 +160,19 @@ export async function createLiveJob(config: ApiConfig, input: {
   pickupCoordinates: { latitude: number; longitude: number };
   dropoffCoordinates: { latitude: number; longitude: number };
 }) {
+  const orgId = session.context.currentOrg?.id;
+  if (!orgId) {
+    throw new Error("Create a business org before creating jobs.");
+  }
+
   const idempotencyKey = createId("idem");
-  const quote = await apiFetch<QuoteResponse>(config, "/v1/quotes", {
+  const quote = await apiFetch<QuoteResponse>(session, "/v1/quotes", {
     method: "POST",
     headers: {
       "x-idempotency-key": `${idempotencyKey}-quote`
     },
     body: JSON.stringify({
-      orgId: config.orgId.trim() || null,
+      orgId,
       distanceMiles: input.distanceMiles,
       etaMinutes: input.etaMinutes,
       vehicleType: input.vehicleType,
@@ -195,14 +182,13 @@ export async function createLiveJob(config: ApiConfig, input: {
     })
   });
 
-  const job = await apiFetch<JobResponse>(config, "/v1/jobs", {
+  const job = await apiFetch<JobResponse>(session, "/v1/jobs", {
     method: "POST",
     headers: {
       "x-idempotency-key": `${idempotencyKey}-job`
     },
     body: JSON.stringify({
-      orgId: config.orgId.trim() || null,
-      consumerId: config.consumerId.trim(),
+      orgId,
       quoteId: quote.id,
       pickupAddress: input.pickupAddress,
       dropoffAddress: input.dropoffAddress,
@@ -211,39 +197,39 @@ export async function createLiveJob(config: ApiConfig, input: {
     })
   });
 
-  const payment = await fetchPayment(config, job.id).catch(() => null);
+  const payment = await fetchPayment(session, job.id).catch(() => null);
   return toAppJob(job, null, payment ? { payment } : null);
 }
 
-export async function listLiveJobs(config: ApiConfig) {
-  const page = await apiFetch<JobsPageResponse>(config, "/v1/business/jobs?page=1&limit=20", {
+export async function listLiveJobs(session: BusinessSession) {
+  const page = await apiFetch<JobsPageResponse>(session, "/v1/business/jobs?page=1&limit=20", {
     method: "GET"
   });
 
   return page.items.map((job) => toAppJob(job));
 }
 
-export async function getLiveJob(config: ApiConfig, jobId: string) {
+export async function getLiveJob(session: BusinessSession, jobId: string) {
   const [job, tracking, payment] = await Promise.all([
-    apiFetch<JobResponse>(config, `/v1/jobs/${jobId}`, { method: "GET" }),
-    fetchTracking(config, jobId).catch(() => null),
-    fetchPayment(config, jobId).catch(() => null)
+    apiFetch<JobResponse>(session, `/v1/jobs/${jobId}`, { method: "GET" }),
+    fetchTracking(session, jobId).catch(() => null),
+    fetchPayment(session, jobId).catch(() => null)
   ]);
 
   return toAppJob(job, tracking, payment ? { payment } : null);
 }
 
-export async function fetchTracking(config: ApiConfig, jobId: string) {
-  return apiFetch<TrackingResponse>(config, `/v1/jobs/${jobId}/tracking`, { method: "GET" });
+export async function fetchTracking(session: BusinessSession, jobId: string) {
+  return apiFetch<TrackingResponse>(session, `/v1/jobs/${jobId}/tracking`, { method: "GET" });
 }
 
-export async function fetchPayment(config: ApiConfig, jobId: string) {
-  const payload = await apiFetch<PaymentResponse>(config, `/v1/jobs/${jobId}/payment`, { method: "GET" });
+export async function fetchPayment(session: BusinessSession, jobId: string) {
+  const payload = await apiFetch<PaymentResponse>(session, `/v1/jobs/${jobId}/payment`, { method: "GET" });
   return payload.payment;
 }
 
-export async function authorizePayment(config: ApiConfig, jobId: string, paymentMethodId: string) {
-  const payload = await apiFetch<PaymentResponse>(config, `/v1/jobs/${jobId}/payment/authorize`, {
+export async function authorizePayment(session: BusinessSession, jobId: string, paymentMethodId: string) {
+  const payload = await apiFetch<PaymentResponse>(session, `/v1/jobs/${jobId}/payment/authorize`, {
     method: "POST",
     headers: {
       "x-idempotency-key": `${createId("idem")}-payment`

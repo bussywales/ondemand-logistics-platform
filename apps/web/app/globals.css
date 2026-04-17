@@ -1004,6 +1004,20 @@ h3 {
   margin: 1rem 0;
 }
 
+.auth-mode-switch {
+  margin: 0 0 0.25rem;
+}
+
+.existing-session-callout {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 1rem 1.05rem;
+  border-radius: 18px;
+  border: 1px solid rgba(17, 32, 25, 0.08);
+  background: rgba(247, 251, 248, 0.9);
+}
+
 .mode-chip {
   cursor: pointer;
 }
