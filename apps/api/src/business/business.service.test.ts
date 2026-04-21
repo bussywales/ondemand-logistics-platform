@@ -19,9 +19,48 @@ function createUser() {
 }
 
 describe("BusinessService", () => {
+  it("returns a clean non-onboarded context when the auth user has no org yet", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [
+            { column_name: "contact_name" },
+            { column_name: "contact_email" },
+            { column_name: "contact_phone" },
+            { column_name: "operating_city" }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+    };
+
+    const service = new BusinessService(pg as never);
+    const context = await service.getBusinessContext(createUser());
+
+    expect(context.onboarded).toBe(false);
+    expect(context.currentOrg).toBeNull();
+    expect(context.memberships).toHaveLength(0);
+    expect(context.email).toBe("ops@example.com");
+  });
+
   it("creates an org and operator membership for the authenticated user", async () => {
     const clientQuery = vi
       .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          { column_name: "contact_name" },
+          { column_name: "contact_email" },
+          { column_name: "contact_phone" },
+          { column_name: "operating_city" }
+        ]
+      })
       .mockResolvedValueOnce({
         rowCount: 1,
         rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
@@ -81,6 +120,14 @@ describe("BusinessService", () => {
       query: vi
         .fn()
         .mockResolvedValueOnce({
+          rows: [
+            { column_name: "contact_name" },
+            { column_name: "contact_email" },
+            { column_name: "contact_phone" },
+            { column_name: "operating_city" }
+          ]
+        })
+        .mockResolvedValueOnce({
           rowCount: 1,
           rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
         })
@@ -110,6 +157,31 @@ describe("BusinessService", () => {
 
     expect(context.onboarded).toBe(true);
     expect(context.currentOrg?.name).toBe("ShipWright Retail Ops");
+  });
+
+  it("handles legacy org schemas without contact columns", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: []
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+    };
+
+    const service = new BusinessService(pg as never);
+    const context = await service.getBusinessContext(createUser());
+
+    expect(context.onboarded).toBe(false);
+    expect(context.currentOrg).toBeNull();
+    expect(context.memberships).toHaveLength(0);
   });
 
   it("rejects business org creation when the payload email differs from the authenticated user", async () => {

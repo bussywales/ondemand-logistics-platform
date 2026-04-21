@@ -14,7 +14,7 @@ import {
 } from "@shipwright/contracts";
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import { randomUUID } from "node:crypto";
-import type { PoolClient } from "pg";
+import type { PoolClient, QueryResultRow } from "pg";
 import { PgService } from "../database/pg.service.js";
 import type { AuthenticatedUser } from "../security/types.js";
 
@@ -61,9 +61,14 @@ type ContextRow = {
   org_created_at: string;
 };
 
+type Queryable = {
+  query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<{ rows: T[] }>;
+};
+
 @Injectable()
 export class BusinessService {
   private readonly logger = createLogger({ name: "api-business" });
+  private orgProfileColumnsAvailable: Promise<boolean> | null = null;
 
   constructor(private readonly pg: PgService) {}
 
@@ -90,30 +95,48 @@ export class BusinessService {
         endpoint: "/v1/business/orgs",
         idempotencyKey,
         execute: async (client) => {
+          const hasOrgProfileColumns = await this.hasOrgProfileColumns(client);
           const userRow = await this.upsertUser(client, user, {
             email: parsed.data.email,
             displayName: parsed.data.contactName
           });
 
-          const orgResult = await client.query<OrgRow>(
-            `insert into public.orgs (
-               name,
-               created_by,
-               contact_name,
-               contact_email,
-               contact_phone,
-               operating_city
-             ) values ($1, $2, $3, $4, $5, $6)
-             returning id, name, contact_name, contact_email, contact_phone, operating_city, created_by, created_at`,
-            [
-              parsed.data.businessName,
-              user.id,
-              parsed.data.contactName,
-              parsed.data.email,
-              parsed.data.phone,
-              parsed.data.city
-            ]
-          );
+          const orgResult = hasOrgProfileColumns
+            ? await client.query<OrgRow>(
+                `insert into public.orgs (
+                   name,
+                   created_by,
+                   contact_name,
+                   contact_email,
+                   contact_phone,
+                   operating_city
+                 ) values ($1, $2, $3, $4, $5, $6)
+                 returning id, name, contact_name, contact_email, contact_phone, operating_city, created_by, created_at`,
+                [
+                  parsed.data.businessName,
+                  user.id,
+                  parsed.data.contactName,
+                  parsed.data.email,
+                  parsed.data.phone,
+                  parsed.data.city
+                ]
+              )
+            : await client.query<OrgRow>(
+                `insert into public.orgs (
+                   name,
+                   created_by
+                 ) values ($1, $2)
+                 returning
+                   id,
+                   name,
+                   null::text as contact_name,
+                   null::text as contact_email,
+                   null::text as contact_phone,
+                   null::text as operating_city,
+                   created_by,
+                   created_at`,
+                [parsed.data.businessName, user.id]
+              );
           const org = orgResult.rows[0];
 
           const membershipResult = await client.query<MembershipRow>(
@@ -169,6 +192,7 @@ export class BusinessService {
   }
 
   async getBusinessContext(user: AuthenticatedUser): Promise<BusinessContextDto> {
+    const hasOrgProfileColumns = await this.hasOrgProfileColumns(this.pg);
     const userResult = await this.pg.query<UserRow>(
       `select id, email, display_name
        from public.users
@@ -186,10 +210,17 @@ export class BusinessService {
           m.created_at as membership_created_at,
           o.id as org_id,
           o.name as org_name,
-          o.contact_name as org_contact_name,
-          o.contact_email as org_contact_email,
-          o.contact_phone as org_contact_phone,
-          o.operating_city as org_operating_city,
+          ${
+            hasOrgProfileColumns
+              ? `o.contact_name as org_contact_name,
+                 o.contact_email as org_contact_email,
+                 o.contact_phone as org_contact_phone,
+                 o.operating_city as org_operating_city,`
+              : `null::text as org_contact_name,
+                 null::text as org_contact_email,
+                 null::text as org_contact_phone,
+                 null::text as org_operating_city,`
+          }
           o.created_by as org_created_by,
           o.created_at as org_created_at
        from public.org_memberships m
@@ -231,6 +262,32 @@ export class BusinessService {
           created_at: row.org_created_at
         }
       }))
+    );
+  }
+
+  private hasOrgProfileColumns(queryable: Queryable) {
+    if (!this.orgProfileColumnsAvailable) {
+      this.orgProfileColumnsAvailable = this.readOrgProfileColumns(queryable);
+    }
+
+    return this.orgProfileColumnsAvailable;
+  }
+
+  private async readOrgProfileColumns(queryable: Queryable) {
+    const result = await queryable.query<{ column_name: string }>(
+      `select column_name
+       from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'orgs'
+         and column_name in ('contact_name', 'contact_email', 'contact_phone', 'operating_city')`
+    );
+
+    const columns = new Set(result.rows.map((row) => row.column_name));
+    return (
+      columns.has("contact_name") &&
+      columns.has("contact_email") &&
+      columns.has("contact_phone") &&
+      columns.has("operating_city")
     );
   }
 
