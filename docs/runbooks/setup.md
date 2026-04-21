@@ -43,6 +43,8 @@
   - `SUPABASE_ANON_KEY` for local/staging auth fixture seeding
   - `REDIS_URL`
   - `SUPABASE_JWT_AUDIENCE=authenticated`
+  - `CORS_ALLOWED_ORIGINS`
+  - `CORS_ALLOWED_VERCEL_PROJECTS`
   - `OUTBOX_POLL_INTERVAL_MS=2000`
   - `OUTBOX_BATCH_SIZE=20`
   - `OUTBOX_MAX_RETRIES=10`
@@ -64,7 +66,25 @@
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-## 2.1) Business onboarding prerequisites
+## 2.1) API CORS policy
+
+- The API uses a server-side origin allowlist, not wildcard CORS.
+- Built-in allowed browser origins:
+  - `http://localhost:3000`
+  - `http://127.0.0.1:3000`
+  - `https://ondemand-logistics-platform-web.vercel.app`
+  - `https://ondemand-logistics-platform-web-xthetic-studios-projects.vercel.app`
+- Vercel preview deployments are allowed when their hostname matches one of the configured project slugs.
+- Supported configuration:
+  - `CORS_ALLOWED_ORIGINS`
+  - `CORS_ALLOWED_VERCEL_PROJECTS`
+- Allowed request headers include:
+  - `Authorization`
+  - `Content-Type`
+  - `Idempotency-Key`
+  - `X-Idempotency-Key`
+
+## 2.2) Business onboarding prerequisites
 
 - Browser onboarding uses Supabase email/password auth from the web app.
 - The frontend then calls the API with the issued bearer token to create the business org and operator membership.
@@ -74,7 +94,7 @@
 ## 3) Auth and service-role boundaries
 
 - API verifies Supabase JWTs against `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
-- All write endpoints require `x-idempotency-key`.
+- All write endpoints require `Idempotency-Key` or `X-Idempotency-Key`.
 - Direct DB writes happen only in server-side code paths:
   - quote creation
   - job request creation

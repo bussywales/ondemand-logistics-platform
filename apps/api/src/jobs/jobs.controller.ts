@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Headers, HttpCode, Param, Post, Query, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
+import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
 import { JobsService } from "./jobs.service.js";
@@ -12,7 +13,7 @@ export class JobsController {
   @HttpCode(201)
   async createJob(
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -49,7 +50,7 @@ export class JobsController {
   async cancelJob(
     @Param("jobId") jobId: string,
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {

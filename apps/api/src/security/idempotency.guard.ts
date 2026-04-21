@@ -11,6 +11,10 @@ import type { AuthenticatedRequest } from "./types.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+function readHeaderValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 @Injectable()
 export class IdempotencyGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -30,8 +34,9 @@ export class IdempotencyGuard implements CanActivate {
       return true;
     }
 
-    const header = request.headers["x-idempotency-key"];
-    const key = Array.isArray(header) ? header[0] : header;
+    const key =
+      readHeaderValue(request.headers["idempotency-key"]) ??
+      readHeaderValue(request.headers["x-idempotency-key"]);
     const parsed = IdempotencyHeaderSchema.safeParse(key);
 
     if (!parsed.success) {

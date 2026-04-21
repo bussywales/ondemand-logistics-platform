@@ -5,11 +5,12 @@ import { readConfig } from "./config.js";
 import { createLogger, requestContextMiddleware } from "@shipwright/observability";
 import { GlobalExceptionFilter } from "./errors/global-exception.filter.js";
 import { startWorker } from "./worker/startWorker.js";
+import { isAllowedCorsOrigin } from "./cors.js";
 
 async function bootstrap() {
   console.log("BOOT: start");
   const logger = createLogger({ name: "api" });
-  readConfig();
+  const config = readConfig();
   console.log("BOOT: config ok");
   logger.info({ port: process.env.PORT }, "config_loaded");
   process.on("unhandledRejection", (err) => {
@@ -25,10 +26,31 @@ async function bootstrap() {
     abortOnError: false
   });
 
+  app.enableCors({
+    origin(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+      if (
+        isAllowedCorsOrigin({
+          origin,
+          allowedOrigins: config.corsAllowedOrigins,
+          allowedVercelProjects: config.corsAllowedVercelProjects
+        })
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`cors_origin_not_allowed:${origin ?? "unknown"}`), false);
+    },
+    methods: ["GET", "POST", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Idempotency-Key"],
+    optionsSuccessStatus: 204,
+    credentials: false
+  });
+
   app.use(requestContextMiddleware(logger));
   app.useGlobalFilters(new GlobalExceptionFilter(logger));
 
-  const port = Number(process.env.PORT ?? 10000);
+  const port = config.port;
   console.log("BOOT: will listen", port);
   await app.listen(port, "0.0.0.0");
   console.log("BOOT: api_started on port", port);

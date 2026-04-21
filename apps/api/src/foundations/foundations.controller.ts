@@ -1,12 +1,12 @@
 import {
   Body,
   Controller,
-  Headers,
   HttpCode,
   Post,
   Res
 } from "@nestjs/common";
 import type { Response } from "express";
+import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
 import { Roles } from "../security/roles.decorator.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
@@ -21,7 +21,7 @@ export class FoundationsController {
   @Roles("BUSINESS_OPERATOR", "ADMIN")
   async writeProbe(
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {

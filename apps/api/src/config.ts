@@ -1,4 +1,5 @@
 import { createLogger } from "@shipwright/observability";
+import { resolveAllowedOrigins, resolveAllowedVercelProjects } from "./cors.js";
 
 export type AppConfig = {
   port: number;
@@ -6,6 +7,8 @@ export type AppConfig = {
   supabaseUrl: string;
   supabaseJwtIssuer: string;
   supabaseJwtAudience: string;
+  corsAllowedOrigins: string[];
+  corsAllowedVercelProjects: string[];
 };
 
 export function readConfig(): AppConfig {
@@ -29,6 +32,8 @@ export function readConfig(): AppConfig {
     databaseUrl,
     supabaseUrl,
     supabaseJwtIssuer: process.env.SUPABASE_JWT_ISSUER ?? `${supabaseUrl}/auth/v1`,
-    supabaseJwtAudience: process.env.SUPABASE_JWT_AUDIENCE ?? "authenticated"
+    supabaseJwtAudience: process.env.SUPABASE_JWT_AUDIENCE ?? "authenticated",
+    corsAllowedOrigins: resolveAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
+    corsAllowedVercelProjects: resolveAllowedVercelProjects(process.env.CORS_ALLOWED_VERCEL_PROJECTS)
   };
 }

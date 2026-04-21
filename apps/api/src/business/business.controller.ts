@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Headers, HttpCode, Post, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Res } from "@nestjs/common";
 import type { Response } from "express";
+import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
 import { BusinessService } from "./business.service.js";
@@ -12,7 +13,7 @@ export class BusinessController {
   @HttpCode(201)
   async createBusinessOrg(
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {

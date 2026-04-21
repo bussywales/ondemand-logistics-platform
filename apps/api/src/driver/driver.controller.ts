@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
   Param,
   Patch,
@@ -11,6 +10,7 @@ import {
   Res
 } from "@nestjs/common";
 import type { Response } from "express";
+import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
 import { DriverService } from "./driver.service.js";
@@ -23,7 +23,7 @@ export class DriverController {
   @HttpCode(200)
   async updateAvailability(
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -40,7 +40,7 @@ export class DriverController {
   @HttpCode(200)
   async updateLocation(
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -62,7 +62,7 @@ export class DriverController {
   @HttpCode(200)
   async acceptOffer(
     @Param("offerId") offerId: string,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -79,7 +79,7 @@ export class DriverController {
   @HttpCode(200)
   async rejectOffer(
     @Param("offerId") offerId: string,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -110,7 +110,7 @@ export class DriverController {
   @HttpCode(200)
   async transitionToEnRoutePickup(
     @Param("jobId") jobId: string,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -127,7 +127,7 @@ export class DriverController {
   @HttpCode(200)
   async transitionToPickedUp(
     @Param("jobId") jobId: string,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -144,7 +144,7 @@ export class DriverController {
   @HttpCode(200)
   async transitionToEnRouteDrop(
     @Param("jobId") jobId: string,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -161,7 +161,7 @@ export class DriverController {
   @HttpCode(200)
   async transitionToDelivered(
     @Param("jobId") jobId: string,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -178,7 +178,7 @@ export class DriverController {
   @HttpCode(200)
   async createProofOfDeliveryUploadUrl(
     @Param("jobId") jobId: string,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {
@@ -196,7 +196,7 @@ export class DriverController {
   async createProofOfDelivery(
     @Param("jobId") jobId: string,
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {

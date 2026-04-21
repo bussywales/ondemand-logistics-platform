@@ -10,6 +10,7 @@ import {
   Res
 } from "@nestjs/common";
 import type { Request, Response } from "express";
+import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
 import { Public } from "../security/public.decorator.js";
@@ -31,7 +32,7 @@ export class PaymentsController {
   async authorizeJobPayment(
     @Param("jobId") jobId: string,
     @Body() body: unknown,
-    @Headers("x-idempotency-key") idempotencyKey: string,
+    @IdempotencyKey() idempotencyKey: string,
     @RequestUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
   ) {

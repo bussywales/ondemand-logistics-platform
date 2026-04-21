@@ -169,7 +169,7 @@ export async function createLiveJob(session: BusinessSession, input: {
   const quote = await apiFetch<QuoteResponse>(session, "/v1/quotes", {
     method: "POST",
     headers: {
-      "x-idempotency-key": `${idempotencyKey}-quote`
+      "Idempotency-Key": `${idempotencyKey}-quote`
     },
     body: JSON.stringify({
       orgId,
@@ -185,7 +185,7 @@ export async function createLiveJob(session: BusinessSession, input: {
   const job = await apiFetch<JobResponse>(session, "/v1/jobs", {
     method: "POST",
     headers: {
-      "x-idempotency-key": `${idempotencyKey}-job`
+      "Idempotency-Key": `${idempotencyKey}-job`
     },
     body: JSON.stringify({
       orgId,
@@ -232,7 +232,7 @@ export async function authorizePayment(session: BusinessSession, jobId: string, 
   const payload = await apiFetch<PaymentResponse>(session, `/v1/jobs/${jobId}/payment/authorize`, {
     method: "POST",
     headers: {
-      "x-idempotency-key": `${createId("idem")}-payment`
+      "Idempotency-Key": `${createId("idem")}-payment`
     },
     body: JSON.stringify({ paymentMethodId })
   });

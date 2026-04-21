@@ -134,7 +134,7 @@ export async function createBusinessOrg(
   return apiFetch<BusinessContext>(accessToken, "/v1/business/orgs", {
     method: "POST",
     headers: {
-      "x-idempotency-key": `${createId("idem")}-business-org`
+      "Idempotency-Key": `${createId("idem")}-business-org`
     },
     body: JSON.stringify(input)
   });

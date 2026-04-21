@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { BadRequestException, type ExecutionContext } from "@nestjs/common";
 import { IdempotencyGuard } from "./idempotency.guard.js";
 
-function makeContext(method: string, key?: string): ExecutionContext {
+function makeContext(
+  method: string,
+  key?: string,
+  headerName: "idempotency-key" | "x-idempotency-key" = "x-idempotency-key"
+): ExecutionContext {
   return {
     getClass: () => ({}) as never,
     getHandler: () => (() => undefined) as never,
@@ -10,7 +14,7 @@ function makeContext(method: string, key?: string): ExecutionContext {
       getRequest: () => ({
         method,
         headers: {
-          "x-idempotency-key": key
+          [headerName]: key
         }
       })
     })
@@ -32,5 +36,13 @@ describe("IdempotencyGuard", () => {
     } as never);
 
     expect(guard.canActivate(makeContext("GET"))).toBe(true);
+  });
+
+  it("accepts the standard Idempotency-Key header", () => {
+    const guard = new IdempotencyGuard({
+      getAllAndOverride: () => false
+    } as never);
+
+    expect(guard.canActivate(makeContext("POST", "idem_12345678", "idempotency-key"))).toBe(true);
   });
 });
