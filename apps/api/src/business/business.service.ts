@@ -65,6 +65,10 @@ type Queryable = {
   query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<{ rows: T[] }>;
 };
 
+function toIsoString(value: string | Date) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 @Injectable()
 export class BusinessService {
   private readonly logger = createLogger({ name: "api-business" });
@@ -354,7 +358,7 @@ export class BusinessService {
         userId: row.membership.user_id,
         role: row.membership.role,
         isActive: row.membership.is_active,
-        createdAt: row.membership.created_at
+        createdAt: toIsoString(row.membership.created_at)
       }),
       org: OrgSummarySchema.parse({
         id: row.org.id,
@@ -364,7 +368,7 @@ export class BusinessService {
         contactPhone: row.org.contact_phone,
         city: row.org.operating_city,
         createdByUserId: row.org.created_by,
-        createdAt: row.org.created_at
+        createdAt: toIsoString(row.org.created_at)
       })
     }));
 

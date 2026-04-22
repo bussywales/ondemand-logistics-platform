@@ -306,6 +306,51 @@ describe("BusinessService", () => {
     expect(context.currentOrg?.name).toBe("ShipWright Retail Ops");
   });
 
+  it("serializes pg timestamp dates to ISO strings in business context responses", async () => {
+    const createdAt = new Date("2026-04-22T12:34:56.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [
+            { column_name: "contact_name" },
+            { column_name: "contact_email" },
+            { column_name: "contact_phone" },
+            { column_name: "operating_city" }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{
+            membership_id: MEMBERSHIP_ID,
+            membership_org_id: ORG_ID,
+            membership_user_id: USER_ID,
+            membership_role: "BUSINESS_OPERATOR",
+            membership_is_active: true,
+            membership_created_at: createdAt,
+            org_id: ORG_ID,
+            org_name: "ShipWright Retail Ops",
+            org_contact_name: "Busayo Adewale",
+            org_contact_email: "ops@example.com",
+            org_contact_phone: "+44 20 7946 0958",
+            org_operating_city: "London",
+            org_created_by: USER_ID,
+            org_created_at: createdAt
+          }]
+        })
+    };
+
+    const service = new BusinessService(pg as never);
+    const context = await service.getBusinessContext(createUser());
+
+    expect(context.currentOrg?.createdAt).toBe(createdAt.toISOString());
+    expect(context.memberships[0]?.membership.createdAt).toBe(createdAt.toISOString());
+  });
+
   it("handles legacy org schemas without contact columns", async () => {
     const pg = {
       query: vi
