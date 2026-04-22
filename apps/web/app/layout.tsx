@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { BusinessAuthProvider } from "./_components/business-auth-provider";
 
 export const metadata: Metadata = {
   title: "ShipWright | On-demand delivery for food and local goods",
@@ -19,7 +20,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <BusinessAuthProvider>{children}</BusinessAuthProvider>
+      </body>
     </html>
   );
 }

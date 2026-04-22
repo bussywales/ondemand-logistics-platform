@@ -57,6 +57,9 @@ export type BusinessContext = {
 export type BusinessSession = {
   accessToken: string;
   refreshToken: string | null;
+  expiresAt: number | null;
+  userId: string;
+  email: string;
   context: BusinessContext;
 };
 

@@ -153,6 +153,8 @@ describe("read models", () => {
     const parsed = JobTrackingSchema.safeParse({
       jobId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
       status: "ASSIGNED",
+      attentionLevel: "NORMAL",
+      attentionReason: null,
       pickup: {
         address: "101 Main St",
         coordinates: { latitude: 51.5, longitude: -0.1 }
@@ -178,7 +180,8 @@ describe("read models", () => {
           createdAt: new Date().toISOString(),
           payload: { offerId: "abc" }
         }
-      ]
+      ],
+      dispatchAttempts: []
     });
 
     expect(parsed.success).toBe(true);

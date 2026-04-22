@@ -1374,6 +1374,30 @@ h3 {
   font: inherit;
 }
 
+.payment-panel,
+.payment-panel-copy,
+.payment-method-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.payment-panel-copy p {
+  color: var(--muted);
+}
+
+.payment-method-summary span:last-child {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card-element-shell {
+  min-height: 46px;
+  padding: 0.78rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
 .timeline-table-row {
   grid-template-columns: minmax(0, 1fr) auto;
 }

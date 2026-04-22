@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
-import { fetchBusinessContext } from "../_lib/auth";
+import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMethod } from "./payment-method-form";
+import { useBusinessAuth } from "./business-auth-provider";
 import {
   authorizePayment,
   cancelJob,
@@ -15,16 +16,14 @@ import {
   retryDispatch
 } from "../_lib/api";
 import {
-  clearBusinessSession,
   formatCurrency,
   formatDateTime,
-  readBusinessSession,
-  saveBusinessSession,
   type AppJob,
   type BusinessSession,
   type DeliveryFormInput,
   type VehicleType
 } from "../_lib/product-state";
+import { getPaymentPanelModel } from "../_lib/payment-ui";
 
 type ProductShellProps = {
   view: "home" | "jobs" | "job-detail";
@@ -91,31 +90,24 @@ function attentionTone(level: AppJob["attentionLevel"]) {
 
 export function ProductShell(props: ProductShellProps) {
   const router = useRouter();
-  const [session, setSession] = useState<BusinessSession | null>(null);
+  const { status, session, signOut, refreshBusinessSession } = useBusinessAuth();
   const [jobs, setJobs] = useState<AppJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
   const [deliveryForm, setDeliveryForm] = useState<DeliveryFormInput>(defaultForm);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentMethodId, setPaymentMethodId] = useState("pm_card_visa");
+  const [collectedPaymentMethod, setCollectedPaymentMethod] = useState<CollectedPaymentMethod | null>(null);
   const [reassignDriverId, setReassignDriverId] = useState("");
   const [cancelReason, setCancelReason] = useState("Operator cancelled");
-
-  useEffect(() => {
-    const nextSession = readBusinessSession();
-    setSession(nextSession);
-    setLoading(false);
-  }, []);
 
   useEffect(() => {
     if (!session) {
       return;
     }
 
-    void refreshContextAndJobs(session);
+    void refreshJobs(session);
   }, [session?.accessToken]);
 
   useEffect(() => {
@@ -126,6 +118,10 @@ export function ProductShell(props: ProductShellProps) {
 
     void refreshLiveJob(props.jobId, session);
   }, [props.jobId, session?.accessToken]);
+
+  useEffect(() => {
+    setCollectedPaymentMethod(null);
+  }, [props.jobId]);
 
   const workspaceSummary = useMemo(() => {
     const activeJobs = jobs.filter((job) =>
@@ -163,12 +159,9 @@ export function ProductShell(props: ProductShellProps) {
     setJobs((current) => current.map((item) => (item.id === nextJob.id ? nextJob : item)));
   }
 
-  async function refreshContextAndJobs(currentSession: BusinessSession) {
+  async function refreshJobs(currentSession: NonNullable<typeof session>) {
     try {
-      const context = await fetchBusinessContext(currentSession.accessToken);
-      const nextSession = { ...currentSession, context };
-      setSession(saveBusinessSession(nextSession));
-      const liveJobs = await listLiveJobs(nextSession);
+      const liveJobs = await listLiveJobs(currentSession);
       setJobs(liveJobs);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load operations workspace.");
@@ -229,7 +222,7 @@ export function ProductShell(props: ProductShellProps) {
   }
 
   async function handleAuthorizePayment(job: AppJob) {
-    if (!session) {
+    if (!session || !collectedPaymentMethod) {
       return;
     }
 
@@ -237,7 +230,7 @@ export function ProductShell(props: ProductShellProps) {
     setError(null);
 
     try {
-      const payment = await authorizePayment(session, job.id, paymentMethodId.trim());
+      const payment = await authorizePayment(session, job.id, collectedPaymentMethod.id);
       const nextJob = { ...job, payment: { ...job.payment, ...payment } };
       syncJob(nextJob);
     } catch (issue) {
@@ -301,15 +294,14 @@ export function ProductShell(props: ProductShellProps) {
     }
   }
 
-  function handleSignOut() {
-    clearBusinessSession();
-    setSession(null);
+  async function handleSignOut() {
+    await signOut();
     setJobs([]);
     setSelectedJob(null);
     router.push("/get-started");
   }
 
-  if (loading) {
+  if (status === "loading") {
     return (
       <main className="app-shell loading-shell">
         <section className="ops-empty-state">
@@ -347,7 +339,7 @@ export function ProductShell(props: ProductShellProps) {
             <Link className="button button-primary" href="/get-started">
               Complete Onboarding
             </Link>
-            <button className="button button-secondary" onClick={handleSignOut} type="button">
+            <button className="button button-secondary" onClick={() => void handleSignOut()} type="button">
               Sign Out
             </button>
           </div>
@@ -357,6 +349,14 @@ export function ProductShell(props: ProductShellProps) {
   }
 
   const job = props.view === "job-detail" ? selectedJob : null;
+  const paymentPanel =
+    job && session
+      ? getPaymentPanelModel({
+          payment: job.payment,
+          stripeEnabled: isStripeFrontendConfigured(),
+          hasCollectedPaymentMethod: Boolean(collectedPaymentMethod)
+        })
+      : null;
   const jobsToRender = jobs.slice(0, 20);
 
   return (
@@ -368,10 +368,20 @@ export function ProductShell(props: ProductShellProps) {
           <h1>{workspaceSummary.orgName}</h1>
         </div>
         <div className="ops-topbar-actions">
-          <button className="button button-secondary" onClick={() => void refreshContextAndJobs(session)} type="button">
+          <button
+            className="button button-secondary"
+            onClick={() =>
+              void refreshBusinessSession().then((nextSession) => {
+                if (nextSession) {
+                  return refreshJobs(nextSession);
+                }
+              })
+            }
+            type="button"
+          >
             Refresh
           </button>
-          <button className="button button-secondary" onClick={handleSignOut} type="button">
+          <button className="button button-secondary" onClick={() => void handleSignOut()} type="button">
             Sign Out
           </button>
         </div>
@@ -931,31 +941,62 @@ export function ProductShell(props: ProductShellProps) {
                       </div>
                     </div>
 
-                    <label className="ops-field">
-                      <span>Payment method ID</span>
-                      <input
-                        onChange={(event) => setPaymentMethodId(event.target.value)}
-                        placeholder="pm_card_visa"
-                        value={paymentMethodId}
-                      />
-                    </label>
+                    {paymentPanel ? (
+                      <div className="payment-panel">
+                        <div className="payment-panel-copy">
+                          <strong>{paymentPanel.headline}</strong>
+                          <p>{paymentPanel.detail}</p>
+                        </div>
 
-                    <div className="ops-actions">
-                      <button
-                        className="button button-primary"
-                        disabled={
-                          paymentSubmitting ||
-                          job.payment.status === "AUTHORIZED" ||
-                          job.payment.status === "CAPTURED"
-                        }
-                        onClick={() => void handleAuthorizePayment(job)}
-                        type="button"
-                      >
-                        {paymentSubmitting ? "Authorizing..." : "Authorize Payment"}
-                      </button>
-                    </div>
+                        {collectedPaymentMethod ? (
+                          <div className="inline-details payment-method-summary">
+                            <span className="support-note">Collected payment method</span>
+                            <strong>
+                              {collectedPaymentMethod.brand?.toUpperCase() ?? "Card"}{" "}
+                              {collectedPaymentMethod.last4 ? `•••• ${collectedPaymentMethod.last4}` : collectedPaymentMethod.id}
+                            </strong>
+                            <span>
+                              {collectedPaymentMethod.expMonth && collectedPaymentMethod.expYear
+                                ? `Expires ${String(collectedPaymentMethod.expMonth).padStart(2, "0")}/${String(collectedPaymentMethod.expYear).slice(-2)}`
+                                : "Ready for authorization"}
+                            </span>
+                            {!paymentPanel.isFinal ? (
+                              <button
+                                className="text-action"
+                                onClick={() => setCollectedPaymentMethod(null)}
+                                type="button"
+                              >
+                                Replace payment method
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
 
-                    {job.payment.lastError ? <p className="form-error">{job.payment.lastError}</p> : null}
+                        {paymentPanel.requiresMethodCollection ? (
+                          <PaymentMethodForm
+                            disabled={paymentSubmitting}
+                            email={session.email}
+                            onCollected={(paymentMethod) => {
+                              setCollectedPaymentMethod(paymentMethod);
+                              setError(null);
+                            }}
+                          />
+                        ) : null}
+
+                        <div className="ops-actions">
+                          <button
+                            className="button button-primary"
+                            disabled={paymentSubmitting || !paymentPanel.canAuthorize}
+                            onClick={() => void handleAuthorizePayment(job)}
+                            type="button"
+                          >
+                            {paymentSubmitting ? "Authorizing payment..." : "Authorize Payment"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {job.payment.lastError ? <p className="form-error form-error-surface">{job.payment.lastError}</p> : null}
                   </section>
                 </div>
               </section>

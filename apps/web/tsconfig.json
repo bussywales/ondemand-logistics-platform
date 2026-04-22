@@ -9,7 +9,7 @@
     "allowJs": false,
     "jsx": "preserve",
     "noEmit": true,
-    "incremental": true,
+    "incremental": false,
     "plugins": [
       {
         "name": "next"

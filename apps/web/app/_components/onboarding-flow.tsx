@@ -3,26 +3,23 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useBusinessAuth } from "./business-auth-provider";
 import {
+  type BrowserAuthSession,
   SupabaseBrowserAuthError,
   createBusinessOrg,
-  createBusinessSession,
   fetchBusinessContext,
   signInWithPassword,
   signUpWithPassword
 } from "../_lib/auth";
-import { readBusinessSession, saveBusinessSession, saveDriverProfile, type VehicleType } from "../_lib/product-state";
+import { saveDriverProfile, type VehicleType } from "../_lib/product-state";
+import { sanitizePostAuthDestination } from "../_lib/route-protection";
 
 type Role = "business" | "driver" | "consumer";
 type AuthMode = "create" | "signin";
 type BusinessStep = "auth" | "setup";
 
-type AuthSession = {
-  accessToken: string;
-  refreshToken: string | null;
-  userId: string;
-  email: string;
-};
+type AuthSession = BrowserAuthSession;
 
 const authDefaults = {
   email: "",
@@ -101,6 +98,7 @@ function getFallbackDisplayName(email: string) {
 
 export function OnboardingFlow() {
   const router = useRouter();
+  const { session: existingSession, hydrateSession } = useBusinessAuth();
   const [role, setRole] = useState<Role>("business");
   const [authMode, setAuthMode] = useState<AuthMode>("create");
   const [businessStep, setBusinessStep] = useState<BusinessStep>("auth");
@@ -109,13 +107,9 @@ export function OnboardingFlow() {
   const [driverForm, setDriverForm] = useState(driverDefaults);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [existingSession, setExistingSession] = useState<ReturnType<typeof readBusinessSession>>(null);
   const [signupCooldownSecondsLeft, setSignupCooldownSecondsLeft] = useState(0);
   const [authenticatedSession, setAuthenticatedSession] = useState<AuthSession | null>(null);
-
-  useEffect(() => {
-    setExistingSession(readBusinessSession());
-  }, []);
+  const [postAuthDestination, setPostAuthDestination] = useState("/app");
 
   useEffect(() => {
     if (signupCooldownSecondsLeft <= 0) {
@@ -140,6 +134,15 @@ export function OnboardingFlow() {
 
     return "Consumer flows are not the current priority. Use the business path for the real product activation flow.";
   }, [role]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    setPostAuthDestination(sanitizePostAuthDestination(params.get("next")));
+  }, []);
 
   async function handleBusinessAuthSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -168,14 +171,8 @@ export function OnboardingFlow() {
 
       const context = await fetchBusinessContext(authSession.accessToken);
       if (context.onboarded) {
-        saveBusinessSession(
-          createBusinessSession({
-            accessToken: authSession.accessToken,
-            refreshToken: authSession.refreshToken,
-            context
-          })
-        );
-        router.push("/app");
+        hydrateSession(authSession, context);
+        router.push(postAuthDestination);
         return;
       }
 
@@ -221,14 +218,8 @@ export function OnboardingFlow() {
         city: businessSetupForm.city.trim()
       });
 
-      saveBusinessSession(
-        createBusinessSession({
-          accessToken: authenticatedSession.accessToken,
-          refreshToken: authenticatedSession.refreshToken,
-          context
-        })
-      );
-      router.push("/app");
+      hydrateSession(authenticatedSession, context);
+      router.push(postAuthDestination);
     } catch (issue) {
       setError(getFriendlyBusinessSetupError(issue));
     } finally {
@@ -318,7 +309,7 @@ export function OnboardingFlow() {
               <div className="existing-session-callout">
                 <strong>Existing session detected</strong>
                 <p>{existingSession.context.currentOrg.name}</p>
-                <Link className="button button-secondary" href="/app">
+                <Link className="button button-secondary" href={postAuthDestination}>
                   Continue to Dashboard
                 </Link>
               </div>

@@ -1,16 +1,19 @@
-import { createId, type BusinessContext, type BusinessSession } from "./product-state";
+import { createClient, type AuthChangeEvent, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { APP_AUTH_COOKIE } from './route-protection';
+import { createId, type BusinessContext, type BusinessSession } from './product-state';
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api-staging-qvmv.onrender.com';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-type PasswordGrantResponse = {
-  access_token: string;
-  refresh_token?: string;
-  user?: {
-    id?: string;
-    email?: string;
-  };
+let browserClient: SupabaseClient | null = null;
+
+export type BrowserAuthSession = {
+  accessToken: string;
+  refreshToken: string | null;
+  expiresAt: number | null;
+  userId: string;
+  email: string;
 };
 
 type ErrorDetails = {
@@ -24,24 +27,27 @@ export class SupabaseBrowserAuthError extends Error {
 
   constructor(input: { message: string; code?: string | null; status: number }) {
     super(input.message);
-    this.name = "SupabaseBrowserAuthError";
+    this.name = 'SupabaseBrowserAuthError';
     this.code = input.code ?? null;
     this.status = input.status;
   }
 }
 
 function normalizeBaseUrl(value: string) {
-  return value.trim().replace(/\/$/, "");
+  return value.trim().replace(/\/$/, '');
 }
 
 function requireSupabaseConfig() {
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase browser auth is not configured for this deployment.");
+    throw new Error('Supabase browser auth is not configured for this deployment.');
   }
 }
 
-async function readJson(response: Response) {
-  const text = await response.text();
+function hasWindow() {
+  return typeof window !== 'undefined';
+}
+
+function readJson(text: string) {
   return text.length === 0 ? null : (JSON.parse(text) as unknown);
 }
 
@@ -49,18 +55,18 @@ function extractErrorDetails(payload: unknown, fallback: string): ErrorDetails {
   let message = fallback;
   let code: string | null = null;
 
-  if (typeof payload === "object" && payload !== null) {
-    if (typeof (payload as { error_code?: unknown }).error_code === "string") {
+  if (typeof payload === 'object' && payload !== null) {
+    if (typeof (payload as { error_code?: unknown }).error_code === 'string') {
       code = (payload as { error_code: string }).error_code;
-    } else if (typeof (payload as { code?: unknown }).code === "string") {
+    } else if (typeof (payload as { code?: unknown }).code === 'string') {
       code = (payload as { code: string }).code;
     }
 
-    if (typeof (payload as { msg?: unknown }).msg === "string") {
+    if (typeof (payload as { msg?: unknown }).msg === 'string') {
       message = (payload as { msg: string }).msg;
-    } else if (typeof (payload as { message?: unknown }).message === "string") {
+    } else if (typeof (payload as { message?: unknown }).message === 'string') {
       message = (payload as { message: string }).message;
-    } else if (typeof (payload as { error_description?: unknown }).error_description === "string") {
+    } else if (typeof (payload as { error_description?: unknown }).error_description === 'string') {
       message = (payload as { error_description: string }).error_description;
     }
   }
@@ -68,70 +74,152 @@ function extractErrorDetails(payload: unknown, fallback: string): ErrorDetails {
   return { message, code };
 }
 
-export async function signUpWithPassword(input: { email: string; password: string; displayName: string }) {
+function mapSession(session: Session | null): BrowserAuthSession | null {
+  if (!session?.access_token || !session.user?.id || !session.user.email) {
+    return null;
+  }
+
+  return {
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token ?? null,
+    expiresAt: session.expires_at ?? null,
+    userId: session.user.id,
+    email: session.user.email
+  };
+}
+
+export function syncAuthCookie(session: BrowserAuthSession | null) {
+  if (!hasWindow()) {
+    return;
+  }
+
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  if (!session) {
+    document.cookie = `${APP_AUTH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+    return;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const maxAge = session.expiresAt ? Math.max(60, session.expiresAt - now) : 60 * 60 * 24 * 7;
+  document.cookie = `${APP_AUTH_COOKIE}=1; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
+}
+
+export function getSupabaseBrowserClient() {
   requireSupabaseConfig();
 
-  const response = await fetch(`${normalizeBaseUrl(supabaseUrl)}/auth/v1/signup`, {
-    method: "POST",
-    headers: {
-      apikey: supabaseAnonKey,
-      authorization: `Bearer ${supabaseAnonKey}`,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({
-      email: input.email,
-      password: input.password,
+  if (!browserClient) {
+    browserClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+  }
+
+  return browserClient;
+}
+
+function toAuthError(error: { message: string; status?: number; code?: string | null }, fallback: string) {
+  const details = extractErrorDetails(error, fallback);
+  return new SupabaseBrowserAuthError({
+    message: details.message,
+    code: details.code ?? error.code ?? null,
+    status: error.status ?? 400
+  });
+}
+
+export async function signUpWithPassword(input: { email: string; password: string; displayName: string }) {
+  const client = getSupabaseBrowserClient();
+  const { data, error } = await client.auth.signUp({
+    email: input.email,
+    password: input.password,
+    options: {
       data: {
         display_name: input.displayName
       }
-    })
+    }
   });
 
-  const payload = await readJson(response);
-  if (!response.ok) {
-    const error = extractErrorDetails(payload, "Unable to create the auth account.");
-    throw new SupabaseBrowserAuthError({
-      message: error.message,
-      code: error.code,
-      status: response.status
-    });
+  if (error) {
+    throw toAuthError(error, 'Unable to create the auth account.');
+  }
+
+  const mapped = mapSession(data.session);
+  if (mapped) {
+    syncAuthCookie(mapped);
+    return mapped;
   }
 
   return signInWithPassword({ email: input.email, password: input.password });
 }
 
 export async function signInWithPassword(input: { email: string; password: string }) {
-  requireSupabaseConfig();
-
-  const response = await fetch(`${normalizeBaseUrl(supabaseUrl)}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: {
-      apikey: supabaseAnonKey,
-      authorization: `Bearer ${supabaseAnonKey}`,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({
-      email: input.email,
-      password: input.password
-    })
+  const client = getSupabaseBrowserClient();
+  const { data, error } = await client.auth.signInWithPassword({
+    email: input.email,
+    password: input.password
   });
 
-  const payload = (await readJson(response)) as PasswordGrantResponse | null;
-  if (!response.ok || !payload?.access_token || !payload.user?.id || !payload.user.email) {
-    const error = extractErrorDetails(payload, "Unable to sign in with email and password.");
+  if (error || !data.session) {
+    throw toAuthError(error ?? { message: 'Missing auth session.', status: 400 }, 'Unable to sign in with email and password.');
+  }
+
+  const mapped = mapSession(data.session);
+  if (!mapped) {
     throw new SupabaseBrowserAuthError({
-      message: error.message,
-      code: error.code,
-      status: response.status
+      message: 'Unable to read the Supabase auth session.',
+      status: 400
     });
   }
 
-  return {
-    accessToken: payload.access_token,
-    refreshToken: payload.refresh_token ?? null,
-    userId: payload.user.id,
-    email: payload.user.email
-  };
+  syncAuthCookie(mapped);
+  return mapped;
+}
+
+export async function signOutBusiness() {
+  const client = getSupabaseBrowserClient();
+  const { error } = await client.auth.signOut();
+  if (error) {
+    throw toAuthError(error, 'Unable to sign out.');
+  }
+
+  syncAuthCookie(null);
+}
+
+export async function getCurrentAuthSession() {
+  const client = getSupabaseBrowserClient();
+  const { data, error } = await client.auth.getSession();
+  if (error) {
+    throw toAuthError(error, 'Unable to restore the authenticated session.');
+  }
+
+  const mapped = mapSession(data.session);
+  syncAuthCookie(mapped);
+  return mapped;
+}
+
+export async function refreshCurrentAuthSession() {
+  const client = getSupabaseBrowserClient();
+  const { data, error } = await client.auth.refreshSession();
+  if (error) {
+    throw toAuthError(error, 'Unable to refresh the authenticated session.');
+  }
+
+  const mapped = mapSession(data.session);
+  syncAuthCookie(mapped);
+  return mapped;
+}
+
+export function subscribeToAuthChanges(listener: (event: AuthChangeEvent, session: BrowserAuthSession | null) => void) {
+  const client = getSupabaseBrowserClient();
+  const { data } = client.auth.onAuthStateChange((event, session) => {
+    const mapped = mapSession(session);
+    syncAuthCookie(mapped);
+    window.setTimeout(() => listener(event, mapped), 0);
+  });
+
+  return () => data.subscription.unsubscribe();
 }
 
 async function apiFetch<T>(accessToken: string, path: string, init?: RequestInit) {
@@ -139,13 +227,13 @@ async function apiFetch<T>(accessToken: string, path: string, init?: RequestInit
     ...init,
     headers: {
       authorization: `Bearer ${accessToken}`,
-      "content-type": "application/json",
+      'content-type': 'application/json',
       ...(init?.headers ?? {})
     },
-    cache: "no-store"
+    cache: 'no-store'
   });
 
-  const payload = await readJson(response);
+  const payload = readJson(await response.text());
   if (!response.ok) {
     throw new Error(extractErrorDetails(payload, `Request failed with status ${response.status}`).message);
   }
@@ -154,8 +242,8 @@ async function apiFetch<T>(accessToken: string, path: string, init?: RequestInit
 }
 
 export async function fetchBusinessContext(accessToken: string) {
-  return apiFetch<BusinessContext>(accessToken, "/v1/business/context", {
-    method: "GET"
+  return apiFetch<BusinessContext>(accessToken, '/v1/business/context', {
+    method: 'GET'
   });
 }
 
@@ -163,23 +251,25 @@ export async function createBusinessOrg(
   accessToken: string,
   input: { businessName: string; contactName: string; email: string; phone: string; city: string }
 ) {
-  return apiFetch<BusinessContext>(accessToken, "/v1/business/orgs", {
-    method: "POST",
+  return apiFetch<BusinessContext>(accessToken, '/v1/business/orgs', {
+    method: 'POST',
     headers: {
-      "Idempotency-Key": `${createId("idem")}-business-org`
+      'Idempotency-Key': `${createId('idem')}-business-org`
     },
     body: JSON.stringify(input)
   });
 }
 
 export function createBusinessSession(input: {
-  accessToken: string;
-  refreshToken: string | null;
+  authSession: BrowserAuthSession;
   context: BusinessContext;
 }): BusinessSession {
   return {
-    accessToken: input.accessToken,
-    refreshToken: input.refreshToken,
+    accessToken: input.authSession.accessToken,
+    refreshToken: input.authSession.refreshToken,
+    expiresAt: input.authSession.expiresAt,
+    userId: input.authSession.userId,
+    email: input.authSession.email,
     context: input.context
   };
 }

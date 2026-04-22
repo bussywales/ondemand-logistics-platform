@@ -65,6 +65,7 @@
   - `NEXT_PUBLIC_API_BASE_URL`
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 
 ## 2.1) API CORS policy
 
@@ -88,6 +89,8 @@
 
 - Browser onboarding uses Supabase email/password auth from the web app.
 - The frontend then calls the API with the issued bearer token to create the business org and operator membership.
+- The web app now relies on Supabase browser session persistence and token refresh, not a local-only bearer token field.
+- Protected routes under `/app` require an authenticated session and redirect to `/get-started` when it is missing.
 - For staging, ensure the Supabase project allows email/password signups for test users.
 - If you want repeatable seeded staging access instead of ad hoc signups, run the fixture script below.
 
@@ -146,19 +149,48 @@ It prints current user ids, the seeded driver id, the seeded org id, and current
 1. Open `/get-started` in the deployed web app.
 2. Choose `Business`.
 3. Use `Create account` with:
-   - business name
-   - contact name
    - email
    - password
+4. Continue to the second step and enter:
+   - business name
+   - contact name
    - phone
    - city
-4. The web app will:
+5. The web app will:
    - create or sign in the Supabase auth user
    - call `POST /v1/business/orgs`
-   - store the returned business context locally
+   - persist the Supabase session in the browser
+   - refresh business context from the API for protected pages
    - route into `/app`
 
 If the account already exists, switch to `Sign in`. If the account is authenticated but not yet onboarded, the same form will create the org on the next submit.
+
+## 5.1) Payment method collection and authorization
+
+- The job detail payment panel collects card details in the browser with Stripe Elements.
+- The frontend creates a real Stripe `payment_method` and sends its `pm_*` id to:
+
+```bash
+POST /v1/jobs/:jobId/payment/authorize
+```
+
+- The backend remains the source of truth for authorization success, failure, and final payment state.
+- If `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is missing, the payment panel renders a configuration warning instead of faking a payment step.
+- Staging authorize flow prerequisites:
+  - API `STRIPE_SECRET_KEY`
+  - API `STRIPE_WEBHOOK_SECRET`
+  - Web `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+
+### Test the authorize flow in staging
+
+1. Sign in through `/get-started`.
+2. Open a job under `/app/jobs/:jobId`.
+3. In the payment panel:
+   - enter cardholder details
+   - enter a Stripe test card in the embedded card field
+   - save the payment method
+   - authorize the payment
+4. Confirm the payment status moves from `REQUIRES_PAYMENT_METHOD` or `FAILED` to `AUTHORIZED`.
 
 ## 6) Stripe webhook workflow
 
