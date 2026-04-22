@@ -13,6 +13,23 @@ type PasswordGrantResponse = {
   };
 };
 
+type ErrorDetails = {
+  message: string;
+  code: string | null;
+};
+
+export class SupabaseBrowserAuthError extends Error {
+  readonly code: string | null;
+  readonly status: number;
+
+  constructor(input: { message: string; code?: string | null; status: number }) {
+    super(input.message);
+    this.name = "SupabaseBrowserAuthError";
+    this.code = input.code ?? null;
+    this.status = input.status;
+  }
+}
+
 function normalizeBaseUrl(value: string) {
   return value.trim().replace(/\/$/, "");
 }
@@ -28,22 +45,27 @@ async function readJson(response: Response) {
   return text.length === 0 ? null : (JSON.parse(text) as unknown);
 }
 
-function extractErrorMessage(payload: unknown, fallback: string) {
+function extractErrorDetails(payload: unknown, fallback: string): ErrorDetails {
+  let message = fallback;
+  let code: string | null = null;
+
   if (typeof payload === "object" && payload !== null) {
+    if (typeof (payload as { error_code?: unknown }).error_code === "string") {
+      code = (payload as { error_code: string }).error_code;
+    } else if (typeof (payload as { code?: unknown }).code === "string") {
+      code = (payload as { code: string }).code;
+    }
+
     if (typeof (payload as { msg?: unknown }).msg === "string") {
-      return (payload as { msg: string }).msg;
-    }
-
-    if (typeof (payload as { message?: unknown }).message === "string") {
-      return (payload as { message: string }).message;
-    }
-
-    if (typeof (payload as { error_description?: unknown }).error_description === "string") {
-      return (payload as { error_description: string }).error_description;
+      message = (payload as { msg: string }).msg;
+    } else if (typeof (payload as { message?: unknown }).message === "string") {
+      message = (payload as { message: string }).message;
+    } else if (typeof (payload as { error_description?: unknown }).error_description === "string") {
+      message = (payload as { error_description: string }).error_description;
     }
   }
 
-  return fallback;
+  return { message, code };
 }
 
 export async function signUpWithPassword(input: { email: string; password: string; displayName: string }) {
@@ -67,7 +89,12 @@ export async function signUpWithPassword(input: { email: string; password: strin
 
   const payload = await readJson(response);
   if (!response.ok) {
-    throw new Error(extractErrorMessage(payload, "Unable to create the auth account."));
+    const error = extractErrorDetails(payload, "Unable to create the auth account.");
+    throw new SupabaseBrowserAuthError({
+      message: error.message,
+      code: error.code,
+      status: response.status
+    });
   }
 
   return signInWithPassword({ email: input.email, password: input.password });
@@ -91,7 +118,12 @@ export async function signInWithPassword(input: { email: string; password: strin
 
   const payload = (await readJson(response)) as PasswordGrantResponse | null;
   if (!response.ok || !payload?.access_token || !payload.user?.id || !payload.user.email) {
-    throw new Error(extractErrorMessage(payload, "Unable to sign in with email and password."));
+    const error = extractErrorDetails(payload, "Unable to sign in with email and password.");
+    throw new SupabaseBrowserAuthError({
+      message: error.message,
+      code: error.code,
+      status: response.status
+    });
   }
 
   return {
@@ -115,7 +147,7 @@ async function apiFetch<T>(accessToken: string, path: string, init?: RequestInit
 
   const payload = await readJson(response);
   if (!response.ok) {
-    throw new Error(extractErrorMessage(payload, `Request failed with status ${response.status}`));
+    throw new Error(extractErrorDetails(payload, `Request failed with status ${response.status}`).message);
   }
 
   return payload as T;
