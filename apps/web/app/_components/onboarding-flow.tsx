@@ -18,6 +18,7 @@ import { sanitizePostAuthDestination } from "../_lib/route-protection";
 type Role = "business" | "driver" | "consumer";
 type AuthMode = "create" | "signin";
 type BusinessStep = "auth" | "setup";
+type BusinessSetupPhase = "idle" | "creating" | "opening";
 
 type AuthSession = BrowserAuthSession;
 
@@ -40,6 +41,8 @@ const driverDefaults = {
 };
 
 const SIGNUP_RATE_LIMIT_COOLDOWN_SECONDS = 45;
+const BUSINESS_SETUP_MAX_ATTEMPTS = 3;
+const BUSINESS_SETUP_RETRY_DELAY_MS = 800;
 
 function isSupabaseEmailRateLimitError(issue: unknown) {
   if (!(issue instanceof SupabaseBrowserAuthError)) {
@@ -91,6 +94,10 @@ function getFriendlyBusinessSetupError(issue: unknown) {
   return issue instanceof Error ? issue.message : "Unable to complete business setup.";
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 function getFallbackDisplayName(email: string) {
   const localPart = email.split("@")[0]?.replace(/[._-]+/g, " ").trim();
   return localPart && localPart.length >= 2 ? localPart : "Business Operator";
@@ -107,6 +114,7 @@ export function OnboardingFlow() {
   const [driverForm, setDriverForm] = useState(driverDefaults);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [businessSetupPhase, setBusinessSetupPhase] = useState<BusinessSetupPhase>("idle");
   const [signupCooldownSecondsLeft, setSignupCooldownSecondsLeft] = useState(0);
   const [authenticatedSession, setAuthenticatedSession] = useState<AuthSession | null>(null);
   const [postAuthDestination, setPostAuthDestination] = useState("/app");
@@ -204,25 +212,58 @@ export function OnboardingFlow() {
 
     setSubmitting(true);
     setError(null);
+    setBusinessSetupPhase("creating");
 
     try {
       if (!businessSetupForm.businessName || !businessSetupForm.contactName || !businessSetupForm.phone || !businessSetupForm.city) {
         throw new Error("Complete the business setup fields before continuing.");
       }
 
-      const context = await createBusinessOrg(authenticatedSession.accessToken, {
+      const payload = {
         businessName: businessSetupForm.businessName.trim(),
         contactName: businessSetupForm.contactName.trim(),
         email: authenticatedSession.email,
         phone: businessSetupForm.phone.trim(),
         city: businessSetupForm.city.trim()
-      });
+      };
 
+      let context = null as Awaited<ReturnType<typeof createBusinessOrg>> | null;
+      let lastIssue: unknown = null;
+
+      for (let attempt = 1; attempt <= BUSINESS_SETUP_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          context = await createBusinessOrg(authenticatedSession.accessToken, payload);
+          break;
+        } catch (issue) {
+          lastIssue = issue;
+
+          try {
+            const recoveredContext = await fetchBusinessContext(authenticatedSession.accessToken);
+            if (recoveredContext.onboarded && recoveredContext.currentOrg) {
+              context = recoveredContext;
+              break;
+            }
+          } catch (contextIssue) {
+            lastIssue = contextIssue;
+          }
+
+          if (attempt < BUSINESS_SETUP_MAX_ATTEMPTS) {
+            await sleep(BUSINESS_SETUP_RETRY_DELAY_MS);
+          }
+        }
+      }
+
+      if (!context) {
+        throw lastIssue ?? new Error("Unable to complete business setup.");
+      }
+
+      setBusinessSetupPhase("opening");
       hydrateSession(authenticatedSession, context);
       router.push(postAuthDestination);
     } catch (issue) {
       setError(getFriendlyBusinessSetupError(issue));
     } finally {
+      setBusinessSetupPhase("idle");
       setSubmitting(false);
     }
   }
@@ -463,7 +504,11 @@ export function OnboardingFlow() {
 
                 <div className="hero-actions setup-actions">
                   <button className="button button-primary button-emphasis" disabled={submitting} type="submit">
-                    {submitting ? "Creating workspace and opening dashboard..." : "Enter Dashboard"}
+                    {businessSetupPhase === "opening"
+                      ? "Opening dashboard..."
+                      : submitting
+                        ? "Creating workspace..."
+                        : "Enter Dashboard"}
                   </button>
                   <button className="button button-secondary" disabled={submitting} onClick={() => resetBusinessFlow("signin")} type="button">
                     Back to Authentication
@@ -471,9 +516,11 @@ export function OnboardingFlow() {
                 </div>
 
                 <p className="form-hint">
-                  {submitting
-                    ? "Setting up the workspace, assigning the operator role, and preparing the dashboard."
-                    : "This uses the live onboarding API and opens the authenticated dashboard when complete."}
+                  {businessSetupPhase === "opening"
+                    ? "Workspace is ready. Loading the operations console now."
+                    : submitting
+                      ? "Setting up the workspace, assigning the operator role, and verifying the business context."
+                      : "This uses the live onboarding API and opens the authenticated dashboard when complete."}
                 </p>
               </form>
             )
