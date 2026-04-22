@@ -30,6 +30,7 @@ import {
 } from "@shipwright/payments";
 import { createLogger, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
+import { toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 
 type JobPaymentContextRow = {
@@ -85,8 +86,8 @@ type RefundRow = {
   amount_cents: number;
   currency: string;
   reason_code: string;
-  created_at: string;
-  updated_at: string;
+  created_at: string | Date;
+  updated_at: string | Date;
 };
 
 type PayoutLedgerRow = {
@@ -126,14 +127,6 @@ const JOB_PAYMENT_ACCESS = `(
     )
   )
 )`;
-
-function toIsoString(value: string | Date | null) {
-  if (value === null) {
-    return null;
-  }
-
-  return value instanceof Date ? value.toISOString() : value;
-}
 
 export const PAYMENT_PROVIDER = Symbol("PAYMENT_PROVIDER");
 
@@ -751,8 +744,8 @@ export class PaymentsService {
       settlementSnapshot: row.settlement_snapshot,
       clientSecret: row.client_secret,
       lastError: row.last_error,
-      createdAt: toIsoString("payment_created_at" in row ? row.payment_created_at : row.created_at),
-      updatedAt: toIsoString("payment_updated_at" in row ? row.payment_updated_at : row.updated_at)
+      createdAt: toIsoDateTime("payment_created_at" in row ? row.payment_created_at : row.created_at),
+      updatedAt: toIsoDateTime("payment_updated_at" in row ? row.payment_updated_at : row.updated_at)
     });
 
     return parsed;
@@ -768,8 +761,8 @@ export class PaymentsService {
       amountCents: row.amount_cents,
       currency: row.currency,
       reasonCode: row.reason_code,
-      createdAt: toIsoString(row.created_at),
-      updatedAt: toIsoString(row.updated_at)
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
     });
   }
 
@@ -781,9 +774,9 @@ export class PaymentsService {
       status: row.status,
       grossPayoutCents: row.gross_payout_cents,
       holdReason: row.hold_reason,
-      releasedAt: toIsoString(row.released_at),
-      createdAt: toIsoString(row.created_at),
-      updatedAt: toIsoString(row.updated_at)
+      releasedAt: toNullableIsoDateTime(row.released_at),
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
     });
   }
 

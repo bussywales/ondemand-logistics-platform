@@ -20,6 +20,7 @@ import {
 } from "@shipwright/contracts";
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
+import { toFiniteNumber, toInteger, toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 import { PaymentsService } from "../payments/payments.service.js";
 
@@ -59,10 +60,10 @@ type JobRow = {
   pricing_version: string;
   premium_distance_flag: boolean;
   created_by_user_id: string;
-  created_at: string;
-  dispatch_requested_at: string;
-  dispatch_failed_at: string | null;
-  updated_at: string;
+  created_at: string | Date;
+  dispatch_requested_at: string | Date;
+  dispatch_failed_at: string | Date | null;
+  updated_at: string | Date;
 };
 
 type TrackingJobRow = JobRow & {
@@ -70,7 +71,7 @@ type TrackingJobRow = JobRow & {
   driver_display_name: string | null;
   driver_latest_latitude: string | null;
   driver_latest_longitude: string | null;
-  driver_last_location_at: string | null;
+  driver_last_location_at: string | Date | null;
 };
 
 type CancelJobRow = JobRow & {
@@ -98,15 +99,8 @@ type DispatchAttemptRow = {
   driver_display_name: string | null;
   offer_id: string | null;
   notes: string | null;
-  created_at: string;
+  created_at: string | Date;
 };
-
-function toIsoString(value: string | Date | null) {
-  if (value === null) {
-    return null;
-  }
-  return value instanceof Date ? value.toISOString() : value;
-}
 
 const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
   j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
@@ -367,15 +361,15 @@ export class JobsService {
       pickup: {
         address: job.pickup_address,
         coordinates: {
-          latitude: Number(job.pickup_latitude),
-          longitude: Number(job.pickup_longitude)
+          latitude: toFiniteNumber(job.pickup_latitude, "job.pickup_latitude"),
+          longitude: toFiniteNumber(job.pickup_longitude, "job.pickup_longitude")
         }
       },
       dropoff: {
         address: job.dropoff_address,
         coordinates: {
-          latitude: Number(job.dropoff_latitude),
-          longitude: Number(job.dropoff_longitude)
+          latitude: toFiniteNumber(job.dropoff_latitude, "job.dropoff_latitude"),
+          longitude: toFiniteNumber(job.dropoff_longitude, "job.dropoff_longitude")
         }
       },
       etaMinutes: job.eta_minutes,
@@ -389,19 +383,19 @@ export class JobsService {
               latestLocation:
                 job.driver_latest_latitude && job.driver_latest_longitude
                   ? {
-                      latitude: Number(job.driver_latest_latitude),
-                      longitude: Number(job.driver_latest_longitude)
+                      latitude: toFiniteNumber(job.driver_latest_latitude, "job.driver_latest_latitude"),
+                      longitude: toFiniteNumber(job.driver_latest_longitude, "job.driver_latest_longitude")
                     }
                   : null,
-              lastLocationAt: toIsoString(job.driver_last_location_at)
+              lastLocationAt: toNullableIsoDateTime(job.driver_last_location_at)
             }
           : null,
       dispatchAttempts,
       timeline: timeline.rows.map((event) => ({
-        id: Number(event.id),
+        id: toInteger(event.id, "job_event.id"),
         eventType: event.event_type,
         actorId: event.actor_id,
-        createdAt: toIsoString(event.created_at),
+        createdAt: toIsoDateTime(event.created_at),
         payload: event.payload
       }))
     });
@@ -975,7 +969,7 @@ export class JobsService {
       driverDisplayName: attempt.driver_display_name,
       offerId: attempt.offer_id,
       notes: attempt.notes,
-      createdAt: toIsoString(attempt.created_at)
+      createdAt: toIsoDateTime(attempt.created_at)
     }));
   }
 
@@ -1147,14 +1141,14 @@ export class JobsService {
       pickupAddress: row.pickup_address,
       dropoffAddress: row.dropoff_address,
       pickupCoordinates: {
-        latitude: Number(row.pickup_latitude),
-        longitude: Number(row.pickup_longitude)
+        latitude: toFiniteNumber(row.pickup_latitude, "job.pickup_latitude"),
+        longitude: toFiniteNumber(row.pickup_longitude, "job.pickup_longitude")
       },
       dropoffCoordinates: {
-        latitude: Number(row.dropoff_latitude),
-        longitude: Number(row.dropoff_longitude)
+        latitude: toFiniteNumber(row.dropoff_latitude, "job.dropoff_latitude"),
+        longitude: toFiniteNumber(row.dropoff_longitude, "job.dropoff_longitude")
       },
-      distanceMiles: Number(row.distance_miles),
+      distanceMiles: toFiniteNumber(row.distance_miles, "job.distance_miles"),
       etaMinutes: row.eta_minutes,
       vehicleRequired: row.vehicle_required,
       customerTotalCents: row.customer_total_cents,
@@ -1165,7 +1159,7 @@ export class JobsService {
       attentionLevel: attention.level,
       attentionReason: attention.reason,
       createdByUserId: row.created_by_user_id,
-      createdAt: toIsoString(row.created_at)
+      createdAt: toIsoDateTime(row.created_at)
     });
   }
 }

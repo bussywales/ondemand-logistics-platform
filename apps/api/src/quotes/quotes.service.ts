@@ -13,6 +13,7 @@ import {
   type QuoteTimeOfDay
 } from "@shipwright/contracts";
 import { PgService } from "../database/pg.service.js";
+import { toFiniteNumber, toIsoDateTime } from "../database/mapper.js";
 import { createLogger, enrichLogContext } from "@shipwright/observability";
 
 const PRICING_VERSION = "phase1_2026_04_16_v1";
@@ -53,12 +54,8 @@ type QuoteRow = {
   pricing_version: string;
   premium_distance_flag: boolean;
   breakdown_lines: QuoteBreakdownLine[];
-  created_at: string;
+  created_at: string | Date;
 };
-
-function toIsoString(value: string | Date) {
-  return value instanceof Date ? value.toISOString() : value;
-}
 
 export type ComputedQuote = {
   customerTotalCents: number;
@@ -266,7 +263,7 @@ export class QuotesService {
       id: row.id,
       orgId: row.org_id,
       createdByUserId: row.created_by_user_id,
-      distanceMiles: Number(row.distance_miles),
+      distanceMiles: toFiniteNumber(row.distance_miles, "quote.distance_miles"),
       etaMinutes: row.eta_minutes,
       vehicleType: row.vehicle_type,
       timeOfDay: row.time_of_day,
@@ -278,7 +275,7 @@ export class QuotesService {
       pricingVersion: row.pricing_version,
       premiumDistanceFlag: row.premium_distance_flag,
       breakdownLines: row.breakdown_lines,
-      createdAt: toIsoString(row.created_at)
+      createdAt: toIsoDateTime(row.created_at)
     });
   }
 }
