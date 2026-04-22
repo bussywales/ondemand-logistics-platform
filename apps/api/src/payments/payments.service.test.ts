@@ -191,4 +191,102 @@ describe("PaymentsService", () => {
     expect(query.mock.calls.some(([sql]) => String(sql).includes("insert into public.refunds"))).toBe(true);
     expect(query.mock.calls.some(([sql]) => String(sql).includes("update public.payments"))).toBe(true);
   });
+
+  it("returns payment summaries for incomplete payment states with pg date values", async () => {
+    const createdAt = new Date("2026-04-22T22:39:00.000Z");
+    const updatedAt = new Date("2026-04-22T22:40:00.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            paymentContextRow({
+              payment_status: "REQUIRES_PAYMENT_METHOD",
+              amount_authorized_cents: 0,
+              amount_captured_cents: 0,
+              amount_refunded_cents: 0,
+              client_secret: null,
+              last_error: null,
+              payment_created_at: createdAt,
+              payment_updated_at: updatedAt
+            })
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+    };
+
+    const service = new PaymentsService(pg as never, providerStub() as never);
+    const summary = await service.getJobPayment(JOB_ID, USER_ID);
+
+    expect(summary.payment.status).toBe("REQUIRES_PAYMENT_METHOD");
+    expect(summary.payment.clientSecret).toBeNull();
+    expect(summary.payment.createdAt).toBe(createdAt.toISOString());
+    expect(summary.payment.updatedAt).toBe(updatedAt.toISOString());
+    expect(summary.refunds).toEqual([]);
+    expect(summary.payoutLedger).toBeNull();
+  });
+
+  it("serializes refund and payout timestamps from pg date values", async () => {
+    const createdAt = new Date("2026-04-22T22:39:00.000Z");
+    const updatedAt = new Date("2026-04-22T22:40:00.000Z");
+    const releasedAt = new Date("2026-04-22T22:41:00.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [paymentContextRow()]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: "1c1d1a7f-4a5f-4d29-b8c5-5c2051ad1bf1",
+              payment_id: PAYMENT_ID,
+              job_id: JOB_ID,
+              provider_refund_id: null,
+              status: "PENDING",
+              amount_cents: 400,
+              currency: "gbp",
+              reason_code: "manual_review",
+              created_at: createdAt,
+              updated_at: updatedAt
+            }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: "f7f57bbf-3647-4f66-898b-2e1dc8a56c8a",
+              job_id: JOB_ID,
+              driver_id: DRIVER_ID,
+              status: "READY",
+              gross_payout_cents: 1100,
+              hold_reason: null,
+              released_at: releasedAt,
+              created_at: createdAt,
+              updated_at: updatedAt
+            }
+          ]
+        })
+    };
+
+    const service = new PaymentsService(pg as never, providerStub() as never);
+    const summary = await service.getJobPayment(JOB_ID, USER_ID);
+
+    expect(summary.refunds[0]?.createdAt).toBe(createdAt.toISOString());
+    expect(summary.refunds[0]?.updatedAt).toBe(updatedAt.toISOString());
+    expect(summary.payoutLedger?.releasedAt).toBe(releasedAt.toISOString());
+    expect(summary.payoutLedger?.createdAt).toBe(createdAt.toISOString());
+    expect(summary.payoutLedger?.updatedAt).toBe(updatedAt.toISOString());
+  });
 });

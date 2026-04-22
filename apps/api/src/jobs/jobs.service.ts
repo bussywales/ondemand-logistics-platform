@@ -82,10 +82,10 @@ type OperatorJobRow = JobRow & {
 };
 
 type TimelineRow = {
-  id: number;
+  id: number | string;
   event_type: string;
   actor_id: string | null;
-  created_at: string;
+  created_at: string | Date;
   payload: Record<string, unknown>;
 };
 
@@ -398,7 +398,7 @@ export class JobsService {
           : null,
       dispatchAttempts,
       timeline: timeline.rows.map((event) => ({
-        id: event.id,
+        id: Number(event.id),
         eventType: event.event_type,
         actorId: event.actor_id,
         createdAt: toIsoString(event.created_at),

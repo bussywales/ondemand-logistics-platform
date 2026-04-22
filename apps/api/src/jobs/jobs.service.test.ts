@@ -290,6 +290,64 @@ describe("JobsService", () => {
     expect(tracking.timeline).toHaveLength(2);
   });
 
+  it("returns empty-state tracking payloads and coerces timeline ids from pg strings", async () => {
+    const createdAt = new Date("2026-04-22T22:40:00.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            createJobRow({
+              status: "REQUESTED",
+              assigned_driver_id: null,
+              driver_user_id: null,
+              driver_display_name: null,
+              driver_latest_latitude: null,
+              driver_latest_longitude: null,
+              driver_last_location_at: null
+            })
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: "7",
+              event_type: "JOB_REQUESTED",
+              actor_id: ACTOR_ID,
+              created_at: createdAt,
+              payload: {}
+            }
+          ]
+        })
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const tracking = await service.getTracking(JOB_ID, ACTOR_ID);
+
+    expect(tracking.assignedDriver).toBeNull();
+    expect(tracking.dispatchAttempts).toEqual([]);
+    expect(tracking.timeline).toEqual([
+      {
+        id: 7,
+        eventType: "JOB_REQUESTED",
+        actorId: ACTOR_ID,
+        createdAt: createdAt.toISOString(),
+        payload: {}
+      }
+    ]);
+  });
+
   it("returns an empty business jobs page for an onboarded operator with no jobs", async () => {
     const pg = {
       query: vi.fn().mockResolvedValue({

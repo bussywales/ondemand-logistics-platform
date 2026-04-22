@@ -48,8 +48,8 @@ type JobPaymentContextRow = {
   settlement_snapshot: Record<string, unknown>;
   client_secret: string | null;
   last_error: string | null;
-  payment_created_at: string;
-  payment_updated_at: string;
+  payment_created_at: string | Date;
+  payment_updated_at: string | Date;
   job_status: string;
   consumer_id: string;
   assigned_driver_id: string | null;
@@ -72,8 +72,8 @@ type PaymentRow = {
   settlement_snapshot: Record<string, unknown>;
   client_secret: string | null;
   last_error: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | Date;
+  updated_at: string | Date;
 };
 
 type RefundRow = {
@@ -96,9 +96,9 @@ type PayoutLedgerRow = {
   status: "PENDING" | "READY" | "PAID" | "FAILED" | "CANCELLED";
   gross_payout_cents: number;
   hold_reason: string | null;
-  released_at: string | null;
-  created_at: string;
-  updated_at: string;
+  released_at: string | Date | null;
+  created_at: string | Date;
+  updated_at: string | Date;
 };
 
 const PAYMENT_COLUMNS = `p.id, p.job_id, p.provider, p.provider_payment_intent_id, p.status,
@@ -126,6 +126,14 @@ const JOB_PAYMENT_ACCESS = `(
     )
   )
 )`;
+
+function toIsoString(value: string | Date | null) {
+  if (value === null) {
+    return null;
+  }
+
+  return value instanceof Date ? value.toISOString() : value;
+}
 
 export const PAYMENT_PROVIDER = Symbol("PAYMENT_PROVIDER");
 
@@ -743,8 +751,8 @@ export class PaymentsService {
       settlementSnapshot: row.settlement_snapshot,
       clientSecret: row.client_secret,
       lastError: row.last_error,
-      createdAt: "payment_created_at" in row ? row.payment_created_at : row.created_at,
-      updatedAt: "payment_updated_at" in row ? row.payment_updated_at : row.updated_at
+      createdAt: toIsoString("payment_created_at" in row ? row.payment_created_at : row.created_at),
+      updatedAt: toIsoString("payment_updated_at" in row ? row.payment_updated_at : row.updated_at)
     });
 
     return parsed;
@@ -760,8 +768,8 @@ export class PaymentsService {
       amountCents: row.amount_cents,
       currency: row.currency,
       reasonCode: row.reason_code,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      createdAt: toIsoString(row.created_at),
+      updatedAt: toIsoString(row.updated_at)
     });
   }
 
@@ -773,9 +781,9 @@ export class PaymentsService {
       status: row.status,
       grossPayoutCents: row.gross_payout_cents,
       holdReason: row.hold_reason,
-      releasedAt: row.released_at,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      releasedAt: toIsoString(row.released_at),
+      createdAt: toIsoString(row.created_at),
+      updatedAt: toIsoString(row.updated_at)
     });
   }
 
