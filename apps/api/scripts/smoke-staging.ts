@@ -1,4 +1,6 @@
-type CheckResult = {
+import { pathToFileURL } from "node:url";
+
+export type CheckResult = {
   ok: boolean;
   status?: number;
   requestId?: string | null;
@@ -6,7 +8,7 @@ type CheckResult = {
   skipped?: boolean;
 };
 
-function getRequiredEnv(name: string) {
+export function getRequiredEnv(name: string) {
   const value = process.env[name]?.trim();
   if (!value) {
     throw new Error(`${name} is required`);
@@ -15,16 +17,16 @@ function getRequiredEnv(name: string) {
   return value;
 }
 
-function getOptionalEnv(name: string) {
+export function getOptionalEnv(name: string) {
   const value = process.env[name]?.trim();
   return value && value.length > 0 ? value : null;
 }
 
-function normaliseBaseUrl(value: string) {
+export function normaliseBaseUrl(value: string) {
   return value.replace(/\/+$/, "");
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
+export async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -42,16 +44,16 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   }
 }
 
-function extractRequestId(response: Response) {
+export function extractRequestId(response: Response) {
   return response.headers.get("x-request-id") ?? response.headers.get("request-id");
 }
 
-async function readBodySnippet(response: Response) {
+export async function readBodySnippet(response: Response) {
   const text = await response.text();
   return text.replace(/\s+/g, " ").trim().slice(0, 240);
 }
 
-function logPass(name: string, result: CheckResult) {
+export function logPass(name: string, result: CheckResult) {
   const parts = [`PASS ${name}`];
   if (typeof result.status === "number") {
     parts.push(`status=${result.status}`);
@@ -62,7 +64,7 @@ function logPass(name: string, result: CheckResult) {
   console.log(parts.join(" | "));
 }
 
-function logFail(name: string, result: CheckResult) {
+export function logFail(name: string, result: CheckResult) {
   const parts = [`FAIL ${name}`];
   if (typeof result.status === "number") {
     parts.push(`status=${result.status}`);
@@ -76,11 +78,11 @@ function logFail(name: string, result: CheckResult) {
   console.error(parts.join(" | "));
 }
 
-function logSkip(name: string, reason: string) {
+export function logSkip(name: string, reason: string) {
   console.log(`SKIP ${name} | ${reason}`);
 }
 
-async function runCheck(
+export async function runCheck(
   name: string,
   url: string,
   init: RequestInit,
@@ -115,7 +117,7 @@ async function runCheck(
   }
 }
 
-async function main() {
+export async function runSmokeStaging() {
   const baseUrl = normaliseBaseUrl(getRequiredEnv("SMOKE_API_BASE_URL"));
   const businessToken = getRequiredEnv("SMOKE_BUSINESS_BEARER_TOKEN");
   const driverToken = getOptionalEnv("SMOKE_DRIVER_BEARER_TOKEN");
@@ -155,14 +157,23 @@ async function main() {
   }
 
   if (!healthz.ok || !readyz.ok || !businessJobs.ok) {
-    process.exitCode = 1;
-    return;
+    return false;
   }
 
   console.log("PASS smoke:staging | required checks passed");
+  return true;
 }
 
-main().catch((error) => {
-  console.error(`FAIL smoke:staging | ${error instanceof Error ? error.message : "unknown_error"}`);
-  process.exit(1);
-});
+async function main() {
+  const passed = await runSmokeStaging();
+  if (!passed) {
+    process.exitCode = 1;
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(`FAIL smoke:staging | ${error instanceof Error ? error.message : "unknown_error"}`);
+    process.exit(1);
+  });
+}

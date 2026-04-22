@@ -1,7 +1,13 @@
 # Staging Smoke Tests
 
 ## Purpose
-Run a repeatable post-deploy check against staging before calling a release healthy.
+Run the low-level authenticated smoke command used by the staging release verification workflow.
+
+Primary operator path:
+- `/Users/olubusayoadewale/Coding Projects/shipwright/docs/release-checklist.md`
+- command: `pnpm --filter api verify:staging`
+
+Use `smoke:staging` directly when you only need the HTTP checks without the full operator sequence.
 
 ## Prerequisites
 - Staging deploy is live.
