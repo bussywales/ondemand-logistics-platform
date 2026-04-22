@@ -126,6 +126,26 @@ Expected shape:
 {"status":"ok","service":"api","requestId":"<uuid>"}
 ```
 
+`/healthz` remains liveness-only.
+
+`/readyz` now includes a targeted schema compatibility check for the current release-critical flows:
+- quotes
+- jobs and tracking
+- payments
+
+If the database is reachable but required tables or columns are missing, `/readyz` returns `503` with:
+
+```json
+{
+  "status": "error",
+  "service": "api",
+  "message": "schema_compatibility_not_ready",
+  "missingElements": ["public.jobs.quote_id", "public.payments.created_at"]
+}
+```
+
+Treat any `schema_compatibility_not_ready` response as a failed release verification and apply the missing migrations before serving traffic.
+
 ## 5) Protected endpoint fixtures
 
 Seed or refresh staging auth fixtures locally:

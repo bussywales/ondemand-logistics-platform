@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { HealthController } from "./health.controller.js";
 import { PgService } from "./database/pg.service.js";
+import { SchemaReadinessService } from "./database/schema-readiness.service.js";
 import { JwtAuthGuard } from "./security/jwt-auth.guard.js";
 import { AuthService } from "./security/auth.service.js";
 import { RbacGuard } from "./security/rbac.guard.js";
@@ -32,6 +33,7 @@ import { BusinessService } from "./business/business.service.js";
   ],
   providers: [
     PgService,
+    SchemaReadinessService,
     AuthService,
     FoundationsService,
     QuotesService,
