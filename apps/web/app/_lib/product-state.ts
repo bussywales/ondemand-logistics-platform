@@ -9,6 +9,7 @@ export type PaymentStatus =
   | "REFUNDED"
   | "FAILED"
   | "CANCELLED";
+export type JobAttentionLevel = "NORMAL" | "RISK" | "BLOCKER";
 export type JobStatus =
   | "REQUESTED"
   | "ASSIGNED"
@@ -85,9 +86,22 @@ export type TimelineEvent = {
   summary: string;
 };
 
+export type DispatchAttempt = {
+  id: string;
+  attemptNumber: number;
+  triggerSource: string;
+  outcome: string;
+  driverId: string | null;
+  driverDisplayName: string | null;
+  offerId: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
 export type TrackingSummary = {
   latestLocation: { latitude: number; longitude: number } | null;
   assignedDriverName: string | null;
+  dispatchAttempts: DispatchAttempt[];
   timeline: TimelineEvent[];
 };
 
@@ -115,6 +129,8 @@ export type AppJob = {
   etaMinutes: number;
   vehicleRequired: VehicleType;
   premiumDistanceFlag: boolean;
+  attentionLevel: JobAttentionLevel;
+  attentionReason: string | null;
   customerTotalCents: number;
   driverPayoutGrossCents: number;
   platformFeeCents: number;

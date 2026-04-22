@@ -22,6 +22,7 @@ function driverRow(overrides: Record<string, unknown> = {}) {
 }
 
 function jobRow(overrides: Record<string, unknown> = {}) {
+  const now = new Date().toISOString();
   return {
     id: JOB_ID,
     org_id: null,
@@ -44,7 +45,10 @@ function jobRow(overrides: Record<string, unknown> = {}) {
     pricing_version: "phase1_test_v1",
     premium_distance_flag: false,
     created_by_user_id: ACTOR_ID,
-    created_at: new Date().toISOString(),
+    created_at: now,
+    dispatch_requested_at: now,
+    dispatch_failed_at: null,
+    updated_at: now,
     ...overrides
   };
 }

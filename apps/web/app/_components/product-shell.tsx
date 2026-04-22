@@ -3,8 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { BrandLogo } from "./brand-logo";
 import { fetchBusinessContext } from "../_lib/auth";
-import { authorizePayment, createLiveJob, getLiveJob, listLiveJobs } from "../_lib/api";
+import {
+  authorizePayment,
+  cancelJob,
+  createLiveJob,
+  getLiveJob,
+  listLiveJobs,
+  reassignDriver,
+  retryDispatch
+} from "../_lib/api";
 import {
   clearBusinessSession,
   formatCurrency,
@@ -34,13 +43,47 @@ const defaultForm: DeliveryFormInput = {
   dropoffLongitude: -0.1026
 };
 
+function formatStatusLabel(status: string) {
+  return status.replace(/_/g, " ");
+}
+
 function statusTone(status: AppJob["status"] | AppJob["payment"]["status"]) {
-  if (status === "AUTHORIZED" || status === "CAPTURED" || status === "DELIVERED") {
+  if (
+    status === "ASSIGNED" ||
+    status === "EN_ROUTE_PICKUP" ||
+    status === "PICKED_UP" ||
+    status === "EN_ROUTE_DROP" ||
+    status === "AUTHORIZED"
+  ) {
+    return "status-live";
+  }
+
+  if (status === "DELIVERED" || status === "CAPTURED") {
     return "status-positive";
   }
 
   if (status === "FAILED" || status === "CANCELLED" || status === "DISPATCH_FAILED") {
     return "status-negative";
+  }
+
+  return "status-neutral";
+}
+
+function summarizeDriver(job: AppJob) {
+  if (!job.tracking.assignedDriverName) {
+    return "No driver assigned";
+  }
+
+  return `${job.tracking.assignedDriverName} · ${job.vehicleRequired}`;
+}
+
+function attentionTone(level: AppJob["attentionLevel"]) {
+  if (level === "BLOCKER") {
+    return "status-negative";
+  }
+
+  if (level === "RISK") {
+    return "status-live";
   }
 
   return "status-neutral";
@@ -55,8 +98,11 @@ export function ProductShell(props: ProductShellProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [actionSubmitting, setActionSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentMethodId, setPaymentMethodId] = useState("pm_card_visa");
+  const [reassignDriverId, setReassignDriverId] = useState("");
+  const [cancelReason, setCancelReason] = useState("Operator cancelled");
 
   useEffect(() => {
     const nextSession = readBusinessSession();
@@ -81,14 +127,41 @@ export function ProductShell(props: ProductShellProps) {
     void refreshLiveJob(props.jobId, session);
   }, [props.jobId, session?.accessToken]);
 
-  const overview = useMemo(() => {
-    const authorizedJobs = jobs.filter((job) => job.payment.status === "AUTHORIZED" || job.payment.status === "CAPTURED").length;
+  const workspaceSummary = useMemo(() => {
+    const activeJobs = jobs.filter((job) =>
+      ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(job.status)
+    ).length;
+
     return {
-      totalJobs: jobs.length,
-      authorizedJobs,
-      currentOrgName: session?.context.currentOrg?.name ?? "No org"
+      orgName: session?.context.currentOrg?.name ?? "No org",
+      activeJobs,
+      totalJobs: jobs.length
     };
   }, [jobs, session]);
+
+  const activeJobs = useMemo(
+    () =>
+      jobs
+        .filter((job) =>
+          ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(job.status)
+        )
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+    [jobs]
+  );
+
+  const attentionJobs = useMemo(
+    () =>
+      jobs
+        .filter((job) => job.attentionLevel !== "NORMAL")
+        .map((job) => ({ job, reason: job.attentionReason ?? job.attentionLevel }))
+        .sort((left, right) => right.job.createdAt.localeCompare(left.job.createdAt)),
+    [jobs]
+  );
+
+  function syncJob(nextJob: AppJob) {
+    setSelectedJob(nextJob);
+    setJobs((current) => current.map((item) => (item.id === nextJob.id ? nextJob : item)));
+  }
 
   async function refreshContextAndJobs(currentSession: BusinessSession) {
     try {
@@ -98,7 +171,7 @@ export function ProductShell(props: ProductShellProps) {
       const liveJobs = await listLiveJobs(nextSession);
       setJobs(liveJobs);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to load business workspace.");
+      setError(issue instanceof Error ? issue.message : "Unable to load operations workspace.");
     }
   }
 
@@ -106,12 +179,13 @@ export function ProductShell(props: ProductShellProps) {
     try {
       const job = await getLiveJob(currentSession, jobId);
       setSelectedJob(job);
-      setJobs((current) => {
-        const nextJobs = [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-        return nextJobs;
-      });
+      setJobs((current) =>
+        [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) =>
+          right.createdAt.localeCompare(left.createdAt)
+        )
+      );
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to load the selected job.");
+      setError(issue instanceof Error ? issue.message : "Unable to load job.");
     }
   }
 
@@ -141,7 +215,11 @@ export function ProductShell(props: ProductShellProps) {
         }
       });
 
-      setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt)));
+      setJobs((current) =>
+        [created, ...current.filter((item) => item.id !== created.id)].sort((left, right) =>
+          right.createdAt.localeCompare(left.createdAt)
+        )
+      );
       router.push(`/app/jobs/${created.id}`);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to create delivery.");
@@ -160,19 +238,66 @@ export function ProductShell(props: ProductShellProps) {
 
     try {
       const payment = await authorizePayment(session, job.id, paymentMethodId.trim());
-      const nextJob = {
-        ...job,
-        payment: {
-          ...job.payment,
-          ...payment
-        }
-      };
-      setSelectedJob(nextJob);
-      setJobs((current) => current.map((item) => (item.id === job.id ? nextJob : item)));
+      const nextJob = { ...job, payment: { ...job.payment, ...payment } };
+      syncJob(nextJob);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to authorize payment.");
     } finally {
       setPaymentSubmitting(false);
+    }
+  }
+
+  async function handleRetryDispatch(job: AppJob) {
+    if (!session) {
+      return;
+    }
+
+    setActionSubmitting(true);
+    setError(null);
+
+    try {
+      const nextJob = await retryDispatch(session, job.id);
+      syncJob(nextJob);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to retry dispatch.");
+    } finally {
+      setActionSubmitting(false);
+    }
+  }
+
+  async function handleReassignDriver(job: AppJob) {
+    if (!session) {
+      return;
+    }
+
+    setActionSubmitting(true);
+    setError(null);
+
+    try {
+      const nextJob = await reassignDriver(session, job.id, reassignDriverId.trim());
+      syncJob(nextJob);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to reassign driver.");
+    } finally {
+      setActionSubmitting(false);
+    }
+  }
+
+  async function handleCancelJob(job: AppJob) {
+    if (!session) {
+      return;
+    }
+
+    setActionSubmitting(true);
+    setError(null);
+
+    try {
+      const nextJob = await cancelJob(session, job.id, cancelReason.trim());
+      syncJob(nextJob);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to cancel job.");
+    } finally {
+      setActionSubmitting(false);
     }
   }
 
@@ -187,7 +312,9 @@ export function ProductShell(props: ProductShellProps) {
   if (loading) {
     return (
       <main className="app-shell loading-shell">
-        <div className="app-panel app-loading-card">Loading product shell...</div>
+        <section className="ops-empty-state">
+          <strong>Loading operations console</strong>
+        </section>
       </main>
     );
   }
@@ -195,18 +322,13 @@ export function ProductShell(props: ProductShellProps) {
   if (!session) {
     return (
       <main className="app-shell loading-shell">
-        <section className="app-panel onboarding-guard">
+        <section className="ops-empty-state">
           <p className="eyebrow">Business onboarding required</p>
-          <h1>Sign in and create the business org first.</h1>
-          <p>
-            The dashboard now expects a real authenticated business session. Start from onboarding to create or resume the business operator account, then come back here.
-          </p>
+          <h1>Sign in before using operations.</h1>
+          <p>Open onboarding, create or resume the operator account, then return here.</p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/get-started">
               Go to Get Started
-            </Link>
-            <Link className="button button-secondary" href="/contact">
-              Talk to Team
             </Link>
           </div>
         </section>
@@ -217,12 +339,10 @@ export function ProductShell(props: ProductShellProps) {
   if (!session.context.currentOrg) {
     return (
       <main className="app-shell loading-shell">
-        <section className="app-panel onboarding-guard">
+        <section className="ops-empty-state">
           <p className="eyebrow">Business org missing</p>
-          <h1>Finish onboarding before using the dashboard.</h1>
-          <p>
-            The account is authenticated, but there is no business org membership yet. Return to onboarding to create the organization and operator membership.
-          </p>
+          <h1>Finish org setup before using operations.</h1>
+          <p>The account is authenticated but not attached to a business operator membership yet.</p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/get-started">
               Complete Onboarding
@@ -237,239 +357,562 @@ export function ProductShell(props: ProductShellProps) {
   }
 
   const job = props.view === "job-detail" ? selectedJob : null;
-  const recentJobs = jobs.slice(0, props.view === "home" ? 5 : 20);
+  const jobsToRender = jobs.slice(0, 20);
 
   return (
-    <main className="app-shell">
-      <header className="app-topbar app-panel">
-        <div>
-          <p className="eyebrow">Business workspace</p>
-          <h1>{overview.currentOrgName}</h1>
-          <p className="section-copy">Dispatch deliveries, review tracking, and move jobs through payment authorization with real org access.</p>
+    <main className="app-shell ops-shell">
+      <header className="ops-topbar">
+        <div className="ops-branding">
+          <BrandLogo href="/" mode="responsive" />
+          <p className="eyebrow">Operations console</p>
+          <h1>{workspaceSummary.orgName}</h1>
         </div>
-        <nav className="app-nav" aria-label="App navigation">
-          <Link className={props.view === "home" ? "app-nav-link active" : "app-nav-link"} href="/app">
-            Overview
-          </Link>
-          <Link className={props.view !== "home" ? "app-nav-link active" : "app-nav-link"} href="/app/jobs">
-            Jobs
-          </Link>
-          <Link className="app-nav-link" href="/">
-            Marketing site
-          </Link>
-        </nav>
+        <div className="ops-topbar-actions">
+          <button className="button button-secondary" onClick={() => void refreshContextAndJobs(session)} type="button">
+            Refresh
+          </button>
+          <button className="button button-secondary" onClick={handleSignOut} type="button">
+            Sign Out
+          </button>
+        </div>
       </header>
 
-      <section className="app-grid">
-        <aside className="app-sidebar">
-          <div className="app-panel sidebar-card">
-            <p className="eyebrow">Authenticated operator</p>
-            <h2>{session.context.displayName}</h2>
+      <section className="ops-layout">
+        <aside className="ops-sidebar">
+          <nav className="ops-nav" aria-label="Workspace navigation">
+            <Link className={props.view === "home" ? "ops-nav-link active" : "ops-nav-link"} href="/app">
+              Operations
+            </Link>
+            <Link className={props.view !== "home" ? "ops-nav-link active" : "ops-nav-link"} href="/app/jobs">
+              Jobs
+            </Link>
+          </nav>
+
+          <section className="ops-sidebar-section">
+            <span className="ops-section-label">Operator</span>
+            <strong>{session.context.displayName}</strong>
             <p>{session.context.email}</p>
-            <p>{session.context.currentOrg.contactPhone ?? "Phone not set"}</p>
-            <p>{session.context.currentOrg.city ?? "City not set"}</p>
-            <p className="support-note">
-              Org-backed access is active. Quotes, jobs, tracking, and payment reads are now coming from the real API using the stored session.
-            </p>
-            <button className="button button-secondary button-block" onClick={handleSignOut} type="button">
-              Sign Out
-            </button>
-          </div>
-
-          <div className="app-panel sidebar-card">
-            <p className="eyebrow">Org summary</p>
-            <label>
-              <span>Organization</span>
-              <input readOnly value={session.context.currentOrg.name} />
-            </label>
-            <label>
-              <span>Contact email</span>
-              <input readOnly value={session.context.currentOrg.contactEmail ?? session.context.email} />
-            </label>
-            <label>
-              <span>Membership role</span>
-              <input readOnly value={session.context.memberships[0]?.membership.role ?? "BUSINESS_OPERATOR"} />
-            </label>
-            <button className="button button-secondary button-block" onClick={() => void refreshContextAndJobs(session)} type="button">
-              Refresh Workspace
-            </button>
-          </div>
-        </aside>
-
-        <div className="app-main">
-          <section className="metrics-grid">
-            <article className="app-panel metric-card">
-              <span className="metric-label">Business org</span>
-              <strong>{overview.currentOrgName}</strong>
-              <p>Authenticated dashboard access is scoped to the onboarded operator membership.</p>
-            </article>
-            <article className="app-panel metric-card">
-              <span className="metric-label">Jobs in workspace</span>
-              <strong>{overview.totalJobs}</strong>
-              <p>Org-scoped jobs loaded from the backend business jobs endpoint.</p>
-            </article>
-            <article className="app-panel metric-card">
-              <span className="metric-label">Payment readiness</span>
-              <strong>{overview.authorizedJobs}</strong>
-              <p>Jobs with authorized or captured payment.</p>
-            </article>
           </section>
 
-          {error ? <div className="app-panel form-error-banner">{error}</div> : null}
-
-          {(props.view === "home" || props.view === "jobs") ? (
-            <section className="dashboard-stack">
-              <div className="app-panel compose-card">
-                <div className="panel-heading-row">
-                  <div>
-                    <p className="eyebrow">Create delivery</p>
-                    <h2>Quote, request, and move into payment readiness.</h2>
-                  </div>
-                  <span className="status-badge status-positive">Real org-backed flow</span>
-                </div>
-                <form className="compose-form" onSubmit={handleCreateDelivery}>
-                  <div className="form-grid-two">
-                    <label>
-                      <span>Pickup address</span>
-                      <input onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupAddress: event.target.value }))} value={deliveryForm.pickupAddress} />
-                    </label>
-                    <label>
-                      <span>Drop address</span>
-                      <input onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffAddress: event.target.value }))} value={deliveryForm.dropoffAddress} />
-                    </label>
-                  </div>
-                  <div className="form-grid-three">
-                    <label>
-                      <span>Distance (miles)</span>
-                      <input max="12" min="0.1" onChange={(event) => setDeliveryForm((current) => ({ ...current, distanceMiles: Number(event.target.value) }))} step="0.1" type="number" value={deliveryForm.distanceMiles} />
-                    </label>
-                    <label>
-                      <span>ETA (minutes)</span>
-                      <input min="1" onChange={(event) => setDeliveryForm((current) => ({ ...current, etaMinutes: Number(event.target.value) }))} step="1" type="number" value={deliveryForm.etaMinutes} />
-                    </label>
-                    <label>
-                      <span>Vehicle</span>
-                      <select onChange={(event) => setDeliveryForm((current) => ({ ...current, vehicleType: event.target.value as VehicleType }))} value={deliveryForm.vehicleType}>
-                        <option value="BIKE">Bike</option>
-                        <option value="CAR">Car</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="form-grid-two">
-                    <label>
-                      <span>Pickup coordinates</span>
-                      <div className="coordinate-grid">
-                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupLatitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.pickupLatitude} />
-                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, pickupLongitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.pickupLongitude} />
-                      </div>
-                    </label>
-                    <label>
-                      <span>Drop coordinates</span>
-                      <div className="coordinate-grid">
-                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffLatitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.dropoffLatitude} />
-                        <input onChange={(event) => setDeliveryForm((current) => ({ ...current, dropoffLongitude: Number(event.target.value) }))} step="0.0001" type="number" value={deliveryForm.dropoffLongitude} />
-                      </div>
-                    </label>
-                  </div>
-                  <div className="compose-actions">
-                    <button className="button button-primary" disabled={submitting} type="submit">
-                      {submitting ? "Creating delivery..." : "Create Delivery Request"}
-                    </button>
-                    <p className="support-note">This form now uses the onboarded org context automatically. No bearer token, org ID, or consumer ID fields are required in the UI.</p>
-                  </div>
-                </form>
+          <section className="ops-sidebar-section">
+            <span className="ops-section-label">Workspace</span>
+            <div className="ops-summary-list">
+              <div>
+                <strong>{workspaceSummary.activeJobs}</strong>
+                <span>Active</span>
               </div>
+              <div>
+                <strong>{attentionJobs.length}</strong>
+                <span>Attention</span>
+              </div>
+              <div>
+                <strong>{workspaceSummary.totalJobs}</strong>
+                <span>Total</span>
+              </div>
+            </div>
+          </section>
+        </aside>
 
-              <div className="app-panel jobs-panel">
-                <div className="panel-heading-row">
+        <div className="ops-main">
+          {error ? <div className="form-error-banner">{error}</div> : null}
+
+          {props.view === "home" ? (
+            <section className="ops-stack">
+              <section className="ops-section">
+                <div className="ops-section-header">
                   <div>
-                    <p className="eyebrow">Jobs</p>
-                    <h2>{props.view === "home" ? "Recent deliveries" : "Workspace jobs"}</h2>
+                    <p className="eyebrow">Operations</p>
+                    <h2>Active jobs</h2>
                   </div>
                   <Link className="button button-secondary" href="/app/jobs">
-                    Open jobs view
+                    Jobs
                   </Link>
                 </div>
-                {recentJobs.length === 0 ? (
-                  <div className="empty-state">
-                    <strong>No deliveries yet.</strong>
-                    <p>Create the first request above to generate a live quote, job, tracking, and payment record.</p>
+
+                {activeJobs.length === 0 ? (
+                  <div className="ops-empty-state">
+                    <strong>No active jobs</strong>
+                    <p>The live queue is clear.</p>
                   </div>
                 ) : (
-                  <div className="jobs-list">
-                    {recentJobs.map((item) => (
-                      <Link className="job-row" href={`/app/jobs/${item.id}`} key={item.id}>
-                        <div>
-                          <strong>{item.pickupAddress}</strong>
-                          <p>{item.dropoffAddress}</p>
+                  <div className="jobs-table" role="table" aria-label="Active jobs">
+                    <div className="jobs-table-head" role="row">
+                      <span>Job</span>
+                      <span>Status</span>
+                      <span>Route</span>
+                      <span>Driver</span>
+                      <span>ETA</span>
+                      <span>Action</span>
+                    </div>
+                    {activeJobs.map((item) => (
+                      <Link className="jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
+                        <div className="jobs-cell jobs-cell-id">
+                          <strong>{item.id}</strong>
+                          <span>{formatDateTime(item.createdAt)}</span>
                         </div>
-                        <div className="job-row-meta">
-                          <span className={`status-badge ${statusTone(item.status)}`}>{item.status.replace(/_/g, " ")}</span>
-                          <span>{formatCurrency(item.customerTotalCents, item.payment.currency)}</span>
+                        <div className="jobs-cell">
+                          <span className={`status-badge ${statusTone(item.status)}`}>
+                            {formatStatusLabel(item.status)}
+                          </span>
+                        </div>
+                        <div className="jobs-cell jobs-cell-route">
+                          <strong>{item.pickupAddress}</strong>
+                          <span>{item.dropoffAddress}</span>
+                        </div>
+                        <div className="jobs-cell">
+                          <strong>{summarizeDriver(item)}</strong>
+                        </div>
+                        <div className="jobs-cell">
+                          <strong>{item.etaMinutes} min</strong>
+                          <span>{item.distanceMiles.toFixed(1)} mi</span>
+                        </div>
+                        <div className="jobs-cell jobs-cell-action">
+                          <span>Track</span>
                         </div>
                       </Link>
                     ))}
                   </div>
                 )}
-              </div>
+              </section>
+
+              <section className="ops-section">
+                <div className="ops-section-header">
+                  <div>
+                    <p className="eyebrow">Attention</p>
+                    <h2>Needs review</h2>
+                  </div>
+                </div>
+
+                {attentionJobs.length === 0 ? (
+                  <div className="ops-empty-state">
+                    <strong>No attention items</strong>
+                    <p>No failed jobs, no-driver states, or delay signals right now.</p>
+                  </div>
+                ) : (
+                  <div className="attention-list">
+                    {attentionJobs.map(({ job: item, reason }) => (
+                      <Link className="attention-row" href={`/app/jobs/${item.id}`} key={item.id}>
+                        <div>
+                          <strong>{item.id}</strong>
+                          <p>{reason}</p>
+                        </div>
+                        <div className="attention-meta">
+                          <span className={`status-badge ${attentionTone(item.attentionLevel)}`}>
+                            {item.attentionLevel}
+                          </span>
+                          <span>{item.etaMinutes} min</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </section>
+          ) : null}
+
+          {props.view === "jobs" ? (
+            <section className="ops-stack">
+              <section className="ops-section">
+                <div className="ops-section-header">
+                  <div>
+                    <p className="eyebrow">Jobs</p>
+                    <h2>Create job</h2>
+                  </div>
+                </div>
+
+                <form className="ops-form" onSubmit={handleCreateDelivery}>
+                  <div className="form-grid-two">
+                    <label>
+                      <span>Pickup</span>
+                      <input
+                        onChange={(event) =>
+                          setDeliveryForm((current) => ({ ...current, pickupAddress: event.target.value }))
+                        }
+                        value={deliveryForm.pickupAddress}
+                      />
+                    </label>
+                    <label>
+                      <span>Drop</span>
+                      <input
+                        onChange={(event) =>
+                          setDeliveryForm((current) => ({ ...current, dropoffAddress: event.target.value }))
+                        }
+                        value={deliveryForm.dropoffAddress}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="form-grid-three">
+                    <label>
+                      <span>Distance</span>
+                      <input
+                        max="12"
+                        min="0.1"
+                        onChange={(event) =>
+                          setDeliveryForm((current) => ({ ...current, distanceMiles: Number(event.target.value) }))
+                        }
+                        step="0.1"
+                        type="number"
+                        value={deliveryForm.distanceMiles}
+                      />
+                    </label>
+                    <label>
+                      <span>ETA</span>
+                      <input
+                        min="1"
+                        onChange={(event) =>
+                          setDeliveryForm((current) => ({ ...current, etaMinutes: Number(event.target.value) }))
+                        }
+                        step="1"
+                        type="number"
+                        value={deliveryForm.etaMinutes}
+                      />
+                    </label>
+                    <label>
+                      <span>Vehicle</span>
+                      <select
+                        onChange={(event) =>
+                          setDeliveryForm((current) => ({
+                            ...current,
+                            vehicleType: event.target.value as VehicleType
+                          }))
+                        }
+                        value={deliveryForm.vehicleType}
+                      >
+                        <option value="BIKE">Bike</option>
+                        <option value="CAR">Car</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="form-grid-two">
+                    <label>
+                      <span>Pickup coordinates</span>
+                      <div className="coordinate-grid">
+                        <input
+                          onChange={(event) =>
+                            setDeliveryForm((current) => ({ ...current, pickupLatitude: Number(event.target.value) }))
+                          }
+                          step="0.0001"
+                          type="number"
+                          value={deliveryForm.pickupLatitude}
+                        />
+                        <input
+                          onChange={(event) =>
+                            setDeliveryForm((current) => ({
+                              ...current,
+                              pickupLongitude: Number(event.target.value)
+                            }))
+                          }
+                          step="0.0001"
+                          type="number"
+                          value={deliveryForm.pickupLongitude}
+                        />
+                      </div>
+                    </label>
+                    <label>
+                      <span>Drop coordinates</span>
+                      <div className="coordinate-grid">
+                        <input
+                          onChange={(event) =>
+                            setDeliveryForm((current) => ({ ...current, dropoffLatitude: Number(event.target.value) }))
+                          }
+                          step="0.0001"
+                          type="number"
+                          value={deliveryForm.dropoffLatitude}
+                        />
+                        <input
+                          onChange={(event) =>
+                            setDeliveryForm((current) => ({
+                              ...current,
+                              dropoffLongitude: Number(event.target.value)
+                            }))
+                          }
+                          step="0.0001"
+                          type="number"
+                          value={deliveryForm.dropoffLongitude}
+                        />
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="ops-actions">
+                    <button className="button button-primary" disabled={submitting} type="submit">
+                      {submitting ? "Creating..." : "Create Job"}
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              <section className="ops-section">
+                <div className="ops-section-header">
+                  <div>
+                    <p className="eyebrow">Jobs</p>
+                    <h2>All jobs</h2>
+                  </div>
+                </div>
+
+                {jobsToRender.length === 0 ? (
+                  <div className="ops-empty-state">
+                    <strong>No jobs yet</strong>
+                    <p>Create the first delivery request to populate the workspace.</p>
+                  </div>
+                ) : (
+                  <div className="jobs-table" role="table" aria-label="All jobs">
+                    <div className="jobs-table-head" role="row">
+                      <span>Job</span>
+                      <span>Status</span>
+                      <span>Pickup</span>
+                      <span>Drop</span>
+                      <span>ETA</span>
+                      <span>Action</span>
+                    </div>
+                    {jobsToRender.map((item) => (
+                      <Link className="jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
+                        <div className="jobs-cell jobs-cell-id">
+                          <strong>{item.id}</strong>
+                          <span>{formatDateTime(item.createdAt)}</span>
+                        </div>
+                        <div className="jobs-cell">
+                          <span className={`status-badge ${statusTone(item.status)}`}>
+                            {formatStatusLabel(item.status)}
+                          </span>
+                        </div>
+                        <div className="jobs-cell jobs-cell-route">
+                          <strong>{item.pickupAddress}</strong>
+                        </div>
+                        <div className="jobs-cell jobs-cell-route">
+                          <strong>{item.dropoffAddress}</strong>
+                        </div>
+                        <div className="jobs-cell">
+                          <strong>{item.etaMinutes} min</strong>
+                          <span>{item.distanceMiles.toFixed(1)} mi</span>
+                        </div>
+                        <div className="jobs-cell jobs-cell-action">
+                          <span>View</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
             </section>
           ) : null}
 
           {props.view === "job-detail" ? (
             job ? (
-              <section className="dashboard-stack">
-                <div className="app-panel detail-hero">
-                  <div>
-                    <p className="eyebrow">Job detail</p>
-                    <h2>{job.pickupAddress}</h2>
-                    <p className="section-copy">{job.dropoffAddress}</p>
+              <section className="ops-stack">
+                <section className="ops-section">
+                  <div className="ops-job-header">
+                    <div>
+                      <p className="eyebrow">Job detail</p>
+                      <h2>{job.id}</h2>
+                      <p className="ops-detail-note">{job.attentionReason ?? "Normal operational state"}</p>
+                    </div>
+                    <div className="ops-job-statuses">
+                      <span className={`status-badge ${statusTone(job.status)}`}>
+                        {formatStatusLabel(job.status)}
+                      </span>
+                      <span className={`status-badge ${attentionTone(job.attentionLevel)}`}>
+                        {job.attentionLevel}
+                      </span>
+                      <span className={`status-badge ${statusTone(job.payment.status)}`}>
+                        {formatStatusLabel(job.payment.status)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="detail-statuses">
-                    <span className={`status-badge ${statusTone(job.status)}`}>{job.status.replace(/_/g, " ")}</span>
-                    <span className={`status-badge ${statusTone(job.payment.status)}`}>{job.payment.status.replace(/_/g, " ")}</span>
-                  </div>
-                </div>
+                </section>
 
-                <div className="detail-grid">
-                  <article className="app-panel detail-card">
-                    <p className="eyebrow">Tracking</p>
-                    <h3>Live delivery view</h3>
-                    <dl className="detail-list">
+                <div className="ops-detail-grid">
+                  <section className="ops-section">
+                    <div className="ops-section-header">
                       <div>
-                        <dt>Distance</dt>
-                        <dd>{job.distanceMiles.toFixed(1)} miles</dd>
+                        <p className="eyebrow">Route</p>
+                        <h2>Pickup and drop</h2>
+                      </div>
+                    </div>
+                    <div className="ops-definition-list">
+                      <div>
+                        <dt>Pickup</dt>
+                        <dd>{job.pickupAddress}</dd>
+                      </div>
+                      <div>
+                        <dt>Drop</dt>
+                        <dd>{job.dropoffAddress}</dd>
                       </div>
                       <div>
                         <dt>ETA</dt>
                         <dd>{job.etaMinutes} minutes</dd>
                       </div>
                       <div>
+                        <dt>Distance</dt>
+                        <dd>{job.distanceMiles.toFixed(1)} miles</dd>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="ops-section">
+                    <div className="ops-section-header">
+                      <div>
+                        <p className="eyebrow">Driver</p>
+                        <h2>Assignment</h2>
+                      </div>
+                    </div>
+                    <div className="ops-definition-list">
+                      <div>
                         <dt>Driver</dt>
-                        <dd>{job.tracking.assignedDriverName ?? "Awaiting assignment"}</dd>
+                        <dd>{summarizeDriver(job)}</dd>
+                      </div>
+                      <div>
+                        <dt>Vehicle</dt>
+                        <dd>{job.vehicleRequired}</dd>
                       </div>
                       <div>
                         <dt>Latest coordinates</dt>
-                        <dd>{job.tracking.latestLocation ? `${job.tracking.latestLocation.latitude.toFixed(4)}, ${job.tracking.latestLocation.longitude.toFixed(4)}` : "No live coordinates yet"}</dd>
+                        <dd>
+                          {job.tracking.latestLocation
+                            ? `${job.tracking.latestLocation.latitude.toFixed(4)}, ${job.tracking.latestLocation.longitude.toFixed(4)}`
+                            : "No live coordinates"}
+                        </dd>
                       </div>
-                    </dl>
-                    <div className="timeline-list">
-                      {job.tracking.timeline.length === 0 ? (
-                        <p className="support-note">Tracking events will appear here as dispatch and delivery progress advance.</p>
-                      ) : (
-                        job.tracking.timeline.map((item) => (
-                          <div className="timeline-row" key={item.id}>
-                            <strong>{item.eventType.replace(/_/g, " ")}</strong>
+                      <div>
+                        <dt>Pricing version</dt>
+                        <dd>{job.pricingVersion}</dd>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="ops-detail-grid">
+                  <section className="ops-section">
+                    <div className="ops-section-header">
+                      <div>
+                        <p className="eyebrow">Dispatch</p>
+                        <h2>Attempts</h2>
+                      </div>
+                    </div>
+                    {job.tracking.dispatchAttempts.length === 0 ? (
+                      <div className="ops-empty-state">
+                        <strong>No attempts recorded</strong>
+                        <p>Dispatch attempts will appear here as the job is offered or retried.</p>
+                      </div>
+                    ) : (
+                      <div className="timeline-table" role="table" aria-label="Dispatch attempts">
+                        {job.tracking.dispatchAttempts.map((attempt) => (
+                          <div className="timeline-table-row" key={attempt.id} role="row">
+                            <div>
+                              <strong>
+                                Attempt {attempt.attemptNumber} · {attempt.outcome}
+                              </strong>
+                              <span>
+                                {attempt.driverDisplayName ?? attempt.driverId ?? "No driver"} · {attempt.triggerSource}
+                              </span>
+                            </div>
+                            <span>{formatDateTime(attempt.createdAt)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="ops-section">
+                    <div className="ops-section-header">
+                      <div>
+                        <p className="eyebrow">Timeline</p>
+                        <h2>Events</h2>
+                      </div>
+                    </div>
+                    {job.tracking.timeline.length === 0 ? (
+                      <div className="ops-empty-state">
+                        <strong>No events yet</strong>
+                        <p>Dispatch and delivery events will appear here as the job progresses.</p>
+                      </div>
+                    ) : (
+                      <div className="timeline-table" role="table" aria-label="Timeline">
+                        {job.tracking.timeline.map((item) => (
+                          <div className="timeline-table-row" key={item.id} role="row">
+                            <div>
+                              <strong>{formatStatusLabel(item.eventType)}</strong>
+                              <span>{item.summary}</span>
+                            </div>
                             <span>{formatDateTime(item.createdAt)}</span>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
 
-                  <article className="app-panel detail-card">
-                    <p className="eyebrow">Payment state</p>
-                    <h3>Authorization and readiness</h3>
-                    <dl className="detail-list">
+                  <section className="ops-section">
+                    <div className="ops-section-header">
+                      <div>
+                        <p className="eyebrow">Actions</p>
+                        <h2>Operator controls</h2>
+                      </div>
+                    </div>
+                    <div className="ops-definition-list">
+                      <div>
+                        <dt>Retry dispatch</dt>
+                        <dd>Re-open the job for dispatch when it is blocked or needs another attempt.</dd>
+                      </div>
+                    </div>
+                    <div className="ops-actions ops-actions-inline">
+                      <button
+                        className="button button-secondary"
+                        disabled={actionSubmitting}
+                        onClick={() => void handleRetryDispatch(job)}
+                        type="button"
+                      >
+                        Retry Dispatch
+                      </button>
+                    </div>
+
+                    <label className="ops-field">
+                      <span>Reassign to driver ID</span>
+                      <input
+                        onChange={(event) => setReassignDriverId(event.target.value)}
+                        placeholder="driver UUID"
+                        value={reassignDriverId}
+                      />
+                    </label>
+
+                    <div className="ops-actions ops-actions-inline">
+                      <button
+                        className="button button-secondary"
+                        disabled={actionSubmitting || !reassignDriverId.trim()}
+                        onClick={() => void handleReassignDriver(job)}
+                        type="button"
+                      >
+                        Reassign Driver
+                      </button>
+                    </div>
+
+                    <label className="ops-field">
+                      <span>Cancel reason</span>
+                      <input onChange={(event) => setCancelReason(event.target.value)} value={cancelReason} />
+                    </label>
+
+                    <div className="ops-actions ops-actions-inline">
+                      <button
+                        className="button button-secondary"
+                        disabled={actionSubmitting || !cancelReason.trim()}
+                        onClick={() => void handleCancelJob(job)}
+                        type="button"
+                      >
+                        Cancel Job
+                      </button>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="ops-detail-grid">
+                  <section className="ops-section">
+                    <div className="ops-section-header">
+                      <div>
+                        <p className="eyebrow">Payment</p>
+                        <h2>Status</h2>
+                      </div>
+                    </div>
+                    <div className="ops-definition-list">
                       <div>
                         <dt>Customer total</dt>
                         <dd>{formatCurrency(job.customerTotalCents, job.payment.currency)}</dd>
@@ -486,25 +929,40 @@ export function ProductShell(props: ProductShellProps) {
                         <dt>Authorized</dt>
                         <dd>{formatCurrency(job.payment.amountAuthorizedCents, job.payment.currency)}</dd>
                       </div>
-                    </dl>
-                    <label>
+                    </div>
+
+                    <label className="ops-field">
                       <span>Payment method ID</span>
-                      <input onChange={(event) => setPaymentMethodId(event.target.value)} placeholder="pm_card_visa" value={paymentMethodId} />
+                      <input
+                        onChange={(event) => setPaymentMethodId(event.target.value)}
+                        placeholder="pm_card_visa"
+                        value={paymentMethodId}
+                      />
                     </label>
-                    <div className="compose-actions">
-                      <button className="button button-primary" disabled={paymentSubmitting || job.payment.status === "AUTHORIZED" || job.payment.status === "CAPTURED"} onClick={() => void handleAuthorizePayment(job)} type="button">
+
+                    <div className="ops-actions">
+                      <button
+                        className="button button-primary"
+                        disabled={
+                          paymentSubmitting ||
+                          job.payment.status === "AUTHORIZED" ||
+                          job.payment.status === "CAPTURED"
+                        }
+                        onClick={() => void handleAuthorizePayment(job)}
+                        type="button"
+                      >
                         {paymentSubmitting ? "Authorizing..." : "Authorize Payment"}
                       </button>
-                      <p className="support-note">This button calls the real backend payment authorization endpoint using the authenticated business session.</p>
                     </div>
+
                     {job.payment.lastError ? <p className="form-error">{job.payment.lastError}</p> : null}
-                  </article>
+                  </section>
                 </div>
               </section>
             ) : (
-              <div className="app-panel empty-state">
-                <strong>Job not found.</strong>
-                <p>Return to the jobs list and create or select another delivery request.</p>
+              <div className="ops-empty-state">
+                <strong>Job not found</strong>
+                <p>Return to the jobs list and open another delivery.</p>
               </div>
             )
           ) : null}

@@ -9,6 +9,7 @@ const DRIVER_ID = "708ddf09-159f-4f8a-9147-c0d85f7e608e";
 const DRIVER_USER_ID = "9f114315-f1e6-4e4d-ae6f-aae01682a4c6";
 
 function createJobRow(overrides: Record<string, unknown> = {}) {
+  const now = new Date().toISOString();
   return {
     id: JOB_ID,
     org_id: null,
@@ -31,7 +32,10 @@ function createJobRow(overrides: Record<string, unknown> = {}) {
     pricing_version: "phase1_test_v1",
     premium_distance_flag: false,
     created_by_user_id: ACTOR_ID,
-    created_at: new Date().toISOString(),
+    created_at: now,
+    dispatch_requested_at: now,
+    dispatch_failed_at: null,
+    updated_at: now,
     ...overrides
   };
 }
@@ -235,24 +239,40 @@ describe("JobsService", () => {
             })
           ]
         })
-        .mockResolvedValueOnce({
-          rowCount: 2,
+      .mockResolvedValueOnce({
+          rowCount: 1,
           rows: [
             {
-              id: 2,
-              event_type: "JOB_ASSIGNED",
-              actor_id: DRIVER_USER_ID,
-              created_at: new Date().toISOString(),
-              payload: { offerId: "offer-1" }
-            },
-            {
-              id: 1,
-              event_type: "JOB_REQUESTED",
-              actor_id: ACTOR_ID,
-              created_at: new Date().toISOString(),
-              payload: { quoteId: QUOTE_ID }
+              id: "0cfb2cdb-00f6-4c01-a905-8e96a1b4382d",
+              attempt_number: 1,
+              trigger_source: "job_requested",
+              outcome: "OFFERED",
+              driver_id: DRIVER_ID,
+              driver_display_name: "Driver One",
+              offer_id: "18c26fd7-14c1-4d07-8e06-7f31707e36ce",
+              notes: null,
+              created_at: new Date().toISOString()
             }
           ]
+        })
+      .mockResolvedValueOnce({
+        rowCount: 2,
+        rows: [
+          {
+            id: 1,
+            event_type: "JOB_REQUESTED",
+            actor_id: ACTOR_ID,
+            created_at: new Date().toISOString(),
+            payload: { quoteId: QUOTE_ID }
+          },
+          {
+            id: 2,
+            event_type: "JOB_ASSIGNED",
+            actor_id: DRIVER_USER_ID,
+            created_at: new Date().toISOString(),
+            payload: { offerId: "offer-1" }
+          }
+        ]
         })
     };
     const payments = {
@@ -266,7 +286,97 @@ describe("JobsService", () => {
 
     expect(tracking.jobId).toBe(JOB_ID);
     expect(tracking.assignedDriver?.displayName).toBe("Driver One");
+    expect(tracking.dispatchAttempts).toHaveLength(1);
     expect(tracking.timeline).toHaveLength(2);
+  });
+
+  it("retries dispatch for a blocked operator-owned job", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [createJobRow({ org_id: QUOTE_ID, status: "DISPATCH_FAILED", operator_role: "BUSINESS_OPERATOR" })]
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [createJobRow({ org_id: QUOTE_ID, status: "REQUESTED", operator_role: "BUSINESS_OPERATOR" })]
+      })
+      .mockResolvedValue({ rowCount: 1, rows: [] });
+
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.retryDispatch(JOB_ID, ACTOR_ID, "idem-retry-1");
+
+    expect(result.body.status).toBe("REQUESTED");
+    expect(
+      clientQuery.mock.calls.some(
+        ([sql, params]) =>
+          String(sql).includes("insert into public.outbox_messages") && params?.[2] === "JOB_DISPATCH_REQUESTED"
+      )
+    ).toBe(true);
+  });
+
+  it("creates a manual reassign offer for an eligible driver", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          createJobRow({
+            org_id: QUOTE_ID,
+            status: "ASSIGNED",
+            assigned_driver_id: DRIVER_ID,
+            operator_role: "BUSINESS_OPERATOR"
+          })
+        ]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ driver_id: DRIVER_ID }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [createJobRow({ org_id: QUOTE_ID, status: "REQUESTED", assigned_driver_id: null })]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: "offer-manual-1" }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ next_attempt_number: 1 }] })
+      .mockResolvedValue({ rowCount: 1, rows: [] });
+
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.reassignDriver(
+      JOB_ID,
+      { driverId: DRIVER_ID },
+      ACTOR_ID,
+      "idem-reassign-1"
+    );
+
+    expect(result.body.status).toBe("REQUESTED");
+    expect(
+      clientQuery.mock.calls.some(([sql]) => String(sql).includes("insert into public.job_dispatch_attempts"))
+    ).toBe(true);
   });
 
   it("blocks cancellation for unauthorized actors", async () => {

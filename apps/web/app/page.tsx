@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "./_components/brand-logo";
 
 const audienceItems = [
   {
@@ -73,9 +74,7 @@ export default function HomePage() {
     <main className="landing-page">
       <section className="hero-section">
         <header className="topbar">
-          <a className="brand" href="/">
-            ShipWright
-          </a>
+          <BrandLogo href="/" />
           <nav className="topnav" aria-label="Primary">
             <a href="#businesses">Businesses</a>
             <a href="#drivers">Drivers</a>
@@ -273,7 +272,7 @@ export default function HomePage() {
 
       <footer className="site-footer">
         <div className="footer-brand">
-          <p className="eyebrow">ShipWright</p>
+          <BrandLogo className="footer-brand-mark" href="/" mode="full" />
           <strong>Delivery operations software for food and local retail.</strong>
           <p>
             Dispatch, tracking, proof of delivery, and payment state in one product surface.

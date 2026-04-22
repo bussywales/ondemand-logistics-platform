@@ -65,6 +65,8 @@ describe("dispatchSideEffect", () => {
       },
       { match: "from public.job_offers", result: { rows: [] } },
       { match: "from public.drivers d", result: { rows: [] } },
+      { match: "from public.job_dispatch_attempts", result: { rows: [{ next_attempt_number: 1 }] } },
+      { match: "insert into public.job_dispatch_attempts" },
       { match: "update public.jobs" },
       { match: "insert into public.job_events" },
       { match: "insert into public.audit_log" }
@@ -135,6 +137,8 @@ describe("dispatchSideEffect", () => {
           ]
         }
       },
+      { match: "from public.job_dispatch_attempts", result: { rows: [{ next_attempt_number: 1 }] } },
+      { match: "insert into public.job_dispatch_attempts" },
       { match: "update public.jobs" },
       { match: "insert into public.job_events" },
       { match: "insert into public.audit_log" },
@@ -210,6 +214,8 @@ describe("dispatchSideEffect", () => {
           ]
         }
       },
+      { match: "from public.job_dispatch_attempts", result: { rows: [{ next_attempt_number: 2 }] } },
+      { match: "insert into public.job_dispatch_attempts" },
       { match: "update public.jobs" },
       { match: "insert into public.job_events" },
       { match: "insert into public.audit_log" },

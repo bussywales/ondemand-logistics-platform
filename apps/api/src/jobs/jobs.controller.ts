@@ -45,6 +45,41 @@ export class JobsController {
     return this.jobsService.getTracking(jobId, user.id);
   }
 
+  @Post("jobs/:jobId/retry-dispatch")
+  @HttpCode(200)
+  async retryDispatch(
+    @Param("jobId") jobId: string,
+    @IdempotencyKey() idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.jobsService.retryDispatch(jobId, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @Post("jobs/:jobId/reassign-driver")
+  @HttpCode(200)
+  async reassignDriver(
+    @Param("jobId") jobId: string,
+    @Body() body: unknown,
+    @IdempotencyKey() idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.jobsService.reassignDriver(jobId, body, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
   @Post("jobs/:jobId/cancel")
   @HttpCode(200)
   async cancelJob(

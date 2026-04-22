@@ -23,6 +23,7 @@ import {
   type DriverAvailabilityStatus,
   type DriverOfferDto,
   type DriverStateDto,
+  type JobAttentionLevel,
   type JobDto,
   type PaginatedJobsDto,
   type ProofOfDeliveryDto,
@@ -93,6 +94,9 @@ type JobRow = {
   premium_distance_flag: boolean;
   created_by_user_id: string;
   created_at: string;
+  dispatch_requested_at: string;
+  dispatch_failed_at: string | null;
+  updated_at: string;
 };
 
 type ProofOfDeliveryRow = {
@@ -113,7 +117,7 @@ const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quot
   j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
   j.vehicle_required, j.customer_total_cents, j.driver_payout_gross_cents,
   j.platform_fee_cents, j.pricing_version, j.premium_distance_flag,
-  j.created_by_user_id, j.created_at`;
+  j.created_by_user_id, j.created_at, j.dispatch_requested_at, j.dispatch_failed_at, j.updated_at`;
 
 const ACTIVE_DRIVER_JOB_STATUSES = ["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"] as const;
 
@@ -932,6 +936,7 @@ export class DriverService {
   }
 
   private mapJob(row: JobRow): JobDto {
+    const attention = this.computeAttention(row);
     return JobSchema.parse({
       id: row.id,
       orgId: row.org_id,
@@ -957,9 +962,33 @@ export class DriverService {
       platformFeeCents: row.platform_fee_cents,
       pricingVersion: row.pricing_version,
       premiumDistanceFlag: row.premium_distance_flag,
+      attentionLevel: attention.level,
+      attentionReason: attention.reason,
       createdByUserId: row.created_by_user_id,
       createdAt: row.created_at
     });
+  }
+
+  private computeAttention(row: JobRow): { level: JobAttentionLevel; reason: string | null } {
+    if (row.status === "DISPATCH_FAILED") {
+      return { level: "BLOCKER", reason: "Dispatch failed" };
+    }
+
+    if (row.status === "REQUESTED" && !row.assigned_driver_id) {
+      const dispatchAgeMs = Date.now() - new Date(row.dispatch_requested_at).getTime();
+      if (dispatchAgeMs >= 10 * 60 * 1000) {
+        return { level: "BLOCKER", reason: "No driver assigned" };
+      }
+    }
+
+    if (
+      ["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(row.status) &&
+      Date.now() - new Date(row.created_at).getTime() >= (row.eta_minutes + 15) * 60 * 1000
+    ) {
+      return { level: "RISK", reason: "Delayed against ETA" };
+    }
+
+    return { level: "NORMAL", reason: null };
   }
 
   private mapProofOfDelivery(row: ProofOfDeliveryRow): ProofOfDeliveryDto {

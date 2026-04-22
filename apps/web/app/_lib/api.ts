@@ -1,4 +1,12 @@
-import type { AppJob, BusinessSession, PaymentSummary, TimelineEvent, TrackingSummary, VehicleType } from "./product-state";
+import type {
+  AppJob,
+  BusinessSession,
+  DispatchAttempt,
+  PaymentSummary,
+  TimelineEvent,
+  TrackingSummary,
+  VehicleType
+} from "./product-state";
 import { createId } from "./product-state";
 
 type QuoteResponse = {
@@ -20,6 +28,8 @@ type JobResponse = {
   etaMinutes: number;
   vehicleRequired: VehicleType;
   premiumDistanceFlag: boolean;
+  attentionLevel: AppJob["attentionLevel"];
+  attentionReason: string | null;
   customerTotalCents: number;
   driverPayoutGrossCents: number;
   platformFeeCents: number;
@@ -32,12 +42,25 @@ type JobsPageResponse = {
 };
 
 type TrackingResponse = {
+  attentionLevel: AppJob["attentionLevel"];
+  attentionReason: string | null;
   etaMinutes: number;
   premiumDistanceFlag: boolean;
   assignedDriver: {
     displayName: string;
     latestLocation: { latitude: number; longitude: number } | null;
   } | null;
+  dispatchAttempts: Array<{
+    id: string;
+    attemptNumber: number;
+    triggerSource: string;
+    outcome: string;
+    driverId: string | null;
+    driverDisplayName: string | null;
+    offerId: string | null;
+    notes: string | null;
+    createdAt: string;
+  }>;
   timeline: Array<{
     id: number;
     eventType: string;
@@ -97,6 +120,7 @@ function toTrackingSummary(tracking?: TrackingResponse | null): TrackingSummary 
     return {
       latestLocation: null,
       assignedDriverName: null,
+      dispatchAttempts: [],
       timeline: []
     };
   }
@@ -104,6 +128,19 @@ function toTrackingSummary(tracking?: TrackingResponse | null): TrackingSummary 
   return {
     latestLocation: tracking.assignedDriver?.latestLocation ?? null,
     assignedDriverName: tracking.assignedDriver?.displayName ?? null,
+    dispatchAttempts: tracking.dispatchAttempts.map(
+      (attempt): DispatchAttempt => ({
+        id: attempt.id,
+        attemptNumber: attempt.attemptNumber,
+        triggerSource: attempt.triggerSource,
+        outcome: attempt.outcome,
+        driverId: attempt.driverId,
+        driverDisplayName: attempt.driverDisplayName,
+        offerId: attempt.offerId,
+        notes: attempt.notes,
+        createdAt: attempt.createdAt
+      })
+    ),
     timeline: tracking.timeline.map((event): TimelineEvent => ({
       id: String(event.id),
       eventType: event.eventType,
@@ -141,6 +178,8 @@ function toAppJob(job: JobResponse, tracking?: TrackingResponse | null, payment?
     etaMinutes: tracking?.etaMinutes ?? job.etaMinutes,
     vehicleRequired: job.vehicleRequired,
     premiumDistanceFlag: tracking?.premiumDistanceFlag ?? job.premiumDistanceFlag,
+    attentionLevel: tracking?.attentionLevel ?? job.attentionLevel,
+    attentionReason: tracking?.attentionReason ?? job.attentionReason,
     customerTotalCents: job.customerTotalCents,
     driverPayoutGrossCents: job.driverPayoutGrossCents,
     platformFeeCents: job.platformFeeCents,
@@ -149,6 +188,16 @@ function toAppJob(job: JobResponse, tracking?: TrackingResponse | null, payment?
     tracking: toTrackingSummary(tracking),
     payment: toPaymentSummary(job, payment)
   };
+}
+
+async function jobMutation(session: BusinessSession, jobId: string, path: string, body?: Record<string, unknown>) {
+  return apiFetch<JobResponse>(session, `/v1/jobs/${jobId}/${path}`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-${path}`
+    },
+    body: JSON.stringify(body ?? {})
+  });
 }
 
 export async function createLiveJob(session: BusinessSession, input: {
@@ -238,4 +287,28 @@ export async function authorizePayment(session: BusinessSession, jobId: string, 
   });
 
   return payload.payment;
+}
+
+export async function retryDispatch(session: BusinessSession, jobId: string) {
+  const job = await jobMutation(session, jobId, "retry-dispatch");
+  const payment = await fetchPayment(session, job.id).catch(() => null);
+  const tracking = await fetchTracking(session, job.id).catch(() => null);
+  return toAppJob(job, tracking, payment ? { payment } : null);
+}
+
+export async function reassignDriver(session: BusinessSession, jobId: string, driverId: string) {
+  const job = await jobMutation(session, jobId, "reassign-driver", { driverId });
+  const payment = await fetchPayment(session, job.id).catch(() => null);
+  const tracking = await fetchTracking(session, job.id).catch(() => null);
+  return toAppJob(job, tracking, payment ? { payment } : null);
+}
+
+export async function cancelJob(session: BusinessSession, jobId: string, reason: string) {
+  const job = await jobMutation(session, jobId, "cancel", {
+    reason,
+    settlementPolicyCode: "PENDING_PAYMENT_RULES"
+  });
+  const payment = await fetchPayment(session, job.id).catch(() => null);
+  const tracking = await fetchTracking(session, job.id).catch(() => null);
+  return toAppJob(job, tracking, payment ? { payment } : null);
 }

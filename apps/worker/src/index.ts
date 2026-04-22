@@ -200,6 +200,51 @@ async function insertAuditLog(
   );
 }
 
+async function nextDispatchAttemptNumber(client: PoolClient, jobId: string) {
+  const result = await client.query<{ next_attempt_number: number }>(
+    `select coalesce(max(attempt_number), 0) + 1 as next_attempt_number
+     from public.job_dispatch_attempts
+     where job_id = $1`,
+    [jobId]
+  );
+
+  return result.rows[0]?.next_attempt_number ?? 1;
+}
+
+async function insertDispatchAttempt(
+  client: PoolClient,
+  input: {
+    jobId: string;
+    attemptNumber: number;
+    triggerSource: string;
+    outcome: string;
+    driverId: string | null;
+    offerId: string | null;
+    notes: string | null;
+  }
+) {
+  await client.query(
+    `insert into public.job_dispatch_attempts (
+       job_id,
+       attempt_number,
+       trigger_source,
+       outcome,
+       driver_id,
+       offer_id,
+       notes
+     ) values ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      input.jobId,
+      input.attemptNumber,
+      input.triggerSource,
+      input.outcome,
+      input.driverId,
+      input.offerId,
+      input.notes
+    ]
+  );
+}
+
 async function enqueueOutboxMessage(
   client: PoolClient,
   input: {
@@ -416,8 +461,20 @@ async function markDispatchFailed(
   job: DispatchJob,
   requestId: string,
   reason: string,
+  triggerSource: string,
   logger: AppLogger
 ) {
+  const attemptNumber = await nextDispatchAttemptNumber(client, job.id);
+  await insertDispatchAttempt(client, {
+    jobId: job.id,
+    attemptNumber,
+    triggerSource,
+    outcome: "NO_CANDIDATE",
+    driverId: null,
+    offerId: null,
+    notes: reason
+  });
+
   await client.query(
     `update public.jobs
      set status = 'DISPATCH_FAILED',
@@ -456,11 +513,12 @@ async function createSequentialOffer(
   client: PoolClient,
   job: DispatchJob,
   requestId: string,
+  triggerSource: string,
   logger: AppLogger
 ) {
   const candidates = await selectDispatchCandidates(client, job);
   if (candidates.length === 0) {
-    await markDispatchFailed(client, job, requestId, "no_eligible_drivers", logger);
+    await markDispatchFailed(client, job, requestId, "no_eligible_drivers", triggerSource, logger);
     return;
   }
 
@@ -497,6 +555,16 @@ async function createSequentialOffer(
   );
 
   const offer = inserted.rows[0];
+  const attemptNumber = await nextDispatchAttemptNumber(client, job.id);
+  await insertDispatchAttempt(client, {
+    jobId: job.id,
+    attemptNumber,
+    triggerSource,
+    outcome: "OFFERED",
+    driverId: offer.driver_id,
+    offerId: offer.id,
+    notes: null
+  });
 
   await client.query(
     `update public.jobs
@@ -584,7 +652,7 @@ async function handleDispatchRequested(
     return;
   }
 
-  await createSequentialOffer(client, job, requestId, logger);
+  await createSequentialOffer(client, job, requestId, String(message.payload.trigger ?? "dispatch_requested"), logger);
 }
 
 async function handleOfferExpiryCheck(
@@ -684,7 +752,7 @@ async function handleOfferExpiryCheck(
     return;
   }
 
-  await createSequentialOffer(client, job, requestId, logger);
+  await createSequentialOffer(client, job, requestId, "offer_expired", logger);
 }
 
 async function upsertRefundRecord(

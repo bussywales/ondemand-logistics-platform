@@ -28,6 +28,9 @@ export const JobStatusSchema = z.enum([
 ]);
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 
+export const JobAttentionLevelSchema = z.enum(["NORMAL", "RISK", "BLOCKER"]);
+export type JobAttentionLevel = z.infer<typeof JobAttentionLevelSchema>;
+
 export const JobOfferStatusSchema = z.enum([
   "OFFERED",
   "ACCEPTED",
@@ -128,6 +131,8 @@ export const JobSchema = z.object({
   platformFeeCents: CurrencyAmountSchema,
   pricingVersion: z.string().min(3),
   premiumDistanceFlag: z.boolean(),
+  attentionLevel: JobAttentionLevelSchema,
+  attentionReason: z.string().min(2).nullable(),
   createdByUserId: z.string().uuid(),
   createdAt: IsoDateTimeSchema
 });
@@ -209,9 +214,24 @@ export const JobTimelineEventSchema = z.object({
 });
 export type JobTimelineEventDto = z.infer<typeof JobTimelineEventSchema>;
 
+export const DispatchAttemptSchema = z.object({
+  id: z.string().uuid(),
+  attemptNumber: z.number().int().positive(),
+  triggerSource: z.string().min(2),
+  outcome: z.string().min(2),
+  driverId: z.string().uuid().nullable(),
+  driverDisplayName: z.string().min(2).nullable(),
+  offerId: z.string().uuid().nullable(),
+  notes: z.string().nullable(),
+  createdAt: IsoDateTimeSchema
+});
+export type DispatchAttemptDto = z.infer<typeof DispatchAttemptSchema>;
+
 export const JobTrackingSchema = z.object({
   jobId: z.string().uuid(),
   status: JobStatusSchema,
+  attentionLevel: JobAttentionLevelSchema,
+  attentionReason: z.string().min(2).nullable(),
   pickup: z.object({
     address: z.string(),
     coordinates: CoordinatesSchema
@@ -223,6 +243,7 @@ export const JobTrackingSchema = z.object({
   etaMinutes: EtaMinutesSchema,
   premiumDistanceFlag: z.boolean(),
   assignedDriver: TrackingDriverSummarySchema.nullable(),
+  dispatchAttempts: z.array(DispatchAttemptSchema),
   timeline: z.array(JobTimelineEventSchema)
 });
 export type JobTrackingDto = z.infer<typeof JobTrackingSchema>;
@@ -269,6 +290,11 @@ export const CancelJobSchema = z.object({
   settlementNote: z.string().min(3).max(500).nullable().optional()
 });
 export type CancelJobInput = z.infer<typeof CancelJobSchema>;
+
+export const ReassignJobSchema = z.object({
+  driverId: z.string().uuid()
+});
+export type ReassignJobInput = z.infer<typeof ReassignJobSchema>;
 
 export const CreateBusinessOrgSchema = z.object({
   businessName: z.string().min(2).max(160),

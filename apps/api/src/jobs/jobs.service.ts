@@ -12,6 +12,8 @@ import {
   JobSchema,
   JobTrackingSchema,
   PaginatedJobsSchema,
+  ReassignJobSchema,
+  type JobAttentionLevel,
   type JobDto,
   type JobTrackingDto,
   type PaginatedJobsDto
@@ -58,6 +60,9 @@ type JobRow = {
   premium_distance_flag: boolean;
   created_by_user_id: string;
   created_at: string;
+  dispatch_requested_at: string;
+  dispatch_failed_at: string | null;
+  updated_at: string;
 };
 
 type TrackingJobRow = JobRow & {
@@ -72,6 +77,10 @@ type CancelJobRow = JobRow & {
   operator_role: "BUSINESS_OPERATOR" | "ADMIN" | null;
 };
 
+type OperatorJobRow = JobRow & {
+  operator_role: "BUSINESS_OPERATOR" | "ADMIN" | null;
+};
+
 type TimelineRow = {
   id: number;
   event_type: string;
@@ -80,12 +89,24 @@ type TimelineRow = {
   payload: Record<string, unknown>;
 };
 
+type DispatchAttemptRow = {
+  id: string;
+  attempt_number: number;
+  trigger_source: string;
+  outcome: string;
+  driver_id: string | null;
+  driver_display_name: string | null;
+  offer_id: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
 const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
   j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
   j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
   j.vehicle_required, j.customer_total_cents, j.driver_payout_gross_cents,
   j.platform_fee_cents, j.pricing_version, j.premium_distance_flag,
-  j.created_by_user_id, j.created_at`;
+  j.created_by_user_id, j.created_at, j.dispatch_requested_at, j.dispatch_failed_at, j.updated_at`;
 
 const ACCESS_CONDITION = `(
   j.consumer_id = $2
@@ -109,6 +130,9 @@ const ACCESS_CONDITION = `(
 )`;
 
 const CANCELLABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "DISPATCH_FAILED"] as const;
+const RETRYABLE_JOB_STATUSES = ["REQUESTED", "DISPATCH_FAILED"] as const;
+const REASSIGNABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED"] as const;
+const DISPATCH_OFFER_TTL_SECONDS = Number(process.env.DISPATCH_OFFER_TTL_SECONDS ?? 30);
 
 @Injectable()
 export class JobsService {
@@ -317,18 +341,22 @@ export class JobsService {
 
   async getTracking(jobId: string, userId: string): Promise<JobTrackingDto> {
     const job = await this.loadAuthorizedTrackingJob(jobId, userId);
+    const attention = this.computeAttention(job);
+    const dispatchAttempts = await this.loadDispatchAttempts(jobId);
     const timeline = await this.pg.query<TimelineRow>(
       `select id, event_type, actor_id, created_at, payload
        from public.job_events
        where job_id = $1
-       order by created_at desc
-       limit 20`,
+       order by created_at asc
+       limit 100`,
       [jobId]
     );
 
     return JobTrackingSchema.parse({
       jobId: job.id,
       status: job.status,
+      attentionLevel: attention.level,
+      attentionReason: attention.reason,
       pickup: {
         address: job.pickup_address,
         coordinates: {
@@ -361,6 +389,7 @@ export class JobsService {
               lastLocationAt: job.driver_last_location_at
             }
           : null,
+      dispatchAttempts,
       timeline: timeline.rows.map((event) => ({
         id: event.id,
         eventType: event.event_type,
@@ -368,6 +397,232 @@ export class JobsService {
         createdAt: event.created_at,
         payload: event.payload
       }))
+    });
+  }
+
+  async retryDispatch(jobId: string, userId: string, idempotencyKey: string) {
+    const requestId = getRequestContext()?.requestId ?? randomUUID();
+
+    return this.pg.withIdempotency({
+      actorId: userId,
+      endpoint: `/v1/jobs/${jobId}/retry-dispatch`,
+      idempotencyKey,
+      execute: async (client) => {
+        const job = await this.loadOperatorJobForUpdate(client, jobId, userId);
+
+        if (!RETRYABLE_JOB_STATUSES.includes(job.status as (typeof RETRYABLE_JOB_STATUSES)[number])) {
+          throw new ConflictException("job_not_retryable");
+        }
+
+        if (job.assigned_driver_id) {
+          throw new ConflictException("job_already_assigned");
+        }
+
+        if (await this.hasOpenOffer(client, jobId)) {
+          throw new ConflictException("job_dispatch_already_in_progress");
+        }
+
+        const updated = await client.query<JobRow>(
+          `update public.jobs
+           set status = 'REQUESTED',
+               dispatch_requested_at = now(),
+               dispatch_failed_at = null,
+               updated_at = now()
+           where id = $1
+           returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
+          [jobId]
+        );
+
+        await this.insertJobEvent(client, {
+          jobId,
+          eventType: "JOB_DISPATCH_RETRIED",
+          actorId: userId,
+          payload: {
+            requestId,
+            previousStatus: job.status
+          }
+        });
+
+        await this.insertAuditLog(client, {
+          requestId,
+          actorId: userId,
+          orgId: job.org_id,
+          entityType: "job",
+          entityId: jobId,
+          action: "job_dispatch_retried",
+          metadata: {
+            previousStatus: job.status
+          }
+        });
+
+        await this.insertOutboxMessage(client, {
+          aggregateType: "job",
+          aggregateId: jobId,
+          eventType: "JOB_DISPATCH_REQUESTED",
+          payload: {
+            jobId,
+            requestId,
+            trigger: "operator_retry"
+          },
+          idempotencyKey: `dispatch-retry:${jobId}:${idempotencyKey}`
+        });
+
+        return {
+          responseCode: 200,
+          body: this.mapJob(updated.rows[0])
+        };
+      }
+    });
+  }
+
+  async reassignDriver(jobId: string, input: unknown, userId: string, idempotencyKey: string) {
+    const parsed = ReassignJobSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_job_reassign_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    const requestId = getRequestContext()?.requestId ?? randomUUID();
+
+    return this.pg.withIdempotency({
+      actorId: userId,
+      endpoint: `/v1/jobs/${jobId}/reassign-driver`,
+      idempotencyKey,
+      execute: async (client) => {
+        const job = await this.loadOperatorJobForUpdate(client, jobId, userId);
+
+        if (!REASSIGNABLE_JOB_STATUSES.includes(job.status as (typeof REASSIGNABLE_JOB_STATUSES)[number])) {
+          throw new ConflictException("job_not_reassignable");
+        }
+
+        const driver = await this.loadEligibleDriverForReassign(
+          client,
+          parsed.data.driverId,
+          jobId,
+          job.vehicle_required
+        );
+
+        if (job.assigned_driver_id) {
+          await client.query(
+            `update public.drivers
+             set active_job_id = null,
+                 availability_status = 'ONLINE',
+                 available_since = now()
+             where id = $1
+               and active_job_id = $2`,
+            [job.assigned_driver_id, jobId]
+          );
+        }
+
+        await client.query(
+          `update public.job_offers
+           set status = 'EXPIRED',
+               responded_at = coalesce(responded_at, now())
+           where job_id = $1
+             and status in ('OFFERED', 'ACCEPTED')`,
+          [jobId]
+        );
+
+        const updated = await client.query<JobRow>(
+          `update public.jobs
+           set status = 'REQUESTED',
+               assigned_driver_id = null,
+               dispatch_requested_at = now(),
+               dispatch_failed_at = null,
+               updated_at = now()
+           where id = $1
+           returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
+          [jobId]
+        );
+
+        const offer = await client.query<{ id: string }>(
+          `insert into public.job_offers (
+             job_id,
+             driver_id,
+             offered_at,
+             expires_at,
+             status,
+             payout_gross_snapshot,
+             distance_miles_snapshot,
+             eta_minutes_snapshot
+           ) values (
+             $1,
+             $2,
+             now(),
+             now() + make_interval(secs => $3),
+             'OFFERED',
+             $4,
+             $5,
+             $6
+           )
+           returning id`,
+          [
+            jobId,
+            driver.driver_id,
+            DISPATCH_OFFER_TTL_SECONDS,
+            updated.rows[0].driver_payout_gross_cents,
+            Number(updated.rows[0].distance_miles),
+            updated.rows[0].eta_minutes
+          ]
+        );
+
+        const attemptNumber = await this.nextDispatchAttemptNumber(client, jobId);
+        await this.insertDispatchAttempt(client, {
+          jobId,
+          attemptNumber,
+          triggerSource: "operator_reassign",
+          outcome: "MANUAL_REASSIGN",
+          driverId: driver.driver_id,
+          offerId: offer.rows[0].id,
+          notes: "Operator selected a specific driver"
+        });
+
+        await this.insertJobEvent(client, {
+          jobId,
+          eventType: "JOB_REASSIGNED",
+          actorId: userId,
+          payload: {
+            requestId,
+            driverId: driver.driver_id,
+            offerId: offer.rows[0].id,
+            previousDriverId: job.assigned_driver_id
+          }
+        });
+
+        await this.insertAuditLog(client, {
+          requestId,
+          actorId: userId,
+          orgId: job.org_id,
+          entityType: "job",
+          entityId: jobId,
+          action: "job_reassigned",
+          metadata: {
+            driverId: driver.driver_id,
+            offerId: offer.rows[0].id,
+            previousDriverId: job.assigned_driver_id
+          }
+        });
+
+        await this.insertOutboxMessage(client, {
+          aggregateType: "job_offer",
+          aggregateId: offer.rows[0].id,
+          eventType: "JOB_OFFER_EXPIRY_CHECK",
+          payload: {
+            jobId,
+            offerId: offer.rows[0].id,
+            requestId
+          },
+          idempotencyKey: `offer-expiry:${offer.rows[0].id}`,
+          nextAttemptAt: new Date(Date.now() + DISPATCH_OFFER_TTL_SECONDS * 1000).toISOString()
+        });
+
+        return {
+          responseCode: 200,
+          body: this.mapJob(updated.rows[0])
+        };
+      }
     });
   }
 
@@ -599,6 +854,135 @@ export class JobsService {
     return result.rows[0];
   }
 
+  private async loadOperatorJobForUpdate(client: PoolClient, jobId: string, userId: string) {
+    const result = await client.query<OperatorJobRow>(
+      `select ${JOB_COLUMNS},
+              (
+                select m.role::text
+                from public.org_memberships m
+                where m.org_id = j.org_id
+                  and m.user_id = $2
+                  and m.is_active = true
+                  and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+                limit 1
+              ) as operator_role
+       from public.jobs j
+       where j.id = $1
+       for update`,
+      [jobId, userId]
+    );
+
+    if ((result.rowCount ?? 0) !== 1) {
+      throw new NotFoundException("job_not_found");
+    }
+
+    const job = result.rows[0];
+    if (!job.operator_role) {
+      throw new ForbiddenException("org_operator_required");
+    }
+
+    return job;
+  }
+
+  private async hasOpenOffer(client: PoolClient, jobId: string) {
+    const result = await client.query(
+      `select 1
+       from public.job_offers
+       where job_id = $1
+         and status = 'OFFERED'
+         and expires_at > now()
+       limit 1`,
+      [jobId]
+    );
+
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  private async loadEligibleDriverForReassign(
+    client: PoolClient,
+    driverId: string,
+    jobId: string,
+    vehicleRequired: string
+  ) {
+    const result = await client.query<{ driver_id: string }>(
+      `select d.id as driver_id
+       from public.drivers d
+       where d.id = $1
+         and d.is_active = true
+         and d.availability_status = 'ONLINE'
+         and d.active_job_id is null
+         and exists (
+           select 1
+           from public.driver_verifications dvf
+           where dvf.driver_id = d.id
+             and dvf.status = 'APPROVED'
+         )
+         and exists (
+           select 1
+           from public.driver_vehicle dv
+           where dv.driver_id = d.id
+             and dv.vehicle_type = $2
+         )
+         and not exists (
+           select 1
+           from public.job_offers o
+           where o.job_id = $3
+             and o.driver_id = d.id
+             and o.status in ('OFFERED', 'ACCEPTED')
+         )`,
+      [driverId, vehicleRequired, jobId]
+    );
+
+    if ((result.rowCount ?? 0) !== 1) {
+      throw new ConflictException("driver_not_eligible_for_reassign");
+    }
+
+    return result.rows[0];
+  }
+
+  private async loadDispatchAttempts(jobId: string) {
+    const result = await this.pg.query<DispatchAttemptRow>(
+      `select a.id,
+              a.attempt_number,
+              a.trigger_source,
+              a.outcome,
+              a.driver_id,
+              u.display_name as driver_display_name,
+              a.offer_id,
+              a.notes,
+              a.created_at
+       from public.job_dispatch_attempts a
+       left join public.drivers d on d.id = a.driver_id
+       left join public.users u on u.id = d.user_id
+       where a.job_id = $1
+       order by a.created_at asc`,
+      [jobId]
+    );
+
+    return result.rows.map((attempt) => ({
+      id: attempt.id,
+      attemptNumber: attempt.attempt_number,
+      triggerSource: attempt.trigger_source,
+      outcome: attempt.outcome,
+      driverId: attempt.driver_id,
+      driverDisplayName: attempt.driver_display_name,
+      offerId: attempt.offer_id,
+      notes: attempt.notes,
+      createdAt: attempt.created_at
+    }));
+  }
+
+  private async nextDispatchAttemptNumber(client: PoolClient, jobId: string) {
+    const result = await client.query<{ next_attempt_number: number }>(
+      `select coalesce(max(attempt_number), 0) + 1 as next_attempt_number
+       from public.job_dispatch_attempts
+       where job_id = $1`,
+      [jobId]
+    );
+
+    return result.rows[0]?.next_attempt_number ?? 1;
+  }
+
   private normalizePage(page: number) {
     return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
   }
@@ -688,7 +1072,64 @@ export class JobsService {
     );
   }
 
+  private async insertDispatchAttempt(
+    client: PoolClient,
+    input: {
+      jobId: string;
+      attemptNumber: number;
+      triggerSource: string;
+      outcome: string;
+      driverId: string | null;
+      offerId: string | null;
+      notes: string | null;
+    }
+  ) {
+    await client.query(
+      `insert into public.job_dispatch_attempts (
+         job_id,
+         attempt_number,
+         trigger_source,
+         outcome,
+         driver_id,
+         offer_id,
+         notes
+       ) values ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        input.jobId,
+        input.attemptNumber,
+        input.triggerSource,
+        input.outcome,
+        input.driverId,
+        input.offerId,
+        input.notes
+      ]
+    );
+  }
+
+  private computeAttention(row: JobRow): { level: JobAttentionLevel; reason: string | null } {
+    if (row.status === "DISPATCH_FAILED") {
+      return { level: "BLOCKER", reason: "Dispatch failed" };
+    }
+
+    if (row.status === "REQUESTED" && !row.assigned_driver_id) {
+      const dispatchAgeMs = Date.now() - new Date(row.dispatch_requested_at).getTime();
+      if (dispatchAgeMs >= 10 * 60 * 1000) {
+        return { level: "BLOCKER", reason: "No driver assigned" };
+      }
+    }
+
+    if (
+      ["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(row.status) &&
+      Date.now() - new Date(row.created_at).getTime() >= (row.eta_minutes + 15) * 60 * 1000
+    ) {
+      return { level: "RISK", reason: "Delayed against ETA" };
+    }
+
+    return { level: "NORMAL", reason: null };
+  }
+
   private mapJob(row: JobRow): JobDto {
+    const attention = this.computeAttention(row);
     return JobSchema.parse({
       id: row.id,
       orgId: row.org_id,
@@ -714,6 +1155,8 @@ export class JobsService {
       platformFeeCents: row.platform_fee_cents,
       pricingVersion: row.pricing_version,
       premiumDistanceFlag: row.premium_distance_flag,
+      attentionLevel: attention.level,
+      attentionReason: attention.reason,
       createdByUserId: row.created_by_user_id,
       createdAt: row.created_at
     });

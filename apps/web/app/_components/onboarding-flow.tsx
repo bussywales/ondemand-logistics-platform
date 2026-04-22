@@ -74,6 +74,26 @@ function getFriendlyBusinessError(issue: unknown) {
   };
 }
 
+function getFriendlyBusinessSetupError(issue: unknown) {
+  if (issue instanceof Error) {
+    const message = issue.message.toLowerCase();
+
+    if (
+      message.includes("request failed with status 500") ||
+      message.includes("status 500") ||
+      message.includes("internal server error")
+    ) {
+      return "The workspace could not be created on the first attempt. Try again in a moment. If the problem continues, sign out and restart onboarding.";
+    }
+
+    if (message.includes("networkerror") || message.includes("failed to fetch")) {
+      return "The workspace request could not reach the API. Check the connection and try again.";
+    }
+  }
+
+  return issue instanceof Error ? issue.message : "Unable to complete business setup.";
+}
+
 function getFallbackDisplayName(email: string) {
   const localPart = email.split("@")[0]?.replace(/[._-]+/g, " ").trim();
   return localPart && localPart.length >= 2 ? localPart : "Business Operator";
@@ -210,7 +230,7 @@ export function OnboardingFlow() {
       );
       router.push("/app");
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to complete business setup.");
+      setError(getFriendlyBusinessSetupError(issue));
     } finally {
       setSubmitting(false);
     }
@@ -268,13 +288,32 @@ export function OnboardingFlow() {
 
         <div className="onboarding-panel">
           <div className="onboarding-panel-copy">
-            <h2>{role === "business" ? "Business onboarding" : role === "driver" ? "Driver onboarding" : "Current focus"}</h2>
-            <p>{roleSummary}</p>
-            <ul className="stack-list">
-              <li>Step 1 authenticates the business operator with email and password.</li>
-              <li>Step 2 creates the org and BUSINESS_OPERATOR membership through the API.</li>
-              <li>The dashboard then reuses that real context for jobs, tracking, and payment reads.</li>
-            </ul>
+            <h2>
+              {role === "business" ? "Business onboarding" : role === "driver" ? "Driver onboarding" : "Current focus"}
+            </h2>
+            <p>{businessStep === "setup" && role === "business" ? "You’re one step away from going live." : roleSummary}</p>
+            {role === "business" && businessStep === "setup" ? (
+              <>
+                <div className="operator-identity">
+                  <span className="support-note">Operator identity</span>
+                  <strong>{authenticatedSession?.email ?? authForm.email}</strong>
+                </div>
+                <div className="next-steps">
+                  <span className="support-note">What happens next</span>
+                  <ul className="stack-list compact-list">
+                    <li>Create business workspace</li>
+                    <li>Assign operator role</li>
+                    <li>Open dashboard</li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <ul className="stack-list">
+                <li>Step 1 authenticates the business operator with email and password.</li>
+                <li>Step 2 creates the org and BUSINESS_OPERATOR membership through the API.</li>
+                <li>The dashboard then reuses that real context for jobs, tracking, and payment reads.</li>
+              </ul>
+            )}
             {existingSession?.context.currentOrg ? (
               <div className="existing-session-callout">
                 <strong>Existing session detected</strong>
@@ -383,69 +422,68 @@ export function OnboardingFlow() {
                 <div className="onboarding-step-header">
                   <span className="step-pill">Step 2 of 2</span>
                   <div>
-                    <h3>Set up business</h3>
-                    <p>Finish the business profile, then create the org and operator membership.</p>
+                    <h3>Confirm workspace details</h3>
+                    <p>Enter the business details, then open operations.</p>
                   </div>
                 </div>
 
-                <div className="inline-details">
-                  <span className="support-note">Authenticated operator</span>
-                  <strong>{authenticatedSession?.email ?? authForm.email}</strong>
-                </div>
-
-                <label>
-                  <span>Business name</span>
-                  <input
-                    name="businessName"
-                    onChange={(event) => setBusinessSetupForm((current) => ({ ...current, businessName: event.target.value }))}
-                    placeholder="ShipWright Retail Ops"
-                    value={businessSetupForm.businessName}
-                  />
-                </label>
-                <label>
-                  <span>Contact name</span>
-                  <input
-                    name="contactName"
-                    onChange={(event) => setBusinessSetupForm((current) => ({ ...current, contactName: event.target.value }))}
-                    placeholder="Olubusayo Adewale"
-                    value={businessSetupForm.contactName}
-                  />
-                </label>
-                <div className="form-grid-two">
+                <div className="setup-form-shell">
                   <label>
-                    <span>Phone</span>
+                    <span>Business name</span>
                     <input
-                      name="phone"
-                      onChange={(event) => setBusinessSetupForm((current) => ({ ...current, phone: event.target.value }))}
-                      placeholder="+44 20 7946 0958"
-                      value={businessSetupForm.phone}
+                      name="businessName"
+                      onChange={(event) => setBusinessSetupForm((current) => ({ ...current, businessName: event.target.value }))}
+                      placeholder="ShipWright Retail Ops"
+                      value={businessSetupForm.businessName}
                     />
                   </label>
                   <label>
-                    <span>Operating city</span>
+                    <span>Contact name</span>
                     <input
-                      name="city"
-                      onChange={(event) => setBusinessSetupForm((current) => ({ ...current, city: event.target.value }))}
-                      placeholder="London"
-                      value={businessSetupForm.city}
+                      name="contactName"
+                      onChange={(event) => setBusinessSetupForm((current) => ({ ...current, contactName: event.target.value }))}
+                      placeholder="Olubusayo Adewale"
+                      value={businessSetupForm.contactName}
                     />
                   </label>
+                  <div className="form-grid-two">
+                    <label>
+                      <span>Phone</span>
+                      <input
+                        name="phone"
+                        onChange={(event) => setBusinessSetupForm((current) => ({ ...current, phone: event.target.value }))}
+                        placeholder="+44 20 7946 0958"
+                        value={businessSetupForm.phone}
+                      />
+                    </label>
+                    <label>
+                      <span>Operating city</span>
+                      <input
+                        name="city"
+                        onChange={(event) => setBusinessSetupForm((current) => ({ ...current, city: event.target.value }))}
+                        placeholder="London"
+                        value={businessSetupForm.city}
+                      />
+                    </label>
+                  </div>
                 </div>
 
-                <p className="support-note">
-                  This step calls the live onboarding API to create the business org and attach the signed-in user as the BUSINESS_OPERATOR.
-                </p>
+                {error ? <p className="form-error form-error-surface">{error}</p> : null}
 
-                {error ? <p className="form-error">{error}</p> : null}
-
-                <div className="hero-actions">
-                  <button className="button button-primary" disabled={submitting} type="submit">
-                    {submitting ? "Creating business..." : "Create Business and Open Dashboard"}
+                <div className="hero-actions setup-actions">
+                  <button className="button button-primary button-emphasis" disabled={submitting} type="submit">
+                    {submitting ? "Creating workspace and opening dashboard..." : "Enter Dashboard"}
                   </button>
-                  <button className="button button-secondary" onClick={() => resetBusinessFlow("signin")} type="button">
+                  <button className="button button-secondary" disabled={submitting} onClick={() => resetBusinessFlow("signin")} type="button">
                     Back to Authentication
                   </button>
                 </div>
+
+                <p className="form-hint">
+                  {submitting
+                    ? "Setting up the workspace, assigning the operator role, and preparing the dashboard."
+                    : "This uses the live onboarding API and opens the authenticated dashboard when complete."}
+                </p>
               </form>
             )
           ) : null}
