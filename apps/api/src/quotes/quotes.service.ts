@@ -56,6 +56,10 @@ type QuoteRow = {
   created_at: string;
 };
 
+function toIsoString(value: string | Date) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 export type ComputedQuote = {
   customerTotalCents: number;
   driverPayoutGrossCents: number;
@@ -274,7 +278,7 @@ export class QuotesService {
       pricingVersion: row.pricing_version,
       premiumDistanceFlag: row.premium_distance_flag,
       breakdownLines: row.breakdown_lines,
-      createdAt: row.created_at
+      createdAt: toIsoString(row.created_at)
     });
   }
 }
