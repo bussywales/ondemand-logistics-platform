@@ -90,6 +90,11 @@ export class BusinessService {
     const log = enrichLogContext(this.logger, { actor_id: user.id });
 
     try {
+      await this.ensureUserRowExists(user, {
+        email: parsed.data.email,
+        displayName: parsed.data.contactName
+      });
+
       const result = await this.pg.withIdempotency({
         actorId: user.id,
         endpoint: "/v1/business/orgs",
@@ -100,6 +105,15 @@ export class BusinessService {
             email: parsed.data.email,
             displayName: parsed.data.contactName
           });
+          await client.query("select id from public.users where id = $1 for update", [user.id]);
+
+          const existingMemberships = await this.readBusinessMemberships(client, user.id, hasOrgProfileColumns);
+          if (existingMemberships.length > 0) {
+            return {
+              responseCode: 200,
+              body: this.mapContext(userRow, existingMemberships)
+            };
+          }
 
           const orgResult = hasOrgProfileColumns
             ? await client.query<OrgRow>(
@@ -200,37 +214,7 @@ export class BusinessService {
       [user.id]
     );
 
-    const memberships = await this.pg.query<ContextRow>(
-      `select
-          m.id as membership_id,
-          m.org_id as membership_org_id,
-          m.user_id as membership_user_id,
-          m.role::text as membership_role,
-          m.is_active as membership_is_active,
-          m.created_at as membership_created_at,
-          o.id as org_id,
-          o.name as org_name,
-          ${
-            hasOrgProfileColumns
-              ? `o.contact_name as org_contact_name,
-                 o.contact_email as org_contact_email,
-                 o.contact_phone as org_contact_phone,
-                 o.operating_city as org_operating_city,`
-              : `null::text as org_contact_name,
-                 null::text as org_contact_email,
-                 null::text as org_contact_phone,
-                 null::text as org_operating_city,`
-          }
-          o.created_by as org_created_by,
-          o.created_at as org_created_at
-       from public.org_memberships m
-       join public.orgs o on o.id = m.org_id
-       where m.user_id = $1
-         and m.is_active = true
-         and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
-       order by m.created_at desc`,
-      [user.id]
-    );
+    const memberships = await this.readBusinessMemberships(this.pg, user.id, hasOrgProfileColumns);
 
     const fallbackEmail = this.getUserEmail(user);
     const fallbackDisplayName = this.getUserDisplayName(user, fallbackEmail);
@@ -242,26 +226,7 @@ export class BusinessService {
 
     return this.mapContext(
       userRow,
-      memberships.rows.map((row) => ({
-        membership: {
-          id: row.membership_id,
-          org_id: row.membership_org_id,
-          user_id: row.membership_user_id,
-          role: row.membership_role,
-          is_active: row.membership_is_active,
-          created_at: row.membership_created_at
-        },
-        org: {
-          id: row.org_id,
-          name: row.org_name,
-          contact_name: row.org_contact_name,
-          contact_email: row.org_contact_email,
-          contact_phone: row.org_contact_phone,
-          operating_city: row.org_operating_city,
-          created_by: row.org_created_by,
-          created_at: row.org_created_at
-        }
-      }))
+      memberships
     );
   }
 
@@ -308,6 +273,74 @@ export class BusinessService {
     );
 
     return result.rows[0];
+  }
+
+  private ensureUserRowExists(user: AuthenticatedUser, input: { email: string; displayName: string }) {
+    return this.pg.query<UserRow>(
+      `insert into public.users (id, email, display_name)
+       values ($1, $2, $3)
+       on conflict (id) do update
+       set email = excluded.email,
+           display_name = excluded.display_name,
+           updated_at = now()
+       returning id, email, display_name`,
+      [user.id, input.email, input.displayName]
+    );
+  }
+
+  private async readBusinessMemberships(queryable: Queryable, userId: string, hasOrgProfileColumns: boolean) {
+    const memberships = await queryable.query<ContextRow>(
+      `select
+          m.id as membership_id,
+          m.org_id as membership_org_id,
+          m.user_id as membership_user_id,
+          m.role::text as membership_role,
+          m.is_active as membership_is_active,
+          m.created_at as membership_created_at,
+          o.id as org_id,
+          o.name as org_name,
+          ${
+            hasOrgProfileColumns
+              ? `o.contact_name as org_contact_name,
+                 o.contact_email as org_contact_email,
+                 o.contact_phone as org_contact_phone,
+                 o.operating_city as org_operating_city,`
+              : `null::text as org_contact_name,
+                 null::text as org_contact_email,
+                 null::text as org_contact_phone,
+                 null::text as org_operating_city,`
+          }
+          o.created_by as org_created_by,
+          o.created_at as org_created_at
+       from public.org_memberships m
+       join public.orgs o on o.id = m.org_id
+       where m.user_id = $1
+         and m.is_active = true
+         and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+       order by m.created_at desc`,
+      [userId]
+    );
+
+    return memberships.rows.map((row) => ({
+      membership: {
+        id: row.membership_id,
+        org_id: row.membership_org_id,
+        user_id: row.membership_user_id,
+        role: row.membership_role,
+        is_active: row.membership_is_active,
+        created_at: row.membership_created_at
+      },
+      org: {
+        id: row.org_id,
+        name: row.org_name,
+        contact_name: row.org_contact_name,
+        contact_email: row.org_contact_email,
+        contact_phone: row.org_contact_phone,
+        operating_city: row.org_operating_city,
+        created_by: row.org_created_by,
+        created_at: row.org_created_at
+      }
+    }));
   }
 
   private mapContext(

@@ -51,6 +51,10 @@ describe("BusinessService", () => {
   });
 
   it("creates an org and operator membership for the authenticated user", async () => {
+    const pgQuery = vi.fn().mockResolvedValue({
+      rowCount: 1,
+      rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
+    });
     const clientQuery = vi
       .fn()
       .mockResolvedValueOnce({
@@ -64,6 +68,14 @@ describe("BusinessService", () => {
       .mockResolvedValueOnce({
         rowCount: 1,
         rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: USER_ID }]
+      })
+      .mockResolvedValueOnce({
+        rowCount: 0,
+        rows: []
       })
       .mockResolvedValueOnce({
         rowCount: 1,
@@ -92,6 +104,7 @@ describe("BusinessService", () => {
       .mockResolvedValueOnce({ rowCount: 1, rows: [] });
 
     const pg = {
+      query: pgQuery,
       withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
         replay: false,
         ...(await execute({ query: clientQuery }))
@@ -113,6 +126,140 @@ describe("BusinessService", () => {
 
     expect(result.body.currentOrg?.id).toBe(ORG_ID);
     expect(result.body.memberships[0]?.membership.role).toBe("BUSINESS_OPERATOR");
+    expect(pgQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the existing business context instead of creating a second org", async () => {
+    const existingCreatedAt = new Date().toISOString();
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
+      }),
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({
+          query: vi
+            .fn()
+            .mockResolvedValueOnce({
+              rows: [
+                { column_name: "contact_name" },
+                { column_name: "contact_email" },
+                { column_name: "contact_phone" },
+                { column_name: "operating_city" }
+              ]
+            })
+            .mockResolvedValueOnce({
+              rowCount: 1,
+              rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
+            })
+            .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: USER_ID }] })
+            .mockResolvedValueOnce({
+              rowCount: 1,
+              rows: [{
+                membership_id: MEMBERSHIP_ID,
+                membership_org_id: ORG_ID,
+                membership_user_id: USER_ID,
+                membership_role: "BUSINESS_OPERATOR",
+                membership_is_active: true,
+                membership_created_at: existingCreatedAt,
+                org_id: ORG_ID,
+                org_name: "Existing Ops",
+                org_contact_name: "Busayo Adewale",
+                org_contact_email: "ops@example.com",
+                org_contact_phone: "+44 20 7946 0958",
+                org_operating_city: "London",
+                org_created_by: USER_ID,
+                org_created_at: existingCreatedAt
+              }]
+            })
+        }))
+      }))
+    };
+
+    const service = new BusinessService(pg as never);
+    const result = await service.createBusinessOrg(
+      {
+        businessName: "New Name Ignored",
+        contactName: "Busayo Adewale",
+        email: "ops@example.com",
+        phone: "+44 20 7946 0958",
+        city: "London"
+      },
+      createUser(),
+      "idem-business-org-existing"
+    );
+
+    expect(result.responseCode).toBe(200);
+    expect(result.body.currentOrg?.id).toBe(ORG_ID);
+    expect(result.body.currentOrg?.name).toBe("Existing Ops");
+  });
+
+  it("returns the cached idempotent response when the same key is retried", async () => {
+    const cachedBody = {
+      userId: USER_ID,
+      email: "ops@example.com",
+      displayName: "Busayo Adewale",
+      onboarded: true,
+      currentOrg: {
+        id: ORG_ID,
+        name: "ShipWright Retail Ops",
+        contactName: "Busayo Adewale",
+        contactEmail: "ops@example.com",
+        contactPhone: "+44 20 7946 0958",
+        city: "London",
+        createdByUserId: USER_ID,
+        createdAt: new Date().toISOString()
+      },
+      memberships: [{
+        membership: {
+          id: MEMBERSHIP_ID,
+          orgId: ORG_ID,
+          userId: USER_ID,
+          role: "BUSINESS_OPERATOR",
+          isActive: true,
+          createdAt: new Date().toISOString()
+        },
+        org: {
+          id: ORG_ID,
+          name: "ShipWright Retail Ops",
+          contactName: "Busayo Adewale",
+          contactEmail: "ops@example.com",
+          contactPhone: "+44 20 7946 0958",
+          city: "London",
+          createdByUserId: USER_ID,
+          createdAt: new Date().toISOString()
+        }
+      }]
+    };
+
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Busayo Adewale" }]
+      }),
+      withIdempotency: vi.fn().mockResolvedValue({
+        replay: true,
+        responseCode: 201,
+        body: cachedBody
+      })
+    };
+
+    const service = new BusinessService(pg as never);
+    const result = await service.createBusinessOrg(
+      {
+        businessName: "ShipWright Retail Ops",
+        contactName: "Busayo Adewale",
+        email: "ops@example.com",
+        phone: "+44 20 7946 0958",
+        city: "London"
+      },
+      createUser(),
+      "idem-business-org-retry"
+    );
+
+    expect(result.replay).toBe(true);
+    expect(result.body.currentOrg?.id).toBe(ORG_ID);
   });
 
   it("returns onboarded business context for an operator", async () => {
