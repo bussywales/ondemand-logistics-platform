@@ -290,6 +290,71 @@ describe("JobsService", () => {
     expect(tracking.timeline).toHaveLength(2);
   });
 
+  it("returns an empty business jobs page for an onboarded operator with no jobs", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 0,
+        rows: []
+      })
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.listBusinessJobs(ACTOR_ID, 1, 20);
+
+    expect(result).toEqual({
+      items: [],
+      page: 1,
+      limit: 20,
+      hasMore: false
+    });
+  });
+
+  it("returns org-scoped business jobs", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [createJobRow({ org_id: QUOTE_ID, created_at: new Date().toISOString() })]
+      })
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.listBusinessJobs(ACTOR_ID, 1, 20);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.orgId).toBe(QUOTE_ID);
+    expect(result.items[0]?.id).toBe(JOB_ID);
+  });
+
+  it("serializes pg dates in business jobs responses", async () => {
+    const createdAt = new Date("2026-04-22T13:10:00.000Z");
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [createJobRow({ org_id: QUOTE_ID, created_at: createdAt })]
+      })
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.listBusinessJobs(ACTOR_ID, 1, 20);
+
+    expect(result.items[0]?.createdAt).toBe(createdAt.toISOString());
+  });
+
   it("retries dispatch for a blocked operator-owned job", async () => {
     const clientQuery = vi
       .fn()

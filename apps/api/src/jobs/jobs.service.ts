@@ -101,6 +101,13 @@ type DispatchAttemptRow = {
   created_at: string;
 };
 
+function toIsoString(value: string | Date | null) {
+  if (value === null) {
+    return null;
+  }
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
   j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
   j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
@@ -386,7 +393,7 @@ export class JobsService {
                       longitude: Number(job.driver_latest_longitude)
                     }
                   : null,
-              lastLocationAt: job.driver_last_location_at
+              lastLocationAt: toIsoString(job.driver_last_location_at)
             }
           : null,
       dispatchAttempts,
@@ -394,7 +401,7 @@ export class JobsService {
         id: event.id,
         eventType: event.event_type,
         actorId: event.actor_id,
-        createdAt: event.created_at,
+        createdAt: toIsoString(event.created_at),
         payload: event.payload
       }))
     });
@@ -968,7 +975,7 @@ export class JobsService {
       driverDisplayName: attempt.driver_display_name,
       offerId: attempt.offer_id,
       notes: attempt.notes,
-      createdAt: attempt.created_at
+      createdAt: toIsoString(attempt.created_at)
     }));
   }
 
@@ -1158,7 +1165,7 @@ export class JobsService {
       attentionLevel: attention.level,
       attentionReason: attention.reason,
       createdByUserId: row.created_by_user_id,
-      createdAt: row.created_at
+      createdAt: toIsoString(row.created_at)
     });
   }
 }
