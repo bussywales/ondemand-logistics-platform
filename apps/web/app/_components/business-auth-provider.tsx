@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from 'react';
@@ -14,9 +15,13 @@ import {
   createBusinessSession,
   fetchBusinessContext,
   getCurrentAuthSession,
+  AUTH_RESTORE_TIMEOUT_MS,
+  BrowserAuthTimeoutError,
   refreshCurrentAuthSession,
   signOutBusiness,
   subscribeToAuthChanges,
+  syncAuthCookie,
+  withTimeout,
   type BrowserAuthSession
 } from '../_lib/auth';
 import { buildAuthRedirectTarget } from '../_lib/route-protection';
@@ -41,10 +46,15 @@ function buildSession(authSession: BrowserAuthSession, context: BusinessContext)
   return nextSession;
 }
 
+function isTimeoutError(issue: unknown) {
+  return issue instanceof BrowserAuthTimeoutError;
+}
+
 export function BusinessAuthProvider(props: { children: ReactNode }) {
   const [status, setStatus] = useState<BusinessAuthStatus>('loading');
   const [session, setSession] = useState<BusinessSession | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const restoreAttemptRef = useRef(0);
 
   const hydrateSession = useCallback((authSession: BrowserAuthSession, context: BusinessContext) => {
     const nextSession = buildSession(authSession, context);
@@ -54,20 +64,55 @@ export function BusinessAuthProvider(props: { children: ReactNode }) {
     return nextSession;
   }, []);
 
+  const resetToUnauthenticated = useCallback(() => {
+    restoreAttemptRef.current += 1;
+    clearBusinessSession();
+    syncAuthCookie(null);
+    setSession(null);
+    setStatus('unauthenticated');
+    setError(null);
+  }, [restoreAttemptRef]);
+
   const resolveBusinessSession = useCallback(
     async (authSession: BrowserAuthSession | null) => {
+      const attemptId = ++restoreAttemptRef.current;
+
       if (!authSession) {
-        clearBusinessSession();
-        setSession(null);
-        setStatus('unauthenticated');
-        setError(null);
+        if (attemptId === restoreAttemptRef.current) {
+          clearBusinessSession();
+          syncAuthCookie(null);
+          setSession(null);
+          setStatus('unauthenticated');
+          setError(null);
+        }
         return null;
       }
 
       try {
-        const context = await fetchBusinessContext(authSession.accessToken);
+        const context = await withTimeout(fetchBusinessContext(authSession.accessToken), {
+          timeoutMs: AUTH_RESTORE_TIMEOUT_MS,
+          action: 'Business context restore'
+        });
+
+        if (attemptId !== restoreAttemptRef.current) {
+          return null;
+        }
+
         return hydrateSession(authSession, context);
       } catch (issue) {
+        if (attemptId !== restoreAttemptRef.current) {
+          return null;
+        }
+
+        if (isTimeoutError(issue)) {
+          clearBusinessSession();
+          syncAuthCookie(null);
+          setSession(null);
+          setStatus('unauthenticated');
+          setError(null);
+          return null;
+        }
+
         const message = issue instanceof Error ? issue.message : 'Unable to load the authenticated workspace.';
         const cached = readBusinessSession();
         if (cached?.userId === authSession.userId) {
@@ -86,39 +131,61 @@ export function BusinessAuthProvider(props: { children: ReactNode }) {
         }
 
         clearBusinessSession();
+        syncAuthCookie(null);
         setSession(null);
         setStatus('error');
         setError(message);
         return null;
       }
     },
-    [hydrateSession]
+    [hydrateSession, restoreAttemptRef]
   );
 
   const refreshBusinessSession = useCallback(async () => {
-    const authSession = await refreshCurrentAuthSession().catch(() => getCurrentAuthSession());
+    const authSession = await withTimeout(refreshCurrentAuthSession().catch(() => getCurrentAuthSession()), {
+      timeoutMs: AUTH_RESTORE_TIMEOUT_MS,
+      action: 'Supabase session refresh'
+    }).catch((issue) => {
+      if (isTimeoutError(issue)) {
+        resetToUnauthenticated();
+        return null;
+      }
+
+      throw issue;
+    });
+
     return resolveBusinessSession(authSession);
-  }, [resolveBusinessSession]);
+  }, [resolveBusinessSession, resetToUnauthenticated]);
 
   const signOut = useCallback(async () => {
+    restoreAttemptRef.current += 1;
     await signOutBusiness();
     clearBusinessSession();
     setSession(null);
     setStatus('unauthenticated');
     setError(null);
-  }, []);
+  }, [restoreAttemptRef]);
 
   useEffect(() => {
     let active = true;
 
-    void getCurrentAuthSession()
+    void withTimeout(getCurrentAuthSession(), {
+      timeoutMs: AUTH_RESTORE_TIMEOUT_MS,
+      action: 'Supabase session restore'
+    })
       .then((authSession) => (active ? resolveBusinessSession(authSession) : null))
       .catch((issue) => {
         if (!active) {
           return;
         }
 
+        if (isTimeoutError(issue)) {
+          resetToUnauthenticated();
+          return;
+        }
+
         clearBusinessSession();
+        syncAuthCookie(null);
         setSession(null);
         setStatus('error');
         setError(issue instanceof Error ? issue.message : 'Unable to restore the authenticated session.');
@@ -130,10 +197,7 @@ export function BusinessAuthProvider(props: { children: ReactNode }) {
       }
 
       if (event === 'SIGNED_OUT') {
-        clearBusinessSession();
-        setSession(null);
-        setStatus('unauthenticated');
-        setError(null);
+        resetToUnauthenticated();
         return;
       }
 
@@ -146,7 +210,7 @@ export function BusinessAuthProvider(props: { children: ReactNode }) {
       active = false;
       unsubscribe();
     };
-  }, [resolveBusinessSession]);
+  }, [resetToUnauthenticated, resolveBusinessSession]);
 
   const value = useMemo<BusinessAuthContextValue>(
     () => ({

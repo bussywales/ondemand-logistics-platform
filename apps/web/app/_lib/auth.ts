@@ -5,6 +5,7 @@ import { createId, type BusinessContext, type BusinessSession } from './product-
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api-staging-qvmv.onrender.com';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+export const AUTH_RESTORE_TIMEOUT_MS = 8000;
 
 let browserClient: SupabaseClient | null = null;
 
@@ -33,6 +34,16 @@ export class SupabaseBrowserAuthError extends Error {
   }
 }
 
+export class BrowserAuthTimeoutError extends Error {
+  readonly timeoutMs: number;
+
+  constructor(input: { action: string; timeoutMs: number }) {
+    super(`${input.action} timed out after ${input.timeoutMs}ms.`);
+    this.name = 'BrowserAuthTimeoutError';
+    this.timeoutMs = input.timeoutMs;
+  }
+}
+
 function normalizeBaseUrl(value: string) {
   return value.trim().replace(/\/$/, '');
 }
@@ -45,6 +56,29 @@ function requireSupabaseConfig() {
 
 function hasWindow() {
   return typeof window !== 'undefined';
+}
+
+export async function withTimeout<T>(promise: Promise<T>, input: { timeoutMs: number; action: string }) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race<T>([
+      promise.finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new BrowserAuthTimeoutError(input));
+        }, input.timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 function readJson(text: string) {
@@ -223,15 +257,33 @@ export function subscribeToAuthChanges(listener: (event: AuthChangeEvent, sessio
 }
 
 async function apiFetch<T>(accessToken: string, path: string, init?: RequestInit) {
-  const response = await fetch(`${normalizeBaseUrl(apiBaseUrl)}${path}`, {
-    ...init,
-    headers: {
-      authorization: `Bearer ${accessToken}`,
-      'content-type': 'application/json',
-      ...(init?.headers ?? {})
-    },
-    cache: 'no-store'
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AUTH_RESTORE_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${normalizeBaseUrl(apiBaseUrl)}${path}`, {
+      ...init,
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+        ...(init?.headers ?? {})
+      },
+      cache: 'no-store',
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new BrowserAuthTimeoutError({
+        action: `API request to ${path}`,
+        timeoutMs: AUTH_RESTORE_TIMEOUT_MS
+      });
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const payload = readJson(await response.text());
   if (!response.ok) {
