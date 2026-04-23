@@ -31,6 +31,7 @@ import {
 } from "@shipwright/contracts";
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
+import { toFiniteNumber, toIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 import { PaymentsService } from "../payments/payments.service.js";
 
@@ -48,7 +49,7 @@ type OfferRow = {
   id: string;
   job_id: string;
   status: string;
-  expires_at: string;
+  expires_at: string | Date;
   distance_miles_snapshot: string;
   eta_minutes_snapshot: number;
   payout_gross_snapshot: number;
@@ -271,8 +272,8 @@ export class DriverService {
         offerId: row.id,
         jobId: row.job_id,
         status: row.status,
-        expiresAt: row.expires_at,
-        distanceMiles: Number(row.distance_miles_snapshot),
+        expiresAt: toIsoDateTime(row.expires_at),
+        distanceMiles: toFiniteNumber(row.distance_miles_snapshot, "job_offer.distance_miles_snapshot"),
         etaMinutes: row.eta_minutes_snapshot,
         payoutGrossCents: row.payout_gross_snapshot,
         pickupAddress: row.pickup_address,

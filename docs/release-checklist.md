@@ -32,12 +32,15 @@ The command runs the release-critical verification sequence in order:
 4. `GET /readyz`
 5. authenticated business smoke:
    - `GET /v1/business/jobs?page=1&limit=20`
-6. release decision
+6. optional authenticated driver/dispatch smoke when `SMOKE_DRIVER_BEARER_TOKEN` is set:
+   - `GET /v1/driver/me/offers`
+7. release decision
 
 ## 4) Required Pass Conditions
 - `GET /healthz` returns `200`
 - `GET /readyz` returns `200`
 - authenticated business smoke passes
+- if `SMOKE_DRIVER_BEARER_TOKEN` is set, driver offers smoke must also pass
 - release is not healthy if any required check fails
 
 ## 5) Readiness Failure Meaning
@@ -48,6 +51,7 @@ The command runs the release-critical verification sequence in order:
 - schema compatibility for the current critical flows:
   - quotes
   - jobs and tracking
+  - driver offers / dispatch reads
   - payments
 
 If required tables or columns are missing, `/readyz` returns `503` with:
@@ -108,12 +112,12 @@ This redirect is intentional fail-closed behavior, not a silent success path.
 
 ## 8) Next Hardening Candidate
 Next likely high-risk endpoint family:
-- driver offers / dispatch flows
+- operator dispatch mutations
 
 Why:
-- multiple joined relations
-- sequential dispatch state changes
-- timing-sensitive offer expiry paths
-- valid empty states and partial assignment states
+- state-changing retry / reassign actions
+- idempotency and ownership checks
+- side effects in outbox and offer state transitions
+- higher risk than the read-only driver offers smoke
 
-Do not harden this in this phase. Treat it as the next operational hardening target after the current release-critical jobs, quotes, and payments surface.
+Do not harden this in this phase. Treat it as the next operational hardening target after the current driver offers / dispatch read coverage.

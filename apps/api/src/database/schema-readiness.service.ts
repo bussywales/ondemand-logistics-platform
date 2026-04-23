@@ -54,6 +54,21 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
     ],
     job_events: ["id", "job_id", "event_type", "actor_id", "payload", "created_at"]
   },
+  dispatch: {
+    drivers: ["id", "user_id"],
+    job_offers: [
+      "id",
+      "job_id",
+      "driver_id",
+      "status",
+      "offered_at",
+      "expires_at",
+      "responded_at",
+      "payout_gross_snapshot",
+      "distance_miles_snapshot",
+      "eta_minutes_snapshot"
+    ]
+  },
   payments: {
     payments: [
       "id",

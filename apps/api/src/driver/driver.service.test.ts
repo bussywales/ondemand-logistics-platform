@@ -72,6 +72,72 @@ function makeService(clientQuery: ReturnType<typeof vi.fn>) {
 }
 
 describe("DriverService", () => {
+  it("returns an empty offers list for drivers with no active offers", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [driverRow()]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        }),
+      withIdempotency: vi.fn()
+    };
+    const payments = {
+      enqueueCaptureForDeliveredJob: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const service = new DriverService(pg as never, payments as never);
+
+    await expect(service.listOffers(ACTOR_ID)).resolves.toEqual([]);
+  });
+
+  it("normalizes driver offers with pg date values", async () => {
+    const expiry = new Date("2026-04-23T12:00:00.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [driverRow()]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: OFFER_ID,
+              job_id: JOB_ID,
+              status: "OFFERED",
+              expires_at: expiry,
+              distance_miles_snapshot: "4.2",
+              eta_minutes_snapshot: 16,
+              payout_gross_snapshot: 1100,
+              pickup_address: "101 Main St",
+              dropoff_address: "202 Oak Ave"
+            }
+          ]
+        }),
+      withIdempotency: vi.fn()
+    };
+    const payments = {
+      enqueueCaptureForDeliveredJob: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const service = new DriverService(pg as never, payments as never);
+    const offers = await service.listOffers(ACTOR_ID);
+
+    expect(offers).toEqual([
+      expect.objectContaining({
+        offerId: OFFER_ID,
+        expiresAt: expiry.toISOString(),
+        distanceMiles: 4.2
+      })
+    ]);
+  });
+
   it("rejects accepting another driver's offer", async () => {
     const clientQuery = vi.fn().mockResolvedValue({
       rowCount: 1,

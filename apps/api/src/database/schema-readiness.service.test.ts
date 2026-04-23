@@ -70,4 +70,26 @@ describe("SchemaReadinessService", () => {
       missingElements: expect.arrayContaining(["public.payments.settlement_snapshot"])
     } satisfies Partial<SchemaCompatibilityError>);
   });
+
+  it("fails when a required dispatch column is missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: Object.entries(CRITICAL_SCHEMA_REQUIREMENTS).flatMap(([, group]) =>
+          Object.keys(group).map((table_name) => ({ table_name }))
+        )
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter(
+          (row) => !(row.table_name === "job_offers" && row.column_name === "expires_at")
+        )
+      });
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.job_offers.expires_at"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
 });

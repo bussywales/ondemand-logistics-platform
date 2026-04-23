@@ -51,8 +51,23 @@ async function main() {
     logFail("GET /v1/business/jobs?page=1&limit=20", businessJobs);
   }
 
+  let driverSmokeOk = true;
   if (!driverToken) {
     logSkip("driver smoke", "SMOKE_DRIVER_BEARER_TOKEN not set");
+  } else {
+    const driverOffers = await runCheck("GET /v1/driver/me/offers", `${baseUrl}/v1/driver/me/offers`, {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${driverToken}`
+      }
+    });
+
+    if (driverOffers.ok) {
+      logPass("GET /v1/driver/me/offers", driverOffers);
+    } else {
+      logFail("GET /v1/driver/me/offers", driverOffers);
+    }
+    driverSmokeOk = driverOffers.ok;
   }
 
   if (!adminToken) {
@@ -60,7 +75,7 @@ async function main() {
   }
 
   console.log("STEP 5 | release decision");
-  if (!healthz.ok || !readyz.ok || !businessJobs.ok) {
+  if (!healthz.ok || !readyz.ok || !businessJobs.ok || !driverSmokeOk) {
     console.error("FAIL verify:staging | staging is not healthy for release");
     process.exit(1);
   }
