@@ -45,3 +45,4 @@ See `docs/runbooks/setup.md` for staging setup (Supabase, Render, Vercel, Upstas
 - `docs/roadmaps/fleet-scope-cut-matrix.md` - explicit build, buy, manual, and defer decisions by stage
 - `docs/roadmaps/fleet-pilot-readiness-checklist.md` - pilot gate for controlled launch readiness
 - `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution plan and weekly working reference
+- `docs/roadmaps/fleet-pilot-gap-review.md` - repo-to-plan alignment review for Stage 1 execution control
