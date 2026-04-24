@@ -5,6 +5,14 @@ This review checks actual repo and recent delivery state against the Stage 1 wor
 
 Its purpose is to prevent scope drift, expose false assumptions, and show what must happen next to make Pilot MVP credible.
 
+## Evidence standard
+This review uses a hard standard:
+- backend capability does not count as a pilot-ready flow by itself
+- operator tooling does not count as a restaurant or customer product surface
+- seeded fixtures do not count as pilot operational readiness
+- release hardening does not count as product completeness
+- a workstream should not be treated as effectively complete unless the repo shows a usable actor-facing path plus the minimum operational handling around it
+
 ## Review basis
 ### Source documents reviewed
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/fleet-roadmap.md`
@@ -26,9 +34,9 @@ Its purpose is to prevent scope drift, expose false assumptions, and show what m
 - release reliability has materially improved through staging smoke checks, readiness checks, mapper hardening, and dispatch-read verification
 
 ### Partially aligned
-- checkout and payment are partially real, but currently positioned inside an operator console rather than a pilot restaurant/customer ordering flow
-- courier offer, accept, and delivery flow is materially implemented in backend terms, but still depends on explicit pilot compliance packaging and live operational validation
-- restaurant and customer visibility exist in fragments, but not yet as clean pilot-facing product surfaces
+- checkout and payment are technically present, but still attached to an operator console rather than a pilot customer flow
+- courier offer, accept, and delivery flow is technically present, but still depends on courier compliance execution and live pilot validation
+- restaurant and customer visibility exist in fragments, but not yet as usable pilot-facing surfaces
 
 ### Missing or underdeveloped
 - restaurant onboarding workflow suitable for live pilot use
@@ -39,7 +47,7 @@ Its purpose is to prevent scope drift, expose false assumptions, and show what m
 
 ### Drifting beyond Stage 1
 - recent effort has concentrated on operational hardening, readiness, platform safety, and internal console behavior faster than on merchant/menu/customer pilot surfaces
-- some of that work is justified by pilot risk, but it does not substitute for the missing Stage 1 orderable product path
+- some of that work is justified by pilot risk, but none of it substitutes for the missing Stage 1 orderable product path
 
 ## Workstream-by-workstream assessment
 
@@ -95,7 +103,7 @@ A pilot customer can complete checkout and payment reliably enough for real orde
 - payment UI is currently attached to an operator-facing console, not a restaurant-branded customer checkout experience
 
 **Status assessment**
-- In progress
+- At risk
 
 **Key gaps**
 - checkout is not yet connected to a real customer ordering flow
@@ -103,7 +111,7 @@ A pilot customer can complete checkout and payment reliably enough for real orde
 - payment readiness is stronger technically than product-complete for Stage 1
 
 **Scope comment**
-The payment substrate is real. The pilot checkout product flow is not yet complete.
+The payment substrate is real. The pilot checkout product flow is not yet real.
 
 ### 4) Courier onboarding compliance
 **Expected outcome**
@@ -137,7 +145,7 @@ A courier can receive, accept, and complete a real delivery end-to-end.
 - recent commits hardened tracking, driver offers release verification, and mapper safety
 
 **Status assessment**
-- In progress
+- At risk
 
 **Key gaps**
 - live end-to-end pilot validation still needs to be treated as pending
@@ -145,7 +153,7 @@ A courier can receive, accept, and complete a real delivery end-to-end.
 - restaurant and customer product surfaces are not yet mature enough to make this a full pilot path on their own
 
 **Scope comment**
-This is one of the strongest Stage 1 technical areas, but it is not enough to call Pilot MVP ready.
+This is one of the strongest Stage 1 technical areas. It is still not a pilot-ready flow because the actor-facing and operational dependencies are unfinished.
 
 ### 6) Dispatch and order-state operations
 **Expected outcome**
@@ -164,7 +172,7 @@ Live orders can move safely through creation, dispatch, assignment, and completi
 - current strength is on backend and ops console behavior, not on the full pilot merchant/customer experience
 
 **Scope comment**
-Correctly scoped in principle for Stage 1, but it is currently ahead of other more basic pilot needs.
+Real progress exists here. It is also ahead of more basic pilot needs such as merchant setup, menu, and customer ordering.
 
 ### 7) Basic customer and restaurant visibility
 **Expected outcome**
@@ -183,7 +191,7 @@ Restaurants and customers can see enough order state to operate without constant
 - tracking foundations exist, but customer-facing order visibility is not yet a finished Stage 1 surface
 
 **Scope comment**
-This workstream is currently overstated if treated as complete. The repo supports internal visibility more than pilot actor-specific visibility.
+This workstream should not be described as effectively delivered. The repo supports internal visibility more than pilot actor-specific visibility.
 
 ### 8) Pilot operations and manual fallback processes
 **Expected outcome**
@@ -234,6 +242,7 @@ This is one of the best-developed areas in the repo. It is useful and justified,
 - driver-side technical flows exist, but pilot courier onboarding/compliance is not yet clearly operationalised
 - staging hardening exists, but that does not mean pilot operations are ready
 - release safety progress can create false comfort if merchant activation, menu, ordering, and fallback playbooks are still missing
+- a technically successful job lifecycle should not be described as a Pilot MVP if customers and restaurants cannot yet use the product in a realistic pilot path
 
 ## Out-of-scope or premature work
 Recent or active effort that looks more Stage 2-shaped than Stage 1-shaped:
@@ -327,4 +336,4 @@ Do not prioritise the following now unless they directly unblock the five items 
 - not yet credible
 
 Reason:
-The repo is increasingly credible on backend orchestration, release hardening, and operator tooling, but the Pilot MVP still lacks several first-order Stage 1 realities: restaurant onboarding, menu setup, a branded customer ordering path, and explicit pilot operations playbooks.
+The repo is increasingly credible on backend orchestration, release hardening, and operator tooling, but those are not the same thing as a pilot-ready product. The Pilot MVP still lacks several first-order Stage 1 realities: restaurant onboarding, menu setup, a branded customer ordering path, and explicit pilot operations playbooks.
