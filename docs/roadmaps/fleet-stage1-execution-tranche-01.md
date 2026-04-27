@@ -4,9 +4,11 @@
 This document turns the Stage 1 gap review into the next concrete build sequence.
 
 It is the execution control document for the missing Stage 1 spine:
-- pilot restaurant activated
+- restaurant activated
 - menu loaded and orderable
 - customer order placed and paid
+
+Everything in this tranche must serve that connected path directly.
 
 It must stay aligned with:
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/fleet-roadmap.md`
@@ -18,13 +20,29 @@ It must stay aligned with:
 ## Tranche goal
 Activate at least one pilot restaurant, make its menu orderable, and allow a customer to place and pay for a real order through a branded flow.
 
-That is the bar for this tranche.
+That is the only success condition for this tranche.
 
 ## Why this tranche now
 - Pilot MVP is not credible without a real merchant-menu-ordering path.
 - The repo is stronger on backend orchestration and operator tooling than on actor-facing Stage 1 product flow.
 - Business onboarding, jobs, dispatch, tracking, and payment foundations already exist, but they do not yet create a usable pilot restaurant order path.
 - This tranche is the missing centre of Stage 1. Without it, the project remains operationally interesting but commercially unproven.
+
+## Tranche control rules
+- Work only on the minimum connected build sequence.
+- Do not pull forward Stage 2 operations work unless it directly blocks the first restaurant order path.
+- Do not build management polish before the underlying path exists.
+- Do not count internal tooling or backend capability as completion for this tranche.
+- If a work item does not help one restaurant go live, show its menu, or let one customer place and pay for one order, it is outside this tranche.
+
+## Minimum connected build sequence
+1. create and activate one pilot restaurant
+2. attach an orderable menu to that restaurant
+3. expose that menu on a branded customer route
+4. let a customer select items and check out
+5. create a real order that enters the existing downstream quote, job, payment, and operational flow
+
+The tranche is incomplete if any link in this chain is missing.
 
 ## Scope of this tranche
 
@@ -63,7 +81,7 @@ A named pilot restaurant can be created, activated, and prepared to receive live
 
 ### 2. Menu and orderable catalogue path
 **Target outcome**
-At least one pilot restaurant has a loaded, orderable catalogue that can power a customer-facing order flow.
+The pilot restaurant has a loaded, orderable catalogue that can power a customer-facing order flow.
 
 **Repo assets that appear reusable**
 - existing authenticated business app shell in `/Users/olubusayoadewale/Coding Projects/shipwright/apps/web/app/app`
@@ -96,7 +114,7 @@ At least one pilot restaurant has a loaded, orderable catalogue that can power a
 
 ### 3. Branded customer ordering plus checkout path
 **Target outcome**
-A customer can browse a pilot restaurant menu, select items, check out, and create a real order that enters the existing backend lifecycle.
+A customer can browse the pilot restaurant menu, select items, check out, and create a real order that enters the existing backend lifecycle.
 
 **Repo assets that appear reusable**
 - existing Next.js web app structure in `/Users/olubusayoadewale/Coding Projects/shipwright/apps/web/app`
@@ -182,13 +200,14 @@ These are non-negotiable for this tranche:
 - minimum actor-facing confirmation and failure states
 
 ## Tranche deliverables
+Only the following outputs count for tranche completion:
 - pilot restaurant activation path defined and working for at least one named merchant
-- minimum restaurant/menu data model sufficient for pilot ordering
+- minimum restaurant and menu data model sufficient for pilot ordering
 - initial menu loading or management path
 - branded restaurant ordering route/page
 - item selection and cart flow
 - checkout integrated into the customer order path
-- successful order creation into the existing downstream quote/job/payment lifecycle
+- successful order creation into the existing downstream quote, job, and payment lifecycle
 - minimum customer confirmation and failure-state handling
 
 ## Acceptance criteria
@@ -201,6 +220,11 @@ This tranche is complete only when all of the following are true:
 - the resulting order can be observed by operators without custom one-off inspection work
 - customer-facing failure states are understandable enough for controlled pilot use
 - the result is sufficient for a controlled pilot test even if merchant review, menu loading, support, and reconciliation still depend partly on manual operations
+
+The tranche is not complete if the repo has:
+- a backend-only implementation with no actor-facing ordering path
+- a branded ordering page with no real orderable menu behind it
+- checkout UI with no reliable order creation handoff
 
 ## Dependencies and blockers
 - named pilot restaurant and pilot commercial terms
@@ -220,6 +244,8 @@ Do not pull the following into this work unless they directly unblock the mercha
 - Stage 2 dispatch automation improvements
 - broader self-serve onboarding beyond the minimum pilot path
 - scale-grade optimisation or retention features
+- courier-product expansion beyond what is already needed to receive and fulfil the first valid order
+- operator-console expansion beyond what is required to observe the resulting order
 
 ## Recommended execution order
 1. define the minimum pilot restaurant activation record and path
@@ -234,5 +260,5 @@ Define and implement the minimum restaurant and menu data model for one pilot me
 
 Reason:
 - it is the foundation for both merchant activation and customer ordering
-- the repo currently has no clear menu/catalogue model to build the rest of the tranche on
+- the repo currently has no clear menu or catalogue model to build the rest of the tranche on
 - it is the narrowest first task that prevents fake progress on branded ordering UI without a real orderable catalogue behind it
