@@ -4,10 +4,18 @@ import type {
   BusinessCustomerOrderList,
   BusinessSession,
   CustomerOrderSubmission,
+  DriverAvailabilityStatus,
+  DriverJob,
+  DriverOffer,
+  DriverOfferAcceptResult,
+  DriverOfferRejectResult,
+  DriverState,
   DispatchAttempt,
   MenuCategorySummary,
   MenuItemSummary,
   PaymentSummary,
+  ProofOfDelivery,
+  ProofOfDeliveryUploadUrl,
   PublicRestaurantMenu,
   RestaurantMenu,
   RestaurantMenuCategory,
@@ -114,6 +122,13 @@ type SubmitCustomerOrderResponse = CustomerOrderSubmission;
 
 type BusinessCustomerOrderListResponse = BusinessCustomerOrderList;
 type BusinessCustomerOrderResponse = BusinessCustomerOrder;
+type DriverStateResponse = DriverState;
+type DriverOfferResponse = DriverOffer;
+type DriverJobResponse = DriverJob | null;
+type DriverOfferAcceptResponse = DriverOfferAcceptResult;
+type DriverOfferRejectResponse = DriverOfferRejectResult;
+type ProofOfDeliveryResponse = ProofOfDelivery;
+type ProofOfDeliveryUploadUrlResponse = ProofOfDeliveryUploadUrl;
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
 
@@ -364,6 +379,99 @@ export async function listBusinessOrders(session: BusinessSession): Promise<Busi
 export async function getBusinessOrder(session: BusinessSession, orderId: string): Promise<BusinessCustomerOrder> {
   return apiFetch<BusinessCustomerOrderResponse>(session, `/v1/business/orders/${orderId}`, {
     method: "GET"
+  });
+}
+
+export async function getDriverState(session: BusinessSession): Promise<DriverState> {
+  return apiFetch<DriverStateResponse>(session, "/v1/driver/me", {
+    method: "GET"
+  });
+}
+
+export async function updateDriverAvailability(
+  session: BusinessSession,
+  availability: DriverAvailabilityStatus
+): Promise<DriverState> {
+  return apiFetch<DriverStateResponse>(session, "/v1/driver/me/availability", {
+    method: "PATCH",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-driver-availability`
+    },
+    body: JSON.stringify({ availability })
+  });
+}
+
+export async function listDriverOffers(session: BusinessSession): Promise<DriverOffer[]> {
+  return apiFetch<DriverOfferResponse[]>(session, "/v1/driver/me/offers", {
+    method: "GET"
+  });
+}
+
+export async function acceptDriverOffer(session: BusinessSession, offerId: string): Promise<DriverOfferAcceptResult> {
+  return apiFetch<DriverOfferAcceptResponse>(session, `/v1/driver/me/offers/${offerId}/accept`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-driver-offer-accept`
+    }
+  });
+}
+
+export async function rejectDriverOffer(session: BusinessSession, offerId: string): Promise<DriverOfferRejectResult> {
+  return apiFetch<DriverOfferRejectResponse>(session, `/v1/driver/me/offers/${offerId}/reject`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-driver-offer-reject`
+    }
+  });
+}
+
+export async function getCurrentDriverJob(session: BusinessSession): Promise<DriverJob | null> {
+  return apiFetch<DriverJobResponse>(session, "/v1/driver/me/jobs/current", {
+    method: "GET"
+  });
+}
+
+export async function transitionDriverJob(
+  session: BusinessSession,
+  jobId: string,
+  transition: "en-route-pickup" | "picked-up" | "en-route-drop" | "delivered"
+): Promise<DriverJob> {
+  return apiFetch<DriverJob>(session, `/v1/driver/me/jobs/${jobId}/${transition}`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-driver-${transition}`
+    }
+  });
+}
+
+export async function createProofOfDeliveryUploadUrl(
+  session: BusinessSession,
+  jobId: string
+): Promise<ProofOfDeliveryUploadUrl> {
+  return apiFetch<ProofOfDeliveryUploadUrlResponse>(session, `/v1/driver/me/jobs/${jobId}/proof-of-delivery/upload-url`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-pod-upload-url`
+    }
+  });
+}
+
+export async function createProofOfDelivery(
+  session: BusinessSession,
+  jobId: string,
+  input: {
+    photoUrl?: string | null;
+    recipientName?: string | null;
+    deliveryNote?: string | null;
+    coordinates?: { latitude: number; longitude: number } | null;
+  }
+): Promise<ProofOfDelivery> {
+  return apiFetch<ProofOfDeliveryResponse>(session, `/v1/driver/me/jobs/${jobId}/proof-of-delivery`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-pod`
+    },
+    body: JSON.stringify(input)
   });
 }
 

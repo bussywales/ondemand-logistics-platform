@@ -1,11 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  acceptDriverOffer,
   authorizePayment,
+  createProofOfDelivery,
   createRestaurant,
   getBusinessOrder,
+  getCurrentDriverJob,
+  getDriverState,
   getPublicRestaurantMenu,
   getRestaurantMenu,
-  listBusinessOrders
+  listBusinessOrders,
+  listDriverOffers,
+  rejectDriverOffer,
+  transitionDriverJob,
+  updateDriverAvailability
 } from './api';
 import type { BusinessSession } from './product-state';
 
@@ -245,5 +253,168 @@ describe('authorizePayment', () => {
 
     expect(order.id).toBe('order-1');
     expect(order.timeline[0]?.eventType).toBe('CUSTOMER_ORDER_SUBMITTED');
+  });
+
+  it('reads and updates driver execution state with bearer auth', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            driverId: 'driver-1',
+            availability: 'OFFLINE',
+            latestLocation: null,
+            availableSince: null,
+            lastLocationAt: null
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            driverId: 'driver-1',
+            availability: 'ONLINE',
+            latestLocation: null,
+            availableSince: '2026-04-28T12:00:00.000Z',
+            lastLocationAt: null
+          })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getDriverState(session)).resolves.toMatchObject({ availability: 'OFFLINE' });
+    await expect(updateDriverAvailability(session, 'ONLINE')).resolves.toMatchObject({ availability: 'ONLINE' });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://api-staging-qvmv.onrender.com/v1/driver/me',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://api-staging-qvmv.onrender.com/v1/driver/me/availability',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ availability: 'ONLINE' })
+      })
+    );
+  });
+
+  it('calls driver offer decision endpoints', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify([
+            {
+              offerId: 'offer-1',
+              jobId: 'job-1',
+              status: 'OFFERED',
+              expiresAt: '2026-04-28T12:00:00.000Z',
+              distanceMiles: 4.2,
+              etaMinutes: 16,
+              payoutGrossCents: 1100,
+              pickupAddress: '12 Exmouth Market, London',
+              dropoffAddress: '184 Upper Street, London'
+            }
+          ])
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            offerId: 'offer-1',
+            jobId: 'job-1',
+            status: 'ASSIGNED',
+            distanceMiles: 4.2,
+            etaMinutes: 16,
+            payoutGrossCents: 1100
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            offerId: 'offer-2',
+            jobId: 'job-2',
+            status: 'REJECTED'
+          })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listDriverOffers(session)).resolves.toHaveLength(1);
+    await expect(acceptDriverOffer(session, 'offer-1')).resolves.toMatchObject({ status: 'ASSIGNED' });
+    await expect(rejectDriverOffer(session, 'offer-2')).resolves.toMatchObject({ status: 'REJECTED' });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://api-staging-qvmv.onrender.com/v1/driver/me/offers/offer-1/accept',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'https://api-staging-qvmv.onrender.com/v1/driver/me/offers/offer-2/reject',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('calls active driver job transition and proof endpoints', async () => {
+    const job = {
+      id: 'job-1',
+      orgId: null,
+      consumerId: 'consumer-1',
+      assignedDriverId: 'driver-1',
+      quoteId: null,
+      status: 'ASSIGNED',
+      pickupAddress: '12 Exmouth Market, London',
+      dropoffAddress: '184 Upper Street, London',
+      pickupCoordinates: { latitude: 51.5, longitude: -0.1 },
+      dropoffCoordinates: { latitude: 51.51, longitude: -0.09 },
+      distanceMiles: 4.2,
+      etaMinutes: 16,
+      vehicleRequired: 'BIKE',
+      customerTotalCents: 1600,
+      driverPayoutGrossCents: 1100,
+      platformFeeCents: 500,
+      pricingVersion: 'phase1_test_v1',
+      premiumDistanceFlag: false,
+      attentionLevel: 'NORMAL',
+      attentionReason: null,
+      createdByUserId: 'creator-1',
+      createdAt: '2026-04-28T12:00:00.000Z'
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(job) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ ...job, status: 'EN_ROUTE_PICKUP' }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: 'pod-1',
+            jobId: 'job-1',
+            deliveredByDriverId: 'driver-1',
+            photoUrl: null,
+            recipientName: 'Taylor',
+            deliveryNote: 'Left with reception',
+            deliveredAt: '2026-04-28T12:30:00.000Z',
+            coordinates: null,
+            otpVerified: false
+          })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getCurrentDriverJob(session)).resolves.toMatchObject({ id: 'job-1' });
+    await expect(transitionDriverJob(session, 'job-1', 'en-route-pickup')).resolves.toMatchObject({
+      status: 'EN_ROUTE_PICKUP'
+    });
+    await expect(
+      createProofOfDelivery(session, 'job-1', {
+        recipientName: 'Taylor',
+        deliveryNote: 'Left with reception',
+        coordinates: null
+      })
+    ).resolves.toMatchObject({ recipientName: 'Taylor' });
   });
 });

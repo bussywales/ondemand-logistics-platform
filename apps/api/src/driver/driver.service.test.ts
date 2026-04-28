@@ -72,6 +72,58 @@ function makeService(clientQuery: ReturnType<typeof vi.fn>) {
 }
 
 describe("DriverService", () => {
+  it("returns the current driver state for a staged driver", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [
+          driverRow({
+            availability_status: "OFFLINE",
+            latest_latitude: "51.500000",
+            latest_longitude: "-0.100000",
+            available_since: null,
+            last_location_at: new Date("2026-04-28T12:00:00.000Z").toISOString()
+          })
+        ]
+      }),
+      withIdempotency: vi.fn()
+    };
+    const payments = {
+      enqueueCaptureForDeliveredJob: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const service = new DriverService(pg as never, payments as never);
+    const state = await service.getDriverState(ACTOR_ID);
+
+    expect(state).toEqual(
+      expect.objectContaining({
+        driverId: DRIVER_ID,
+        availability: "OFFLINE",
+        latestLocation: {
+          latitude: 51.5,
+          longitude: -0.1
+        }
+      })
+    );
+  });
+
+  it("blocks driver state when the user has no active driver profile", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 0,
+        rows: []
+      }),
+      withIdempotency: vi.fn()
+    };
+    const payments = {
+      enqueueCaptureForDeliveredJob: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const service = new DriverService(pg as never, payments as never);
+
+    await expect(service.getDriverState(ACTOR_ID)).rejects.toThrow(new ForbiddenException("driver_record_required"));
+  });
+
   it("returns an empty offers list for drivers with no active offers", async () => {
     const pg = {
       query: vi

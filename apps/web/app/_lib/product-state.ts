@@ -218,6 +218,90 @@ export type DriverProfile = {
   vehicleType: VehicleType;
 };
 
+export type DriverAvailabilityStatus = "ONLINE" | "OFFLINE";
+
+export type DriverState = {
+  driverId: string;
+  availability: DriverAvailabilityStatus;
+  latestLocation: { latitude: number; longitude: number } | null;
+  availableSince: string | null;
+  lastLocationAt: string | null;
+};
+
+export type DriverOffer = {
+  offerId: string;
+  jobId: string;
+  status: "OFFERED" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED";
+  expiresAt: string;
+  distanceMiles: number;
+  etaMinutes: number;
+  payoutGrossCents: number;
+  pickupAddress: string;
+  dropoffAddress: string;
+};
+
+export type DriverJob = {
+  id: string;
+  orgId: string | null;
+  consumerId: string;
+  assignedDriverId: string | null;
+  quoteId: string | null;
+  status: JobStatus;
+  pickupAddress: string;
+  dropoffAddress: string;
+  pickupCoordinates: { latitude: number; longitude: number };
+  dropoffCoordinates: { latitude: number; longitude: number };
+  distanceMiles: number;
+  etaMinutes: number;
+  vehicleRequired: VehicleType;
+  customerTotalCents: number;
+  driverPayoutGrossCents: number;
+  platformFeeCents: number;
+  pricingVersion: string;
+  premiumDistanceFlag: boolean;
+  attentionLevel: JobAttentionLevel;
+  attentionReason: string | null;
+  createdByUserId: string;
+  createdAt: string;
+};
+
+export type DriverOfferAcceptResult = {
+  offerId: string;
+  jobId: string;
+  status: "ASSIGNED";
+  distanceMiles: number;
+  etaMinutes: number;
+  payoutGrossCents: number;
+};
+
+export type DriverOfferRejectResult = {
+  offerId: string;
+  jobId: string;
+  status: "REJECTED";
+};
+
+export type ProofOfDelivery = {
+  id: string;
+  jobId: string;
+  deliveredByDriverId: string;
+  photoUrl: string | null;
+  recipientName: string | null;
+  deliveryNote: string | null;
+  deliveredAt: string;
+  coordinates: { latitude: number; longitude: number } | null;
+  otpVerified: boolean;
+};
+
+export type ProofOfDeliveryUploadUrl = {
+  jobId: string;
+  storageBucket: string;
+  storagePath: string;
+  uploadMethod: "PUT";
+  uploadUrl: string;
+  photoUrl: string;
+  expiresAt: string | null;
+};
+
 export type DeliveryFormInput = {
   pickupAddress: string;
   dropoffAddress: string;

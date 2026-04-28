@@ -135,6 +135,11 @@ export class DriverService {
     private readonly payments: PaymentsService
   ) {}
 
+  async getDriverState(userId: string): Promise<DriverStateDto> {
+    const driver = await this.getDriverByUserId(userId);
+    return this.mapDriverState(driver);
+  }
+
   async updateAvailability(input: unknown, userId: string, idempotencyKey: string) {
     const parsed = UpdateDriverAvailabilitySchema.safeParse(input);
     if (!parsed.success) {

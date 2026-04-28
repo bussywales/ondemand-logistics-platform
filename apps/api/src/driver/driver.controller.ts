@@ -19,6 +19,11 @@ import { DriverService } from "./driver.service.js";
 export class DriverController {
   constructor(private readonly driverService: DriverService) {}
 
+  @Get()
+  async getDriverState(@RequestUser() user: AuthenticatedUser) {
+    return this.driverService.getDriverState(user.id);
+  }
+
   @Patch("availability")
   @HttpCode(200)
   async updateAvailability(
