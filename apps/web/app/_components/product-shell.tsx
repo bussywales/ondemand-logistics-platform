@@ -23,6 +23,12 @@ import {
   type DeliveryFormInput,
   type VehicleType
 } from "../_lib/product-state";
+import {
+  getDispatchIntelligence,
+  getJobShortId,
+  shouldShowInReviewQueue,
+  sortReviewQueue
+} from "../_lib/dispatch-intelligence";
 import { getPaymentPanelModel } from "../_lib/payment-ui";
 
 type ProductShellProps = {
@@ -88,6 +94,22 @@ function attentionTone(level: AppJob["attentionLevel"]) {
   return "status-neutral";
 }
 
+function severityTone(level: "BLOCKER" | "RISK" | "NORMAL" | "INFO") {
+  if (level === "BLOCKER") {
+    return "status-negative";
+  }
+
+  if (level === "RISK") {
+    return "status-live";
+  }
+
+  if (level === "INFO") {
+    return "status-neutral";
+  }
+
+  return "status-positive";
+}
+
 function queueStateCopy(kind: "active" | "attention" | "all") {
   if (kind === "active") {
     return {
@@ -99,7 +121,7 @@ function queueStateCopy(kind: "active" | "attention" | "all") {
   if (kind === "attention") {
     return {
       title: "No jobs need review",
-      body: "No failed dispatches, no-driver states, or delay signals are active right now."
+      body: "Failed dispatches, no-driver states, and delays will appear here."
     };
   }
 
@@ -178,9 +200,9 @@ export function ProductShell(props: ProductShellProps) {
   const attentionJobs = useMemo(
     () =>
       jobs
-        .filter((job) => job.attentionLevel !== "NORMAL")
-        .map((job) => ({ job, reason: job.attentionReason ?? job.attentionLevel }))
-        .sort((left, right) => right.job.createdAt.localeCompare(left.job.createdAt)),
+        .map((job) => ({ job, intelligence: getDispatchIntelligence(job) }))
+        .filter((item) => shouldShowInReviewQueue(item.intelligence))
+        .sort(sortReviewQueue),
     [jobs]
   );
 
@@ -379,6 +401,7 @@ export function ProductShell(props: ProductShellProps) {
   }
 
   const job = props.view === "job-detail" ? selectedJob : null;
+  const jobDecision = job ? getDispatchIntelligence(job) : null;
   const paymentPanel =
     job && session
       ? getPaymentPanelModel({
@@ -545,19 +568,51 @@ export function ProductShell(props: ProductShellProps) {
                   <QueueEmptyState copy={queueStateCopy("attention")} />
                 ) : (
                   <div className="attention-list">
-                    {attentionJobs.map(({ job: item, reason }) => (
-                      <Link className="attention-row" href={`/app/jobs/${item.id}`} key={item.id}>
-                        <div>
-                          <strong>{item.id}</strong>
-                          <p>{reason}</p>
+                    {attentionJobs.map(({ job: item, intelligence }) => (
+                      <article
+                        className={`attention-row attention-queue-row attention-severity-${intelligence.severity.toLowerCase()}`}
+                        key={item.id}
+                      >
+                        <div className="attention-copy">
+                          <div className="attention-title-row">
+                            <span className={`status-badge ${severityTone(intelligence.severity)}`}>
+                              {intelligence.severity}
+                            </span>
+                            <strong>{getJobShortId(item.id)}</strong>
+                            <span>{formatStatusLabel(item.status)}</span>
+                          </div>
+                          <h3>{intelligence.currentIssue}</h3>
+                          <dl className="attention-facts">
+                            <div>
+                              <dt>Diagnosis</dt>
+                              <dd>{intelligence.diagnosis}</dd>
+                            </div>
+                            <div>
+                              <dt>Impact</dt>
+                              <dd>{intelligence.impact}</dd>
+                            </div>
+                            <div>
+                              <dt>Suggested action</dt>
+                              <dd>{intelligence.explanation}</dd>
+                            </div>
+                          </dl>
                         </div>
-                        <div className="attention-meta">
-                          <span className={`status-badge ${attentionTone(item.attentionLevel)}`}>
-                            {item.attentionLevel}
-                          </span>
-                          <span>{item.etaMinutes} min</span>
+                        <div className="attention-actions">
+                          {intelligence.recommendedActionType === "RETRY_DISPATCH" ? (
+                            <button
+                              className="button button-primary"
+                              disabled={actionSubmitting}
+                              onClick={() => void handleRetryDispatch(item)}
+                              type="button"
+                            >
+                              {actionSubmitting ? "Retrying..." : intelligence.recommendedActionLabel}
+                            </button>
+                          ) : null}
+                          <Link className="button button-secondary" href={`/app/jobs/${item.id}`}>
+                            View job
+                          </Link>
                         </div>
-                      </Link>
+                      </article>
                     ))}
                   </div>
                 )}
@@ -767,12 +822,16 @@ export function ProductShell(props: ProductShellProps) {
           {props.view === "job-detail" ? (
             job ? (
               <section className="ops-stack">
-                <section className={`ops-section ops-job-hero ${job.attentionLevel === "BLOCKER" ? "ops-job-hero-blocker" : ""}`}>
+                <section
+                  className={`ops-section ops-job-hero ops-decision-banner ${
+                    jobDecision?.severity === "BLOCKER" ? "ops-job-hero-blocker" : ""
+                  }`}
+                >
                   <div className="ops-job-header">
                     <div>
-                      <p className="eyebrow">Job detail</p>
-                      <h2>{job.id}</h2>
-                      <p className="ops-detail-note">{job.attentionReason ?? "Normal operational state"}</p>
+                      <p className="eyebrow">Decision surface</p>
+                      <h2>{jobDecision?.headline ?? "Job detail"}</h2>
+                      <p className="ops-detail-note">{jobDecision?.explanation ?? "Review job state and next action."}</p>
                     </div>
                     <div className="ops-job-statuses">
                       <span className={`status-badge ${statusTone(job.status)}`}>
@@ -785,6 +844,58 @@ export function ProductShell(props: ProductShellProps) {
                         {formatStatusLabel(job.payment.status)}
                       </span>
                     </div>
+                  </div>
+                  {jobDecision ? (
+                    <div className="ops-decision-grid">
+                      <div>
+                        <span className="ops-section-label">Current state</span>
+                        <strong>{jobDecision.currentIssue}</strong>
+                      </div>
+                      <div>
+                        <span className="ops-section-label">Operational meaning</span>
+                        <strong>{jobDecision.diagnosis}</strong>
+                      </div>
+                      <div>
+                        <span className="ops-section-label">Impact</span>
+                        <strong>{jobDecision.impact}</strong>
+                      </div>
+                      <div>
+                        <span className="ops-section-label">Next action</span>
+                        <strong>{jobDecision.recommendedActionLabel}</strong>
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="ops-decision-actions">
+                    {jobDecision?.recommendedActionType === "RETRY_DISPATCH" ? (
+                      <button
+                        className="button button-primary"
+                        disabled={actionSubmitting}
+                        onClick={() => void handleRetryDispatch(job)}
+                        type="button"
+                      >
+                        {actionSubmitting ? "Retrying dispatch..." : "Retry dispatch"}
+                      </button>
+                    ) : null}
+                    {jobDecision?.recommendedActionType === "AUTHORIZE_PAYMENT" ||
+                    jobDecision?.recommendedActionType === "COLLECT_PAYMENT_METHOD" ? (
+                      <a className="button button-primary" href="#payment">
+                        Open payment
+                      </a>
+                    ) : null}
+                    {jobDecision?.severity === "BLOCKER" ? (
+                      <>
+                        <a className="button button-secondary" href="#operator-controls">
+                          Assign driver
+                        </a>
+                        <a className="button button-secondary" href="#operator-controls">
+                          Cancel job
+                        </a>
+                      </>
+                    ) : (
+                      <a className="button button-secondary" href="#operator-controls">
+                        Operator controls
+                      </a>
+                    )}
                   </div>
                 </section>
 
@@ -907,70 +1018,10 @@ export function ProductShell(props: ProductShellProps) {
                     )}
                   </section>
 
-                  <section className="ops-section ops-zone ops-actions-zone">
-                    <div className="ops-section-header">
-                      <div>
-                        <p className="eyebrow">Actions</p>
-                        <h2>Operator controls</h2>
-                      </div>
-                    </div>
-                    <div className="ops-definition-list">
-                      <div>
-                        <dt>Retry dispatch</dt>
-                        <dd>Re-open the job for dispatch when it is blocked or needs another attempt.</dd>
-                      </div>
-                    </div>
-                    <div className="ops-actions ops-actions-inline">
-                      <button
-                        className="button button-secondary"
-                        disabled={actionSubmitting}
-                        onClick={() => void handleRetryDispatch(job)}
-                        type="button"
-                      >
-                        Retry Dispatch
-                      </button>
-                    </div>
-
-                    <label className="ops-field">
-                      <span>Reassign to driver ID</span>
-                      <input
-                        onChange={(event) => setReassignDriverId(event.target.value)}
-                        placeholder="driver UUID"
-                        value={reassignDriverId}
-                      />
-                    </label>
-
-                    <div className="ops-actions ops-actions-inline">
-                      <button
-                        className="button button-secondary"
-                        disabled={actionSubmitting || !reassignDriverId.trim()}
-                        onClick={() => void handleReassignDriver(job)}
-                        type="button"
-                      >
-                        Reassign Driver
-                      </button>
-                    </div>
-
-                    <label className="ops-field">
-                      <span>Cancel reason</span>
-                      <input onChange={(event) => setCancelReason(event.target.value)} value={cancelReason} />
-                    </label>
-
-                    <div className="ops-actions ops-actions-inline">
-                      <button
-                        className="button button-secondary"
-                        disabled={actionSubmitting || !cancelReason.trim()}
-                        onClick={() => void handleCancelJob(job)}
-                        type="button"
-                      >
-                        Cancel Job
-                      </button>
-                    </div>
-                  </section>
                 </div>
 
                 <div className="ops-detail-grid">
-                  <section className="ops-section ops-zone ops-payment-zone">
+                  <section className="ops-section ops-zone ops-payment-zone" id="payment">
                     <div className="ops-section-header">
                       <div>
                         <p className="eyebrow">Payment</p>
@@ -1054,6 +1105,68 @@ export function ProductShell(props: ProductShellProps) {
                     {job.payment.lastError ? <p className="form-error form-error-surface">{job.payment.lastError}</p> : null}
                   </section>
                 </div>
+
+                <section className="ops-section ops-zone ops-actions-zone" id="operator-controls">
+                  <div className="ops-section-header">
+                    <div>
+                      <p className="eyebrow">Advanced</p>
+                      <h2>Operator controls</h2>
+                      <p className="ops-detail-note">Use these controls when the decision banner calls for direct intervention.</p>
+                    </div>
+                  </div>
+                  <div className="ops-definition-list">
+                    <div>
+                      <dt>Retry dispatch</dt>
+                      <dd>Re-open the job for dispatch when it is blocked or needs another attempt.</dd>
+                    </div>
+                  </div>
+                  <div className="ops-actions ops-actions-inline">
+                    <button
+                      className="button button-secondary"
+                      disabled={actionSubmitting}
+                      onClick={() => void handleRetryDispatch(job)}
+                      type="button"
+                    >
+                      Retry Dispatch
+                    </button>
+                  </div>
+
+                  <label className="ops-field">
+                    <span>Reassign to driver ID</span>
+                    <input
+                      onChange={(event) => setReassignDriverId(event.target.value)}
+                      placeholder="driver UUID"
+                      value={reassignDriverId}
+                    />
+                  </label>
+
+                  <div className="ops-actions ops-actions-inline">
+                    <button
+                      className="button button-secondary"
+                      disabled={actionSubmitting || !reassignDriverId.trim()}
+                      onClick={() => void handleReassignDriver(job)}
+                      type="button"
+                    >
+                      Reassign Driver
+                    </button>
+                  </div>
+
+                  <label className="ops-field">
+                    <span>Cancel reason</span>
+                    <input onChange={(event) => setCancelReason(event.target.value)} value={cancelReason} />
+                  </label>
+
+                  <div className="ops-actions ops-actions-inline">
+                    <button
+                      className="button button-secondary"
+                      disabled={actionSubmitting || !cancelReason.trim()}
+                      onClick={() => void handleCancelJob(job)}
+                      type="button"
+                    >
+                      Cancel Job
+                    </button>
+                  </div>
+                </section>
               </section>
             ) : (
               <div className="ops-empty-state">

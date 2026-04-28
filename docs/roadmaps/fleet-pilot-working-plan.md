@@ -236,3 +236,6 @@ Use these statuses only:
 - new work does not enter Stage 1 unless it supports pilot success directly
 - if stakeholder direction changes, update the roadmap docs first or in tandem
 - do not silently insert Stage 2 or Stage 3 work into the Pilot MVP queue
+
+## Driver UI scope note
+Current repo evidence shows driver onboarding capture and backend driver/offer foundations, but no dedicated production-ready driver web surface under `apps/web/app` for the execution layer. The minimum Stage 1 driver UI should stay narrow: availability/offline status, offer card, accept/reject, active job progression, proof of delivery, and delivered confirmation. Recommended next step is a focused driver execution route only after the paid order path and dispatch proof are stable.

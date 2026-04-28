@@ -2872,3 +2872,150 @@ h3 {
     justify-content: flex-start;
   }
 }
+
+.attention-queue-row {
+  align-items: start;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 1rem 0.25rem;
+}
+
+.attention-queue-row::before {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 100%;
+}
+
+.attention-severity-risk::before {
+  background: #b36b00;
+}
+
+.attention-copy {
+  display: grid;
+  grid-column: 2;
+  gap: 0.8rem;
+}
+
+.attention-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.attention-title-row > span:last-child {
+  color: #60716c;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.attention-copy h3 {
+  margin: 0;
+  color: #10201b;
+  font-size: 1.08rem;
+  letter-spacing: -0.02em;
+}
+
+.attention-facts {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.attention-facts div {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.attention-facts dt {
+  color: #60716c;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.attention-facts dd {
+  margin: 0;
+  color: #10201b;
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.attention-actions {
+  display: flex;
+  grid-column: 3;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.ops-decision-banner {
+  display: grid;
+  gap: 1rem;
+}
+
+.ops-decision-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.ops-decision-grid > div {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.ops-decision-grid strong {
+  color: #ffffff;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.ops-decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.ops-decision-banner .button-secondary {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.ops-decision-banner .button-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ops-actions-zone {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (max-width: 980px) {
+  .ops-decision-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .attention-queue-row {
+    grid-template-columns: 4px minmax(0, 1fr);
+  }
+
+  .attention-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .ops-decision-grid,
+  .attention-facts div {
+    grid-template-columns: 1fr;
+  }
+}
