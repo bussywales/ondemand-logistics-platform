@@ -47,3 +47,7 @@ See `docs/runbooks/setup.md` for staging setup (Supabase, Render, Vercel, Upstas
 - `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution plan and weekly working reference
 - `docs/roadmaps/fleet-pilot-gap-review.md` - repo-to-plan alignment review for Stage 1 execution control
 - `docs/roadmaps/fleet-stage1-execution-tranche-01.md` - next build-ready Stage 1 tranche for merchant activation, menu, and customer ordering
+
+## Design Authority
+
+- `docs/design/fleet-ux-authority-brief.md` - Fleet UX posture, principles, redesign priorities, and rules for future UI work
