@@ -25,13 +25,16 @@ import {
   type MenuCategoryDto,
   type MenuItemDto,
   type PaymentDto,
+  BusinessCustomerOrderListSchema,
+  BusinessCustomerOrderSchema,
   type PublicCustomerOrderDto,
   type PublicCustomerOrderItemDto,
   type PublicMenuItemDto,
   type PublicRestaurantMenuDto,
   type RestaurantDto,
   type RestaurantMenuDto,
-  type SubmitCustomerOrderResponseDto
+  type SubmitCustomerOrderResponseDto,
+  type BusinessCustomerOrderDto
 } from "@shipwright/contracts";
 import { createLogger } from "@shipwright/observability";
 import type { PoolClient } from "pg";
@@ -113,6 +116,27 @@ type PublicOrderJobRow = {
   eta_minutes: number;
   pickup_address: string;
   dropoff_address: string;
+};
+
+type BusinessCustomerOrderRow = CustomerOrderRow & {
+  restaurant_name: string;
+  restaurant_slug: string;
+  payment_status: string;
+  payment_amount_authorized_cents: number;
+  payment_amount_captured_cents: number;
+  payment_customer_total_cents: number;
+  payment_currency: string;
+  payment_last_error: string | null;
+  job_status: string;
+  job_eta_minutes: number;
+  job_pickup_address: string;
+  job_dropoff_address: string;
+};
+
+type CustomerOrderTimelineRow = {
+  id: string | number;
+  event_type: string;
+  created_at: string | Date;
 };
 
 type OrderableMenuItemRow = MenuItemRow & {
@@ -253,6 +277,65 @@ export class RestaurantsService {
     return RestaurantListSchema.parse({
       items: result.rows.map((row) => this.mapRestaurant(row))
     });
+  }
+
+  async listBusinessOrders(userId: string) {
+    const orders = await this.pg.query<BusinessCustomerOrderRow>(
+      `select ${this.businessOrderColumns()}
+       from public.customer_orders o
+       join public.restaurants r on r.id = o.restaurant_id
+       join public.jobs j on j.id = o.job_id
+       join public.payments p on p.id = o.payment_id
+       where exists (
+         select 1
+         from public.org_memberships m
+         where m.org_id = o.org_id
+           and m.user_id = $1
+           and m.is_active = true
+           and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+       )
+       order by o.created_at desc
+       limit 50`,
+      [userId]
+    );
+
+    const itemsByOrderId = await this.loadBusinessOrderItems(orders.rows.map((row) => row.id));
+    return BusinessCustomerOrderListSchema.parse({
+      items: orders.rows.map((row) => this.mapBusinessCustomerOrder(row, itemsByOrderId.get(row.id) ?? [], []))
+    });
+  }
+
+  async getBusinessOrder(orderId: string, userId: string) {
+    const orders = await this.pg.query<BusinessCustomerOrderRow>(
+      `select ${this.businessOrderColumns()}
+       from public.customer_orders o
+       join public.restaurants r on r.id = o.restaurant_id
+       join public.jobs j on j.id = o.job_id
+       join public.payments p on p.id = o.payment_id
+       where o.id = $1
+         and exists (
+           select 1
+           from public.org_memberships m
+           where m.org_id = o.org_id
+             and m.user_id = $2
+             and m.is_active = true
+             and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+         )
+       limit 1`,
+      [orderId, userId]
+    );
+
+    if (orders.rowCount !== 1) {
+      throw new NotFoundException("customer_order_not_found");
+    }
+
+    const order = orders.rows[0];
+    const [itemsByOrderId, timeline] = await Promise.all([
+      this.loadBusinessOrderItems([order.id]),
+      this.loadBusinessOrderTimeline(order.job_id)
+    ]);
+
+    return this.mapBusinessCustomerOrder(order, itemsByOrderId.get(order.id) ?? [], timeline);
   }
 
   async createMenuCategory(restaurantId: string, input: unknown, userId: string, idempotencyKey: string) {
@@ -705,6 +788,57 @@ export class RestaurantsService {
     return result;
   }
 
+  private businessOrderColumns() {
+    return `o.id, o.restaurant_id, o.org_id, o.job_id, o.payment_id, o.customer_user_id,
+       o.customer_name, o.customer_email, o.customer_phone, o.delivery_address, o.delivery_notes,
+       o.status, o.subtotal_cents, o.delivery_fee_cents, o.total_cents, o.currency,
+       o.created_at, o.updated_at,
+       r.name as restaurant_name, r.slug as restaurant_slug,
+       p.status as payment_status, p.amount_authorized_cents as payment_amount_authorized_cents,
+       p.amount_captured_cents as payment_amount_captured_cents,
+       p.customer_total_cents as payment_customer_total_cents, p.currency as payment_currency,
+       p.last_error as payment_last_error,
+       j.status as job_status, j.eta_minutes as job_eta_minutes,
+       j.pickup_address as job_pickup_address, j.dropoff_address as job_dropoff_address`;
+  }
+
+  private async loadBusinessOrderItems(orderIds: string[]) {
+    const itemsByOrderId = new Map<string, PublicCustomerOrderItemDto[]>();
+    if (orderIds.length === 0) {
+      return itemsByOrderId;
+    }
+
+    const result = await this.pg.query<CustomerOrderItemRow>(
+      `select id, order_id, menu_item_id, name, quantity, unit_price_cents,
+              line_total_cents, currency, created_at
+       from public.customer_order_items
+       where order_id = any($1::uuid[])
+       order by created_at asc`,
+      [orderIds]
+    );
+
+    for (const row of result.rows) {
+      const existing = itemsByOrderId.get(row.order_id) ?? [];
+      existing.push(this.mapCustomerOrderItem(row));
+      itemsByOrderId.set(row.order_id, existing);
+    }
+
+    return itemsByOrderId;
+  }
+
+  private async loadBusinessOrderTimeline(jobId: string) {
+    const result = await this.pg.query<CustomerOrderTimelineRow>(
+      `select id, event_type, created_at
+       from public.job_events
+       where job_id = $1
+       order by created_at asc
+       limit 100`,
+      [jobId]
+    );
+
+    return result.rows;
+  }
+
   private async assertOrgOperator(orgId: string, userId: string) {
     const result = await this.pg.query<{ role: "BUSINESS_OPERATOR" | "ADMIN" }>(
       `select role
@@ -1019,6 +1153,62 @@ export class RestaurantsService {
       currency: row.currency.toUpperCase(),
       createdAt: toIsoDateTime(row.created_at),
       items
+    });
+  }
+
+  private mapBusinessCustomerOrder(
+    row: BusinessCustomerOrderRow,
+    items: PublicCustomerOrderItemDto[],
+    timeline: CustomerOrderTimelineRow[]
+  ): BusinessCustomerOrderDto {
+    const deliveryAddress = row.delivery_address;
+    return BusinessCustomerOrderSchema.parse({
+      id: row.id,
+      status: row.status,
+      restaurant: {
+        id: row.restaurant_id,
+        name: row.restaurant_name,
+        slug: row.restaurant_slug
+      },
+      customer: {
+        name: row.customer_name,
+        email: row.customer_email,
+        phone: row.customer_phone
+      },
+      delivery: {
+        address: deliveryAddress,
+        addressSummary: deliveryAddress.split(",")[0]?.trim() || deliveryAddress,
+        notes: row.delivery_notes
+      },
+      items,
+      subtotalCents: toInteger(row.subtotal_cents, "customer_order.subtotal_cents"),
+      deliveryFeeCents: toInteger(row.delivery_fee_cents, "customer_order.delivery_fee_cents"),
+      totalCents: toInteger(row.total_cents, "customer_order.total_cents"),
+      currency: row.currency.toUpperCase(),
+      payment: {
+        id: row.payment_id,
+        status: row.payment_status,
+        amountAuthorizedCents: toInteger(row.payment_amount_authorized_cents, "payment.amount_authorized_cents"),
+        amountCapturedCents: toInteger(row.payment_amount_captured_cents, "payment.amount_captured_cents"),
+        totalCents: toInteger(row.payment_customer_total_cents, "payment.customer_total_cents"),
+        currency: row.payment_currency.toUpperCase(),
+        lastError: row.payment_last_error
+      },
+      job: {
+        id: row.job_id,
+        status: row.job_status,
+        etaMinutes: toInteger(row.job_eta_minutes, "job.eta_minutes"),
+        pickupAddress: row.job_pickup_address,
+        dropoffAddress: row.job_dropoff_address
+      },
+      timeline: timeline.map((event) => ({
+        id: String(event.id),
+        eventType: event.event_type,
+        createdAt: toIsoDateTime(event.created_at),
+        summary: event.event_type.replace(/_/g, " ").toLowerCase()
+      })),
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
     });
   }
 

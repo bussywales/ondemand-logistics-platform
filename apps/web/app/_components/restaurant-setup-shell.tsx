@@ -385,6 +385,7 @@ export function RestaurantSetupShell() {
           <nav className="merchant-nav" aria-label="Workspace navigation">
             <Link href="/app">Operations</Link>
             <Link href="/app/jobs">Jobs</Link>
+            <Link href="/app/orders">Orders</Link>
             <Link className="active" href="/app/restaurant">
               Merchant setup
             </Link>

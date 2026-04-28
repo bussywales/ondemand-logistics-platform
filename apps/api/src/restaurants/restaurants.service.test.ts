@@ -98,6 +98,28 @@ function orderItemRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function businessOrderRow(overrides: Record<string, unknown> = {}) {
+  return {
+    ...orderRow({
+      status: "PAYMENT_AUTHORIZED",
+      updated_at: new Date("2026-04-28T11:30:00.000Z").toISOString()
+    }),
+    restaurant_name: "Pilot Kitchen",
+    restaurant_slug: "pilot-kitchen",
+    payment_status: "AUTHORIZED",
+    payment_amount_authorized_cents: 4180,
+    payment_amount_captured_cents: 0,
+    payment_customer_total_cents: 4180,
+    payment_currency: "gbp",
+    payment_last_error: null,
+    job_status: "REQUESTED",
+    job_eta_minutes: 22,
+    job_pickup_address: "Pilot Kitchen pickup",
+    job_dropoff_address: "10 Pilot Street, Stoke",
+    ...overrides
+  };
+}
+
 describe("RestaurantsService", () => {
   it("lists restaurants for the current operator context", async () => {
     const createdAt = new Date("2026-04-28T10:00:00.000Z");
@@ -128,6 +150,69 @@ describe("RestaurantsService", () => {
     const result = await service.listRestaurants(USER_ID);
 
     expect(result).toEqual({ items: [] });
+  });
+
+  it("lists business customer orders for the current operator context", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [businessOrderRow()] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [orderItemRow()] });
+
+    const service = new RestaurantsService({ query } as never, {} as never);
+    const result = await service.listBusinessOrders(USER_ID);
+
+    expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining("from public.customer_orders o"), [USER_ID]);
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: ORDER_ID,
+        status: "PAYMENT_AUTHORIZED",
+        restaurant: expect.objectContaining({ name: "Pilot Kitchen", slug: "pilot-kitchen" }),
+        payment: expect.objectContaining({ id: PAYMENT_ID, status: "AUTHORIZED" }),
+        job: expect.objectContaining({ id: JOB_ID, status: "REQUESTED" }),
+        items: [expect.objectContaining({ menuItemId: ITEM_ID, quantity: 2 })]
+      })
+    ]);
+  });
+
+  it("returns a safe empty business customer order list", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const service = new RestaurantsService({ query } as never, {} as never);
+    const result = await service.listBusinessOrders(USER_ID);
+
+    expect(result).toEqual({ items: [] });
+    expect(query).toHaveBeenCalledOnce();
+  });
+
+  it("loads business customer order detail with timeline", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [businessOrderRow()] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [orderItemRow()] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: 12, event_type: "CUSTOMER_ORDER_SUBMITTED", created_at: new Date("2026-04-28T11:40:00.000Z") }]
+      });
+
+    const service = new RestaurantsService({ query } as never, {} as never);
+    const result = await service.getBusinessOrder(ORDER_ID, USER_ID);
+
+    expect(result.timeline).toEqual([
+      {
+        id: "12",
+        eventType: "CUSTOMER_ORDER_SUBMITTED",
+        createdAt: "2026-04-28T11:40:00.000Z",
+        summary: "customer order submitted"
+      }
+    ]);
+  });
+
+  it("blocks customer order detail access outside the operator org", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const service = new RestaurantsService({ query } as never, {} as never);
+
+    await expect(service.getBusinessOrder(ORDER_ID, USER_ID)).rejects.toThrow(NotFoundException);
   });
 
   it("creates a restaurant for an operator org", async () => {

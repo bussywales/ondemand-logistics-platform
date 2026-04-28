@@ -1,5 +1,7 @@
 import type {
   AppJob,
+  BusinessCustomerOrder,
+  BusinessCustomerOrderList,
   BusinessSession,
   CustomerOrderSubmission,
   DispatchAttempt,
@@ -109,6 +111,9 @@ type RestaurantMenuResponse = {
 type PublicRestaurantMenuResponse = PublicRestaurantMenu;
 
 type SubmitCustomerOrderResponse = CustomerOrderSubmission;
+
+type BusinessCustomerOrderListResponse = BusinessCustomerOrderList;
+type BusinessCustomerOrderResponse = BusinessCustomerOrder;
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
 
@@ -345,6 +350,20 @@ export async function submitCustomerOrder(slug: string, input: {
       "Idempotency-Key": `${createId("idem")}-customer-order`
     },
     body: JSON.stringify(input)
+  });
+}
+
+export async function listBusinessOrders(session: BusinessSession): Promise<BusinessCustomerOrder[]> {
+  const payload = await apiFetch<BusinessCustomerOrderListResponse>(session, "/v1/business/orders", {
+    method: "GET"
+  });
+
+  return payload.items;
+}
+
+export async function getBusinessOrder(session: BusinessSession, orderId: string): Promise<BusinessCustomerOrder> {
+  return apiFetch<BusinessCustomerOrderResponse>(session, `/v1/business/orders/${orderId}`, {
+    method: "GET"
   });
 }
 

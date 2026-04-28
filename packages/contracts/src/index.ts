@@ -554,6 +554,50 @@ export const SubmitCustomerOrderResponseSchema = z.object({
 });
 export type SubmitCustomerOrderResponseDto = z.infer<typeof SubmitCustomerOrderResponseSchema>;
 
+export const BusinessCustomerOrderTimelineEventSchema = z.object({
+  id: z.string(),
+  eventType: z.string().min(2),
+  createdAt: IsoDateTimeSchema,
+  summary: z.string().min(2)
+});
+export type BusinessCustomerOrderTimelineEventDto = z.infer<typeof BusinessCustomerOrderTimelineEventSchema>;
+
+export const BusinessCustomerOrderSchema = z.object({
+  id: z.string().uuid(),
+  status: CustomerOrderStatusSchema,
+  restaurant: z.object({
+    id: z.string().uuid(),
+    name: z.string().min(2),
+    slug: RestaurantSlugSchema
+  }),
+  customer: z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().min(7)
+  }),
+  delivery: z.object({
+    address: z.string().min(5),
+    addressSummary: z.string().min(2),
+    notes: z.string().nullable()
+  }),
+  items: z.array(PublicCustomerOrderItemSchema),
+  subtotalCents: CurrencyAmountSchema,
+  deliveryFeeCents: CurrencyAmountSchema,
+  totalCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  payment: PublicCustomerOrderPaymentSchema,
+  job: PublicCustomerOrderJobSchema,
+  timeline: z.array(BusinessCustomerOrderTimelineEventSchema),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type BusinessCustomerOrderDto = z.infer<typeof BusinessCustomerOrderSchema>;
+
+export const BusinessCustomerOrderListSchema = z.object({
+  items: z.array(BusinessCustomerOrderSchema)
+});
+export type BusinessCustomerOrderListDto = z.infer<typeof BusinessCustomerOrderListSchema>;
+
 export const PaymentProviderSchema = z.enum(["stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 

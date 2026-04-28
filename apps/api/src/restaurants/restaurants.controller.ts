@@ -74,6 +74,21 @@ export class RestaurantsController {
   }
 }
 
+@Controller("v1/business/orders")
+export class BusinessOrdersController {
+  constructor(private readonly restaurantsService: RestaurantsService) {}
+
+  @Get()
+  async listBusinessOrders(@RequestUser() user: AuthenticatedUser) {
+    return this.restaurantsService.listBusinessOrders(user.id);
+  }
+
+  @Get(":orderId")
+  async getBusinessOrder(@Param("orderId") orderId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.restaurantsService.getBusinessOrder(orderId, user.id);
+  }
+}
+
 @Controller("v1/restaurants")
 export class PublicRestaurantsController {
   constructor(private readonly restaurantsService: RestaurantsService) {}

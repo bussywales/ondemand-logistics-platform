@@ -177,6 +177,40 @@ export type CustomerOrderSubmission = {
   };
 };
 
+export type BusinessCustomerOrder = {
+  id: string;
+  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED";
+  restaurant: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  delivery: {
+    address: string;
+    addressSummary: string;
+    notes: string | null;
+  };
+  items: CustomerOrderSubmission["order"]["items"];
+  subtotalCents: number;
+  deliveryFeeCents: number;
+  totalCents: number;
+  currency: string;
+  payment: CustomerOrderSubmission["payment"];
+  job: CustomerOrderSubmission["job"];
+  timeline: TimelineEvent[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BusinessCustomerOrderList = {
+  items: BusinessCustomerOrder[];
+};
+
 export type DriverProfile = {
   role: "driver";
   name: string;

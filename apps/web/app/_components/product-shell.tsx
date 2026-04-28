@@ -12,6 +12,7 @@ import {
   cancelJob,
   createLiveJob,
   getLiveJob,
+  listBusinessOrders,
   listLiveJobs,
   reassignDriver,
   retryDispatch
@@ -20,6 +21,7 @@ import {
   formatCurrency,
   formatDateTime,
   type AppJob,
+  type BusinessCustomerOrder,
   type BusinessSession,
   type DeliveryFormInput,
   type VehicleType
@@ -69,6 +71,18 @@ function statusTone(status: AppJob["status"] | AppJob["payment"]["status"]) {
   }
 
   if (status === "FAILED" || status === "CANCELLED" || status === "DISPATCH_FAILED") {
+    return "status-negative";
+  }
+
+  return "status-neutral";
+}
+
+function orderStatusTone(status: BusinessCustomerOrder["status"]) {
+  if (status === "PAYMENT_AUTHORIZED") {
+    return "status-live";
+  }
+
+  if (status === "PAYMENT_FAILED") {
     return "status-negative";
   }
 
@@ -203,6 +217,7 @@ export function ProductShell(props: ProductShellProps) {
   const router = useRouter();
   const { status, session, signOut, refreshBusinessSession } = useBusinessAuth();
   const [jobs, setJobs] = useState<AppJob[]>([]);
+  const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
   const [deliveryForm, setDeliveryForm] = useState<DeliveryFormInput>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
@@ -276,6 +291,8 @@ export function ProductShell(props: ProductShellProps) {
     try {
       const liveJobs = await listLiveJobs(currentSession);
       setJobs(liveJobs);
+      const customerOrders = await listBusinessOrders(currentSession).catch(() => []);
+      setOrders(customerOrders);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load operations workspace.");
     }
@@ -472,6 +489,7 @@ export function ProductShell(props: ProductShellProps) {
         })
       : null;
   const jobsToRender = jobs.slice(0, 20);
+  const recentOrders = orders.slice(0, 3);
 
   return (
     <main className="app-shell ops-shell">
@@ -509,6 +527,9 @@ export function ProductShell(props: ProductShellProps) {
             </Link>
             <Link className={props.view !== "home" ? "ops-nav-link active" : "ops-nav-link"} href="/app/jobs">
               Jobs
+            </Link>
+            <Link className="ops-nav-link" href="/app/orders">
+              Orders
             </Link>
             <Link className="ops-nav-link" href="/app/restaurant">
               Restaurant
@@ -638,6 +659,50 @@ export function ProductShell(props: ProductShellProps) {
                   <strong className="sw-metric-value">{workspaceSummary.completedToday}</strong>
                   <p className="sw-metric-copy">Closed delivery records for this workspace.</p>
                 </div>
+              </section>
+
+              <section className="sw-operational-surface ops-section recent-orders-section">
+                <div className="ops-section-header">
+                  <SectionTitle
+                    eyebrow="Orders"
+                    icon="document"
+                    note="Latest paid customer orders entering fulfilment."
+                    title="Recent customer orders"
+                  />
+                  <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
+                    <ShipWrightIcon name="arrow" />
+                    <span>Open orders</span>
+                  </Link>
+                </div>
+
+                {recentOrders.length === 0 ? (
+                  <div className="sw-empty-state ops-empty-state recent-orders-empty">
+                    <span className="empty-state-icon" aria-hidden="true">
+                      <ShipWrightIcon name="document" />
+                    </span>
+                    <strong className="sw-empty-title">No customer orders yet</strong>
+                    <p className="sw-empty-copy">
+                      Paid orders from the public restaurant checkout will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="recent-orders-list">
+                    {recentOrders.map((order) => (
+                      <Link className="recent-order-row" href={`/app/orders/${order.id}`} key={order.id}>
+                        <div>
+                          <span className="ops-section-label">Order {order.id.slice(0, 8).toUpperCase()}</span>
+                          <strong>{order.customer.name}</strong>
+                          <span>{order.restaurant.name}</span>
+                        </div>
+                        <span className={`status-badge status-with-icon ${orderStatusTone(order.status)}`}>
+                          <ShipWrightIcon name={order.status === "PAYMENT_FAILED" ? "alert" : "payment"} />
+                          <span>{formatStatusLabel(order.status)}</span>
+                        </span>
+                        <strong>{formatCurrency(order.totalCents, order.currency)}</strong>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </section>
 
               <section className="sw-operational-surface ops-section ops-queue-section">

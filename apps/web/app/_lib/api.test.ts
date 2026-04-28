@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { authorizePayment, createRestaurant, getPublicRestaurantMenu, getRestaurantMenu } from './api';
+import {
+  authorizePayment,
+  createRestaurant,
+  getBusinessOrder,
+  getPublicRestaurantMenu,
+  getRestaurantMenu,
+  listBusinessOrders
+} from './api';
 import type { BusinessSession } from './product-state';
 
 const session: BusinessSession = {
@@ -144,5 +151,99 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/restaurants/pilot-kitchen/menu');
     expect(init.headers).not.toHaveProperty('authorization');
     expect(menu.restaurant.name).toBe('Pilot Kitchen');
+  });
+
+  it('reads business customer orders with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: 'order-1',
+              status: 'PAYMENT_AUTHORIZED',
+              restaurant: { id: 'restaurant-1', name: 'Pilot Kitchen', slug: 'pilot-kitchen' },
+              customer: { name: 'Ada', email: 'ada@example.com', phone: '07500000000' },
+              delivery: { address: '10 Pilot Street', addressSummary: '10 Pilot Street', notes: null },
+              items: [],
+              subtotalCents: 1200,
+              deliveryFeeCents: 400,
+              totalCents: 1600,
+              currency: 'GBP',
+              payment: {
+                id: 'payment-1',
+                status: 'AUTHORIZED',
+                amountAuthorizedCents: 1600,
+                amountCapturedCents: 0,
+                totalCents: 1600,
+                currency: 'GBP',
+                lastError: null
+              },
+              job: {
+                id: 'job-1',
+                status: 'REQUESTED',
+                etaMinutes: 22,
+                pickupAddress: 'Pilot Kitchen pickup',
+                dropoffAddress: '10 Pilot Street'
+              },
+              timeline: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const orders = await listBusinessOrders(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/orders');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(orders[0]?.payment.status).toBe('AUTHORIZED');
+  });
+
+  it('reads a business customer order detail', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          id: 'order-1',
+          status: 'PAYMENT_AUTHORIZED',
+          restaurant: { id: 'restaurant-1', name: 'Pilot Kitchen', slug: 'pilot-kitchen' },
+          customer: { name: 'Ada', email: 'ada@example.com', phone: '07500000000' },
+          delivery: { address: '10 Pilot Street', addressSummary: '10 Pilot Street', notes: null },
+          items: [],
+          subtotalCents: 1200,
+          deliveryFeeCents: 400,
+          totalCents: 1600,
+          currency: 'GBP',
+          payment: {
+            id: 'payment-1',
+            status: 'AUTHORIZED',
+            amountAuthorizedCents: 1600,
+            amountCapturedCents: 0,
+            totalCents: 1600,
+            currency: 'GBP',
+            lastError: null
+          },
+          job: {
+            id: 'job-1',
+            status: 'REQUESTED',
+            etaMinutes: 22,
+            pickupAddress: 'Pilot Kitchen pickup',
+            dropoffAddress: '10 Pilot Street'
+          },
+          timeline: [{ id: '1', eventType: 'CUSTOMER_ORDER_SUBMITTED', createdAt: new Date().toISOString(), summary: 'customer order submitted' }],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const order = await getBusinessOrder(session, 'order-1');
+
+    expect(order.id).toBe('order-1');
+    expect(order.timeline[0]?.eventType).toBe('CUSTOMER_ORDER_SUBMITTED');
   });
 });

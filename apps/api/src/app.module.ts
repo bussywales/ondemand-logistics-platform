@@ -19,7 +19,11 @@ import { PaymentsController } from "./payments/payments.controller.js";
 import { PaymentsService } from "./payments/payments.service.js";
 import { BusinessController } from "./business/business.controller.js";
 import { BusinessService } from "./business/business.service.js";
-import { PublicRestaurantsController, RestaurantsController } from "./restaurants/restaurants.controller.js";
+import {
+  BusinessOrdersController,
+  PublicRestaurantsController,
+  RestaurantsController
+} from "./restaurants/restaurants.controller.js";
 import { RestaurantsService } from "./restaurants/restaurants.service.js";
 
 @Module({
@@ -32,6 +36,7 @@ import { RestaurantsService } from "./restaurants/restaurants.service.js";
     DriverController,
     PaymentsController,
     BusinessController,
+    BusinessOrdersController,
     RestaurantsController,
     PublicRestaurantsController
   ],
