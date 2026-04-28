@@ -1815,3 +1815,579 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+.merchant-shell {
+  width: min(1320px, calc(100% - 2rem));
+  padding: 1rem 0 3rem;
+  color: #10201b;
+  background:
+    radial-gradient(circle at top left, rgba(18, 83, 78, 0.1), transparent 34rem),
+    linear-gradient(180deg, #fcf8f1 0%, #ffffff 42%);
+}
+
+.merchant-hero {
+  display: grid;
+  gap: 1.6rem;
+  padding: 1rem 0 1.5rem;
+}
+
+.merchant-hero-topline,
+.merchant-hero-actions,
+.merchant-panel-heading,
+.merchant-actions,
+.merchant-preview-heading,
+.merchant-preview-actions,
+.merchant-menu-category-header,
+.merchant-menu-item,
+.merchant-restaurant-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.merchant-hero .brand-logo-full {
+  height: 30px;
+}
+
+.merchant-hero-actions,
+.merchant-preview-actions {
+  flex-wrap: wrap;
+}
+
+.merchant-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 1.5rem;
+  align-items: end;
+  padding: 2rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 24px 80px rgba(16, 32, 27, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.merchant-hero-grid h1 {
+  max-width: 11ch;
+  margin: 0.35rem 0 0.75rem;
+  color: #0a1714;
+  font-size: clamp(3rem, 7vw, 5.6rem);
+  line-height: 0.92;
+  letter-spacing: -0.07em;
+}
+
+.merchant-hero-grid p:not(.eyebrow) {
+  max-width: 690px;
+  color: #52625d;
+  font-size: 1.05rem;
+}
+
+.merchant-readiness-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.1rem;
+  border: 1px solid rgba(15, 76, 73, 0.16);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(15, 76, 73, 0.08), rgba(255, 255, 255, 0.88));
+}
+
+.merchant-readiness-card span,
+.merchant-side-section p,
+.merchant-side-metrics span,
+.merchant-next-action p,
+.merchant-step p,
+.merchant-panel-heading p,
+.merchant-form small,
+.merchant-restaurant-list p,
+.merchant-restaurant-list small,
+.merchant-preview-heading p,
+.merchant-menu-category-header p,
+.merchant-menu-item p,
+.merchant-menu-item span,
+.merchant-empty-state p,
+.merchant-empty-inline p {
+  color: #60716c;
+}
+
+.merchant-readiness-card > span,
+.merchant-side-metrics span,
+.merchant-restaurant-list small {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.merchant-readiness-card strong {
+  color: #0a1714;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.merchant-readiness-meter {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(16, 32, 27, 0.09);
+}
+
+.merchant-readiness-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0f4c49, #0b6b65);
+}
+
+.merchant-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 310px) minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: start;
+}
+
+.merchant-sidebar,
+.merchant-main,
+.merchant-side-section,
+.merchant-step-strip,
+.merchant-command-grid,
+.merchant-builder-grid,
+.merchant-form,
+.merchant-menu-composition,
+.merchant-menu-category,
+.merchant-menu-items,
+.merchant-empty-state,
+.merchant-empty-inline {
+  display: grid;
+  gap: 1rem;
+}
+
+.merchant-sidebar {
+  position: sticky;
+  top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 16px 60px rgba(16, 32, 27, 0.06);
+}
+
+.merchant-nav {
+  display: grid;
+  gap: 0.35rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(16, 32, 27, 0.1);
+}
+
+.merchant-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  color: #697873;
+  font-weight: 800;
+}
+
+.merchant-nav a.active,
+.merchant-nav a:hover {
+  background: #0f4c49;
+  color: #ffffff;
+}
+
+.merchant-side-section {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(16, 32, 27, 0.1);
+}
+
+.merchant-side-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.merchant-side-section strong {
+  color: #0a1714;
+}
+
+.merchant-side-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.merchant-side-metrics div {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem;
+  border-radius: 16px;
+  background: #f4f0e8;
+}
+
+.merchant-side-metrics strong {
+  font-size: 1.4rem;
+}
+
+.merchant-next-action {
+  padding: 1rem;
+  border-radius: 18px;
+  background: #10201b;
+}
+
+.merchant-next-action .ops-section-label,
+.merchant-next-action strong {
+  color: #ffffff;
+}
+
+.merchant-next-action p {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.92rem;
+}
+
+.merchant-main {
+  min-width: 0;
+}
+
+.merchant-error {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(159, 47, 47, 0.18);
+  border-radius: 18px;
+  background: #fff3f0;
+  color: #8f2323;
+  font-weight: 800;
+}
+
+.merchant-step-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.merchant-step {
+  display: flex;
+  gap: 0.85rem;
+  min-height: 96px;
+  padding: 1rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.merchant-step > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #ece7dc;
+  color: #60716c;
+  font-weight: 900;
+}
+
+.merchant-step strong {
+  color: #10201b;
+}
+
+.merchant-step-current {
+  border-color: rgba(15, 76, 73, 0.22);
+  background: #ffffff;
+  box-shadow: 0 14px 36px rgba(16, 32, 27, 0.06);
+}
+
+.merchant-step-current > span,
+.merchant-step-complete > span {
+  background: #0f4c49;
+  color: #ffffff;
+}
+
+.merchant-step-complete {
+  background: rgba(15, 76, 73, 0.06);
+}
+
+.merchant-command-grid {
+  grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
+}
+
+.merchant-builder-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.merchant-panel,
+.merchant-menu-preview {
+  padding: 1.2rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 50px rgba(16, 32, 27, 0.05);
+}
+
+.merchant-panel-primary {
+  background: linear-gradient(180deg, #ffffff, #fbf8f1);
+}
+
+.merchant-panel-heading {
+  align-items: flex-start;
+}
+
+.merchant-panel-heading h2,
+.merchant-preview-heading h2 {
+  margin: 0.25rem 0 0.35rem;
+  color: #0a1714;
+  font-size: clamp(1.35rem, 2vw, 1.9rem);
+}
+
+.merchant-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: #10201b;
+  font-weight: 800;
+}
+
+.merchant-form input,
+.merchant-form select,
+.merchant-form textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.82rem 0.9rem;
+  border: 1px solid rgba(16, 32, 27, 0.12);
+  border-radius: 14px;
+  background: #fffdf8;
+  color: #10201b;
+  font: inherit;
+  font-weight: 600;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.merchant-form input:focus,
+.merchant-form select:focus,
+.merchant-form textarea:focus {
+  border-color: rgba(15, 76, 73, 0.46);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(15, 76, 73, 0.1);
+}
+
+.merchant-form input:disabled,
+.merchant-form select:disabled,
+.merchant-form textarea:disabled {
+  cursor: not-allowed;
+  background: #f3f0ea;
+  color: #8c9693;
+}
+
+.merchant-form-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.55fr);
+  gap: 1rem;
+}
+
+.merchant-slug-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(16, 32, 27, 0.12);
+  border-radius: 14px;
+  background: #fffdf8;
+}
+
+.merchant-slug-field span {
+  padding-left: 0.9rem;
+  color: #60716c;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.merchant-slug-field input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.merchant-actions {
+  justify-content: flex-start;
+}
+
+.merchant-restaurant-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.merchant-restaurant-list button {
+  width: 100%;
+  padding: 0.9rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 18px;
+  background: #fffdf8;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.merchant-restaurant-list button.active {
+  border-color: rgba(15, 76, 73, 0.32);
+  background: rgba(15, 76, 73, 0.06);
+}
+
+.merchant-restaurant-list button > div:last-child {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  color: #60716c;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.merchant-live-dot,
+.merchant-draft-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.merchant-live-dot {
+  background: #0b8f6d;
+}
+
+.merchant-draft-dot {
+  background: #d49a24;
+}
+
+.merchant-empty-state {
+  padding: 1.1rem;
+  border: 1px dashed rgba(16, 32, 27, 0.18);
+  border-radius: 20px;
+  background: #fffdf8;
+}
+
+.merchant-empty-state-accent {
+  background: rgba(15, 76, 73, 0.05);
+}
+
+.merchant-empty-state strong,
+.merchant-empty-inline strong {
+  color: #10201b;
+}
+
+.merchant-menu-preview {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.merchant-menu-composition {
+  gap: 1rem;
+}
+
+.merchant-menu-category {
+  padding: 1rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 22px;
+  background: #fffdf8;
+}
+
+.merchant-menu-category-header {
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid rgba(16, 32, 27, 0.08);
+}
+
+.merchant-menu-category-header strong {
+  color: #0a1714;
+  font-size: 1.2rem;
+}
+
+.merchant-empty-inline {
+  padding-top: 0.9rem;
+}
+
+.merchant-menu-items {
+  padding-top: 0.4rem;
+}
+
+.merchant-menu-item {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(16, 32, 27, 0.08);
+}
+
+.merchant-menu-item:last-child {
+  border-bottom: 0;
+}
+
+.merchant-menu-item > div:first-child {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.merchant-menu-item > div:last-child {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.merchant-menu-item strong {
+  color: #10201b;
+}
+
+.disabled-link {
+  pointer-events: none;
+  opacity: 0.48;
+}
+
+@media (max-width: 1080px) {
+  .merchant-hero-grid,
+  .merchant-layout,
+  .merchant-command-grid,
+  .merchant-builder-grid,
+  .merchant-step-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .merchant-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .merchant-shell {
+    width: min(100% - 1rem, 1320px);
+    padding-top: 0.5rem;
+  }
+
+  .merchant-hero-grid,
+  .merchant-panel,
+  .merchant-menu-preview,
+  .merchant-sidebar {
+    border-radius: 18px;
+    padding: 1rem;
+  }
+
+  .merchant-hero-grid h1 {
+    font-size: clamp(2.4rem, 16vw, 4rem);
+  }
+
+  .merchant-hero-topline,
+  .merchant-hero-actions,
+  .merchant-panel-heading,
+  .merchant-preview-heading,
+  .merchant-menu-category-header,
+  .merchant-menu-item,
+  .merchant-restaurant-list button {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .merchant-side-metrics,
+  .merchant-form-split {
+    grid-template-columns: 1fr;
+  }
+
+  .merchant-restaurant-list button > div:last-child,
+  .merchant-menu-item > div:last-child {
+    justify-items: start;
+  }
+}
