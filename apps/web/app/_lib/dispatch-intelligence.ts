@@ -55,7 +55,7 @@ export function getDispatchIntelligence(job: AppJob): DispatchIntelligence {
   if (job.status === "DISPATCH_FAILED") {
     return {
       severity: "BLOCKER",
-      headline: "Dispatch failed — no driver accepted",
+      headline: "Dispatch failed - no driver accepted",
       currentIssue: "Dispatch failed",
       diagnosis: "No driver accepted this dispatch attempt.",
       impact: `The job is not moving. Customer ETA is still ${job.etaMinutes} min.`,

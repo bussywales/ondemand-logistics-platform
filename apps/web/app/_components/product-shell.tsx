@@ -140,6 +140,14 @@ function QueueEmptyState(props: { copy: { title: string; body: string } }) {
   );
 }
 
+function isCompletedToday(job: AppJob) {
+  if (job.status !== "DELIVERED" && job.status !== "COMPLETED") {
+    return false;
+  }
+
+  return new Date(job.createdAt).toDateString() === new Date().toDateString();
+}
+
 export function ProductShell(props: ProductShellProps) {
   const router = useRouter();
   const { status, session, signOut, refreshBusinessSession } = useBusinessAuth();
@@ -179,10 +187,12 @@ export function ProductShell(props: ProductShellProps) {
     const activeJobs = jobs.filter((job) =>
       ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(job.status)
     ).length;
+    const completedToday = jobs.filter(isCompletedToday).length;
 
     return {
       orgName: session?.context.currentOrg?.name ?? "No org",
       activeJobs,
+      completedToday,
       totalJobs: jobs.length
     };
   }, [jobs, session]);
@@ -494,6 +504,24 @@ export function ProductShell(props: ProductShellProps) {
 
           {props.view === "home" ? (
             <section className="ops-stack">
+              <section className="ops-metric-grid" aria-label="Operations metrics">
+                <div className="ops-metric-card">
+                  <span>Active jobs</span>
+                  <strong>{workspaceSummary.activeJobs}</strong>
+                  <p>Requested, assigned, or moving.</p>
+                </div>
+                <div className={`ops-metric-card ${attentionJobs.length > 0 ? "ops-metric-card-alert" : ""}`}>
+                  <span>Attention needed</span>
+                  <strong>{attentionJobs.length}</strong>
+                  <p>Blockers and risks requiring review.</p>
+                </div>
+                <div className="ops-metric-card">
+                  <span>Completed today</span>
+                  <strong>{workspaceSummary.completedToday}</strong>
+                  <p>Closed delivery records for this workspace.</p>
+                </div>
+              </section>
+
               <section className="ops-section ops-queue-section">
                 <div className="ops-section-header">
                   <div>
