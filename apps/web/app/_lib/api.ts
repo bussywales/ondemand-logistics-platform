@@ -5,6 +5,7 @@ import type {
   MenuCategorySummary,
   MenuItemSummary,
   PaymentSummary,
+  PublicRestaurantMenu,
   RestaurantMenu,
   RestaurantMenuCategory,
   RestaurantSummary,
@@ -104,6 +105,8 @@ type RestaurantMenuResponse = {
   categories: RestaurantMenuCategory[];
 };
 
+type PublicRestaurantMenuResponse = PublicRestaurantMenu;
+
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
 
 function normalizeBaseUrl(value: string) {
@@ -116,6 +119,30 @@ async function apiFetch<T>(session: BusinessSession, path: string, init?: Reques
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${session.accessToken}`,
+      ...(init?.headers ?? {})
+    },
+    cache: "no-store"
+  });
+
+  const raw = await response.text();
+  const payload = raw ? (JSON.parse(raw) as unknown) : null;
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" && payload !== null && "message" in payload
+        ? String((payload as { message?: unknown }).message)
+        : `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return payload as T;
+}
+
+async function publicApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${normalizeBaseUrl(apiBaseUrl)}${path}`, {
+    ...init,
+    headers: {
+      "content-type": "application/json",
       ...(init?.headers ?? {})
     },
     cache: "no-store"
@@ -279,6 +306,12 @@ export async function createMenuItem(
 
 export async function getRestaurantMenu(session: BusinessSession, restaurantId: string): Promise<RestaurantMenu> {
   return apiFetch<RestaurantMenuResponse>(session, `/v1/business/restaurants/${restaurantId}/menu`, {
+    method: "GET"
+  });
+}
+
+export async function getPublicRestaurantMenu(slug: string): Promise<PublicRestaurantMenu> {
+  return publicApiFetch<PublicRestaurantMenuResponse>(`/v1/restaurants/${encodeURIComponent(slug)}/menu`, {
     method: "GET"
   });
 }

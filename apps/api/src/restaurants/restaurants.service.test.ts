@@ -276,4 +276,85 @@ describe("RestaurantsService", () => {
       })
     ]);
   });
+
+  it("returns a public active menu by restaurant slug", async () => {
+    const createdAt = new Date("2026-04-28T10:00:00.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow({ created_at: createdAt, updated_at: createdAt })] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [categoryRow({ created_at: createdAt, updated_at: createdAt })] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [itemRow({ currency: "gbp", created_at: createdAt, updated_at: createdAt })] })
+    };
+
+    const service = new RestaurantsService(pg as never);
+    const result = await service.getPublicRestaurantMenu("Pilot Kitchen");
+
+    expect(pg.query).toHaveBeenNthCalledWith(1, expect.stringContaining("status = 'ACTIVE'"), ["pilot-kitchen"]);
+    expect(result).toEqual({
+      restaurant: {
+        id: RESTAURANT_ID,
+        name: "Pilot Kitchen",
+        slug: "pilot-kitchen",
+        status: "ACTIVE"
+      },
+      categories: [
+        {
+          id: CATEGORY_ID,
+          name: "Mains",
+          sortOrder: 0,
+          items: [
+            {
+              id: ITEM_ID,
+              name: "Chicken Wrap",
+              description: "Fresh and hot",
+              priceCents: 1299,
+              currency: "GBP",
+              sortOrder: 0
+            }
+          ]
+        }
+      ]
+    });
+  });
+
+  it("returns a safe empty public menu when no active categories or items exist", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+    };
+
+    const service = new RestaurantsService(pg as never);
+    const result = await service.getPublicRestaurantMenu("pilot-kitchen");
+
+    expect(result.categories).toEqual([]);
+  });
+
+  it("does not expose items from inactive categories on the public menu", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [itemRow()] })
+    };
+
+    const service = new RestaurantsService(pg as never);
+    const result = await service.getPublicRestaurantMenu("pilot-kitchen");
+
+    expect(result.categories).toEqual([]);
+  });
+
+  it("does not return inactive restaurants on the public menu endpoint", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] })
+    };
+
+    const service = new RestaurantsService(pg as never);
+
+    await expect(service.getPublicRestaurantMenu("inactive-kitchen")).rejects.toThrow(NotFoundException);
+  });
 });

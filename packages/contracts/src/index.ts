@@ -430,6 +430,39 @@ export const RestaurantMenuSchema = z.object({
 });
 export type RestaurantMenuDto = z.infer<typeof RestaurantMenuSchema>;
 
+export const PublicRestaurantSchema = RestaurantSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  status: true
+});
+export type PublicRestaurantDto = z.infer<typeof PublicRestaurantSchema>;
+
+export const PublicMenuItemSchema = MenuItemSchema.pick({
+  id: true,
+  name: true,
+  description: true,
+  priceCents: true,
+  currency: true,
+  sortOrder: true
+});
+export type PublicMenuItemDto = z.infer<typeof PublicMenuItemSchema>;
+
+export const PublicRestaurantMenuCategorySchema = MenuCategorySchema.pick({
+  id: true,
+  name: true,
+  sortOrder: true
+}).extend({
+  items: z.array(PublicMenuItemSchema)
+});
+export type PublicRestaurantMenuCategoryDto = z.infer<typeof PublicRestaurantMenuCategorySchema>;
+
+export const PublicRestaurantMenuSchema = z.object({
+  restaurant: PublicRestaurantSchema,
+  categories: z.array(PublicRestaurantMenuCategorySchema)
+});
+export type PublicRestaurantMenuDto = z.infer<typeof PublicRestaurantMenuSchema>;
+
 export const PaymentProviderSchema = z.enum(["stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
+import { Public } from "../security/public.decorator.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
 import { RestaurantsService } from "./restaurants.service.js";
@@ -70,5 +71,16 @@ export class RestaurantsController {
   @Get(":restaurantId/menu")
   async getRestaurantMenu(@Param("restaurantId") restaurantId: string, @RequestUser() user: AuthenticatedUser) {
     return this.restaurantsService.getRestaurantMenu(restaurantId, user.id);
+  }
+}
+
+@Controller("v1/restaurants")
+export class PublicRestaurantsController {
+  constructor(private readonly restaurantsService: RestaurantsService) {}
+
+  @Public()
+  @Get(":slug/menu")
+  async getPublicRestaurantMenu(@Param("slug") slug: string) {
+    return this.restaurantsService.getPublicRestaurantMenu(slug);
   }
 }

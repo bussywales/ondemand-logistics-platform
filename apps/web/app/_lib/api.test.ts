@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { authorizePayment, createRestaurant, getRestaurantMenu } from './api';
+import { authorizePayment, createRestaurant, getPublicRestaurantMenu, getRestaurantMenu } from './api';
 import type { BusinessSession } from './product-state';
 
 const session: BusinessSession = {
@@ -120,5 +120,29 @@ describe('authorizePayment', () => {
 
     expect(menu.restaurant.slug).toBe('pilot-kitchen');
     expect(menu.categories).toEqual([]);
+  });
+
+  it('reads a public restaurant menu by slug without bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          restaurant: {
+            id: 'restaurant-1',
+            name: 'Pilot Kitchen',
+            slug: 'pilot-kitchen',
+            status: 'ACTIVE'
+          },
+          categories: []
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const menu = await getPublicRestaurantMenu('pilot-kitchen');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/restaurants/pilot-kitchen/menu');
+    expect(init.headers).not.toHaveProperty('authorization');
+    expect(menu.restaurant.name).toBe('Pilot Kitchen');
   });
 });

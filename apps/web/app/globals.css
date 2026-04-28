@@ -1478,6 +1478,203 @@ h3 {
   gap: 1rem;
 }
 
+.customer-order-page {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 3rem;
+}
+
+.customer-order-header,
+.customer-order-layout,
+.customer-menu-item,
+.customer-cart-heading,
+.customer-cart-line,
+.customer-cart-total,
+.customer-quantity-controls {
+  display: flex;
+}
+
+.customer-order-header {
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0 2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.customer-order-link {
+  color: var(--muted);
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.customer-order-layout {
+  align-items: flex-start;
+  gap: 2rem;
+  padding-top: 2rem;
+}
+
+.customer-menu-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.customer-cart-panel {
+  position: sticky;
+  top: 1rem;
+  flex: 0 0 360px;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.customer-restaurant-heading {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 2rem;
+}
+
+.customer-restaurant-heading h1 {
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  max-width: 10ch;
+}
+
+.customer-restaurant-heading p:last-child,
+.customer-next-note,
+.customer-cart-heading span,
+.customer-cart-line span,
+.customer-order-empty p,
+.customer-menu-item p {
+  color: var(--muted);
+}
+
+.customer-menu-list,
+.customer-menu-category,
+.customer-menu-items,
+.customer-cart-lines,
+.customer-order-state,
+.customer-order-empty {
+  display: grid;
+}
+
+.customer-menu-list {
+  gap: 2rem;
+}
+
+.customer-menu-category {
+  gap: 0.8rem;
+}
+
+.customer-menu-category h2,
+.customer-cart-heading h2 {
+  font-size: 1.45rem;
+}
+
+.customer-menu-items,
+.customer-cart-lines {
+  gap: 0;
+}
+
+.customer-menu-item,
+.customer-cart-line,
+.customer-cart-total {
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.customer-menu-item div,
+.customer-cart-line div:first-child {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.customer-menu-item h3 {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.customer-menu-item strong,
+.customer-cart-total strong {
+  font-size: 0.98rem;
+}
+
+.customer-cart-heading {
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1rem;
+}
+
+.customer-icon-button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.customer-icon-button:hover,
+.customer-remove-button:hover {
+  background: #f7f7f7;
+}
+
+.customer-quantity-controls {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.customer-quantity-controls span {
+  min-width: 1.5rem;
+  text-align: center;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.customer-remove-button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.customer-checkout-button {
+  width: 100%;
+}
+
+.customer-checkout-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.customer-order-state {
+  min-height: 55vh;
+  align-content: center;
+  gap: 1rem;
+}
+
+.customer-order-state h1 {
+  font-size: clamp(2.2rem, 6vw, 4rem);
+}
+
+.customer-order-empty {
+  gap: 0.3rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+
 @media (max-width: 980px) {
   .onboarding-role-grid,
   .onboarding-panel,
@@ -1491,7 +1688,10 @@ h3 {
   .attention-row,
   .restaurant-list-item,
   .menu-structure-header,
-  .menu-item-row {
+  .menu-item-row,
+  .customer-order-layout,
+  .customer-menu-item,
+  .customer-cart-line {
     grid-template-columns: 1fr;
   }
 
@@ -1501,8 +1701,20 @@ h3 {
 
   .restaurant-list-item,
   .menu-structure-header,
-  .menu-item-row {
+  .menu-item-row,
+  .customer-order-layout,
+  .customer-menu-item,
+  .customer-cart-line {
     display: grid;
+  }
+
+  .customer-cart-panel {
+    position: static;
+    width: 100%;
+  }
+
+  .customer-quantity-controls {
+    justify-content: flex-start;
   }
 
   .jobs-table-row {

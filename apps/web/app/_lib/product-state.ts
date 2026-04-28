@@ -108,6 +108,22 @@ export type RestaurantMenu = {
   categories: RestaurantMenuCategory[];
 };
 
+export type PublicRestaurantSummary = Pick<RestaurantSummary, "id" | "name" | "slug" | "status">;
+
+export type PublicMenuItemSummary = Pick<
+  MenuItemSummary,
+  "id" | "name" | "description" | "priceCents" | "currency" | "sortOrder"
+>;
+
+export type PublicRestaurantMenuCategory = Pick<MenuCategorySummary, "id" | "name" | "sortOrder"> & {
+  items: PublicMenuItemSummary[];
+};
+
+export type PublicRestaurantMenu = {
+  restaurant: PublicRestaurantSummary;
+  categories: PublicRestaurantMenuCategory[];
+};
+
 export type DriverProfile = {
   role: "driver";
   name: string;

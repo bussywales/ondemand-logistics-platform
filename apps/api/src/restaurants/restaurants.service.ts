@@ -11,11 +11,14 @@ import {
   CreateRestaurantSchema,
   MenuCategorySchema,
   MenuItemSchema,
+  PublicRestaurantMenuSchema,
   RestaurantListSchema,
   RestaurantMenuSchema,
   RestaurantSchema,
   type MenuCategoryDto,
   type MenuItemDto,
+  type PublicMenuItemDto,
+  type PublicRestaurantMenuDto,
   type RestaurantDto,
   type RestaurantMenuDto
 } from "@shipwright/contracts";
@@ -297,6 +300,68 @@ export class RestaurantsService {
     });
   }
 
+  async getPublicRestaurantMenu(slug: string): Promise<PublicRestaurantMenuDto> {
+    const restaurantResult = await this.pg.query<RestaurantRow>(
+      `select id, org_id, name, slug, status, created_at, updated_at
+       from public.restaurants
+       where slug = $1
+         and status = 'ACTIVE'`,
+      [normalizeRestaurantSlug(slug)]
+    );
+
+    if (restaurantResult.rowCount !== 1) {
+      throw new NotFoundException("restaurant_not_found");
+    }
+
+    const restaurant = restaurantResult.rows[0];
+    const [categoriesResult, itemsResult] = await Promise.all([
+      this.pg.query<MenuCategoryRow>(
+        `select id, restaurant_id, name, sort_order, is_active, created_at, updated_at
+         from public.menu_categories
+         where restaurant_id = $1
+           and is_active = true
+         order by sort_order asc, created_at asc`,
+        [restaurant.id]
+      ),
+      this.pg.query<MenuItemRow>(
+        `select id, restaurant_id, category_id, name, description, price_cents, currency, is_active, sort_order, created_at, updated_at
+         from public.menu_items
+         where restaurant_id = $1
+           and is_active = true
+         order by sort_order asc, created_at asc`,
+        [restaurant.id]
+      )
+    ]);
+
+    const activeCategoryIds = new Set(categoriesResult.rows.map((category) => category.id));
+    const itemsByCategory = new Map<string, PublicMenuItemDto[]>();
+    for (const row of itemsResult.rows) {
+      if (!activeCategoryIds.has(row.category_id)) {
+        continue;
+      }
+
+      const mapped = this.mapPublicItem(row);
+      const existing = itemsByCategory.get(row.category_id) ?? [];
+      existing.push(mapped);
+      itemsByCategory.set(row.category_id, existing);
+    }
+
+    return PublicRestaurantMenuSchema.parse({
+      restaurant: {
+        id: restaurant.id,
+        name: restaurant.name,
+        slug: restaurant.slug,
+        status: restaurant.status
+      },
+      categories: categoriesResult.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        sortOrder: toInteger(row.sort_order, "menu_category.sort_order"),
+        items: itemsByCategory.get(row.id) ?? []
+      }))
+    });
+  }
+
   private async assertOrgOperator(orgId: string, userId: string) {
     const result = await this.pg.query<{ role: "BUSINESS_OPERATOR" | "ADMIN" }>(
       `select role
@@ -374,5 +439,16 @@ export class RestaurantsService {
       createdAt: toIsoDateTime(row.created_at),
       updatedAt: toIsoDateTime(row.updated_at)
     });
+  }
+
+  private mapPublicItem(row: MenuItemRow) {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      priceCents: toInteger(row.price_cents, "menu_item.price_cents"),
+      currency: row.currency.toUpperCase(),
+      sortOrder: toInteger(row.sort_order, "menu_item.sort_order")
+    };
   }
 }
