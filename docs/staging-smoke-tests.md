@@ -9,6 +9,8 @@ Primary operator path:
 
 Use `smoke:staging` directly when you only need the HTTP checks without the full operator sequence.
 
+Use `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md` when you need to prove the full paid customer order to driver-delivered loop after the basic release smoke passes.
+
 ## Prerequisites
 - Staging deploy is live.
 - Required migrations are already applied.

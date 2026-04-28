@@ -36,6 +36,18 @@ The command runs the release-critical verification sequence in order:
    - `GET /v1/driver/me/offers`
 7. release decision
 
+For Stage 1 paid-delivery proof, run the deeper loop verification after this command passes:
+
+```bash
+cp .env.proof.example .env.proof
+set -a
+source .env.proof
+set +a
+pnpm proof:staging-paid-delivery
+```
+
+See `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`.
+
 ## 4) Required Pass Conditions
 - `GET /healthz` returns `200`
 - `GET /readyz` returns `200`

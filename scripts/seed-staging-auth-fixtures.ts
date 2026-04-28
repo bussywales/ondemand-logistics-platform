@@ -14,6 +14,8 @@ type FixtureAuth = {
 
 const ORG_ID = "70d56b02-f2b8-487a-8c97-8e30fd9e631f";
 const DRIVER_ID = "8a5d2d96-4f0a-4711-b8b0-7ed9478d41a7";
+const DRIVER_LATITUDE = 51.5254;
+const DRIVER_LONGITUDE = -0.1099;
 
 const FIXTURES: FixtureSpec[] = [
   {
@@ -168,31 +170,45 @@ async function seedDomainRows(
     );
 
     await client.query(
-      `insert into public.drivers (id, user_id, home_org_id, is_active, availability_status)
-       values ($1, $2, $3, true, 'OFFLINE')
+      `insert into public.drivers (
+         id,
+         user_id,
+         home_org_id,
+         is_active,
+         availability_status,
+         latest_latitude,
+         latest_longitude,
+         last_location_at,
+         active_job_id
+       ) values ($1, $2, $3, true, 'ONLINE', $4, $5, now(), null)
        on conflict (id) do update
        set user_id = excluded.user_id,
            home_org_id = excluded.home_org_id,
-           is_active = true`,
-      [DRIVER_ID, fixtures.driver.userId, ORG_ID]
+           is_active = true,
+           availability_status = 'ONLINE',
+           latest_latitude = excluded.latest_latitude,
+           latest_longitude = excluded.latest_longitude,
+           last_location_at = now(),
+           active_job_id = null`,
+      [DRIVER_ID, fixtures.driver.userId, ORG_ID, DRIVER_LATITUDE, DRIVER_LONGITUDE]
     );
 
     await client.query(
       `delete from public.driver_vehicle
        where driver_id = $1
-         and not (vehicle_type = 'CAR' and coalesce(plate_number, '') = 'STAGING1' and is_primary = true)`,
+         and not (vehicle_type = 'BIKE' and coalesce(plate_number, '') = 'STAGING-BIKE' and is_primary = true)`,
       [DRIVER_ID]
     );
 
     await client.query(
       `insert into public.driver_vehicle (driver_id, vehicle_type, plate_number, is_primary)
-       select $1, 'CAR', 'STAGING1', true
+       select $1, 'BIKE', 'STAGING-BIKE', true
        where not exists (
          select 1
          from public.driver_vehicle
          where driver_id = $1
-           and vehicle_type = 'CAR'
-           and plate_number = 'STAGING1'
+           and vehicle_type = 'BIKE'
+           and plate_number = 'STAGING-BIKE'
            and is_primary = true
        )`,
       [DRIVER_ID]
@@ -236,6 +252,14 @@ async function main() {
   console.log(JSON.stringify({
     orgId: ORG_ID,
     driverId: DRIVER_ID,
+    driverFixture: {
+      vehicleType: "BIKE",
+      availability: "ONLINE",
+      latestLocation: {
+        latitude: DRIVER_LATITUDE,
+        longitude: DRIVER_LONGITUDE
+      }
+    },
     fixtures: FIXTURES.map((fixture) => ({
       slug: fixture.slug,
       email: fixture.email,

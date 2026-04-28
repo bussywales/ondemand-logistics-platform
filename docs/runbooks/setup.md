@@ -164,6 +164,15 @@ The fixture script creates or reuses:
 
 It prints current user ids, the seeded driver id, the seeded org id, and current bearer tokens for sample curls.
 
+The staged driver is reset to a dispatch-eligible pilot state:
+- `ONLINE`
+- approved verification row
+- primary `BIKE` vehicle
+- latest location close to the pilot restaurant pickup area
+- no active job
+
+For the full paid customer order to delivered-job proof, use `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`.
+
 ### Create a real staging business account manually
 
 1. Open `/get-started` in the deployed web app.

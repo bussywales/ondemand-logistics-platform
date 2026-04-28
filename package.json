@@ -9,7 +9,8 @@
     "test": "pnpm -r test",
     "test:integration": "pnpm -r test:integration",
     "migration:validate": "pnpm --filter @shipwright/db migration:validate",
-    "fixtures:staging-auth": "tsx scripts/seed-staging-auth-fixtures.ts"
+    "fixtures:staging-auth": "tsx scripts/seed-staging-auth-fixtures.ts",
+    "proof:staging-paid-delivery": "pnpm --filter api proof:staging-paid-delivery"
   },
   "devDependencies": {
     "@types/pg": "^8.15.5",
