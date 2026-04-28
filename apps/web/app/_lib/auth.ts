@@ -6,6 +6,7 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api-staging-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 export const AUTH_RESTORE_TIMEOUT_MS = 8000;
+export const AUTH_API_REQUEST_TIMEOUT_MS = 20000;
 
 let browserClient: SupabaseClient | null = null;
 
@@ -258,7 +259,7 @@ export function subscribeToAuthChanges(listener: (event: AuthChangeEvent, sessio
 
 async function apiFetch<T>(accessToken: string, path: string, init?: RequestInit) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), AUTH_RESTORE_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), AUTH_API_REQUEST_TIMEOUT_MS);
 
   let response: Response;
   try {
@@ -276,7 +277,7 @@ async function apiFetch<T>(accessToken: string, path: string, init?: RequestInit
     if (error instanceof Error && error.name === 'AbortError') {
       throw new BrowserAuthTimeoutError({
         action: `API request to ${path}`,
-        timeoutMs: AUTH_RESTORE_TIMEOUT_MS
+        timeoutMs: AUTH_API_REQUEST_TIMEOUT_MS
       });
     }
 

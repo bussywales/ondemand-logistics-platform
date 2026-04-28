@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { BrowserAuthTimeoutError, withTimeout } from './auth';
+import { AUTH_API_REQUEST_TIMEOUT_MS, AUTH_RESTORE_TIMEOUT_MS, BrowserAuthTimeoutError, withTimeout } from './auth';
 
 describe('auth restore timeout helper', () => {
+  it('keeps explicit API requests more tolerant than route restore', () => {
+    expect(AUTH_API_REQUEST_TIMEOUT_MS).toBeGreaterThan(AUTH_RESTORE_TIMEOUT_MS);
+  });
+
   it('resolves when the wrapped promise completes before timeout', async () => {
     await expect(
       withTimeout(Promise.resolve('ok'), {

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
   type BrowserAuthSession,
+  BrowserAuthTimeoutError,
   SupabaseBrowserAuthError,
   createBusinessOrg,
   fetchBusinessContext,
@@ -68,6 +69,14 @@ function getFriendlyBusinessError(issue: unknown) {
     };
   }
 
+  if (issue instanceof BrowserAuthTimeoutError) {
+    return {
+      message:
+        "The API is taking longer than usual to load the business context. Wait a few seconds and try again; if this repeats, check staging API health.",
+      requiresCooldown: false
+    };
+  }
+
   return {
     message: issue instanceof Error ? issue.message : "Unable to complete business onboarding.",
     requiresCooldown: false
@@ -88,6 +97,14 @@ function getFriendlyBusinessSetupError(issue: unknown) {
 
     if (message.includes("networkerror") || message.includes("failed to fetch")) {
       return "The workspace request could not reach the API. Check the connection and try again.";
+    }
+
+    if (message.includes("timed out") && message.includes("/v1/business/context")) {
+      return "The API is taking longer than usual to load the business context. Wait a few seconds and try again; if this repeats, check staging API health.";
+    }
+
+    if (message.includes("timed out")) {
+      return "The API is taking longer than usual. Wait a few seconds and try again.";
     }
   }
 
