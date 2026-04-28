@@ -2391,3 +2391,484 @@ h3 {
     justify-items: start;
   }
 }
+
+/* Unified product system for authenticated operations surfaces. */
+.app-shell.ops-shell,
+.app-shell.merchant-shell {
+  width: min(1320px, calc(100% - 2rem));
+  padding: 1rem 0 3rem;
+  color: #10201b;
+  background:
+    radial-gradient(circle at top left, rgba(15, 76, 73, 0.08), transparent 34rem),
+    linear-gradient(180deg, #fcf8f1 0%, #ffffff 44%);
+}
+
+.ops-topbar {
+  align-items: center;
+  padding: 0.7rem 0 1.25rem;
+  border-bottom-color: rgba(16, 32, 27, 0.1);
+}
+
+.ops-branding {
+  gap: 0.28rem;
+}
+
+.ops-branding .brand-logo-full,
+.merchant-hero .brand-logo-full {
+  height: 30px;
+}
+
+.ops-branding h1 {
+  margin-top: 0.18rem;
+  color: #0a1714;
+  font-size: clamp(1.65rem, 3vw, 2.55rem);
+}
+
+.ops-topbar-actions .button,
+.merchant-hero-actions .button {
+  min-height: 44px;
+}
+
+.ops-layout,
+.merchant-layout {
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  gap: 1.4rem;
+}
+
+.ops-sidebar,
+.merchant-sidebar {
+  position: sticky;
+  top: 1rem;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 16px 60px rgba(16, 32, 27, 0.06);
+}
+
+.ops-nav,
+.merchant-nav {
+  gap: 0.35rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(16, 32, 27, 0.1);
+}
+
+.ops-nav-link,
+.merchant-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-radius: 14px;
+  color: #697873;
+  font-weight: 800;
+}
+
+.ops-nav-link.active,
+.ops-nav-link:hover,
+.merchant-nav a.active,
+.merchant-nav a:hover {
+  background: #10201b;
+  color: #ffffff;
+}
+
+.ops-sidebar-section,
+.merchant-side-section {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(16, 32, 27, 0.1);
+}
+
+.ops-sidebar-section:last-child,
+.merchant-side-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ops-sidebar-live {
+  padding: 1rem;
+  border: 0;
+  border-radius: 18px;
+  background: #10201b;
+}
+
+.ops-sidebar-live .ops-section-label,
+.ops-sidebar-live strong {
+  color: #ffffff;
+}
+
+.ops-sidebar-live p {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ops-main,
+.merchant-main {
+  min-width: 0;
+}
+
+.ops-stack {
+  gap: 1.15rem;
+}
+
+.ops-section,
+.ops-zone,
+.ops-queue-section,
+.ops-creation-panel {
+  padding: 1.2rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 50px rgba(16, 32, 27, 0.05);
+}
+
+.ops-queue-section {
+  padding-bottom: 0.8rem;
+}
+
+.ops-review-section {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(252, 248, 241, 0.9));
+}
+
+.ops-section-header,
+.ops-job-header {
+  align-items: flex-start;
+}
+
+.ops-section-header h2,
+.ops-job-header h2 {
+  margin: 0.22rem 0 0.35rem;
+  color: #0a1714;
+  font-size: clamp(1.35rem, 2vw, 1.9rem);
+}
+
+.ops-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.ops-count-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(16, 32, 27, 0.1);
+  border-radius: 999px;
+  background: #f4f0e8;
+  color: #10201b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ops-count-pill-alert {
+  border-color: rgba(159, 47, 47, 0.2);
+  background: #fff3f0;
+  color: #8f2323;
+}
+
+.ops-empty-state,
+.ops-queue-empty {
+  padding: 1rem;
+  border: 1px dashed rgba(16, 32, 27, 0.16);
+  border-radius: 18px;
+  background: rgba(252, 248, 241, 0.64);
+}
+
+.ops-queue-empty strong {
+  color: #10201b;
+}
+
+.ops-queue-empty p {
+  color: #60716c;
+}
+
+.jobs-table,
+.attention-list,
+.timeline-table {
+  overflow: hidden;
+  border-top: 1px solid rgba(16, 32, 27, 0.1);
+}
+
+.jobs-table-head,
+.jobs-table-row,
+.attention-row,
+.timeline-table-row {
+  padding: 0.95rem 0.25rem;
+  border-bottom: 1px solid rgba(16, 32, 27, 0.09);
+}
+
+.jobs-table-row,
+.attention-row {
+  position: relative;
+  border-radius: 14px;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.jobs-table-row:hover,
+.attention-row:hover,
+.timeline-table-row:hover {
+  background: #fffdf8;
+}
+
+.jobs-table-row:hover,
+.attention-row:hover {
+  transform: translateX(2px);
+}
+
+.attention-row::before {
+  content: "";
+  width: 4px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: #b42318;
+}
+
+.attention-row {
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+}
+
+.attention-row > div:first-child {
+  grid-column: 2;
+}
+
+.attention-meta {
+  grid-column: 3;
+}
+
+.jobs-cell strong,
+.timeline-table-row strong,
+.attention-row strong {
+  color: #10201b;
+}
+
+.jobs-cell span,
+.timeline-table-row span,
+.attention-row p,
+.ops-detail-note,
+.ops-context-note {
+  color: #60716c;
+}
+
+.status-badge {
+  border-radius: 10px;
+  font-weight: 900;
+}
+
+.status-neutral {
+  border-color: rgba(16, 32, 27, 0.1);
+  background: #f4f0e8;
+  color: #10201b;
+}
+
+.status-live {
+  background: rgba(15, 76, 73, 0.1);
+  border-color: rgba(15, 76, 73, 0.22);
+  color: #0f4c49;
+}
+
+.status-positive {
+  background: rgba(21, 154, 99, 0.12);
+  border-color: rgba(21, 154, 99, 0.24);
+  color: #0c6d46;
+}
+
+.status-negative {
+  background: #fff3f0;
+  border-color: rgba(159, 47, 47, 0.2);
+  color: #8f2323;
+}
+
+.ops-creation-panel {
+  background: linear-gradient(180deg, #ffffff, #fbf8f1);
+}
+
+.ops-form {
+  gap: 1.05rem;
+}
+
+.ops-form label,
+.ops-field {
+  color: #10201b;
+  font-weight: 800;
+}
+
+.ops-field input,
+.form-card input,
+.form-card textarea,
+.form-card select,
+.sidebar-card input,
+.sidebar-card textarea,
+.ops-form input,
+.ops-form select,
+.ops-form textarea {
+  min-height: 48px;
+  border-color: rgba(16, 32, 27, 0.12);
+  border-radius: 14px;
+  background: #fffdf8;
+  color: #10201b;
+  font-weight: 600;
+}
+
+.ops-field input:focus,
+.ops-form input:focus,
+.ops-form select:focus,
+.ops-form textarea:focus {
+  border-color: #0f4c49;
+  outline: 3px solid rgba(15, 76, 73, 0.12);
+}
+
+.ops-advanced-section {
+  display: grid;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(16, 32, 27, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.76);
+}
+
+.ops-advanced-section summary {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #10201b;
+  font-weight: 900;
+}
+
+.ops-advanced-section summary small {
+  color: #60716c;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ops-advanced-section[open] summary {
+  margin-bottom: 1rem;
+}
+
+.ops-job-hero {
+  background: linear-gradient(135deg, #10201b, #17342d);
+  color: #ffffff;
+}
+
+.ops-job-hero .eyebrow,
+.ops-job-hero .ops-detail-note {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ops-job-hero h2 {
+  color: #ffffff;
+}
+
+.ops-job-hero-blocker {
+  border-color: rgba(159, 47, 47, 0.24);
+  background:
+    linear-gradient(135deg, rgba(159, 47, 47, 0.95), rgba(46, 18, 18, 0.96)),
+    #8f2323;
+}
+
+.ops-job-statuses {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ops-zone {
+  align-content: start;
+  min-height: 100%;
+}
+
+.ops-actions-zone {
+  border-color: rgba(159, 47, 47, 0.12);
+}
+
+.ops-payment-zone {
+  grid-column: 1 / -1;
+}
+
+.ops-definition-list div {
+  border-top-color: rgba(16, 32, 27, 0.09);
+}
+
+.ops-definition-list dd {
+  color: #10201b;
+}
+
+.payment-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(16, 32, 27, 0.08);
+  border-radius: 18px;
+  background: #fffdf8;
+}
+
+.merchant-shell {
+  background:
+    radial-gradient(circle at top left, rgba(15, 76, 73, 0.08), transparent 34rem),
+    linear-gradient(180deg, #fcf8f1 0%, #ffffff 44%);
+}
+
+.merchant-hero-grid {
+  border-radius: 24px;
+}
+
+.merchant-nav a.active,
+.merchant-nav a:hover {
+  background: #10201b;
+}
+
+@media (max-width: 1080px) {
+  .ops-layout,
+  .merchant-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-sidebar,
+  .merchant-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 980px) {
+  .attention-row {
+    grid-template-columns: 4px minmax(0, 1fr);
+  }
+
+  .attention-meta {
+    grid-column: 2;
+    justify-items: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell.ops-shell,
+  .app-shell.merchant-shell {
+    width: min(100% - 1rem, 1320px);
+    padding-top: 0.5rem;
+  }
+
+  .ops-section,
+  .ops-zone,
+  .ops-sidebar,
+  .merchant-sidebar {
+    border-radius: 18px;
+    padding: 1rem;
+  }
+
+  .ops-header-actions,
+  .ops-advanced-section summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ops-job-statuses {
+    justify-content: flex-start;
+  }
+}

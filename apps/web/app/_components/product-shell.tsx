@@ -88,6 +88,36 @@ function attentionTone(level: AppJob["attentionLevel"]) {
   return "status-neutral";
 }
 
+function queueStateCopy(kind: "active" | "attention" | "all") {
+  if (kind === "active") {
+    return {
+      title: "No active jobs",
+      body: "The live queue is clear. New delivery requests will appear here as soon as they are created."
+    };
+  }
+
+  if (kind === "attention") {
+    return {
+      title: "No jobs need review",
+      body: "No failed dispatches, no-driver states, or delay signals are active right now."
+    };
+  }
+
+  return {
+    title: "No jobs yet",
+    body: "Create the first delivery request to populate this workspace."
+  };
+}
+
+function QueueEmptyState(props: { copy: { title: string; body: string } }) {
+  return (
+    <div className="ops-empty-state ops-queue-empty">
+      <strong>{props.copy.title}</strong>
+      <p>{props.copy.body}</p>
+    </div>
+  );
+}
+
 export function ProductShell(props: ProductShellProps) {
   const router = useRouter();
   const { status, session, signOut, refreshBusinessSession } = useBusinessAuth();
@@ -424,6 +454,16 @@ export function ProductShell(props: ProductShellProps) {
               </div>
             </div>
           </section>
+
+          <section className="ops-sidebar-section ops-sidebar-live">
+            <span className="ops-section-label">Live posture</span>
+            <strong>{attentionJobs.length > 0 ? "Review required" : "Stable"}</strong>
+            <p>
+              {attentionJobs.length > 0
+                ? "Open the review queue and clear blockers before creating more work."
+                : "Queues are in normal operating range."}
+            </p>
+          </section>
         </aside>
 
         <div className="ops-main">
@@ -431,22 +471,23 @@ export function ProductShell(props: ProductShellProps) {
 
           {props.view === "home" ? (
             <section className="ops-stack">
-              <section className="ops-section">
+              <section className="ops-section ops-queue-section">
                 <div className="ops-section-header">
                   <div>
                     <p className="eyebrow">Operations</p>
-                    <h2>Active jobs</h2>
+                    <h2>Active queue</h2>
+                    <p className="ops-detail-note">Live work that is requested, assigned, or moving.</p>
                   </div>
-                  <Link className="button button-secondary" href="/app/jobs">
-                    Jobs
-                  </Link>
+                  <div className="ops-header-actions">
+                    <span className="ops-count-pill">{activeJobs.length} active</span>
+                    <Link className="button button-secondary" href="/app/jobs">
+                      Open Jobs
+                    </Link>
+                  </div>
                 </div>
 
                 {activeJobs.length === 0 ? (
-                  <div className="ops-empty-state">
-                    <strong>No active jobs</strong>
-                    <p>The live queue is clear.</p>
-                  </div>
+                  <QueueEmptyState copy={queueStateCopy("active")} />
                 ) : (
                   <div className="jobs-table" role="table" aria-label="Active jobs">
                     <div className="jobs-table-head" role="row">
@@ -470,7 +511,7 @@ export function ProductShell(props: ProductShellProps) {
                         </div>
                         <div className="jobs-cell jobs-cell-route">
                           <strong>{item.pickupAddress}</strong>
-                          <span>{item.dropoffAddress}</span>
+                          <span>to {item.dropoffAddress}</span>
                         </div>
                         <div className="jobs-cell">
                           <strong>{summarizeDriver(item)}</strong>
@@ -488,19 +529,20 @@ export function ProductShell(props: ProductShellProps) {
                 )}
               </section>
 
-              <section className="ops-section">
+              <section className="ops-section ops-queue-section ops-review-section">
                 <div className="ops-section-header">
                   <div>
                     <p className="eyebrow">Attention</p>
                     <h2>Needs review</h2>
+                    <p className="ops-detail-note">Failed dispatches, no-driver states, and delay signals.</p>
                   </div>
+                  <span className={`ops-count-pill ${attentionJobs.length > 0 ? "ops-count-pill-alert" : ""}`}>
+                    {attentionJobs.length} open
+                  </span>
                 </div>
 
                 {attentionJobs.length === 0 ? (
-                  <div className="ops-empty-state">
-                    <strong>No attention items</strong>
-                    <p>No failed jobs, no-driver states, or delay signals right now.</p>
-                  </div>
+                  <QueueEmptyState copy={queueStateCopy("attention")} />
                 ) : (
                   <div className="attention-list">
                     {attentionJobs.map(({ job: item, reason }) => (
@@ -525,11 +567,12 @@ export function ProductShell(props: ProductShellProps) {
 
           {props.view === "jobs" ? (
             <section className="ops-stack">
-              <section className="ops-section">
+              <section className="ops-section ops-creation-panel">
                 <div className="ops-section-header">
                   <div>
                     <p className="eyebrow">Jobs</p>
-                    <h2>Create job</h2>
+                    <h2>Create delivery</h2>
+                    <p className="ops-detail-note">Enter the operational facts first. Coordinates stay available for controlled pilot overrides.</p>
                   </div>
                 </div>
 
@@ -557,7 +600,7 @@ export function ProductShell(props: ProductShellProps) {
 
                   <div className="form-grid-three">
                     <label>
-                      <span>Distance</span>
+                      <span>Estimated distance</span>
                       <input
                         max="12"
                         min="0.1"
@@ -570,7 +613,7 @@ export function ProductShell(props: ProductShellProps) {
                       />
                     </label>
                     <label>
-                      <span>ETA</span>
+                      <span>Estimated ETA</span>
                       <input
                         min="1"
                         onChange={(event) =>
@@ -598,78 +641,87 @@ export function ProductShell(props: ProductShellProps) {
                     </label>
                   </div>
 
-                  <div className="form-grid-two">
-                    <label>
-                      <span>Pickup coordinates</span>
-                      <div className="coordinate-grid">
-                        <input
-                          onChange={(event) =>
-                            setDeliveryForm((current) => ({ ...current, pickupLatitude: Number(event.target.value) }))
-                          }
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.pickupLatitude}
-                        />
-                        <input
-                          onChange={(event) =>
-                            setDeliveryForm((current) => ({
-                              ...current,
-                              pickupLongitude: Number(event.target.value)
-                            }))
-                          }
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.pickupLongitude}
-                        />
-                      </div>
-                    </label>
-                    <label>
-                      <span>Drop coordinates</span>
-                      <div className="coordinate-grid">
-                        <input
-                          onChange={(event) =>
-                            setDeliveryForm((current) => ({ ...current, dropoffLatitude: Number(event.target.value) }))
-                          }
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.dropoffLatitude}
-                        />
-                        <input
-                          onChange={(event) =>
-                            setDeliveryForm((current) => ({
-                              ...current,
-                              dropoffLongitude: Number(event.target.value)
-                            }))
-                          }
-                          step="0.0001"
-                          type="number"
-                          value={deliveryForm.dropoffLongitude}
-                        />
-                      </div>
-                    </label>
-                  </div>
+                  <details className="ops-advanced-section">
+                    <summary>
+                      <span>Advanced location controls</span>
+                      <small>Coordinate overrides for pilot testing</small>
+                    </summary>
+                    <div className="form-grid-two">
+                      <label>
+                        <span>Pickup coordinates</span>
+                        <div className="coordinate-grid">
+                          <input
+                            aria-label="Pickup latitude"
+                            onChange={(event) =>
+                              setDeliveryForm((current) => ({ ...current, pickupLatitude: Number(event.target.value) }))
+                            }
+                            step="0.0001"
+                            type="number"
+                            value={deliveryForm.pickupLatitude}
+                          />
+                          <input
+                            aria-label="Pickup longitude"
+                            onChange={(event) =>
+                              setDeliveryForm((current) => ({
+                                ...current,
+                                pickupLongitude: Number(event.target.value)
+                              }))
+                            }
+                            step="0.0001"
+                            type="number"
+                            value={deliveryForm.pickupLongitude}
+                          />
+                        </div>
+                      </label>
+                      <label>
+                        <span>Drop coordinates</span>
+                        <div className="coordinate-grid">
+                          <input
+                            aria-label="Drop latitude"
+                            onChange={(event) =>
+                              setDeliveryForm((current) => ({ ...current, dropoffLatitude: Number(event.target.value) }))
+                            }
+                            step="0.0001"
+                            type="number"
+                            value={deliveryForm.dropoffLatitude}
+                          />
+                          <input
+                            aria-label="Drop longitude"
+                            onChange={(event) =>
+                              setDeliveryForm((current) => ({
+                                ...current,
+                                dropoffLongitude: Number(event.target.value)
+                              }))
+                            }
+                            step="0.0001"
+                            type="number"
+                            value={deliveryForm.dropoffLongitude}
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  </details>
 
                   <div className="ops-actions">
                     <button className="button button-primary" disabled={submitting} type="submit">
-                      {submitting ? "Creating..." : "Create Job"}
+                      {submitting ? "Creating delivery..." : "Create delivery"}
                     </button>
                   </div>
                 </form>
               </section>
 
-              <section className="ops-section">
+              <section className="ops-section ops-queue-section">
                 <div className="ops-section-header">
                   <div>
                     <p className="eyebrow">Jobs</p>
                     <h2>All jobs</h2>
+                    <p className="ops-detail-note">Full operational record for this workspace.</p>
                   </div>
+                  <span className="ops-count-pill">{jobsToRender.length} shown</span>
                 </div>
 
                 {jobsToRender.length === 0 ? (
-                  <div className="ops-empty-state">
-                    <strong>No jobs yet</strong>
-                    <p>Create the first delivery request to populate the workspace.</p>
-                  </div>
+                  <QueueEmptyState copy={queueStateCopy("all")} />
                 ) : (
                   <div className="jobs-table" role="table" aria-label="All jobs">
                     <div className="jobs-table-head" role="row">
@@ -715,7 +767,7 @@ export function ProductShell(props: ProductShellProps) {
           {props.view === "job-detail" ? (
             job ? (
               <section className="ops-stack">
-                <section className="ops-section">
+                <section className={`ops-section ops-job-hero ${job.attentionLevel === "BLOCKER" ? "ops-job-hero-blocker" : ""}`}>
                   <div className="ops-job-header">
                     <div>
                       <p className="eyebrow">Job detail</p>
@@ -737,7 +789,7 @@ export function ProductShell(props: ProductShellProps) {
                 </section>
 
                 <div className="ops-detail-grid">
-                  <section className="ops-section">
+                  <section className="ops-section ops-zone">
                     <div className="ops-section-header">
                       <div>
                         <p className="eyebrow">Route</p>
@@ -764,7 +816,7 @@ export function ProductShell(props: ProductShellProps) {
                     </div>
                   </section>
 
-                  <section className="ops-section">
+                  <section className="ops-section ops-zone">
                     <div className="ops-section-header">
                       <div>
                         <p className="eyebrow">Driver</p>
@@ -797,7 +849,7 @@ export function ProductShell(props: ProductShellProps) {
                 </div>
 
                 <div className="ops-detail-grid">
-                  <section className="ops-section">
+                  <section className="ops-section ops-zone">
                     <div className="ops-section-header">
                       <div>
                         <p className="eyebrow">Dispatch</p>
@@ -828,7 +880,7 @@ export function ProductShell(props: ProductShellProps) {
                     )}
                   </section>
 
-                  <section className="ops-section">
+                  <section className="ops-section ops-zone">
                     <div className="ops-section-header">
                       <div>
                         <p className="eyebrow">Timeline</p>
@@ -855,7 +907,7 @@ export function ProductShell(props: ProductShellProps) {
                     )}
                   </section>
 
-                  <section className="ops-section">
+                  <section className="ops-section ops-zone ops-actions-zone">
                     <div className="ops-section-header">
                       <div>
                         <p className="eyebrow">Actions</p>
@@ -918,7 +970,7 @@ export function ProductShell(props: ProductShellProps) {
                 </div>
 
                 <div className="ops-detail-grid">
-                  <section className="ops-section">
+                  <section className="ops-section ops-zone ops-payment-zone">
                     <div className="ops-section-header">
                       <div>
                         <p className="eyebrow">Payment</p>
