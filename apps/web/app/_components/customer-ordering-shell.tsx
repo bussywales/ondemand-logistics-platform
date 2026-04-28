@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getPublicRestaurantMenu } from "../_lib/api";
+import { getPublicRestaurantMenu, submitCustomerOrder } from "../_lib/api";
+import {
+  buildCustomerOrderPayload,
+  canSubmitCustomerCheckout,
+  mapCustomerOrderError
+} from "../_lib/customer-checkout";
 import {
   addCartItem,
   decrementCartItem,
@@ -13,8 +18,15 @@ import {
   removeCartItem,
   type CartState
 } from "../_lib/customer-cart";
-import { formatCurrency, type PublicMenuItemSummary, type PublicRestaurantMenu } from "../_lib/product-state";
+import {
+  formatCurrency,
+  type CustomerCheckoutDetails,
+  type CustomerOrderSubmission,
+  type PublicMenuItemSummary,
+  type PublicRestaurantMenu
+} from "../_lib/product-state";
 import { BrandLogo } from "./brand-logo";
+import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMethod } from "./payment-method-form";
 
 function mapOrderingError(error: unknown) {
   if (!(error instanceof Error)) {
@@ -37,11 +49,24 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
   const [cart, setCart] = useState<CartState>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<CollectedPaymentMethod | null>(null);
+  const [orderResult, setOrderResult] = useState<CustomerOrderSubmission | null>(null);
+  const [checkoutDetails, setCheckoutDetails] = useState<CustomerCheckoutDetails>({
+    name: "",
+    email: "",
+    phone: "",
+    deliveryAddress: "",
+    deliveryNotes: ""
+  });
 
   const cartLines = useMemo(() => getCartLines(cart), [cart]);
   const itemCount = useMemo(() => getCartItemCount(cart), [cart]);
   const subtotalCents = useMemo(() => getCartSubtotalCents(cart), [cart]);
   const currency = cartLines[0]?.item.currency ?? "GBP";
+  const canSubmit = canSubmitCustomerCheckout(checkoutDetails, cart, paymentMethod?.id ?? null);
 
   useEffect(() => {
     let active = true;
@@ -76,6 +101,32 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
 
   function addItem(item: PublicMenuItemSummary) {
     setCart((current) => addCartItem(current, item));
+    setCheckoutError(null);
+  }
+
+  async function handleSubmitOrder() {
+    if (!paymentMethod || !canSubmit) {
+      setCheckoutError("Enter checkout details, add at least one item, and save a payment method first.");
+      return;
+    }
+
+    setSubmittingOrder(true);
+    setCheckoutError(null);
+
+    try {
+      const result = await submitCustomerOrder(
+        slug,
+        buildCustomerOrderPayload(checkoutDetails, cart, paymentMethod.id)
+      );
+      setOrderResult(result);
+      if (result.order.status === "PAYMENT_AUTHORIZED") {
+        setCart({});
+      }
+    } catch (issue) {
+      setCheckoutError(mapCustomerOrderError(issue));
+    } finally {
+      setSubmittingOrder(false);
+    }
   }
 
   return (
@@ -87,7 +138,42 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
         </Link>
       </header>
 
-      {loading ? (
+      {orderResult ? (
+        <section className="customer-order-state customer-order-confirmation">
+          <p className="eyebrow">{orderResult.order.status === "PAYMENT_AUTHORIZED" ? "Order confirmed" : "Payment issue"}</p>
+          <h1>
+            {orderResult.order.status === "PAYMENT_AUTHORIZED"
+              ? "Your order is in the delivery queue."
+              : "The order was created, but payment needs attention."}
+          </h1>
+          <p>
+            {orderResult.order.status === "PAYMENT_AUTHORIZED"
+              ? "Payment is authorized and the restaurant can begin preparing the pilot order."
+              : "No payment was completed. Try again or contact support before the restaurant prepares the order."}
+          </p>
+          <div className="customer-confirmation-grid">
+            <div>
+              <span>Order</span>
+              <strong>{orderResult.order.id}</strong>
+            </div>
+            <div>
+              <span>Job</span>
+              <strong>{orderResult.job.id}</strong>
+            </div>
+            <div>
+              <span>Total</span>
+              <strong>{formatCurrency(orderResult.order.totalCents, orderResult.order.currency)}</strong>
+            </div>
+            <div>
+              <span>Payment</span>
+              <strong>{orderResult.payment.status.replace(/_/g, " ")}</strong>
+            </div>
+          </div>
+          <Link className="button button-secondary" href={`/restaurants/${slug}`}>
+            Back to menu
+          </Link>
+        </section>
+      ) : loading ? (
         <section className="customer-order-state">
           <h1>Loading menu</h1>
           <p>Reading the current pilot restaurant menu.</p>
@@ -203,10 +289,119 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
               <strong>{formatCurrency(subtotalCents, currency)}</strong>
             </div>
 
-            <button className="button button-primary customer-checkout-button" disabled type="button">
-              Checkout
+            <button
+              className="button button-primary customer-checkout-button"
+              disabled={cartLines.length === 0}
+              onClick={() => setCheckoutOpen(true)}
+              type="button"
+            >
+              Continue to checkout
             </button>
-            <p className="customer-next-note">Checkout will connect to the controlled pilot payment step next.</p>
+
+            {checkoutOpen ? (
+              <section className="customer-checkout-form">
+                <div className="customer-checkout-heading">
+                  <p className="eyebrow">Checkout</p>
+                  <h3>Delivery details</h3>
+                </div>
+
+                <label>
+                  <span>Name</span>
+                  <input
+                    disabled={submittingOrder}
+                    onChange={(event) => setCheckoutDetails((current) => ({ ...current, name: event.target.value }))}
+                    value={checkoutDetails.name}
+                  />
+                </label>
+                <label>
+                  <span>Email</span>
+                  <input
+                    disabled={submittingOrder}
+                    onChange={(event) => setCheckoutDetails((current) => ({ ...current, email: event.target.value }))}
+                    type="email"
+                    value={checkoutDetails.email}
+                  />
+                </label>
+                <label>
+                  <span>Phone</span>
+                  <input
+                    disabled={submittingOrder}
+                    onChange={(event) => setCheckoutDetails((current) => ({ ...current, phone: event.target.value }))}
+                    value={checkoutDetails.phone}
+                  />
+                </label>
+                <label>
+                  <span>Delivery address</span>
+                  <textarea
+                    disabled={submittingOrder}
+                    onChange={(event) =>
+                      setCheckoutDetails((current) => ({ ...current, deliveryAddress: event.target.value }))
+                    }
+                    rows={3}
+                    value={checkoutDetails.deliveryAddress}
+                  />
+                </label>
+                <label>
+                  <span>Delivery notes</span>
+                  <textarea
+                    disabled={submittingOrder}
+                    onChange={(event) =>
+                      setCheckoutDetails((current) => ({ ...current, deliveryNotes: event.target.value }))
+                    }
+                    rows={2}
+                    value={checkoutDetails.deliveryNotes}
+                  />
+                </label>
+
+                <div className="customer-checkout-heading">
+                  <p className="eyebrow">Payment</p>
+                  <h3>Authorize payment</h3>
+                  <p>Payment is authorized now and captured after delivery completion.</p>
+                </div>
+
+                {isStripeFrontendConfigured() ? (
+                  <>
+                    <PaymentMethodForm
+                      disabled={submittingOrder}
+                      email={checkoutDetails.email}
+                      onCollected={(method) => {
+                        setPaymentMethod(method);
+                        setCheckoutError(null);
+                      }}
+                    />
+                    {paymentMethod ? (
+                      <p className="customer-payment-saved">
+                        Card saved for this order: {paymentMethod.brand ?? "card"} ending {paymentMethod.last4 ?? "----"}.
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="customer-order-empty">
+                    <strong>Checkout is not configured</strong>
+                    <p>This deployment needs `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` before customers can pay.</p>
+                  </div>
+                )}
+
+                <div className="customer-cart-total">
+                  <span>Pilot total</span>
+                  <strong>{formatCurrency(subtotalCents, currency)}</strong>
+                </div>
+                <p className="customer-next-note">Delivery fee is calculated by the pilot backend when the order is placed.</p>
+
+                {checkoutError ? <p className="form-error">{checkoutError}</p> : null}
+
+                <button
+                  className="button button-primary customer-checkout-button"
+                  disabled={submittingOrder || !canSubmit}
+                  onClick={() => void handleSubmitOrder()}
+                  type="button"
+                >
+                  {submittingOrder ? "Placing paid order..." : "Place paid order"}
+                </button>
+              </section>
+            ) : (
+              <p className="customer-next-note">Checkout collects delivery details and authorizes payment next.</p>
+            )}
           </aside>
         </div>
       ) : null}

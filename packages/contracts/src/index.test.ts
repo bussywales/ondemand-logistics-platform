@@ -11,7 +11,9 @@ import {
   JobStatusSchema,
   PaginatedJobsSchema,
   PaymentStatusSchema,
-  ProofOfDeliveryUploadUrlResponseSchema
+  ProofOfDeliveryUploadUrlResponseSchema,
+  SubmitCustomerOrderResponseSchema,
+  SubmitCustomerOrderSchema
 } from "./index.js";
 
 describe("CreateQuoteSchema", () => {
@@ -121,6 +123,82 @@ describe("Business onboarding schemas", () => {
           }
         }
       ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+});
+
+describe("customer order schemas", () => {
+  it("parses minimum public customer order submissions", () => {
+    const parsed = SubmitCustomerOrderSchema.safeParse({
+      customer: {
+        name: "Ada Customer",
+        email: "ada@example.com",
+        phone: "07500000000"
+      },
+      delivery: {
+        address: "10 Pilot Street, Stoke",
+        notes: null
+      },
+      items: [
+        {
+          menuItemId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          quantity: 2
+        }
+      ],
+      paymentMethodId: "pm_test_123"
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses public customer order submission responses", () => {
+    const parsed = SubmitCustomerOrderResponseSchema.safeParse({
+      order: {
+        id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        restaurantId: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+        jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+        paymentId: "1cc3382c-f799-4856-b537-dbd61c851075",
+        status: "PAYMENT_AUTHORIZED",
+        customerName: "Ada Customer",
+        customerEmail: "ada@example.com",
+        customerPhone: "07500000000",
+        deliveryAddress: "10 Pilot Street, Stoke",
+        deliveryNotes: null,
+        subtotalCents: 2598,
+        deliveryFeeCents: 1582,
+        totalCents: 4180,
+        currency: "GBP",
+        createdAt: new Date().toISOString(),
+        items: [
+          {
+            id: "d1ec1f2e-a2db-4f35-af56-ac5fec00945f",
+            menuItemId: "cc8f103a-05de-4043-9145-7d385e738c9e",
+            name: "Chicken Wrap",
+            quantity: 2,
+            unitPriceCents: 1299,
+            lineTotalCents: 2598,
+            currency: "GBP"
+          }
+        ]
+      },
+      job: {
+        id: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+        status: "REQUESTED",
+        etaMinutes: 22,
+        pickupAddress: "Pilot Kitchen pickup",
+        dropoffAddress: "10 Pilot Street, Stoke"
+      },
+      payment: {
+        id: "1cc3382c-f799-4856-b537-dbd61c851075",
+        status: "AUTHORIZED",
+        amountAuthorizedCents: 4180,
+        amountCapturedCents: 0,
+        totalCents: 4180,
+        currency: "GBP",
+        lastError: null
+      }
     });
 
     expect(parsed.success).toBe(true);

@@ -124,6 +124,59 @@ export type PublicRestaurantMenu = {
   categories: PublicRestaurantMenuCategory[];
 };
 
+export type CustomerCheckoutDetails = {
+  name: string;
+  email: string;
+  phone: string;
+  deliveryAddress: string;
+  deliveryNotes: string;
+};
+
+export type CustomerOrderSubmission = {
+  order: {
+    id: string;
+    restaurantId: string;
+    jobId: string;
+    paymentId: string;
+    status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED";
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    deliveryAddress: string;
+    deliveryNotes: string | null;
+    subtotalCents: number;
+    deliveryFeeCents: number;
+    totalCents: number;
+    currency: string;
+    createdAt: string;
+    items: Array<{
+      id: string;
+      menuItemId: string;
+      name: string;
+      quantity: number;
+      unitPriceCents: number;
+      lineTotalCents: number;
+      currency: string;
+    }>;
+  };
+  job: {
+    id: string;
+    status: JobStatus;
+    etaMinutes: number;
+    pickupAddress: string;
+    dropoffAddress: string;
+  };
+  payment: {
+    id: string;
+    status: PaymentStatus;
+    amountAuthorizedCents: number;
+    amountCapturedCents: number;
+    totalCents: number;
+    currency: string;
+    lastError: string | null;
+  };
+};
+
 export type DriverProfile = {
   role: "driver";
   name: string;

@@ -463,6 +463,97 @@ export const PublicRestaurantMenuSchema = z.object({
 });
 export type PublicRestaurantMenuDto = z.infer<typeof PublicRestaurantMenuSchema>;
 
+export const CustomerOrderStatusSchema = z.enum(["SUBMITTED", "PAYMENT_AUTHORIZED", "PAYMENT_FAILED"]);
+export type CustomerOrderStatus = z.infer<typeof CustomerOrderStatusSchema>;
+
+export const SubmitCustomerOrderItemSchema = z.object({
+  menuItemId: z.string().uuid(),
+  quantity: z.number().int().positive().max(20)
+});
+export type SubmitCustomerOrderItemInput = z.infer<typeof SubmitCustomerOrderItemSchema>;
+
+export const SubmitCustomerOrderSchema = z.object({
+  customer: z.object({
+    name: z.string().min(2).max(160),
+    email: z.string().email(),
+    phone: z.string().min(7).max(32)
+  }),
+  delivery: z.object({
+    address: z.string().min(5).max(500),
+    notes: z.string().min(2).max(1000).nullable().optional()
+  }),
+  items: z.array(SubmitCustomerOrderItemSchema).min(1).max(50),
+  paymentMethodId: z.string().min(3).max(128)
+});
+export type SubmitCustomerOrderInput = z.infer<typeof SubmitCustomerOrderSchema>;
+
+export const PublicCustomerOrderItemSchema = z.object({
+  id: z.string().uuid(),
+  menuItemId: z.string().uuid(),
+  name: z.string().min(2),
+  quantity: z.number().int().positive(),
+  unitPriceCents: CurrencyAmountSchema,
+  lineTotalCents: CurrencyAmountSchema,
+  currency: z.string().length(3)
+});
+export type PublicCustomerOrderItemDto = z.infer<typeof PublicCustomerOrderItemSchema>;
+
+export const PublicCustomerOrderSchema = z.object({
+  id: z.string().uuid(),
+  restaurantId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  paymentId: z.string().uuid(),
+  status: CustomerOrderStatusSchema,
+  customerName: z.string().min(2),
+  customerEmail: z.string().email(),
+  customerPhone: z.string().min(7),
+  deliveryAddress: z.string().min(5),
+  deliveryNotes: z.string().nullable(),
+  subtotalCents: CurrencyAmountSchema,
+  deliveryFeeCents: CurrencyAmountSchema,
+  totalCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  createdAt: IsoDateTimeSchema,
+  items: z.array(PublicCustomerOrderItemSchema)
+});
+export type PublicCustomerOrderDto = z.infer<typeof PublicCustomerOrderSchema>;
+
+export const PublicCustomerOrderJobSchema = z.object({
+  id: z.string().uuid(),
+  status: JobStatusSchema,
+  etaMinutes: EtaMinutesSchema,
+  pickupAddress: z.string(),
+  dropoffAddress: z.string()
+});
+export type PublicCustomerOrderJobDto = z.infer<typeof PublicCustomerOrderJobSchema>;
+
+export const PublicCustomerOrderPaymentSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum([
+    "REQUIRES_PAYMENT_METHOD",
+    "REQUIRES_CONFIRMATION",
+    "AUTHORIZED",
+    "CAPTURED",
+    "PARTIALLY_REFUNDED",
+    "REFUNDED",
+    "FAILED",
+    "CANCELLED"
+  ]),
+  amountAuthorizedCents: CurrencyAmountSchema,
+  amountCapturedCents: CurrencyAmountSchema,
+  totalCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  lastError: z.string().nullable()
+});
+export type PublicCustomerOrderPaymentDto = z.infer<typeof PublicCustomerOrderPaymentSchema>;
+
+export const SubmitCustomerOrderResponseSchema = z.object({
+  order: PublicCustomerOrderSchema,
+  job: PublicCustomerOrderJobSchema,
+  payment: PublicCustomerOrderPaymentSchema
+});
+export type SubmitCustomerOrderResponseDto = z.infer<typeof SubmitCustomerOrderResponseSchema>;
+
 export const PaymentProviderSchema = z.enum(["stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 

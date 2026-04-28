@@ -1,6 +1,7 @@
 import type {
   AppJob,
   BusinessSession,
+  CustomerOrderSubmission,
   DispatchAttempt,
   MenuCategorySummary,
   MenuItemSummary,
@@ -107,6 +108,8 @@ type RestaurantMenuResponse = {
 
 type PublicRestaurantMenuResponse = PublicRestaurantMenu;
 
+type SubmitCustomerOrderResponse = CustomerOrderSubmission;
+
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
 
 function normalizeBaseUrl(value: string) {
@@ -131,6 +134,13 @@ async function apiFetch<T>(session: BusinessSession, path: string, init?: Reques
     const message =
       typeof payload === "object" && payload !== null && "message" in payload
         ? String((payload as { message?: unknown }).message)
+        : typeof payload === "object" &&
+            payload !== null &&
+            "error" in payload &&
+            typeof (payload as { error?: unknown }).error === "object" &&
+            (payload as { error?: Record<string, unknown> }).error !== null &&
+            "message" in ((payload as { error?: Record<string, unknown> }).error ?? {})
+          ? String((payload as { error: { message?: unknown } }).error.message)
         : `Request failed with status ${response.status}`;
     throw new Error(message);
   }
@@ -155,6 +165,13 @@ async function publicApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const message =
       typeof payload === "object" && payload !== null && "message" in payload
         ? String((payload as { message?: unknown }).message)
+        : typeof payload === "object" &&
+            payload !== null &&
+            "error" in payload &&
+            typeof (payload as { error?: unknown }).error === "object" &&
+            (payload as { error?: Record<string, unknown> }).error !== null &&
+            "message" in ((payload as { error?: Record<string, unknown> }).error ?? {})
+          ? String((payload as { error: { message?: unknown } }).error.message)
         : `Request failed with status ${response.status}`;
     throw new Error(message);
   }
@@ -313,6 +330,21 @@ export async function getRestaurantMenu(session: BusinessSession, restaurantId: 
 export async function getPublicRestaurantMenu(slug: string): Promise<PublicRestaurantMenu> {
   return publicApiFetch<PublicRestaurantMenuResponse>(`/v1/restaurants/${encodeURIComponent(slug)}/menu`, {
     method: "GET"
+  });
+}
+
+export async function submitCustomerOrder(slug: string, input: {
+  customer: { name: string; email: string; phone: string };
+  delivery: { address: string; notes: string | null };
+  items: Array<{ menuItemId: string; quantity: number }>;
+  paymentMethodId: string;
+}): Promise<CustomerOrderSubmission> {
+  return publicApiFetch<SubmitCustomerOrderResponse>(`/v1/restaurants/${encodeURIComponent(slug)}/orders`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-customer-order`
+    },
+    body: JSON.stringify(input)
   });
 }
 

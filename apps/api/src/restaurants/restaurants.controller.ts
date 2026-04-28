@@ -83,4 +83,22 @@ export class PublicRestaurantsController {
   async getPublicRestaurantMenu(@Param("slug") slug: string) {
     return this.restaurantsService.getPublicRestaurantMenu(slug);
   }
+
+  @Public()
+  @Post(":slug/orders")
+  @HttpCode(201)
+  async submitPublicCustomerOrder(
+    @Param("slug") slug: string,
+    @Body() body: unknown,
+    @IdempotencyKey() idempotencyKey: string | undefined,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.restaurantsService.submitPublicCustomerOrder(slug, body, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
 }

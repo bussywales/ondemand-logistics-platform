@@ -92,7 +92,7 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
         <input
           disabled={props.disabled || submitting}
           onChange={(event) => setCardholderName(event.target.value)}
-          placeholder="Business operator"
+          placeholder="Cardholder name"
           value={cardholderName}
         />
       </label>

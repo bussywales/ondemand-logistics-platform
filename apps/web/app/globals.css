@@ -1553,6 +1553,9 @@ h3 {
 .customer-menu-category,
 .customer-menu-items,
 .customer-cart-lines,
+.customer-checkout-form,
+.customer-checkout-heading,
+.customer-confirmation-grid,
 .customer-order-state,
 .customer-order-empty {
   display: grid;
@@ -1572,8 +1575,46 @@ h3 {
 }
 
 .customer-menu-items,
-.customer-cart-lines {
+.customer-cart-lines,
+.customer-checkout-form {
   gap: 0;
+}
+
+.customer-checkout-form {
+  gap: 0.9rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.customer-checkout-form label {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 700;
+}
+
+.customer-checkout-form input,
+.customer-checkout-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  padding: 0.85rem 0.9rem;
+}
+
+.customer-checkout-heading {
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+}
+
+.customer-checkout-heading h3 {
+  font-size: 1.1rem;
+}
+
+.customer-checkout-heading p:last-child,
+.customer-payment-saved {
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .customer-menu-item,
@@ -1669,6 +1710,35 @@ h3 {
   font-size: clamp(2.2rem, 6vw, 4rem);
 }
 
+.customer-order-confirmation {
+  max-width: 820px;
+}
+
+.customer-confirmation-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.customer-confirmation-grid div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.customer-confirmation-grid span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.customer-confirmation-grid strong {
+  overflow-wrap: anywhere;
+}
+
 .customer-order-empty {
   gap: 0.3rem;
   padding: 1rem 0;
@@ -1691,7 +1761,8 @@ h3 {
   .menu-item-row,
   .customer-order-layout,
   .customer-menu-item,
-  .customer-cart-line {
+  .customer-cart-line,
+  .customer-confirmation-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1704,7 +1775,8 @@ h3 {
   .menu-item-row,
   .customer-order-layout,
   .customer-menu-item,
-  .customer-cart-line {
+  .customer-cart-line,
+  .customer-confirmation-grid {
     display: grid;
   }
 

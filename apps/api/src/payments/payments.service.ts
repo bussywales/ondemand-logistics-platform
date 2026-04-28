@@ -361,75 +361,32 @@ export class PaymentsService {
       execute: async (client) => {
         const requestId = getRequestContext()?.requestId ?? randomUUID();
         const context = await this.loadAuthorizedPaymentContextForUpdate(client, jobId, userId);
-
-        if (["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"].includes(context.payment_status)) {
-          throw new ConflictException("payment_not_authorizable");
-        }
-
-        try {
-          const snapshot = await this.provider.authorizePaymentIntent({
-            providerPaymentIntentId: context.provider_payment_intent_id,
-            paymentMethodId: parsed.data.paymentMethodId,
-            amountCents: context.customer_total_cents,
-            currency: context.currency,
-            jobId,
-            paymentId: context.payment_id,
-            consumerId: context.consumer_id,
-            description: `Shipwright job ${jobId}`,
-            idempotencyKey: `authorize:${context.payment_id}:${idempotencyKey}`
-          });
-
-          const updated = await this.updatePaymentFromSnapshot(client, context.payment_id, snapshot, null);
-          await this.insertPaymentEvent(client, {
-            paymentId: context.payment_id,
-            jobId,
-            eventType: snapshot.status === "AUTHORIZED" ? "PAYMENT_AUTHORIZED" : "PAYMENT_AUTHORIZATION_UPDATED",
-            previousStatus: context.payment_status,
-            nextStatus: snapshot.status,
-            providerEventId: null,
-            payload: {
-              requestId,
-              paymentMethodId: parsed.data.paymentMethodId,
-              providerPaymentIntentId: snapshot.providerPaymentIntentId
-            }
-          });
-
-          return {
-            responseCode: 200,
-            body: this.mapPayment(updated)
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "payment_authorization_failed";
-          const failed = await client.query<PaymentRow>(
-            `update public.payments
-             set status = 'FAILED',
-                 last_error = $1,
-                 updated_at = now()
-             where id = $2
-             returning ${PAYMENT_COLUMNS.replaceAll("p.", "")}`,
-            [message, context.payment_id]
-          );
-
-          await this.insertPaymentEvent(client, {
-            paymentId: context.payment_id,
-            jobId,
-            eventType: "PAYMENT_AUTHORIZATION_FAILED",
-            previousStatus: context.payment_status,
-            nextStatus: "FAILED",
-            providerEventId: null,
-            payload: {
-              requestId,
-              error: message
-            }
-          });
-
-          return {
-            responseCode: 409,
-            body: this.mapPayment(failed.rows[0])
-          };
-        }
+        return this.authorizeLoadedPaymentContext(client, context, {
+          jobId,
+          paymentMethodId: parsed.data.paymentMethodId,
+          idempotencyKey,
+          requestId
+        });
       }
     });
+  }
+
+  async authorizeCustomerOrderPayment(
+    client: PoolClient,
+    input: {
+      jobId: string;
+      consumerId: string;
+      paymentMethodId: string;
+      idempotencyKey: string;
+      requestId: string;
+    }
+  ) {
+    if (!this.provider.isConfigured()) {
+      throw new ServiceUnavailableException("stripe_not_configured");
+    }
+
+    const context = await this.loadConsumerPaymentContextForUpdate(client, input.jobId, input.consumerId);
+    return this.authorizeLoadedPaymentContext(client, context, input);
   }
 
   async handleStripeWebhook(rawBody: Buffer | string, signature: string): Promise<StripeWebhookAck> {
@@ -628,6 +585,122 @@ export class PaymentsService {
     }
 
     return result.rows[0];
+  }
+
+  private async loadConsumerPaymentContextForUpdate(client: PoolClient, jobId: string, consumerId: string) {
+    const result = await client.query<JobPaymentContextRow>(
+      `select p.id as payment_id,
+              p.job_id,
+              p.provider,
+              p.provider_payment_intent_id,
+              p.status as payment_status,
+              p.amount_authorized_cents,
+              p.amount_captured_cents,
+              p.amount_refunded_cents,
+              p.currency,
+              p.customer_total_cents,
+              p.platform_fee_cents,
+              p.payout_gross_cents,
+              p.settlement_snapshot,
+              p.client_secret,
+              p.last_error,
+              p.created_at as payment_created_at,
+              p.updated_at as payment_updated_at,
+              j.status as job_status,
+              j.consumer_id,
+              j.assigned_driver_id,
+              j.org_id
+       from public.payments p
+       join public.jobs j on j.id = p.job_id
+       where p.job_id = $1
+         and j.consumer_id = $2
+       for update of p`,
+      [jobId, consumerId]
+    );
+
+    if ((result.rowCount ?? 0) !== 1) {
+      throw new NotFoundException("payment_not_found");
+    }
+
+    return result.rows[0];
+  }
+
+  private async authorizeLoadedPaymentContext(
+    client: PoolClient,
+    context: JobPaymentContextRow,
+    input: {
+      jobId: string;
+      paymentMethodId: string;
+      idempotencyKey: string;
+      requestId: string;
+    }
+  ) {
+    if (["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"].includes(context.payment_status)) {
+      throw new ConflictException("payment_not_authorizable");
+    }
+
+    try {
+      const snapshot = await this.provider.authorizePaymentIntent({
+        providerPaymentIntentId: context.provider_payment_intent_id,
+        paymentMethodId: input.paymentMethodId,
+        amountCents: context.customer_total_cents,
+        currency: context.currency,
+        jobId: input.jobId,
+        paymentId: context.payment_id,
+        consumerId: context.consumer_id,
+        description: `Shipwright job ${input.jobId}`,
+        idempotencyKey: `authorize:${context.payment_id}:${input.idempotencyKey}`
+      });
+
+      const updated = await this.updatePaymentFromSnapshot(client, context.payment_id, snapshot, null);
+      await this.insertPaymentEvent(client, {
+        paymentId: context.payment_id,
+        jobId: input.jobId,
+        eventType: snapshot.status === "AUTHORIZED" ? "PAYMENT_AUTHORIZED" : "PAYMENT_AUTHORIZATION_UPDATED",
+        previousStatus: context.payment_status,
+        nextStatus: snapshot.status,
+        providerEventId: null,
+        payload: {
+          requestId: input.requestId,
+          paymentMethodId: input.paymentMethodId,
+          providerPaymentIntentId: snapshot.providerPaymentIntentId
+        }
+      });
+
+      return {
+        responseCode: 200,
+        body: this.mapPayment(updated)
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "payment_authorization_failed";
+      const failed = await client.query<PaymentRow>(
+        `update public.payments
+         set status = 'FAILED',
+             last_error = $1,
+             updated_at = now()
+         where id = $2
+         returning ${PAYMENT_COLUMNS.replaceAll("p.", "")}`,
+        [message, context.payment_id]
+      );
+
+      await this.insertPaymentEvent(client, {
+        paymentId: context.payment_id,
+        jobId: input.jobId,
+        eventType: "PAYMENT_AUTHORIZATION_FAILED",
+        previousStatus: context.payment_status,
+        nextStatus: "FAILED",
+        providerEventId: null,
+        payload: {
+          requestId: input.requestId,
+          error: message
+        }
+      });
+
+      return {
+        responseCode: 409,
+        body: this.mapPayment(failed.rows[0])
+      };
+    }
   }
 
   private async updatePaymentFromSnapshot(
