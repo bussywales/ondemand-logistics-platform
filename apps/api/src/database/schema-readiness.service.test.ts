@@ -114,4 +114,48 @@ describe("SchemaReadinessService", () => {
       missingElements: expect.arrayContaining(["public.restaurants (table missing)"])
     } satisfies Partial<SchemaCompatibilityError>);
   });
+
+  it("fails when the customer order foundation schema is missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: Object.entries(CRITICAL_SCHEMA_REQUIREMENTS).flatMap(([, group]) =>
+          Object.keys(group)
+            .filter((table_name) => table_name !== "customer_orders")
+            .map((table_name) => ({ table_name }))
+        )
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter((row) => row.table_name !== "customer_orders")
+      });
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.customer_orders (table missing)"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
+
+  it("fails when a customer order item column is missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: Object.entries(CRITICAL_SCHEMA_REQUIREMENTS).flatMap(([, group]) =>
+          Object.keys(group).map((table_name) => ({ table_name }))
+        )
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter(
+          (row) => !(row.table_name === "customer_order_items" && row.column_name === "line_total_cents")
+        )
+      });
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.customer_order_items.line_total_cents"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
 });

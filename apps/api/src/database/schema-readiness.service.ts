@@ -86,6 +86,39 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "updated_at"
     ]
   },
+  customerOrders: {
+    customer_orders: [
+      "id",
+      "restaurant_id",
+      "org_id",
+      "job_id",
+      "payment_id",
+      "customer_user_id",
+      "customer_name",
+      "customer_email",
+      "customer_phone",
+      "delivery_address",
+      "delivery_notes",
+      "status",
+      "subtotal_cents",
+      "delivery_fee_cents",
+      "total_cents",
+      "currency",
+      "created_at",
+      "updated_at"
+    ],
+    customer_order_items: [
+      "id",
+      "order_id",
+      "menu_item_id",
+      "name",
+      "quantity",
+      "unit_price_cents",
+      "line_total_cents",
+      "currency",
+      "created_at"
+    ]
+  },
   payments: {
     payments: [
       "id",
