@@ -3,6 +3,7 @@
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useMemo, useState, type FormEvent } from 'react';
+import { normalizeBillingPostcode } from '../_lib/billing-postcode';
 
 export type CollectedPaymentMethod = {
   id: string;
@@ -22,6 +23,7 @@ const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 const cardElementOptions = {
+  hidePostalCode: true,
   style: {
     base: {
       color: '#0a0a0a',
@@ -41,6 +43,7 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [cardholderName, setCardholderName] = useState('');
+  const [billingPostcode, setBillingPostcode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -59,10 +62,15 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
     setSubmitting(true);
     setError(null);
 
+    const normalizedPostcode = normalizeBillingPostcode(billingPostcode);
     const result = await stripe.createPaymentMethod({
       type: 'card',
       card,
       billing_details: {
+        address: {
+          country: 'GB',
+          postal_code: normalizedPostcode || undefined
+        },
         email: props.email,
         name: cardholderName.trim() || undefined
       }
@@ -102,6 +110,19 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
         <div className="card-element-shell">
           <CardElement options={cardElementOptions} />
         </div>
+      </label>
+
+      <label className="ops-field">
+        <span>Billing postcode</span>
+        <input
+          autoComplete="postal-code"
+          disabled={props.disabled || submitting}
+          inputMode="text"
+          onChange={(event) => setBillingPostcode(event.target.value)}
+          placeholder="SW1A 1AA"
+          value={billingPostcode}
+        />
+        <span className="support-note">UK postcode format is supported. This is sent to Stripe as billing postcode.</span>
       </label>
 
       {error ? <p className="form-error">{error}</p> : null}
