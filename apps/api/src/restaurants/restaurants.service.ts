@@ -57,6 +57,15 @@ type MenuItemRow = {
   updated_at: string | Date;
 };
 
+function normalizeRestaurantSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
 @Injectable()
 export class RestaurantsService {
   private readonly logger = createLogger({ name: "api-restaurants" });
@@ -64,7 +73,17 @@ export class RestaurantsService {
   constructor(private readonly pg: PgService) {}
 
   async createRestaurant(input: unknown, userId: string, idempotencyKey: string) {
-    const parsed = CreateRestaurantSchema.safeParse(input);
+    const inputRecord =
+      typeof input === "object" && input !== null ? (input as Record<string, unknown>) : null;
+    const normalizedInput =
+      inputRecord
+        ? {
+            ...inputRecord,
+            slug: typeof inputRecord.slug === "string" ? normalizeRestaurantSlug(inputRecord.slug) : inputRecord.slug
+          }
+        : input;
+
+    const parsed = CreateRestaurantSchema.safeParse(normalizedInput);
     if (!parsed.success) {
       throw new UnprocessableEntityException({
         message: "invalid_restaurant_payload",
@@ -80,6 +99,18 @@ export class RestaurantsService {
       idempotencyKey,
       execute: async (client) => {
         try {
+          const existing = await client.query<{ id: string }>(
+            `select id
+             from public.restaurants
+             where slug = $1
+             limit 1`,
+            [parsed.data.slug]
+          );
+
+          if ((existing.rowCount ?? 0) > 0) {
+            throw new ConflictException("restaurant_slug_already_exists");
+          }
+
           const inserted = await client.query<RestaurantRow>(
             `insert into public.restaurants (
                org_id,

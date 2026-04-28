@@ -29,6 +29,7 @@ pnpm --filter api smoke:staging
 ```text
 PASS GET /healthz | status=200
 PASS GET /readyz | status=200
+PASS GET /v1/business/restaurants | status=200
 PASS GET /v1/business/jobs?page=1&limit=20 | status=200
 PASS GET /v1/driver/me/offers | status=200
 PASS smoke:staging | required checks passed

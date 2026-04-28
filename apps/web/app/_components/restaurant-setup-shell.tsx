@@ -18,14 +18,34 @@ import {
   type RestaurantMenu,
   type RestaurantSummary
 } from "../_lib/product-state";
+import { normalizeRestaurantSlug } from "../_lib/restaurant-slug";
 
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64);
+function mapRestaurantSetupError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "Unable to create the pilot restaurant.";
+  }
+
+  if (error.message === "restaurant_slug_already_exists") {
+    return "That restaurant slug is already in use. Choose a different slug before continuing.";
+  }
+
+  if (error.message === "invalid_restaurant_payload") {
+    return "Enter a valid restaurant name and slug before creating the pilot merchant.";
+  }
+
+  return error.message;
+}
+
+function mapRestaurantReadError(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  if (/^Request failed with status \d+$/.test(error.message)) {
+    return fallback;
+  }
+
+  return error.message;
 }
 
 export function RestaurantSetupShell() {
@@ -39,7 +59,7 @@ export function RestaurantSetupShell() {
   const [restaurantSubmitting, setRestaurantSubmitting] = useState(false);
   const [categorySubmitting, setCategorySubmitting] = useState(false);
   const [itemSubmitting, setItemSubmitting] = useState(false);
-  const [restaurantForm, setRestaurantForm] = useState({ name: "", slug: "" });
+  const [restaurantForm, setRestaurantForm] = useState({ name: "", slug: "", slugManuallyEdited: false });
   const [categoryForm, setCategoryForm] = useState({ name: "", sortOrder: 0 });
   const [itemForm, setItemForm] = useState({
     categoryId: "",
@@ -55,6 +75,17 @@ export function RestaurantSetupShell() {
     () => restaurants.find((restaurant) => restaurant.id === selectedRestaurantId) ?? null,
     [restaurants, selectedRestaurantId]
   );
+  const restaurantSlugError = useMemo(() => {
+    if (!restaurantForm.slug) {
+      return "Slug is required.";
+    }
+
+    if (restaurants.some((restaurant) => restaurant.slug === restaurantForm.slug)) {
+      return "Slug already exists in this workspace.";
+    }
+
+    return null;
+  }, [restaurantForm.slug, restaurants]);
 
   useEffect(() => {
     if (!session) {
@@ -92,9 +123,11 @@ export function RestaurantSetupShell() {
     try {
       const items = await listRestaurants(currentSession);
       setRestaurants(items);
-      setSelectedRestaurantId((current) => current ?? items[0]?.id ?? null);
+      setSelectedRestaurantId((current) =>
+        current && items.some((restaurant) => restaurant.id === current) ? current : items[0]?.id ?? null
+      );
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to load restaurants.");
+      setError(mapRestaurantReadError(issue, "Unable to load restaurants right now. Refresh and try again."));
     } finally {
       setLoading(false);
     }
@@ -108,7 +141,7 @@ export function RestaurantSetupShell() {
       const nextMenu = await getRestaurantMenu(currentSession, restaurantId);
       setMenu(nextMenu);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to load the restaurant menu.");
+      setError(mapRestaurantReadError(issue, "Unable to load the restaurant menu right now. Refresh and try again."));
     } finally {
       setRefreshing(false);
     }
@@ -132,10 +165,10 @@ export function RestaurantSetupShell() {
 
       setRestaurants((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setSelectedRestaurantId(created.id);
-      setRestaurantForm({ name: "", slug: "" });
+      setRestaurantForm({ name: "", slug: "", slugManuallyEdited: false });
       await loadMenu(session, created.id);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to create the pilot restaurant.");
+      setError(mapRestaurantSetupError(issue));
     } finally {
       setRestaurantSubmitting(false);
     }
@@ -328,7 +361,8 @@ export function RestaurantSetupShell() {
                           const nextName = event.target.value;
                           return {
                             name: nextName,
-                            slug: current.slug ? current.slug : slugify(nextName)
+                            slug: current.slugManuallyEdited ? current.slug : normalizeRestaurantSlug(nextName),
+                            slugManuallyEdited: current.slugManuallyEdited
                           };
                         })
                       }
@@ -341,16 +375,24 @@ export function RestaurantSetupShell() {
                       onChange={(event) =>
                         setRestaurantForm((current) => ({
                           ...current,
-                          slug: slugify(event.target.value)
+                          slug: normalizeRestaurantSlug(event.target.value),
+                          slugManuallyEdited: true
                         }))
                       }
                       value={restaurantForm.slug}
                     />
+                    <small>{restaurantForm.slugManuallyEdited ? "Manual slug override enabled." : "Slug derives from the restaurant name until you edit it."}</small>
                   </label>
                 </div>
 
+                {restaurantSlugError ? <p className="form-error-text">{restaurantSlugError}</p> : null}
+
                 <div className="ops-actions">
-                  <button className="button button-primary" disabled={restaurantSubmitting} type="submit">
+                  <button
+                    className="button button-primary"
+                    disabled={restaurantSubmitting || !restaurantForm.name.trim() || Boolean(restaurantSlugError)}
+                    type="submit"
+                  >
                     {restaurantSubmitting ? "Creating restaurant..." : "Create Restaurant"}
                   </button>
                 </div>

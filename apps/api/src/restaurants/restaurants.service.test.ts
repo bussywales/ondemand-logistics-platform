@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { RestaurantsService } from "./restaurants.service.js";
 
@@ -55,9 +55,43 @@ function itemRow(overrides: Record<string, unknown> = {}) {
 }
 
 describe("RestaurantsService", () => {
+  it("lists restaurants for the current operator context", async () => {
+    const createdAt = new Date("2026-04-28T10:00:00.000Z");
+    const query = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [restaurantRow({ created_at: createdAt, updated_at: createdAt })]
+    });
+
+    const service = new RestaurantsService({ query } as never);
+    const result = await service.listRestaurants(USER_ID);
+
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("from public.restaurants r"), [USER_ID]);
+    expect(result).toEqual({
+      items: [
+        expect.objectContaining({
+          id: RESTAURANT_ID,
+          slug: "pilot-kitchen",
+          createdAt: createdAt.toISOString()
+        })
+      ]
+    });
+  });
+
+  it("returns an empty restaurant list when the operator has no restaurants yet", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const service = new RestaurantsService({ query } as never);
+    const result = await service.listRestaurants(USER_ID);
+
+    expect(result).toEqual({ items: [] });
+  });
+
   it("creates a restaurant for an operator org", async () => {
     const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [{ role: "BUSINESS_OPERATOR" }] });
-    const clientQuery = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] });
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] });
     const pg = {
       query,
       withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
@@ -68,7 +102,7 @@ describe("RestaurantsService", () => {
 
     const service = new RestaurantsService(pg as never);
     const result = await service.createRestaurant(
-      { orgId: ORG_ID, name: "Pilot Kitchen", slug: "pilot-kitchen" },
+      { orgId: ORG_ID, name: "Pilot Kitchen", slug: "Pilot Kitchen" },
       USER_ID,
       "idem-restaurant-1"
     );
@@ -76,6 +110,30 @@ describe("RestaurantsService", () => {
     expect(result.body).toEqual(
       expect.objectContaining({ id: RESTAURANT_ID, orgId: ORG_ID, slug: "pilot-kitchen", status: "ACTIVE" })
     );
+    expect(clientQuery).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("from public.restaurants"),
+      ["pilot-kitchen"]
+    );
+  });
+
+  it("rejects duplicate restaurant slugs before insert", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [{ role: "BUSINESS_OPERATOR" }] });
+    const clientQuery = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [{ id: RESTAURANT_ID }] });
+    const pg = {
+      query,
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => execute({ query: clientQuery }))
+    };
+
+    const service = new RestaurantsService(pg as never);
+
+    await expect(
+      service.createRestaurant(
+        { orgId: ORG_ID, name: "Pilot Kitchen", slug: "pilot-kitchen" },
+        USER_ID,
+        "idem-restaurant-dup"
+      )
+    ).rejects.toThrow(ConflictException);
   });
 
   it("blocks restaurant creation when the actor is not an org operator", async () => {

@@ -34,6 +34,16 @@ async function main() {
   }
 
   console.log("STEP 4 | smoke | checking authenticated business critical path");
+  const businessRestaurants = await runCheck(
+    "GET /v1/business/restaurants",
+    `${baseUrl}/v1/business/restaurants`,
+    {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${businessToken}`
+      }
+    }
+  );
   const businessJobs = await runCheck(
     "GET /v1/business/jobs?page=1&limit=20",
     `${baseUrl}/v1/business/jobs?page=1&limit=20`,
@@ -44,6 +54,12 @@ async function main() {
       }
     }
   );
+
+  if (businessRestaurants.ok) {
+    logPass("GET /v1/business/restaurants", businessRestaurants);
+  } else {
+    logFail("GET /v1/business/restaurants", businessRestaurants);
+  }
 
   if (businessJobs.ok) {
     logPass("GET /v1/business/jobs?page=1&limit=20", businessJobs);
@@ -75,7 +91,7 @@ async function main() {
   }
 
   console.log("STEP 5 | release decision");
-  if (!healthz.ok || !readyz.ok || !businessJobs.ok || !driverSmokeOk) {
+  if (!healthz.ok || !readyz.ok || !businessRestaurants.ok || !businessJobs.ok || !driverSmokeOk) {
     console.error("FAIL verify:staging | staging is not healthy for release");
     process.exit(1);
   }

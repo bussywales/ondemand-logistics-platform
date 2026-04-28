@@ -69,6 +69,23 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "eta_minutes_snapshot"
     ]
   },
+  restaurants: {
+    restaurants: ["id", "org_id", "name", "slug", "status", "created_at", "updated_at"],
+    menu_categories: ["id", "restaurant_id", "name", "sort_order", "is_active", "created_at", "updated_at"],
+    menu_items: [
+      "id",
+      "restaurant_id",
+      "category_id",
+      "name",
+      "description",
+      "price_cents",
+      "currency",
+      "is_active",
+      "sort_order",
+      "created_at",
+      "updated_at"
+    ]
+  },
   payments: {
     payments: [
       "id",

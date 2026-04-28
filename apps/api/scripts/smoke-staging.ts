@@ -126,6 +126,12 @@ export async function runSmokeStaging() {
   const results = await Promise.all([
     runCheck("GET /healthz", `${baseUrl}/healthz`, { method: "GET" }),
     runCheck("GET /readyz", `${baseUrl}/readyz`, { method: "GET" }),
+    runCheck("GET /v1/business/restaurants", `${baseUrl}/v1/business/restaurants`, {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${businessToken}`
+      }
+    }),
     runCheck("GET /v1/business/jobs?page=1&limit=20", `${baseUrl}/v1/business/jobs?page=1&limit=20`, {
       method: "GET",
       headers: {
@@ -134,11 +140,12 @@ export async function runSmokeStaging() {
     })
   ]);
 
-  const [healthz, readyz, businessJobs] = results;
+  const [healthz, readyz, businessRestaurants, businessJobs] = results;
 
   for (const [name, result] of [
     ["GET /healthz", healthz],
     ["GET /readyz", readyz],
+    ["GET /v1/business/restaurants", businessRestaurants],
     ["GET /v1/business/jobs?page=1&limit=20", businessJobs]
   ] as const) {
     if (result.ok) {
@@ -173,7 +180,7 @@ export async function runSmokeStaging() {
     logSkip("admin smoke", "SMOKE_ADMIN_BEARER_TOKEN not set");
   }
 
-  if (!healthz.ok || !readyz.ok || !businessJobs.ok) {
+  if (!healthz.ok || !readyz.ok || !businessRestaurants.ok || !businessJobs.ok) {
     return false;
   }
 

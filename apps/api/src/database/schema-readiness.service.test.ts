@@ -92,4 +92,26 @@ describe("SchemaReadinessService", () => {
       missingElements: expect.arrayContaining(["public.job_offers.expires_at"])
     } satisfies Partial<SchemaCompatibilityError>);
   });
+
+  it("fails when the restaurant foundation schema is missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: Object.entries(CRITICAL_SCHEMA_REQUIREMENTS).flatMap(([, group]) =>
+          Object.keys(group)
+            .filter((table_name) => table_name !== "restaurants")
+            .map((table_name) => ({ table_name }))
+        )
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter((row) => row.table_name !== "restaurants")
+      });
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.restaurants (table missing)"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
 });
