@@ -4636,3 +4636,37 @@ select:hover,
     padding: 1.5rem;
   }
 }
+
+/* Fix compact live setup metrics inside the dark merchant rail. */
+.merchant-sidebar .merchant-side-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.merchant-sidebar .merchant-side-metrics div {
+  min-width: 0;
+  gap: 0.22rem;
+  padding: 0.65rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.merchant-sidebar .merchant-side-metrics strong {
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.merchant-sidebar .merchant-side-metrics span {
+  overflow-wrap: anywhere;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
