@@ -4670,3 +4670,39 @@ select:hover,
   line-height: 1.15;
   text-transform: uppercase;
 }
+
+/* Keep long UUID job IDs contained in operational tables. */
+.jobs-table-head,
+.jobs-table-row {
+  grid-template-columns: minmax(180px, 1.15fr) minmax(132px, 0.7fr) minmax(160px, 1.2fr) minmax(160px, 1.2fr) minmax(82px, 0.55fr) minmax(64px, 0.42fr);
+}
+
+.jobs-cell,
+.jobs-cell-id,
+.jobs-cell-route {
+  min-width: 0;
+}
+
+.jobs-cell-id strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.18;
+}
+
+.jobs-cell-id span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.jobs-cell .status-badge {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.jobs-cell-route strong {
+  white-space: normal;
+}
