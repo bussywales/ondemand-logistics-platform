@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { determineCancellationSettlement, mapStripePaymentIntentStatus, mapStripeRefundStatus } from "./index.js";
+import {
+  determineCancellationSettlement,
+  manualCardPaymentMethodOptions,
+  mapStripePaymentIntentStatus,
+  mapStripeRefundStatus
+} from "./index.js";
 
 describe("determineCancellationSettlement", () => {
   it("returns full release before assignment", () => {
@@ -64,5 +69,16 @@ describe("status mappers", () => {
   it("maps Stripe refund status", () => {
     expect(mapStripeRefundStatus({ status: "succeeded" } as never)).toBe("SUCCEEDED");
     expect(mapStripeRefundStatus({ status: "pending" } as never)).toBe("PENDING");
+  });
+});
+
+describe("Stripe payment intent options", () => {
+  it("uses card payment methods for manual capture without automatic payment method params", () => {
+    expect(manualCardPaymentMethodOptions()).toEqual({
+      capture_method: "manual",
+      confirmation_method: "manual",
+      payment_method_types: ["card"]
+    });
+    expect(manualCardPaymentMethodOptions()).not.toHaveProperty("automatic_payment_methods");
   });
 });

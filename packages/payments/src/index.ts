@@ -167,6 +167,17 @@ export function paymentIntentToSnapshot(
   };
 }
 
+export function manualCardPaymentMethodOptions(): Pick<
+  Stripe.PaymentIntentCreateParams,
+  "capture_method" | "confirmation_method" | "payment_method_types"
+> {
+  return {
+    capture_method: "manual",
+    confirmation_method: "manual",
+    payment_method_types: ["card"]
+  };
+}
+
 function toRefundSnapshot(refund: Stripe.Refund | Stripe.Response<Stripe.Refund>): ProviderRefundSnapshot {
   return {
     provider: "stripe",
@@ -212,13 +223,8 @@ export class StripePaymentProvider implements PaymentProvider {
       {
         amount: input.amountCents,
         currency: input.currency,
-        capture_method: "manual",
-        confirmation_method: "manual",
+        ...manualCardPaymentMethodOptions(),
         confirm: false,
-        automatic_payment_methods: {
-          enabled: true,
-          allow_redirects: "never"
-        },
         metadata: {
           job_id: input.jobId,
           payment_id: input.paymentId,
@@ -248,13 +254,8 @@ export class StripePaymentProvider implements PaymentProvider {
           {
             amount: input.amountCents,
             currency: input.currency,
-            capture_method: "manual",
-            confirmation_method: "manual",
+            ...manualCardPaymentMethodOptions(),
             confirm: true,
-            automatic_payment_methods: {
-              enabled: true,
-              allow_redirects: "never"
-            },
             payment_method: input.paymentMethodId,
             off_session: true,
             metadata: {
