@@ -1,22 +1,26 @@
 import Link from "next/link";
 import { BrandLogo } from "./_components/brand-logo";
+import { ShipWrightIcon, type ShipWrightIconName } from "./_components/shipwright-icon";
 
 const proofPoints = ["Pilot-ready operations", "Auth-backed workspaces", "Stripe payment rail", "Dispatch queue intelligence"];
 
 const benefits = [
   {
+    icon: "queue",
     title: "Control every live job",
     body: "See pickup, drop, status, driver assignment, ETA, and payment posture in one command surface."
   },
   {
+    icon: "warning",
     title: "Resolve exceptions faster",
     body: "Needs Review prioritises blockers, diagnoses the issue, and points operators to the next safe action."
   },
   {
+    icon: "restaurant",
     title: "Launch local delivery without chaos",
     body: "Restaurant setup, menu loading, paid orders, dispatch, tracking, and completion follow one controlled path."
   }
-];
+] satisfies Array<{ body: string; icon: ShipWrightIconName; title: string }>;
 
 const steps = [
   { title: "Activate merchant", body: "Create the business workspace, restaurant profile, and orderable menu." },
@@ -52,7 +56,10 @@ function ProductPreview() {
           <span className="preview-label">Operations console</span>
           <strong>Stoke pilot workspace</strong>
         </div>
-        <span className="status-badge status-live">Live</span>
+        <span className="status-badge status-with-icon status-live">
+          <ShipWrightIcon name="queue" />
+          <span>Live</span>
+        </span>
       </div>
 
       <div className="preview-metrics">
@@ -79,25 +86,37 @@ function ProductPreview() {
         </div>
         <div className="preview-queue-row">
           <strong>JOB-20481</strong>
-          <span className="status-badge status-live">En route</span>
+          <span className="status-badge status-with-icon status-live">
+            <ShipWrightIcon name="route" />
+            <span>En route</span>
+          </span>
           <span>Chapel Street Kitchen to Ashfield Retail</span>
           <strong>14m</strong>
         </div>
         <div className="preview-queue-row preview-queue-row-alert">
           <strong>JOB-20477</strong>
-          <span className="status-badge status-negative">Blocker</span>
+          <span className="status-badge status-with-icon status-negative">
+            <ShipWrightIcon name="alert" />
+            <span>Blocker</span>
+          </span>
           <span>Dispatch failed - no driver accepted</span>
           <strong>Review</strong>
         </div>
         <div className="preview-queue-row">
           <strong>JOB-20472</strong>
-          <span className="status-badge status-positive">Delivered</span>
+          <span className="status-badge status-with-icon status-positive">
+            <ShipWrightIcon name="check" />
+            <span>Delivered</span>
+          </span>
           <span>Market Hall to Station Road</span>
           <strong>Closed</strong>
         </div>
       </div>
 
       <div className="preview-decision-panel">
+        <span className="preview-decision-icon" aria-hidden="true">
+          <ShipWrightIcon name="alert" />
+        </span>
         <span className="preview-label">Decision intelligence</span>
         <strong>Dispatch failed - no driver accepted</strong>
         <p>Customer is waiting. Retry dispatch or assign manually before the SLA risk increases.</p>
@@ -168,6 +187,9 @@ export default function HomePage() {
         <div className="text-columns">
           {benefits.map((item) => (
             <article className="text-column" key={item.title}>
+              <span className="text-column-icon" aria-hidden="true">
+                <ShipWrightIcon name={item.icon} />
+              </span>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
             </article>

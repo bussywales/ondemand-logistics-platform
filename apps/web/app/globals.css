@@ -4706,3 +4706,404 @@ select:hover,
 .jobs-cell-route strong {
   white-space: normal;
 }
+
+/* Controlled ShipWright icon system and decision-surface contrast pass. */
+.sw-icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+}
+
+.button {
+  gap: 0.48rem;
+}
+
+.button .sw-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.status-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.status-with-icon .sw-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.metric-icon,
+.section-title-icon,
+.empty-state-icon,
+.icon-chip,
+.decision-hero-icon,
+.decision-tile-icon,
+.text-column-icon,
+.preview-decision-icon,
+.readiness-icon,
+.merchant-side-metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.metric-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  margin-bottom: 0.85rem;
+  border-radius: 14px;
+  color: var(--secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 12px 24px rgba(10, 33, 66, 0.08);
+}
+
+.metric-icon .sw-icon {
+  width: 1.18rem;
+  height: 1.18rem;
+}
+
+.metric-label {
+  color: #6d7c92;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metric-icon-teal {
+  background: rgba(0, 166, 166, 0.12);
+  color: #007d7d;
+}
+
+.metric-icon-warning {
+  background: rgba(227, 160, 8, 0.14);
+  color: #9b6500;
+}
+
+.metric-icon-success {
+  background: rgba(45, 164, 78, 0.13);
+  color: #1f7a3a;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.section-title-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  margin-top: 0.08rem;
+  border-radius: 14px;
+  background: #eaf3ff;
+  color: var(--secondary);
+}
+
+.section-title-icon .sw-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.empty-state-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  margin-bottom: 0.65rem;
+  border-radius: 14px;
+  background: #eef6ff;
+  color: var(--secondary);
+}
+
+.empty-state-icon-small {
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.icon-chip {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+}
+
+.icon-chip .sw-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-chip-blocker {
+  background: rgba(215, 58, 73, 0.12);
+  color: var(--danger);
+}
+
+.icon-chip-risk {
+  background: rgba(227, 160, 8, 0.14);
+  color: #9b6500;
+}
+
+.icon-chip-normal,
+.icon-chip-info {
+  background: rgba(0, 166, 166, 0.11);
+  color: #007d7d;
+}
+
+.ops-decision-banner,
+.ops-job-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.ops-decision-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 34px),
+    radial-gradient(circle at 82% 14%, rgba(255, 255, 255, 0.18), transparent 13rem);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.ops-decision-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ops-job-hero-blocker {
+  border-color: rgba(255, 91, 103, 0.72);
+  background:
+    radial-gradient(circle at 9% 10%, rgba(255, 76, 88, 0.34), transparent 15rem),
+    radial-gradient(circle at 86% 6%, rgba(0, 166, 166, 0.14), transparent 22rem),
+    linear-gradient(135deg, #6d101d 0%, #33101a 42%, #06152a 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 32px 100px rgba(56, 12, 22, 0.36),
+    0 0 82px rgba(215, 58, 73, 0.18);
+}
+
+.ops-decision-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.ops-decision-lead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 1.2rem;
+  min-width: 0;
+}
+
+.decision-hero-icon {
+  width: 4.6rem;
+  height: 4.6rem;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 24px 48px rgba(0, 0, 0, 0.22);
+}
+
+.decision-hero-icon .sw-icon {
+  width: 2.1rem;
+  height: 2.1rem;
+}
+
+.decision-hero-icon-blocker {
+  background: rgba(255, 76, 88, 0.18);
+  color: #ff8791;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 24px 48px rgba(215, 58, 73, 0.2),
+    0 0 36px rgba(255, 76, 88, 0.18);
+}
+
+.ops-decision-copy {
+  min-width: 0;
+}
+
+.ops-decision-banner .eyebrow {
+  color: #ff7d89;
+  text-shadow: 0 1px 16px rgba(255, 125, 137, 0.18);
+}
+
+.ops-decision-banner .ops-job-header h2,
+.ops-decision-banner h2 {
+  max-width: 920px;
+  color: #ffffff;
+  text-shadow: 0 2px 26px rgba(0, 0, 0, 0.28);
+}
+
+.ops-decision-banner .ops-detail-note {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.ops-decision-banner .ops-job-statuses .status-badge {
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
+}
+
+.ops-decision-grid {
+  gap: 1rem;
+}
+
+.ops-decision-grid > div,
+.ops-decision-tile {
+  min-height: 178px;
+  padding: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+.decision-tile-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  margin-bottom: 0.45rem;
+  border-radius: 999px;
+}
+
+.decision-tile-icon .sw-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.decision-tile-icon-danger {
+  background: rgba(255, 76, 88, 0.18);
+  color: #ff8791;
+}
+
+.decision-tile-icon-teal {
+  background: rgba(0, 166, 166, 0.17);
+  color: #67e8e8;
+}
+
+.decision-tile-icon-warning {
+  background: rgba(227, 160, 8, 0.18);
+  color: #ffd27a;
+}
+
+.decision-tile-icon-success {
+  background: rgba(45, 164, 78, 0.2);
+  color: #85e3a0;
+}
+
+.ops-decision-tile .ops-section-label {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.ops-decision-tile strong {
+  color: #ffffff;
+  font-size: 1.08rem;
+}
+
+.ops-decision-tile p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.45;
+}
+
+.ops-decision-banner .button-primary {
+  background: #ef303f;
+  color: #ffffff;
+  box-shadow: 0 16px 34px rgba(239, 48, 63, 0.28);
+}
+
+.ops-decision-banner .button-primary:hover {
+  background: #ff4654;
+}
+
+.ops-decision-banner .button-secondary {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.ops-decision-banner .button-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.merchant-step-icon .sw-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.readiness-icon {
+  width: 2.15rem;
+  height: 2.15rem;
+  margin-bottom: 0.55rem;
+  border-radius: 12px;
+  background: rgba(0, 166, 166, 0.12);
+  color: #007d7d;
+}
+
+.merchant-side-metric-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-bottom: 0.25rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.merchant-side-metric-icon .sw-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.merchant-sidebar .merchant-side-metrics .merchant-side-metric-icon {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.text-column-icon,
+.preview-decision-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  margin-bottom: 0.8rem;
+  border-radius: 14px;
+  background: rgba(0, 166, 166, 0.1);
+  color: #007d7d;
+}
+
+.preview-decision-icon {
+  background: rgba(215, 58, 73, 0.12);
+  color: var(--danger);
+}
+
+.text-column-icon .sw-icon,
+.preview-decision-icon .sw-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+@media (max-width: 980px) {
+  .ops-decision-header,
+  .ops-decision-lead {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-decision-header {
+    flex-direction: column;
+  }
+
+  .decision-hero-icon {
+    width: 3.6rem;
+    height: 3.6rem;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ops-decision-grid {
+    grid-template-columns: 1fr;
+  }
+}

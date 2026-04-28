@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
+import { ShipWrightIcon } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
   createMenuCategory,
@@ -362,6 +363,9 @@ export function RestaurantSetupShell() {
             </p>
           </div>
           <aside className="merchant-readiness-card" aria-label="Setup readiness">
+            <span className="readiness-icon" aria-hidden="true">
+              <ShipWrightIcon name={hasItem ? "check" : "menu"} />
+            </span>
             <span>{completedStepCount}/3 complete</span>
             <strong>{readinessLabel(hasRestaurant, hasCategory, hasItem)}</strong>
             <div className="merchant-readiness-meter" aria-hidden="true">
@@ -396,14 +400,23 @@ export function RestaurantSetupShell() {
             <span className="ops-section-label">Live setup</span>
             <div className="merchant-side-metrics">
               <div>
+                <span className="merchant-side-metric-icon" aria-hidden="true">
+                  <ShipWrightIcon name="restaurant" />
+                </span>
                 <strong>{restaurants.length}</strong>
                 <span>Merchants</span>
               </div>
               <div>
+                <span className="merchant-side-metric-icon" aria-hidden="true">
+                  <ShipWrightIcon name="menu" />
+                </span>
                 <strong>{categoryCount}</strong>
                 <span>Categories</span>
               </div>
               <div>
+                <span className="merchant-side-metric-icon" aria-hidden="true">
+                  <ShipWrightIcon name="queue" />
+                </span>
                 <strong>{itemCount}</strong>
                 <span>Items</span>
               </div>
@@ -422,21 +435,27 @@ export function RestaurantSetupShell() {
 
           <section className="merchant-step-strip" aria-label="Merchant setup progress">
             <div className={stepClass(hasRestaurant, !hasRestaurant)}>
-              <span>1</span>
+              <span className="merchant-step-icon" aria-hidden="true">
+                <ShipWrightIcon name={hasRestaurant ? "check" : "restaurant"} />
+              </span>
               <div>
                 <strong>Restaurant profile</strong>
                 <p>{hasRestaurant ? selectedRestaurant?.name : "Create the pilot merchant."}</p>
               </div>
             </div>
             <div className={stepClass(hasCategory, hasRestaurant && !hasCategory)}>
-              <span>2</span>
+              <span className="merchant-step-icon" aria-hidden="true">
+                <ShipWrightIcon name={hasCategory ? "check" : "menu"} />
+              </span>
               <div>
                 <strong>Menu sections</strong>
                 <p>{hasCategory ? `${categoryCount} categor${categoryCount === 1 ? "y" : "ies"}` : "Add the first section."}</p>
               </div>
             </div>
             <div className={stepClass(hasItem, hasRestaurant && hasCategory && !hasItem)}>
-              <span>3</span>
+              <span className="merchant-step-icon" aria-hidden="true">
+                <ShipWrightIcon name={hasItem ? "check" : "queue"} />
+              </span>
               <div>
                 <strong>Orderable items</strong>
                 <p>{hasItem ? `${itemCount} item${itemCount === 1 ? "" : "s"} ready` : "Add the first item."}</p>
@@ -521,11 +540,17 @@ export function RestaurantSetupShell() {
 
               {loading ? (
                 <div className="merchant-empty-state">
+                  <span className="empty-state-icon" aria-hidden="true">
+                    <ShipWrightIcon name="restaurant" />
+                  </span>
                   <strong>Loading merchant profiles</strong>
                   <p>Reading the current pilot setup for this workspace.</p>
                 </div>
               ) : restaurants.length === 0 ? (
                 <div className="merchant-empty-state merchant-empty-state-accent">
+                  <span className="empty-state-icon" aria-hidden="true">
+                    <ShipWrightIcon name="restaurant" />
+                  </span>
                   <strong>No restaurant profile yet</strong>
                   <p>Create the first profile to unlock menu composition.</p>
                 </div>
@@ -712,11 +737,17 @@ export function RestaurantSetupShell() {
 
             {!selectedRestaurant ? (
               <div className="merchant-empty-state merchant-empty-state-accent">
+                <span className="empty-state-icon" aria-hidden="true">
+                  <ShipWrightIcon name="restaurant" />
+                </span>
                 <strong>Select or create a restaurant first</strong>
                 <p>The menu preview unlocks after the merchant profile exists.</p>
               </div>
             ) : !menu || menu.categories.length === 0 ? (
               <div className="merchant-empty-state merchant-empty-state-accent">
+                <span className="empty-state-icon" aria-hidden="true">
+                  <ShipWrightIcon name="menu" />
+                </span>
                 <strong>The menu is waiting for its first section</strong>
                 <p>Add a section such as Mains or Drinks, then add the first item underneath it.</p>
               </div>
@@ -736,6 +767,9 @@ export function RestaurantSetupShell() {
 
                     {category.items.length === 0 ? (
                       <div className="merchant-empty-inline">
+                        <span className="empty-state-icon empty-state-icon-small" aria-hidden="true">
+                          <ShipWrightIcon name="queue" />
+                        </span>
                         <strong>No items yet</strong>
                         <p>Add the first item so this section can appear in the customer menu.</p>
                       </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMethod } from "./payment-method-form";
+import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
   authorizePayment,
@@ -110,6 +111,38 @@ function severityTone(level: "BLOCKER" | "RISK" | "NORMAL" | "INFO") {
   return "status-positive";
 }
 
+function statusIconName(status: AppJob["status"] | AppJob["payment"]["status"]): ShipWrightIconName {
+  if (status === "DELIVERED" || status === "CAPTURED") {
+    return "check";
+  }
+
+  if (status === "FAILED" || status === "CANCELLED" || status === "DISPATCH_FAILED") {
+    return "alert";
+  }
+
+  if (status === "REQUIRES_PAYMENT_METHOD" || status === "REQUIRES_CONFIRMATION") {
+    return "payment";
+  }
+
+  return "queue";
+}
+
+function severityIconName(level: "BLOCKER" | "RISK" | "NORMAL" | "INFO"): ShipWrightIconName {
+  if (level === "BLOCKER") {
+    return "alert";
+  }
+
+  if (level === "RISK") {
+    return "warning";
+  }
+
+  if (level === "NORMAL") {
+    return "check";
+  }
+
+  return "queue";
+}
+
 function queueStateCopy(kind: "active" | "attention" | "all") {
   if (kind === "active") {
     return {
@@ -131,11 +164,29 @@ function queueStateCopy(kind: "active" | "attention" | "all") {
   };
 }
 
-function QueueEmptyState(props: { copy: { title: string; body: string } }) {
+function QueueEmptyState(props: { copy: { title: string; body: string }; icon?: ShipWrightIconName }) {
   return (
     <div className="ops-empty-state ops-queue-empty">
+      <span className="empty-state-icon" aria-hidden="true">
+        <ShipWrightIcon name={props.icon ?? "queue"} />
+      </span>
       <strong>{props.copy.title}</strong>
       <p>{props.copy.body}</p>
+    </div>
+  );
+}
+
+function SectionTitle(props: { eyebrow: string; icon: ShipWrightIconName; note?: string; title: string }) {
+  return (
+    <div className="section-title-row">
+      <span className="section-title-icon" aria-hidden="true">
+        <ShipWrightIcon name={props.icon} />
+      </span>
+      <div>
+        <p className="eyebrow">{props.eyebrow}</p>
+        <h2>{props.title}</h2>
+        {props.note ? <p className="ops-detail-note">{props.note}</p> : null}
+      </div>
     </div>
   );
 }
@@ -506,17 +557,26 @@ export function ProductShell(props: ProductShellProps) {
             <section className="ops-stack">
               <section className="ops-metric-grid" aria-label="Operations metrics">
                 <div className="ops-metric-card">
-                  <span>Active jobs</span>
+                  <span className="metric-icon metric-icon-teal" aria-hidden="true">
+                    <ShipWrightIcon name="queue" />
+                  </span>
+                  <span className="metric-label">Active jobs</span>
                   <strong>{workspaceSummary.activeJobs}</strong>
                   <p>Requested, assigned, or moving.</p>
                 </div>
                 <div className={`ops-metric-card ${attentionJobs.length > 0 ? "ops-metric-card-alert" : ""}`}>
-                  <span>Attention needed</span>
+                  <span className="metric-icon metric-icon-warning" aria-hidden="true">
+                    <ShipWrightIcon name="warning" />
+                  </span>
+                  <span className="metric-label">Attention needed</span>
                   <strong>{attentionJobs.length}</strong>
                   <p>Blockers and risks requiring review.</p>
                 </div>
                 <div className="ops-metric-card">
-                  <span>Completed today</span>
+                  <span className="metric-icon metric-icon-success" aria-hidden="true">
+                    <ShipWrightIcon name="check" />
+                  </span>
+                  <span className="metric-label">Completed today</span>
                   <strong>{workspaceSummary.completedToday}</strong>
                   <p>Closed delivery records for this workspace.</p>
                 </div>
@@ -538,7 +598,7 @@ export function ProductShell(props: ProductShellProps) {
                 </div>
 
                 {activeJobs.length === 0 ? (
-                  <QueueEmptyState copy={queueStateCopy("active")} />
+                  <QueueEmptyState copy={queueStateCopy("active")} icon="queue" />
                 ) : (
                   <div className="jobs-table" role="table" aria-label="Active jobs">
                     <div className="jobs-table-head" role="row">
@@ -556,8 +616,9 @@ export function ProductShell(props: ProductShellProps) {
                           <span>{formatDateTime(item.createdAt)}</span>
                         </div>
                         <div className="jobs-cell">
-                          <span className={`status-badge ${statusTone(item.status)}`}>
-                            {formatStatusLabel(item.status)}
+                          <span className={`status-badge status-with-icon ${statusTone(item.status)}`}>
+                            <ShipWrightIcon name={statusIconName(item.status)} />
+                            <span>{formatStatusLabel(item.status)}</span>
                           </span>
                         </div>
                         <div className="jobs-cell jobs-cell-route">
@@ -593,7 +654,7 @@ export function ProductShell(props: ProductShellProps) {
                 </div>
 
                 {attentionJobs.length === 0 ? (
-                  <QueueEmptyState copy={queueStateCopy("attention")} />
+                  <QueueEmptyState copy={queueStateCopy("attention")} icon="warning" />
                 ) : (
                   <div className="attention-list">
                     {attentionJobs.map(({ job: item, intelligence }) => (
@@ -603,6 +664,12 @@ export function ProductShell(props: ProductShellProps) {
                       >
                         <div className="attention-copy">
                           <div className="attention-title-row">
+                            <span
+                              className={`icon-chip icon-chip-${intelligence.severity.toLowerCase()}`}
+                              aria-hidden="true"
+                            >
+                              <ShipWrightIcon name={severityIconName(intelligence.severity)} />
+                            </span>
                             <span className={`status-badge ${severityTone(intelligence.severity)}`}>
                               {intelligence.severity}
                             </span>
@@ -633,11 +700,13 @@ export function ProductShell(props: ProductShellProps) {
                               onClick={() => void handleRetryDispatch(item)}
                               type="button"
                             >
-                              {actionSubmitting ? "Retrying..." : intelligence.recommendedActionLabel}
+                              <ShipWrightIcon name="retry" />
+                              <span>{actionSubmitting ? "Retrying..." : intelligence.recommendedActionLabel}</span>
                             </button>
                           ) : null}
                           <Link className="button button-secondary" href={`/app/jobs/${item.id}`}>
-                            View job
+                            <ShipWrightIcon name="arrow" />
+                            <span>View job</span>
                           </Link>
                         </div>
                       </article>
@@ -652,11 +721,12 @@ export function ProductShell(props: ProductShellProps) {
             <section className="ops-stack">
               <section className="ops-section ops-creation-panel">
                 <div className="ops-section-header">
-                  <div>
-                    <p className="eyebrow">Jobs</p>
-                    <h2>Create delivery</h2>
-                    <p className="ops-detail-note">Enter the operational facts first. Coordinates stay available for controlled pilot overrides.</p>
-                  </div>
+                  <SectionTitle
+                    eyebrow="Jobs"
+                    icon="route"
+                    note="Enter the operational facts first. Coordinates stay available for controlled pilot overrides."
+                    title="Create delivery"
+                  />
                 </div>
 
                 <form className="ops-form" onSubmit={handleCreateDelivery}>
@@ -787,7 +857,8 @@ export function ProductShell(props: ProductShellProps) {
 
                   <div className="ops-actions">
                     <button className="button button-primary" disabled={submitting} type="submit">
-                      {submitting ? "Creating delivery..." : "Create delivery"}
+                      <ShipWrightIcon name="route" />
+                      <span>{submitting ? "Creating delivery..." : "Create delivery"}</span>
                     </button>
                   </div>
                 </form>
@@ -795,16 +866,17 @@ export function ProductShell(props: ProductShellProps) {
 
               <section className="ops-section ops-queue-section">
                 <div className="ops-section-header">
-                  <div>
-                    <p className="eyebrow">Jobs</p>
-                    <h2>All jobs</h2>
-                    <p className="ops-detail-note">Full operational record for this workspace.</p>
-                  </div>
+                  <SectionTitle
+                    eyebrow="Jobs"
+                    icon="queue"
+                    note="Full operational record for this workspace."
+                    title="All jobs"
+                  />
                   <span className="ops-count-pill">{jobsToRender.length} shown</span>
                 </div>
 
                 {jobsToRender.length === 0 ? (
-                  <QueueEmptyState copy={queueStateCopy("all")} />
+                  <QueueEmptyState copy={queueStateCopy("all")} icon="queue" />
                 ) : (
                   <div className="jobs-table" role="table" aria-label="All jobs">
                     <div className="jobs-table-head" role="row">
@@ -822,8 +894,9 @@ export function ProductShell(props: ProductShellProps) {
                           <span>{formatDateTime(item.createdAt)}</span>
                         </div>
                         <div className="jobs-cell">
-                          <span className={`status-badge ${statusTone(item.status)}`}>
-                            {formatStatusLabel(item.status)}
+                          <span className={`status-badge status-with-icon ${statusTone(item.status)}`}>
+                            <ShipWrightIcon name={statusIconName(item.status)} />
+                            <span>{formatStatusLabel(item.status)}</span>
                           </span>
                         </div>
                         <div className="jobs-cell jobs-cell-route">
@@ -855,41 +928,70 @@ export function ProductShell(props: ProductShellProps) {
                     jobDecision?.severity === "BLOCKER" ? "ops-job-hero-blocker" : ""
                   }`}
                 >
-                  <div className="ops-job-header">
-                    <div>
-                      <p className="eyebrow">Decision surface</p>
-                      <h2>{jobDecision?.headline ?? "Job detail"}</h2>
-                      <p className="ops-detail-note">{jobDecision?.explanation ?? "Review job state and next action."}</p>
+                  <div className="ops-job-header ops-decision-header">
+                    <div className="ops-decision-lead">
+                      <span
+                        className={`decision-hero-icon decision-hero-icon-${(jobDecision?.severity ?? "INFO").toLowerCase()}`}
+                        aria-hidden="true"
+                      >
+                        <ShipWrightIcon name={severityIconName(jobDecision?.severity ?? "INFO")} />
+                      </span>
+                      <div className="ops-decision-copy">
+                        <p className="eyebrow">Decision surface</p>
+                        <h2>{jobDecision?.headline ?? "Job detail"}</h2>
+                        <p className="ops-detail-note">
+                          {jobDecision?.explanation ?? "Review job state and next action."}
+                        </p>
+                      </div>
                     </div>
                     <div className="ops-job-statuses">
-                      <span className={`status-badge ${statusTone(job.status)}`}>
-                        {formatStatusLabel(job.status)}
+                      <span className={`status-badge status-with-icon ${statusTone(job.status)}`}>
+                        <ShipWrightIcon name={statusIconName(job.status)} />
+                        <span>{formatStatusLabel(job.status)}</span>
                       </span>
-                      <span className={`status-badge ${attentionTone(job.attentionLevel)}`}>
-                        {job.attentionLevel}
+                      <span className={`status-badge status-with-icon ${attentionTone(job.attentionLevel)}`}>
+                        <ShipWrightIcon name={severityIconName(job.attentionLevel)} />
+                        <span>{job.attentionLevel}</span>
                       </span>
-                      <span className={`status-badge ${statusTone(job.payment.status)}`}>
-                        {formatStatusLabel(job.payment.status)}
+                      <span className={`status-badge status-with-icon ${statusTone(job.payment.status)}`}>
+                        <ShipWrightIcon name={statusIconName(job.payment.status)} />
+                        <span>{formatStatusLabel(job.payment.status)}</span>
                       </span>
                     </div>
                   </div>
                   {jobDecision ? (
                     <div className="ops-decision-grid">
-                      <div>
+                      <div className="ops-decision-tile ops-decision-tile-state">
+                        <span className="decision-tile-icon decision-tile-icon-danger" aria-hidden="true">
+                          <ShipWrightIcon name="document" />
+                        </span>
                         <span className="ops-section-label">Current state</span>
                         <strong>{jobDecision.currentIssue}</strong>
+                        <p>{formatStatusLabel(job.status)}</p>
                       </div>
-                      <div>
+                      <div className="ops-decision-tile ops-decision-tile-meaning">
+                        <span className="decision-tile-icon decision-tile-icon-teal" aria-hidden="true">
+                          <ShipWrightIcon name="driver" />
+                        </span>
                         <span className="ops-section-label">Operational meaning</span>
                         <strong>{jobDecision.diagnosis}</strong>
+                        <p>{jobDecision.explanation}</p>
                       </div>
-                      <div>
+                      <div className="ops-decision-tile ops-decision-tile-impact">
+                        <span className="decision-tile-icon decision-tile-icon-warning" aria-hidden="true">
+                          <ShipWrightIcon name="timeline" />
+                        </span>
                         <span className="ops-section-label">Impact</span>
                         <strong>{jobDecision.impact}</strong>
+                        <p>Customer experience and SLA may be at risk.</p>
                       </div>
-                      <div>
+                      <div className="ops-decision-tile ops-decision-tile-action">
+                        <span className="decision-tile-icon decision-tile-icon-success" aria-hidden="true">
+                          <ShipWrightIcon name="arrow" />
+                        </span>
                         <span className="ops-section-label">Next action</span>
                         <strong>{jobDecision.recommendedActionLabel}</strong>
+                        <p>{jobDecision.explanation}</p>
                       </div>
                     </div>
                   ) : null}
@@ -901,27 +1003,32 @@ export function ProductShell(props: ProductShellProps) {
                         onClick={() => void handleRetryDispatch(job)}
                         type="button"
                       >
-                        {actionSubmitting ? "Retrying dispatch..." : "Retry dispatch"}
+                        <ShipWrightIcon name="retry" />
+                        <span>{actionSubmitting ? "Retrying dispatch..." : "Retry dispatch"}</span>
                       </button>
                     ) : null}
                     {jobDecision?.recommendedActionType === "AUTHORIZE_PAYMENT" ||
                     jobDecision?.recommendedActionType === "COLLECT_PAYMENT_METHOD" ? (
                       <a className="button button-primary" href="#payment">
-                        Open payment
+                        <ShipWrightIcon name="payment" />
+                        <span>Open payment</span>
                       </a>
                     ) : null}
                     {jobDecision?.severity === "BLOCKER" ? (
                       <>
                         <a className="button button-secondary" href="#operator-controls">
-                          Assign driver
+                          <ShipWrightIcon name="assign" />
+                          <span>Assign driver</span>
                         </a>
                         <a className="button button-secondary" href="#operator-controls">
-                          Cancel job
+                          <ShipWrightIcon name="cancel" />
+                          <span>Cancel job</span>
                         </a>
                       </>
                     ) : (
                       <a className="button button-secondary" href="#operator-controls">
-                        Operator controls
+                        <ShipWrightIcon name="warning" />
+                        <span>Operator controls</span>
                       </a>
                     )}
                   </div>
@@ -930,10 +1037,7 @@ export function ProductShell(props: ProductShellProps) {
                 <div className="ops-detail-grid">
                   <section className="ops-section ops-zone">
                     <div className="ops-section-header">
-                      <div>
-                        <p className="eyebrow">Route</p>
-                        <h2>Pickup and drop</h2>
-                      </div>
+                      <SectionTitle eyebrow="Route" icon="route" title="Pickup and drop" />
                     </div>
                     <div className="ops-definition-list">
                       <div>
@@ -957,10 +1061,7 @@ export function ProductShell(props: ProductShellProps) {
 
                   <section className="ops-section ops-zone">
                     <div className="ops-section-header">
-                      <div>
-                        <p className="eyebrow">Driver</p>
-                        <h2>Assignment</h2>
-                      </div>
+                      <SectionTitle eyebrow="Driver" icon="driver" title="Assignment" />
                     </div>
                     <div className="ops-definition-list">
                       <div>
@@ -990,13 +1091,13 @@ export function ProductShell(props: ProductShellProps) {
                 <div className="ops-detail-grid">
                   <section className="ops-section ops-zone">
                     <div className="ops-section-header">
-                      <div>
-                        <p className="eyebrow">Dispatch</p>
-                        <h2>Attempts</h2>
-                      </div>
+                      <SectionTitle eyebrow="Dispatch" icon="retry" title="Attempts" />
                     </div>
                     {job.tracking.dispatchAttempts.length === 0 ? (
                       <div className="ops-empty-state">
+                        <span className="empty-state-icon" aria-hidden="true">
+                          <ShipWrightIcon name="retry" />
+                        </span>
                         <strong>No attempts recorded</strong>
                         <p>Dispatch attempts will appear here as the job is offered or retried.</p>
                       </div>
@@ -1021,13 +1122,13 @@ export function ProductShell(props: ProductShellProps) {
 
                   <section className="ops-section ops-zone">
                     <div className="ops-section-header">
-                      <div>
-                        <p className="eyebrow">Timeline</p>
-                        <h2>Events</h2>
-                      </div>
+                      <SectionTitle eyebrow="Timeline" icon="timeline" title="Events" />
                     </div>
                     {job.tracking.timeline.length === 0 ? (
                       <div className="ops-empty-state">
+                        <span className="empty-state-icon" aria-hidden="true">
+                          <ShipWrightIcon name="timeline" />
+                        </span>
                         <strong>No events yet</strong>
                         <p>Dispatch and delivery events will appear here as the job progresses.</p>
                       </div>
@@ -1051,10 +1152,7 @@ export function ProductShell(props: ProductShellProps) {
                 <div className="ops-detail-grid">
                   <section className="ops-section ops-zone ops-payment-zone" id="payment">
                     <div className="ops-section-header">
-                      <div>
-                        <p className="eyebrow">Payment</p>
-                        <h2>Status</h2>
-                      </div>
+                      <SectionTitle eyebrow="Payment" icon="payment" title="Status" />
                     </div>
                     <div className="ops-definition-list">
                       <div>
@@ -1124,7 +1222,8 @@ export function ProductShell(props: ProductShellProps) {
                             onClick={() => void handleAuthorizePayment(job)}
                             type="button"
                           >
-                            {paymentSubmitting ? "Authorizing payment..." : "Authorize Payment"}
+                            <ShipWrightIcon name="payment" />
+                            <span>{paymentSubmitting ? "Authorizing payment..." : "Authorize Payment"}</span>
                           </button>
                         </div>
                       </div>
@@ -1136,11 +1235,12 @@ export function ProductShell(props: ProductShellProps) {
 
                 <section className="ops-section ops-zone ops-actions-zone" id="operator-controls">
                   <div className="ops-section-header">
-                    <div>
-                      <p className="eyebrow">Advanced</p>
-                      <h2>Operator controls</h2>
-                      <p className="ops-detail-note">Use these controls when the decision banner calls for direct intervention.</p>
-                    </div>
+                    <SectionTitle
+                      eyebrow="Advanced"
+                      icon="warning"
+                      note="Use these controls when the decision banner calls for direct intervention."
+                      title="Operator controls"
+                    />
                   </div>
                   <div className="ops-definition-list">
                     <div>
@@ -1155,7 +1255,8 @@ export function ProductShell(props: ProductShellProps) {
                       onClick={() => void handleRetryDispatch(job)}
                       type="button"
                     >
-                      Retry Dispatch
+                      <ShipWrightIcon name="retry" />
+                      <span>Retry Dispatch</span>
                     </button>
                   </div>
 
@@ -1175,7 +1276,8 @@ export function ProductShell(props: ProductShellProps) {
                       onClick={() => void handleReassignDriver(job)}
                       type="button"
                     >
-                      Reassign Driver
+                      <ShipWrightIcon name="assign" />
+                      <span>Reassign Driver</span>
                     </button>
                   </div>
 
@@ -1191,7 +1293,8 @@ export function ProductShell(props: ProductShellProps) {
                       onClick={() => void handleCancelJob(job)}
                       type="button"
                     >
-                      Cancel Job
+                      <ShipWrightIcon name="cancel" />
+                      <span>Cancel Job</span>
                     </button>
                   </div>
                 </section>
