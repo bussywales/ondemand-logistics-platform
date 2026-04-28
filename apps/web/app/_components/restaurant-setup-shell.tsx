@@ -362,7 +362,7 @@ export function RestaurantSetupShell() {
               first menu, and opening the customer route.
             </p>
           </div>
-          <aside className="merchant-readiness-card" aria-label="Setup readiness">
+          <aside className="sw-command-surface merchant-readiness-card" aria-label="Setup readiness">
             <span className="readiness-icon" aria-hidden="true">
               <ShipWrightIcon name={hasItem ? "check" : "menu"} />
             </span>
@@ -464,7 +464,7 @@ export function RestaurantSetupShell() {
           </section>
 
           <section className="merchant-command-grid">
-            <section className="merchant-panel merchant-panel-primary">
+            <section className="sw-operational-surface merchant-panel merchant-panel-primary">
               <div className="merchant-panel-heading">
                 <div>
                   <p className="eyebrow">Step 1</p>
@@ -529,7 +529,7 @@ export function RestaurantSetupShell() {
               </form>
             </section>
 
-            <section className="merchant-panel merchant-restaurant-list-panel">
+            <section className="sw-supporting-surface merchant-panel merchant-restaurant-list-panel">
               <div className="merchant-panel-heading">
                 <div>
                   <p className="eyebrow">Select profile</p>
@@ -580,7 +580,7 @@ export function RestaurantSetupShell() {
           </section>
 
           <section className="merchant-builder-grid">
-            <section className="merchant-panel">
+            <section className="sw-operational-surface merchant-panel">
               <div className="merchant-panel-heading">
                 <div>
                   <p className="eyebrow">Step 2</p>
@@ -625,7 +625,7 @@ export function RestaurantSetupShell() {
               </form>
             </section>
 
-            <section className="merchant-panel">
+            <section className="sw-operational-surface merchant-panel">
               <div className="merchant-panel-heading">
                 <div>
                   <p className="eyebrow">Step 3</p>
@@ -718,7 +718,7 @@ export function RestaurantSetupShell() {
             </section>
           </section>
 
-          <section className="merchant-menu-preview">
+          <section className="sw-supporting-surface merchant-menu-preview">
             <div className="merchant-preview-heading">
               <div>
                 <p className="eyebrow">Step 4</p>

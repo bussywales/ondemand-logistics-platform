@@ -51,3 +51,4 @@ See `docs/runbooks/setup.md` for staging setup (Supabase, Render, Vercel, Upstas
 ## Design Authority
 
 - `docs/design/fleet-ux-authority-brief.md` - Fleet UX posture, principles, redesign priorities, and rules for future UI work
+- `docs/design-system.md` - ShipWright Design System v1 tokens, hierarchy classes, component rules, and UI QA checklist
