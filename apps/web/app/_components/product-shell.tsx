@@ -540,13 +540,19 @@ export function ProductShell(props: ProductShellProps) {
           </section>
 
           <section className="ops-sidebar-section ops-sidebar-live">
+            <span className="sidebar-live-icon" aria-hidden="true">
+              <ShipWrightIcon name={attentionJobs.length > 0 ? "warning" : "check"} />
+            </span>
             <span className="ops-section-label">Live posture</span>
-            <strong>{attentionJobs.length > 0 ? "Review required" : "Stable"}</strong>
+            <strong>{attentionJobs.length > 0 ? "Review required" : "System clear"}</strong>
             <p>
               {attentionJobs.length > 0
-                ? "Open the review queue and clear blockers before creating more work."
-                : "Queues are in normal operating range."}
+                ? `${attentionJobs.length} job${attentionJobs.length === 1 ? "" : "s"} need operator action.`
+                : "No blockers or delay signals."}
             </p>
+            <span className="sidebar-live-action">
+              {attentionJobs.length > 0 ? "Clear blockers before creating more work." : "System clear."}
+            </span>
           </section>
         </aside>
 
@@ -555,8 +561,54 @@ export function ProductShell(props: ProductShellProps) {
 
           {props.view === "home" ? (
             <section className="ops-stack">
+              <section
+                className={`ops-command-strip ${attentionJobs.length > 0 ? "ops-command-strip-alert" : ""}`}
+                aria-label="Workspace command state"
+              >
+                <div className="ops-command-copy">
+                  <span className="ops-command-icon" aria-hidden="true">
+                    <ShipWrightIcon name={attentionJobs.length > 0 ? "warning" : "check"} />
+                  </span>
+                  <div>
+                    <p className="eyebrow">Workspace state</p>
+                    <h2>{attentionJobs.length > 0 ? "Review required" : "System clear"}</h2>
+                    <p>
+                      {attentionJobs.length > 0
+                        ? `${attentionJobs.length} job${attentionJobs.length === 1 ? "" : "s"} need operator action. ${
+                            activeJobs.length > 0
+                              ? `${activeJobs.length} active ${activeJobs.length === 1 ? "delivery is" : "deliveries are"} moving.`
+                              : "No active deliveries are moving right now."
+                          }`
+                        : activeJobs.length > 0
+                          ? `${activeJobs.length} active ${activeJobs.length === 1 ? "delivery is" : "deliveries are"} moving without blocker signals.`
+                          : "No active deliveries are moving right now."}
+                    </p>
+                  </div>
+                </div>
+                <div className="ops-command-actions">
+                  <Link className="button button-primary" href="/app/jobs">
+                    <ShipWrightIcon name="queue" />
+                    <span>Open jobs</span>
+                  </Link>
+                  <button
+                    className="button button-secondary"
+                    onClick={() =>
+                      void refreshBusinessSession().then((nextSession) => {
+                        if (nextSession) {
+                          return refreshJobs(nextSession);
+                        }
+                      })
+                    }
+                    type="button"
+                  >
+                    <ShipWrightIcon name="retry" />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </section>
+
               <section className="ops-metric-grid" aria-label="Operations metrics">
-                <div className="ops-metric-card">
+                <div className="ops-metric-card ops-metric-card-active">
                   <span className="metric-icon metric-icon-teal" aria-hidden="true">
                     <ShipWrightIcon name="queue" />
                   </span>
@@ -564,7 +616,7 @@ export function ProductShell(props: ProductShellProps) {
                   <strong>{workspaceSummary.activeJobs}</strong>
                   <p>Requested, assigned, or moving.</p>
                 </div>
-                <div className={`ops-metric-card ${attentionJobs.length > 0 ? "ops-metric-card-alert" : ""}`}>
+                <div className={`ops-metric-card ops-metric-card-attention ${attentionJobs.length > 0 ? "ops-metric-card-alert" : ""}`}>
                   <span className="metric-icon metric-icon-warning" aria-hidden="true">
                     <ShipWrightIcon name="warning" />
                   </span>
@@ -572,7 +624,7 @@ export function ProductShell(props: ProductShellProps) {
                   <strong>{attentionJobs.length}</strong>
                   <p>Blockers and risks requiring review.</p>
                 </div>
-                <div className="ops-metric-card">
+                <div className="ops-metric-card ops-metric-card-complete">
                   <span className="metric-icon metric-icon-success" aria-hidden="true">
                     <ShipWrightIcon name="check" />
                   </span>
@@ -584,21 +636,33 @@ export function ProductShell(props: ProductShellProps) {
 
               <section className="ops-section ops-queue-section">
                 <div className="ops-section-header">
-                  <div>
-                    <p className="eyebrow">Operations</p>
-                    <h2>Active queue</h2>
-                    <p className="ops-detail-note">Live work that is requested, assigned, or moving.</p>
-                  </div>
+                  <SectionTitle
+                    eyebrow="Operations"
+                    icon="queue"
+                    note="Live work that is requested, assigned, or moving."
+                    title="Active queue"
+                  />
                   <div className="ops-header-actions">
                     <span className="ops-count-pill">{activeJobs.length} active</span>
                     <Link className="button button-secondary" href="/app/jobs">
-                      Open Jobs
+                      <ShipWrightIcon name="arrow" />
+                      <span>Open Jobs</span>
                     </Link>
                   </div>
                 </div>
 
                 {activeJobs.length === 0 ? (
-                  <QueueEmptyState copy={queueStateCopy("active")} icon="queue" />
+                  <div className="ops-empty-state ops-queue-empty ops-queue-empty-premium">
+                    <span className="empty-state-icon" aria-hidden="true">
+                      <ShipWrightIcon name="queue" />
+                    </span>
+                    <strong>{queueStateCopy("active").title}</strong>
+                    <p>{queueStateCopy("active").body}</p>
+                    <Link className="button button-secondary" href="/app/jobs">
+                      <ShipWrightIcon name="route" />
+                      <span>Create delivery</span>
+                    </Link>
+                  </div>
                 ) : (
                   <div className="jobs-table" role="table" aria-label="Active jobs">
                     <div className="jobs-table-head" role="row">
@@ -643,11 +707,12 @@ export function ProductShell(props: ProductShellProps) {
 
               <section className="ops-section ops-queue-section ops-review-section">
                 <div className="ops-section-header">
-                  <div>
-                    <p className="eyebrow">Attention</p>
-                    <h2>Needs review</h2>
-                    <p className="ops-detail-note">Failed dispatches, no-driver states, and delay signals.</p>
-                  </div>
+                  <SectionTitle
+                    eyebrow="Attention"
+                    icon="warning"
+                    note="Failed dispatches, no-driver states, and delay signals."
+                    title="Needs review"
+                  />
                   <span className={`ops-count-pill ${attentionJobs.length > 0 ? "ops-count-pill-alert" : ""}`}>
                     {attentionJobs.length} open
                   </span>
