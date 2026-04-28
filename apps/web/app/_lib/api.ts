@@ -2,7 +2,12 @@ import type {
   AppJob,
   BusinessSession,
   DispatchAttempt,
+  MenuCategorySummary,
+  MenuItemSummary,
   PaymentSummary,
+  RestaurantMenu,
+  RestaurantMenuCategory,
+  RestaurantSummary,
   TimelineEvent,
   TrackingSummary,
   VehicleType
@@ -82,6 +87,21 @@ type PaymentResponse = {
     clientSecret: string | null;
     lastError: string | null;
   };
+};
+
+type RestaurantResponse = RestaurantSummary;
+
+type RestaurantListResponse = {
+  items: RestaurantSummary[];
+};
+
+type MenuCategoryResponse = MenuCategorySummary;
+
+type MenuItemResponse = MenuItemSummary;
+
+type RestaurantMenuResponse = {
+  restaurant: RestaurantSummary;
+  categories: RestaurantMenuCategory[];
 };
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-staging-qvmv.onrender.com";
@@ -197,6 +217,69 @@ async function jobMutation(session: BusinessSession, jobId: string, path: string
       "Idempotency-Key": `${createId("idem")}-${path}`
     },
     body: JSON.stringify(body ?? {})
+  });
+}
+
+export async function listRestaurants(session: BusinessSession) {
+  const payload = await apiFetch<RestaurantListResponse>(session, "/v1/business/restaurants", {
+    method: "GET"
+  });
+
+  return payload.items;
+}
+
+export async function createRestaurant(
+  session: BusinessSession,
+  input: { orgId: string; name: string; slug: string; status?: RestaurantSummary["status"] }
+) {
+  return apiFetch<RestaurantResponse>(session, "/v1/business/restaurants", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-restaurant`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function createMenuCategory(
+  session: BusinessSession,
+  restaurantId: string,
+  input: { name: string; sortOrder?: number; isActive?: boolean }
+) {
+  return apiFetch<MenuCategoryResponse>(session, `/v1/business/restaurants/${restaurantId}/menu-categories`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-menu-category`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function createMenuItem(
+  session: BusinessSession,
+  restaurantId: string,
+  input: {
+    categoryId: string;
+    name: string;
+    description?: string | null;
+    priceCents: number;
+    currency?: string;
+    sortOrder?: number;
+    isActive?: boolean;
+  }
+) {
+  return apiFetch<MenuItemResponse>(session, `/v1/business/restaurants/${restaurantId}/menu-items`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-menu-item`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function getRestaurantMenu(session: BusinessSession, restaurantId: string): Promise<RestaurantMenu> {
+  return apiFetch<RestaurantMenuResponse>(session, `/v1/business/restaurants/${restaurantId}/menu`, {
+    method: "GET"
   });
 }
 

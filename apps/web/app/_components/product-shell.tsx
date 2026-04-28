@@ -396,6 +396,9 @@ export function ProductShell(props: ProductShellProps) {
             <Link className={props.view !== "home" ? "ops-nav-link active" : "ops-nav-link"} href="/app/jobs">
               Jobs
             </Link>
+            <Link className="ops-nav-link" href="/app/restaurant">
+              Restaurant
+            </Link>
           </nav>
 
           <section className="ops-sidebar-section">

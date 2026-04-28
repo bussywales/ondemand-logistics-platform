@@ -342,6 +342,94 @@ export const BusinessContextSchema = z.object({
 });
 export type BusinessContextDto = z.infer<typeof BusinessContextSchema>;
 
+export const RestaurantStatusSchema = z.enum(["DRAFT", "ACTIVE"]);
+export type RestaurantStatus = z.infer<typeof RestaurantStatusSchema>;
+
+const RestaurantSlugSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+export const CreateRestaurantSchema = z.object({
+  orgId: z.string().uuid(),
+  name: z.string().min(2).max(160),
+  slug: RestaurantSlugSchema,
+  status: RestaurantStatusSchema.default("ACTIVE")
+});
+export type CreateRestaurantInput = z.infer<typeof CreateRestaurantSchema>;
+
+export const RestaurantSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  name: z.string().min(2),
+  slug: RestaurantSlugSchema,
+  status: RestaurantStatusSchema,
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type RestaurantDto = z.infer<typeof RestaurantSchema>;
+
+export const RestaurantListSchema = z.object({
+  items: z.array(RestaurantSchema)
+});
+export type RestaurantListDto = z.infer<typeof RestaurantListSchema>;
+
+export const CreateMenuCategorySchema = z.object({
+  name: z.string().min(2).max(120),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().optional().default(true)
+});
+export type CreateMenuCategoryInput = z.infer<typeof CreateMenuCategorySchema>;
+
+export const MenuCategorySchema = z.object({
+  id: z.string().uuid(),
+  restaurantId: z.string().uuid(),
+  name: z.string().min(2),
+  sortOrder: z.number().int().min(0),
+  isActive: z.boolean(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type MenuCategoryDto = z.infer<typeof MenuCategorySchema>;
+
+export const CreateMenuItemSchema = z.object({
+  categoryId: z.string().uuid(),
+  name: z.string().min(2).max(160),
+  description: z.string().min(2).max(1000).nullable().optional(),
+  priceCents: z.number().int().positive(),
+  currency: z.string().length(3).default("GBP"),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().optional().default(true)
+});
+export type CreateMenuItemInput = z.infer<typeof CreateMenuItemSchema>;
+
+export const MenuItemSchema = z.object({
+  id: z.string().uuid(),
+  restaurantId: z.string().uuid(),
+  categoryId: z.string().uuid(),
+  name: z.string().min(2),
+  description: z.string().nullable(),
+  priceCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  isActive: z.boolean(),
+  sortOrder: z.number().int().min(0),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type MenuItemDto = z.infer<typeof MenuItemSchema>;
+
+export const RestaurantMenuCategorySchema = MenuCategorySchema.extend({
+  items: z.array(MenuItemSchema)
+});
+export type RestaurantMenuCategoryDto = z.infer<typeof RestaurantMenuCategorySchema>;
+
+export const RestaurantMenuSchema = z.object({
+  restaurant: RestaurantSchema,
+  categories: z.array(RestaurantMenuCategorySchema)
+});
+export type RestaurantMenuDto = z.infer<typeof RestaurantMenuSchema>;
+
 export const PaymentProviderSchema = z.enum(["stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 

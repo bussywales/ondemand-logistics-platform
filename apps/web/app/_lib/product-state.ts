@@ -63,6 +63,51 @@ export type BusinessSession = {
   context: BusinessContext;
 };
 
+export type RestaurantStatus = "DRAFT" | "ACTIVE";
+
+export type RestaurantSummary = {
+  id: string;
+  orgId: string;
+  name: string;
+  slug: string;
+  status: RestaurantStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MenuCategorySummary = {
+  id: string;
+  restaurantId: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MenuItemSummary = {
+  id: string;
+  restaurantId: string;
+  categoryId: string;
+  name: string;
+  description: string | null;
+  priceCents: number;
+  currency: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RestaurantMenuCategory = MenuCategorySummary & {
+  items: MenuItemSummary[];
+};
+
+export type RestaurantMenu = {
+  restaurant: RestaurantSummary;
+  categories: RestaurantMenuCategory[];
+};
+
 export type DriverProfile = {
   role: "driver";
   name: string;

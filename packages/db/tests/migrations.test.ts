@@ -9,7 +9,7 @@ describe("migration files", () => {
       .filter((name) => name.endsWith(".sql"))
       .sort();
 
-    expect(files.length).toBeGreaterThanOrEqual(8);
+    expect(files.length).toBeGreaterThanOrEqual(10);
     expect(files[0]).toBe("0001_foundations_schema.sql");
     expect(files[1]).toBe("0002_rls_policies.sql");
     expect(files[2]).toBe("0003_rls_recursion_fix.sql");
@@ -18,5 +18,7 @@ describe("migration files", () => {
     expect(files[5]).toBe("0006_phase2b_pod_cancellation_notifications.sql");
     expect(files[6]).toBe("0007_phase3_payments_foundation.sql");
     expect(files[7]).toBe("0008_business_onboarding.sql");
+    expect(files[8]).toBe("0009_phase4_operations_console.sql");
+    expect(files[9]).toBe("0010_stage1_restaurants_menu.sql");
   });
 });
