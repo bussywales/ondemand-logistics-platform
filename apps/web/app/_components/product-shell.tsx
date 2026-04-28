@@ -1035,7 +1035,7 @@ export function ProductShell(props: ProductShellProps) {
                 </section>
 
                 <div className="ops-detail-grid">
-                  <section className="ops-section ops-zone">
+                  <section className="ops-section ops-zone ops-route-zone">
                     <div className="ops-section-header">
                       <SectionTitle eyebrow="Route" icon="route" title="Pickup and drop" />
                     </div>
@@ -1059,7 +1059,7 @@ export function ProductShell(props: ProductShellProps) {
                     </div>
                   </section>
 
-                  <section className="ops-section ops-zone">
+                  <section className="ops-section ops-zone ops-driver-zone">
                     <div className="ops-section-header">
                       <SectionTitle eyebrow="Driver" icon="driver" title="Assignment" />
                     </div>
@@ -1089,7 +1089,7 @@ export function ProductShell(props: ProductShellProps) {
                 </div>
 
                 <div className="ops-detail-grid">
-                  <section className="ops-section ops-zone">
+                  <section className="ops-section ops-zone ops-dispatch-zone">
                     <div className="ops-section-header">
                       <SectionTitle eyebrow="Dispatch" icon="retry" title="Attempts" />
                     </div>
@@ -1120,7 +1120,7 @@ export function ProductShell(props: ProductShellProps) {
                     )}
                   </section>
 
-                  <section className="ops-section ops-zone">
+                  <section className="ops-section ops-zone ops-timeline-zone">
                     <div className="ops-section-header">
                       <SectionTitle eyebrow="Timeline" icon="timeline" title="Events" />
                     </div>
