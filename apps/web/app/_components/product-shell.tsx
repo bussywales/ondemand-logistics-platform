@@ -1150,7 +1150,12 @@ export function ProductShell(props: ProductShellProps) {
                 </div>
 
                 <div className="ops-detail-grid">
-                  <section className="ops-section ops-zone ops-payment-zone" id="payment">
+                  <section
+                    className={`ops-section ops-zone ops-payment-zone ${
+                      paymentPanel && !paymentPanel.isFinal ? "ops-payment-zone-blocking" : ""
+                    }`}
+                    id="payment"
+                  >
                     <div className="ops-section-header">
                       <SectionTitle eyebrow="Payment" icon="payment" title="Status" />
                     </div>

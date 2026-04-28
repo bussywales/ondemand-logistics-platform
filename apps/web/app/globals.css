@@ -5376,3 +5376,237 @@ select:hover,
     right: -18rem;
   }
 }
+
+/* Hierarchy and depth tuning for the job detail command centre. */
+.ops-stack:has(.ops-decision-banner) {
+  gap: 1.9rem;
+}
+
+.ops-decision-banner,
+.ops-job-hero {
+  min-height: clamp(380px, 38vw, 500px);
+  padding: clamp(1.8rem, 3.4vw, 2.8rem);
+}
+
+.ops-job-hero-blocker {
+  background:
+    radial-gradient(circle at 8% 9%, rgba(255, 97, 109, 0.48), transparent 19rem),
+    radial-gradient(circle at 32% 0%, rgba(255, 255, 255, 0.1), transparent 16rem),
+    radial-gradient(circle at 74% 24%, rgba(0, 166, 166, 0.17), transparent 25rem),
+    linear-gradient(128deg, #050c19 0%, #11162d 24%, #671321 57%, #081b36 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.11) inset,
+    0 42px 120px rgba(10, 33, 66, 0.36),
+    0 28px 88px rgba(127, 18, 32, 0.31),
+    0 0 90px rgba(215, 58, 73, 0.2);
+}
+
+.ops-decision-banner::before {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    repeating-linear-gradient(123deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 42px),
+    radial-gradient(circle at 16% 12%, rgba(255, 255, 255, 0.18), transparent 13rem);
+  background-size:
+    40px 40px,
+    40px 40px,
+    auto,
+    auto;
+  opacity: 0.5;
+}
+
+.ops-decision-banner .ops-job-header h2,
+.ops-decision-banner h2 {
+  max-width: 980px;
+  color: #ffffff;
+  font-size: clamp(2.55rem, 4.8vw, 4.45rem);
+  font-weight: 920;
+  text-wrap: balance;
+}
+
+.ops-decision-banner .ops-detail-note {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.ops-decision-grid {
+  gap: clamp(0.95rem, 1.3vw, 1.25rem);
+}
+
+.ops-decision-grid > div,
+.ops-decision-tile {
+  min-height: 214px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(circle at 14% 6%, rgba(255, 255, 255, 0.11), transparent 9rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.115), rgba(255, 255, 255, 0.052));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 22px 48px rgba(0, 0, 0, 0.13);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.ops-decision-tile:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 28px 58px rgba(0, 0, 0, 0.17);
+  transform: translateY(-2px);
+}
+
+.decision-tile-icon {
+  width: 3.28rem;
+  height: 3.28rem;
+}
+
+.decision-tile-icon-danger {
+  background: linear-gradient(180deg, rgba(255, 84, 98, 0.28), rgba(154, 29, 43, 0.28));
+  color: #ffabb2;
+}
+
+.decision-tile-icon-teal {
+  background: linear-gradient(180deg, rgba(0, 166, 166, 0.26), rgba(0, 91, 110, 0.22));
+}
+
+.decision-tile-icon-warning {
+  background: linear-gradient(180deg, rgba(227, 160, 8, 0.27), rgba(154, 101, 0, 0.22));
+}
+
+.decision-tile-icon-success {
+  background: linear-gradient(180deg, rgba(45, 164, 78, 0.3), rgba(20, 105, 48, 0.22));
+}
+
+.ops-decision-banner .button-primary {
+  min-width: 170px;
+  box-shadow:
+    0 22px 48px rgba(239, 48, 63, 0.38),
+    0 0 42px rgba(239, 48, 63, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.17) inset;
+}
+
+.ops-decision-banner .button-secondary {
+  min-width: 150px;
+  background: rgba(255, 255, 255, 0.065);
+}
+
+.ops-detail-grid:first-of-type {
+  margin-top: 0.15rem;
+}
+
+.ops-detail-grid .ops-zone {
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    border-color 180ms ease;
+}
+
+.ops-detail-grid .ops-zone:hover {
+  border-color: rgba(10, 33, 66, 0.14);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.84) inset,
+    0 28px 70px rgba(10, 33, 66, 0.12);
+  transform: translateY(-1px);
+}
+
+.ops-route-zone,
+.ops-driver-zone {
+  min-height: 320px;
+  border-width: 1px;
+}
+
+.ops-route-zone .section-title-row h2,
+.ops-driver-zone .section-title-row h2 {
+  font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+}
+
+.ops-dispatch-zone,
+.ops-timeline-zone {
+  opacity: 0.96;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.78) inset,
+    0 16px 44px rgba(10, 33, 66, 0.07);
+}
+
+.ops-dispatch-zone .section-title-row h2,
+.ops-timeline-zone .section-title-row h2 {
+  font-size: clamp(1.35rem, 1.8vw, 1.7rem);
+}
+
+.ops-payment-zone {
+  border-color: rgba(45, 164, 78, 0.13);
+}
+
+.ops-payment-zone-blocking {
+  border-color: rgba(227, 160, 8, 0.34);
+  background:
+    radial-gradient(circle at top left, rgba(227, 160, 8, 0.11), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(255, 250, 238, 0.96));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.86) inset,
+    0 26px 68px rgba(154, 101, 0, 0.11);
+}
+
+.ops-payment-zone-blocking .section-title-icon {
+  background: rgba(227, 160, 8, 0.15);
+  color: #9b6500;
+}
+
+.ops-actions-zone {
+  opacity: 0.86;
+  border-style: dashed;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(245, 248, 252, 0.72));
+  box-shadow: 0 12px 34px rgba(10, 33, 66, 0.055);
+}
+
+.ops-actions-zone .section-title-icon {
+  background: rgba(102, 117, 139, 0.11);
+  color: #66758b;
+}
+
+.ops-definition-list {
+  margin-top: 1.25rem;
+}
+
+.ops-definition-list div {
+  grid-template-columns: minmax(128px, 0.42fr) minmax(0, 1fr);
+  padding: 0.9rem 0;
+}
+
+.ops-definition-list dt {
+  color: #738197;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+
+.ops-definition-list dd {
+  color: #071831;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+
+.timeline-table-row {
+  border-radius: 14px;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.timeline-table-row:hover {
+  background: rgba(255, 255, 255, 0.78);
+  transform: translateX(2px);
+}
+
+@media (max-width: 980px) {
+  .ops-decision-banner,
+  .ops-job-hero {
+    min-height: auto;
+  }
+
+  .ops-route-zone,
+  .ops-driver-zone {
+    min-height: auto;
+  }
+}
