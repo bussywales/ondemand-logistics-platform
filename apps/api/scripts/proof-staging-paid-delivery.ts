@@ -479,13 +479,19 @@ async function verifyRecords(client: Client, input: { orderId: string; jobId: st
   );
   const pod = await client.query(`select id from public.proof_of_delivery where job_id = $1`, [input.jobId]);
   const events = await client.query(`select count(*)::int as count from public.job_events where job_id = $1`, [input.jobId]);
-  const audit = await client.query(`select count(*)::int as count from public.audit_log where entity_id = $1 or metadata->>'jobId' = $1`, [input.jobId]);
+  const audit = await client.query(
+    `select count(*)::int as count
+     from public.audit_log
+     where entity_id::text = $1
+        or metadata->>'jobId' = $1`,
+    [input.jobId]
+  );
   const outbox = await client.query(
     `select event_type, count(*)::int as count,
             count(processed_at)::int as processed_count,
             count(*) filter (where last_error is not null)::int as failed_count
      from public.outbox_messages
-     where aggregate_id in ($1, $2)
+     where aggregate_id::text in ($1, $2)
         or payload->>'jobId' = $1
         or payload->>'paymentId' = $2
      group by event_type
