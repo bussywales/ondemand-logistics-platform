@@ -9,6 +9,7 @@ import {
   getDriverState,
   getPublicRestaurantMenu,
   getRestaurantMenu,
+  listBusinessNotifications,
   listBusinessOrders,
   listDriverOffers,
   rejectDriverOffer,
@@ -253,6 +254,36 @@ describe('authorizePayment', () => {
 
     expect(order.id).toBe('order-1');
     expect(order.timeline[0]?.eventType).toBe('CUSTOMER_ORDER_SUBMITTED');
+  });
+
+  it('reads business notifications with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: 'job_event:12',
+              type: 'JOB_DISPATCH_FAILED',
+              title: 'Dispatch failed',
+              message: 'No eligible driver accepted this job. Review and retry dispatch.',
+              severity: 'danger',
+              entityType: 'job',
+              entityId: 'job-1',
+              createdAt: new Date().toISOString(),
+              read: false
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const notifications = await listBusinessNotifications(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/notifications');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(notifications[0]?.type).toBe('JOB_DISPATCH_FAILED');
   });
 
   it('reads and updates driver execution state with bearer auth', async () => {

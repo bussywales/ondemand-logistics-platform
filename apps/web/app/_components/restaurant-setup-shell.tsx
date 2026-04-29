@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
+import { NotificationsBell } from "./notifications";
 import { ShipWrightIcon } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
@@ -346,6 +347,7 @@ export function RestaurantSetupShell() {
         <div className="merchant-hero-topline">
           <BrandLogo href="/" mode="responsive" />
           <div className="merchant-hero-actions">
+            {session ? <NotificationsBell session={session} /> : null}
             <ContextualHelpLink href="/help/getting-started" />
             <button className="button button-secondary" onClick={() => void handleRefresh()} type="button">
               Refresh
@@ -388,6 +390,7 @@ export function RestaurantSetupShell() {
             <Link href="/app">Operations</Link>
             <Link href="/app/jobs">Jobs</Link>
             <Link href="/app/orders">Orders</Link>
+            <Link href="/app/notifications">Notifications</Link>
             <Link className="active" href="/app/restaurant">
               Merchant setup
             </Link>

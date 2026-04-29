@@ -598,6 +598,30 @@ export const BusinessCustomerOrderListSchema = z.object({
 });
 export type BusinessCustomerOrderListDto = z.infer<typeof BusinessCustomerOrderListSchema>;
 
+export const BusinessNotificationSeveritySchema = z.enum(["info", "success", "warning", "danger"]);
+export type BusinessNotificationSeverity = z.infer<typeof BusinessNotificationSeveritySchema>;
+
+export const BusinessNotificationEntityTypeSchema = z.enum(["job", "order", "payment"]);
+export type BusinessNotificationEntityType = z.infer<typeof BusinessNotificationEntityTypeSchema>;
+
+export const BusinessNotificationSchema = z.object({
+  id: z.string().min(2),
+  type: z.string().min(2),
+  title: z.string().min(2),
+  message: z.string().min(2),
+  severity: BusinessNotificationSeveritySchema,
+  entityType: BusinessNotificationEntityTypeSchema,
+  entityId: z.string().uuid(),
+  createdAt: IsoDateTimeSchema,
+  read: z.boolean()
+});
+export type BusinessNotificationDto = z.infer<typeof BusinessNotificationSchema>;
+
+export const BusinessNotificationListSchema = z.object({
+  items: z.array(BusinessNotificationSchema)
+});
+export type BusinessNotificationListDto = z.infer<typeof BusinessNotificationListSchema>;
+
 export const PaymentProviderSchema = z.enum(["stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 

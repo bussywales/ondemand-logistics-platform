@@ -211,6 +211,25 @@ export type BusinessCustomerOrderList = {
   items: BusinessCustomerOrder[];
 };
 
+export type NotificationSeverity = "info" | "success" | "warning" | "danger";
+export type NotificationEntityType = "job" | "order" | "payment";
+
+export type BusinessNotification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  severity: NotificationSeverity;
+  entityType: NotificationEntityType;
+  entityId: string;
+  createdAt: string;
+  read: boolean;
+};
+
+export type BusinessNotificationList = {
+  items: BusinessNotification[];
+};
+
 export type DriverProfile = {
   role: "driver";
   name: string;

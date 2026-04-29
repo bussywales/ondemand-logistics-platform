@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BusinessContextSchema,
+  BusinessNotificationListSchema,
   CancelJobSchema,
   CreateBusinessOrgSchema,
   CreateJobRequestSchema,
@@ -221,6 +222,26 @@ describe("JobStatusSchema", () => {
 });
 
 describe("read models", () => {
+  it("parses business notification payloads", () => {
+    const parsed = BusinessNotificationListSchema.safeParse({
+      items: [
+        {
+          id: "job-event:12",
+          type: "JOB_DISPATCH_FAILED",
+          title: "Dispatch failed",
+          message: "No eligible driver accepted this job.",
+          severity: "danger",
+          entityType: "job",
+          entityId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          createdAt: new Date().toISOString(),
+          read: false
+        }
+      ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
   it("parses paginated job responses", () => {
     const parsed = PaginatedJobsSchema.safeParse({
       items: [],

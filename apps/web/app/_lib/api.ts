@@ -1,5 +1,7 @@
 import type {
   AppJob,
+  BusinessNotification,
+  BusinessNotificationList,
   BusinessCustomerOrder,
   BusinessCustomerOrderList,
   BusinessSession,
@@ -122,6 +124,7 @@ type SubmitCustomerOrderResponse = CustomerOrderSubmission;
 
 type BusinessCustomerOrderListResponse = BusinessCustomerOrderList;
 type BusinessCustomerOrderResponse = BusinessCustomerOrder;
+type BusinessNotificationListResponse = BusinessNotificationList;
 type DriverStateResponse = DriverState;
 type DriverOfferResponse = DriverOffer;
 type DriverJobResponse = DriverJob | null;
@@ -380,6 +383,14 @@ export async function getBusinessOrder(session: BusinessSession, orderId: string
   return apiFetch<BusinessCustomerOrderResponse>(session, `/v1/business/orders/${orderId}`, {
     method: "GET"
   });
+}
+
+export async function listBusinessNotifications(session: BusinessSession): Promise<BusinessNotification[]> {
+  const payload = await apiFetch<BusinessNotificationListResponse>(session, "/v1/business/notifications", {
+    method: "GET"
+  });
+
+  return payload.items;
 }
 
 export async function getDriverState(session: BusinessSession): Promise<DriverState> {

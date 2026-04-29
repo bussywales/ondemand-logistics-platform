@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
+import { NotificationsBell } from "./notifications";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import { getBusinessOrder, listBusinessOrders } from "../_lib/api";
@@ -506,6 +507,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
           <h1>{workspaceName}</h1>
         </div>
         <div className="ops-topbar-actions">
+          <NotificationsBell session={session} />
           <ContextualHelpLink href="/help/orders" />
           <button
             className="button button-secondary"
@@ -537,6 +539,9 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
             </Link>
             <Link className="ops-nav-link active" href="/app/orders">
               Orders
+            </Link>
+            <Link className="ops-nav-link" href="/app/notifications">
+              Notifications
             </Link>
             <Link className="ops-nav-link" href="/app/restaurant">
               Restaurant

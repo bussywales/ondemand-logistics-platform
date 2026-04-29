@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 
 export type ShipWrightIconName =
   | "alert"
   | "assign"
+  | "bell"
   | "cancel"
   | "check"
   | "driver"
@@ -37,6 +38,13 @@ const iconPaths: Record<ShipWrightIconName, ReactNode> = {
       <path d="M10 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
       <path d="M18 8v6" />
       <path d="M15 11h6" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M8.4 18h7.2" />
+      <path d="M10 20a2 2 0 0 0 4 0" />
+      <path d="M18 16.5V11a6 6 0 1 0-12 0v5.5l-2 1.5h16l-2-1.5Z" />
     </>
   ),
   cancel: (

@@ -25,6 +25,8 @@ import {
   RestaurantsController
 } from "./restaurants/restaurants.controller.js";
 import { RestaurantsService } from "./restaurants/restaurants.service.js";
+import { NotificationsController } from "./notifications/notifications.controller.js";
+import { NotificationsService } from "./notifications/notifications.service.js";
 
 @Module({
   imports: [],
@@ -36,6 +38,7 @@ import { RestaurantsService } from "./restaurants/restaurants.service.js";
     DriverController,
     PaymentsController,
     BusinessController,
+    NotificationsController,
     BusinessOrdersController,
     RestaurantsController,
     PublicRestaurantsController
@@ -50,6 +53,7 @@ import { RestaurantsService } from "./restaurants/restaurants.service.js";
     DriverService,
     PaymentsService,
     BusinessService,
+    NotificationsService,
     RestaurantsService,
     {
       provide: APP_GUARD,
