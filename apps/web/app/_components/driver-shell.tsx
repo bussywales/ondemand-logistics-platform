@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
+import { ContextualHelpLink } from "./help";
 import { ShipWrightIcon } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
@@ -70,6 +71,7 @@ function DriverBlockedState(props: { message: string; onSignOut: () => void }) {
           <button className="sw-button sw-button--secondary button button-secondary" onClick={props.onSignOut} type="button">
             Sign out
           </button>
+          <ContextualHelpLink href="/help/driver" />
         </div>
       </section>
     </main>
@@ -479,6 +481,7 @@ export function DriverShell() {
       <header className="driver-topbar">
         <BrandLogo href="/" mode="responsive" />
         <div className="driver-topbar-actions">
+          <ContextualHelpLink href="/help/driver" />
           <button
             className="button button-secondary"
             onClick={() =>

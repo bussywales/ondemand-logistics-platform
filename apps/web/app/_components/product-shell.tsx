@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
+import { ContextualHelpLink } from "./help";
 import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMethod } from "./payment-method-form";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
@@ -504,6 +505,7 @@ export function ProductShell(props: ProductShellProps) {
           <h1>{workspaceSummary.orgName}</h1>
         </div>
         <div className="ops-topbar-actions">
+          <ContextualHelpLink href="/help/deliveries" />
           <button
             className="button button-secondary"
             onClick={() =>
@@ -537,6 +539,9 @@ export function ProductShell(props: ProductShellProps) {
             </Link>
             <Link className="ops-nav-link" href="/app/restaurant">
               Restaurant
+            </Link>
+            <Link className="ops-nav-link" href="/help">
+              Help
             </Link>
           </nav>
 

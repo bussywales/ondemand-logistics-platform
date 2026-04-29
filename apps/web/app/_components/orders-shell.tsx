@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
+import { ContextualHelpLink } from "./help";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import { getBusinessOrder, listBusinessOrders } from "../_lib/api";
@@ -505,6 +506,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
           <h1>{workspaceName}</h1>
         </div>
         <div className="ops-topbar-actions">
+          <ContextualHelpLink href="/help/orders" />
           <button
             className="button button-secondary"
             onClick={() =>
@@ -538,6 +540,9 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
             </Link>
             <Link className="ops-nav-link" href="/app/restaurant">
               Restaurant
+            </Link>
+            <Link className="ops-nav-link" href="/help">
+              Help
             </Link>
           </nav>
 

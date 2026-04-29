@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
+import { ContextualHelpLink } from "./help";
 import { ShipWrightIcon } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
@@ -345,6 +346,7 @@ export function RestaurantSetupShell() {
         <div className="merchant-hero-topline">
           <BrandLogo href="/" mode="responsive" />
           <div className="merchant-hero-actions">
+            <ContextualHelpLink href="/help/getting-started" />
             <button className="button button-secondary" onClick={() => void handleRefresh()} type="button">
               Refresh
             </button>
@@ -389,6 +391,7 @@ export function RestaurantSetupShell() {
             <Link className="active" href="/app/restaurant">
               Merchant setup
             </Link>
+            <Link href="/help">Help</Link>
           </nav>
 
           <section className="merchant-side-section">
