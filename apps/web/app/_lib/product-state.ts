@@ -138,7 +138,7 @@ export type CustomerOrderSubmission = {
     restaurantId: string;
     jobId: string;
     paymentId: string;
-    status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "COMPLETED";
+    status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED";
     customerName: string;
     customerEmail: string;
     customerPhone: string;
@@ -179,7 +179,7 @@ export type CustomerOrderSubmission = {
 
 export type BusinessCustomerOrder = {
   id: string;
-  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "COMPLETED";
+  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED";
   restaurant: {
     id: string;
     name: string;

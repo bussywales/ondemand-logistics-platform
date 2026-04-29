@@ -670,7 +670,7 @@ export async function runPaidDeliveryProof() {
     const finalOrderStatus = verified.order?.status ?? order.order.status;
     const paymentStatus = verified.payment?.status ?? order.payment.status;
     const finalJobStatus = verified.job?.status ?? currentJob.status;
-    if (finalJobStatus !== "DELIVERED" || paymentStatus !== "CAPTURED" || finalOrderStatus !== "COMPLETED") {
+    if (finalJobStatus !== "DELIVERED" || paymentStatus !== "CAPTURED" || finalOrderStatus !== "FULFILLED") {
       throw new Error(
         `paid_delivery_final_state_invalid:${JSON.stringify({
           finalJobStatus,

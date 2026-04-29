@@ -80,7 +80,7 @@ function statusTone(status: AppJob["status"] | AppJob["payment"]["status"]) {
 }
 
 function orderStatusTone(status: BusinessCustomerOrder["status"]) {
-  if (status === "COMPLETED") {
+  if (status === "FULFILLED") {
     return "status-positive";
   }
 

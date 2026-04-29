@@ -132,7 +132,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
     slug: "orders",
     statusMeanings: [
       { status: "PAYMENT_AUTHORIZED", meaning: "Stripe authorization succeeded and the delivery can proceed.", nextAction: "Monitor the linked job." },
-      { status: "COMPLETED", meaning: "The linked delivery is delivered and payment is captured.", nextAction: "No operator action required." },
+      { status: "FULFILLED", meaning: "The linked delivery is delivered and payment is captured.", nextAction: "No operator action required." },
       { status: "PAYMENT_FAILED", meaning: "Checkout or authorization failed.", nextAction: "Ask the customer to retry payment if this is a live pilot." },
       { status: "DISPATCH_FAILED", meaning: "The linked delivery job did not secure a driver.", nextAction: "Open the job and retry dispatch or assign manually." }
     ],
@@ -254,7 +254,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
     statusMeanings: [
       { status: "REQUIRES_PAYMENT_METHOD", meaning: "No valid card has been collected.", nextAction: "Collect card details in checkout or the payment panel." },
       { status: "AUTHORIZED", meaning: "Stripe has authorized funds but not captured them.", nextAction: "Complete delivery before capture." },
-      { status: "CAPTURED", meaning: "Payment capture succeeded.", nextAction: "Confirm the order is COMPLETED if the job is delivered." },
+      { status: "CAPTURED", meaning: "Payment capture succeeded.", nextAction: "Confirm the order is FULFILLED if the job is delivered." },
       { status: "FAILED", meaning: "Payment failed or Stripe rejected the request.", nextAction: "Inspect Stripe and API error details." }
     ],
     title: "Payments",

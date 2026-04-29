@@ -207,6 +207,27 @@ describe("RestaurantsService", () => {
     ]);
   });
 
+  it("normalizes legacy completed customer order rows to fulfilled in list and detail reads", async () => {
+    const listQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [businessOrderRow({ status: "COMPLETED" })] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [orderItemRow()] });
+    const detailQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [businessOrderRow({ status: "COMPLETED" })] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [orderItemRow()] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const listService = new RestaurantsService({ query: listQuery } as never, {} as never);
+    const detailService = new RestaurantsService({ query: detailQuery } as never, {} as never);
+
+    const list = await listService.listBusinessOrders(USER_ID);
+    const detail = await detailService.getBusinessOrder(ORDER_ID, USER_ID);
+
+    expect(list.items[0]?.status).toBe("FULFILLED");
+    expect(detail.status).toBe("FULFILLED");
+  });
+
   it("blocks customer order detail access outside the operator org", async () => {
     const query = vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] });
 

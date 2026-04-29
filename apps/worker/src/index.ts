@@ -845,11 +845,11 @@ async function completeCustomerOrderIfPaidAndDelivered(
 ) {
   const completed = await client.query<{ id: string; status: string }>(
     `update public.customer_orders
-     set status = 'COMPLETED',
+     set status = 'FULFILLED',
          updated_at = now()
      where payment_id = $1
        and job_id = $2
-       and status = 'PAYMENT_AUTHORIZED'
+       and status in ('PAYMENT_AUTHORIZED', 'COMPLETED')
      returning id, status`,
     [payment.id, payment.job_id]
   );
@@ -864,7 +864,7 @@ async function completeCustomerOrderIfPaidAndDelivered(
     orgId: payment.org_id,
     entityType: "customer_order",
     entityId: completed.rows[0].id,
-    action: "customer_order_completed",
+    action: "customer_order_fulfilled",
     metadata: {
       jobId: payment.job_id,
       paymentId: payment.id,

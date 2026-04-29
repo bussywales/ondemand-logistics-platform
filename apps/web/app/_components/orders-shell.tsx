@@ -33,7 +33,7 @@ function statusTone(status: string) {
     return "status-live";
   }
 
-  if (["DELIVERED", "COMPLETED", "CAPTURED"].includes(status)) {
+  if (["DELIVERED", "COMPLETED", "FULFILLED", "CAPTURED"].includes(status)) {
     return "status-positive";
   }
 
@@ -45,7 +45,7 @@ function statusTone(status: string) {
 }
 
 function statusIconName(status: string): ShipWrightIconName {
-  if (["DELIVERED", "COMPLETED", "CAPTURED"].includes(status)) {
+  if (["DELIVERED", "COMPLETED", "FULFILLED", "CAPTURED"].includes(status)) {
     return "check";
   }
 

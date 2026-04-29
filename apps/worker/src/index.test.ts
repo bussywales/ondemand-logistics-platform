@@ -294,7 +294,7 @@ describe("dispatchSideEffect", () => {
       },
       { match: "update public.payments" },
       { match: "insert into public.payment_events" },
-      { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-1", status: "COMPLETED" }] } },
+      { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-1", status: "FULFILLED" }] } },
       { match: "insert into public.audit_log" },
       { match: "insert into public.payout_ledger" },
       { match: "insert into public.audit_log" }
@@ -348,7 +348,7 @@ describe("dispatchSideEffect", () => {
           ]
         }
       },
-      { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-replay", status: "COMPLETED" }] } },
+      { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-replay", status: "FULFILLED" }] } },
       { match: "insert into public.audit_log" }
     ]);
 

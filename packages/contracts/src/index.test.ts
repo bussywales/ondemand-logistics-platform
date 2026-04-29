@@ -206,8 +206,8 @@ describe("customer order schemas", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("accepts completed customer orders after delivery and capture", () => {
-    expect(CustomerOrderStatusSchema.parse("COMPLETED")).toBe("COMPLETED");
+  it("accepts fulfilled customer orders after delivery and capture", () => {
+    expect(CustomerOrderStatusSchema.parse("FULFILLED")).toBe("FULFILLED");
   });
 });
 

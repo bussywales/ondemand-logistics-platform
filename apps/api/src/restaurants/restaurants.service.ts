@@ -89,7 +89,7 @@ type CustomerOrderRow = {
   customer_phone: string;
   delivery_address: string;
   delivery_notes: string | null;
-  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "COMPLETED";
+  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "COMPLETED" | "FULFILLED";
   subtotal_cents: number;
   delivery_fee_cents: number;
   total_cents: number;
@@ -164,6 +164,14 @@ type CreatedJobRow = {
 };
 
 const CUSTOMER_ORDER_PRICING_VERSION = "stage1_customer_order_v1";
+
+function normalizeCustomerOrderStatus(status: CustomerOrderRow["status"]): "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED" {
+  if (status === "COMPLETED") {
+    return "FULFILLED";
+  }
+
+  return status;
+}
 const PILOT_ORDER_VEHICLE_TYPE = (process.env.PILOT_ORDER_VEHICLE_TYPE === "CAR" ? "CAR" : "BIKE") as "BIKE" | "CAR";
 const PILOT_ORDER_DISTANCE_MILES = Number(process.env.PILOT_ORDER_DISTANCE_MILES ?? "4.8");
 const PILOT_ORDER_ETA_MINUTES = Number(process.env.PILOT_ORDER_ETA_MINUTES ?? "22");
@@ -1141,7 +1149,7 @@ export class RestaurantsService {
       restaurantId: row.restaurant_id,
       jobId: row.job_id,
       paymentId: row.payment_id,
-      status: row.status,
+      status: normalizeCustomerOrderStatus(row.status),
       customerName: row.customer_name,
       customerEmail: row.customer_email,
       customerPhone: row.customer_phone,
@@ -1164,7 +1172,7 @@ export class RestaurantsService {
     const deliveryAddress = row.delivery_address;
     return BusinessCustomerOrderSchema.parse({
       id: row.id,
-      status: row.status,
+      status: normalizeCustomerOrderStatus(row.status),
       restaurant: {
         id: row.restaurant_id,
         name: row.restaurant_name,
