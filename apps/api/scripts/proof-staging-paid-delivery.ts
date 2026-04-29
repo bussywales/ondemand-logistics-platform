@@ -667,6 +667,18 @@ export async function runPaidDeliveryProof() {
       jobId: order.order.jobId,
       paymentId: order.order.paymentId
     });
+    const finalOrderStatus = verified.order?.status ?? order.order.status;
+    const paymentStatus = verified.payment?.status ?? order.payment.status;
+    const finalJobStatus = verified.job?.status ?? currentJob.status;
+    if (finalJobStatus !== "DELIVERED" || paymentStatus !== "CAPTURED" || finalOrderStatus !== "COMPLETED") {
+      throw new Error(
+        `paid_delivery_final_state_invalid:${JSON.stringify({
+          finalJobStatus,
+          paymentStatus,
+          finalOrderStatus
+        })}`
+      );
+    }
 
     console.log("PASS staging_paid_delivery_proof_complete");
     console.log(
@@ -685,9 +697,9 @@ export async function runPaidDeliveryProof() {
           offerId: offer.offerId,
           paymentId: order.order.paymentId,
           podId: verified.pod?.id ?? pod.id,
-          finalJobStatus: verified.job?.status ?? currentJob.status,
-          finalOrderStatus: verified.order?.status ?? order.order.status,
-          paymentStatus: verified.payment?.status ?? order.payment.status,
+          finalJobStatus,
+          finalOrderStatus,
+          paymentStatus,
           providerPaymentIntentId: verified.payment?.provider_payment_intent_id ?? null,
           duplicateRetry: {
             idempotencyKey: orderIdempotencyKey,

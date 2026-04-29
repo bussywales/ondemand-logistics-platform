@@ -838,6 +838,41 @@ async function upsertPayoutLedgerReady(
   });
 }
 
+async function completeCustomerOrderIfPaidAndDelivered(
+  client: PoolClient,
+  payment: Pick<PaymentWorkItem, "id" | "job_id" | "org_id">,
+  requestId: string
+) {
+  const completed = await client.query<{ id: string; status: string }>(
+    `update public.customer_orders
+     set status = 'COMPLETED',
+         updated_at = now()
+     where payment_id = $1
+       and job_id = $2
+       and status = 'PAYMENT_AUTHORIZED'
+     returning id, status`,
+    [payment.id, payment.job_id]
+  );
+
+  if ((completed.rowCount ?? 0) === 0) {
+    return;
+  }
+
+  await insertAuditLog(client, {
+    requestId,
+    actorId: null,
+    orgId: payment.org_id,
+    entityType: "customer_order",
+    entityId: completed.rows[0].id,
+    action: "customer_order_completed",
+    metadata: {
+      jobId: payment.job_id,
+      paymentId: payment.id,
+      status: completed.rows[0].status
+    }
+  });
+}
+
 async function handlePaymentIntentCreateRequested(
   client: PoolClient,
   message: OutboxMessage,
@@ -917,6 +952,12 @@ async function handlePaymentCaptureRequested(
     return;
   }
 
+  if (payment.status === "CAPTURED") {
+    await completeCustomerOrderIfPaidAndDelivered(client, payment, requestId);
+    logger.info({ payment_id: payment.id, payment_status: payment.status }, "payment_capture_already_captured");
+    return;
+  }
+
   if (payment.status !== "AUTHORIZED" || !payment.provider_payment_intent_id) {
     logger.info({ payment_id: payment.id, payment_status: payment.status }, "payment_capture_skipped_not_authorized");
     return;
@@ -948,6 +989,7 @@ async function handlePaymentCaptureRequested(
   });
 
   if (snapshot.status === "CAPTURED") {
+    await completeCustomerOrderIfPaidAndDelivered(client, payment, requestId);
     await upsertPayoutLedgerReady(
       client,
       {

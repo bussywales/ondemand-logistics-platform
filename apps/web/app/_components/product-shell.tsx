@@ -78,6 +78,10 @@ function statusTone(status: AppJob["status"] | AppJob["payment"]["status"]) {
 }
 
 function orderStatusTone(status: BusinessCustomerOrder["status"]) {
+  if (status === "COMPLETED") {
+    return "status-positive";
+  }
+
   if (status === "PAYMENT_AUTHORIZED") {
     return "status-live";
   }

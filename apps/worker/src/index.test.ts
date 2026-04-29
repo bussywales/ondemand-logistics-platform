@@ -294,6 +294,8 @@ describe("dispatchSideEffect", () => {
       },
       { match: "update public.payments" },
       { match: "insert into public.payment_events" },
+      { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-1", status: "COMPLETED" }] } },
+      { match: "insert into public.audit_log" },
       { match: "insert into public.payout_ledger" },
       { match: "insert into public.audit_log" }
     ]);
@@ -306,6 +308,108 @@ describe("dispatchSideEffect", () => {
         aggregate_id: "pay-1",
         event_type: "PAYMENT_CAPTURE_REQUESTED",
         payload: { paymentId: "pay-1", requestId: "req-pay-1" },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("completes a customer order on replay when payment is already captured and job is delivered", async () => {
+    const client = createClientStub([
+      {
+        match: "from public.payments p",
+        result: {
+          rows: [
+            {
+              id: "pay-replay",
+              job_id: "job-replay",
+              provider: "stripe",
+              provider_payment_intent_id: "pi_replay",
+              status: "CAPTURED",
+              amount_authorized_cents: 1600,
+              amount_captured_cents: 1600,
+              amount_refunded_cents: 0,
+              currency: "gbp",
+              customer_total_cents: 1600,
+              platform_fee_cents: 500,
+              payout_gross_cents: 1100,
+              settlement_snapshot: {},
+              client_secret: null,
+              last_error: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              consumer_id: "consumer-1",
+              job_status: "DELIVERED",
+              assigned_driver_id: "driver-1",
+              org_id: "org-1"
+            }
+          ]
+        }
+      },
+      { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-replay", status: "COMPLETED" }] } },
+      { match: "insert into public.audit_log" }
+    ]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-pay-replay",
+        aggregate_type: "payment",
+        aggregate_id: "pay-replay",
+        event_type: "PAYMENT_CAPTURE_REQUESTED",
+        payload: { paymentId: "pay-replay", requestId: "req-pay-replay" },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("does not complete a customer order when job is not delivered", async () => {
+    const client = createClientStub([
+      {
+        match: "from public.payments p",
+        result: {
+          rows: [
+            {
+              id: "pay-not-delivered",
+              job_id: "job-not-delivered",
+              provider: "stripe",
+              provider_payment_intent_id: "pi_not_delivered",
+              status: "AUTHORIZED",
+              amount_authorized_cents: 1600,
+              amount_captured_cents: 0,
+              amount_refunded_cents: 0,
+              currency: "gbp",
+              customer_total_cents: 1600,
+              platform_fee_cents: 500,
+              payout_gross_cents: 1100,
+              settlement_snapshot: {},
+              client_secret: null,
+              last_error: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              consumer_id: "consumer-1",
+              job_status: "ASSIGNED",
+              assigned_driver_id: "driver-1",
+              org_id: "org-1"
+            }
+          ]
+        }
+      }
+    ]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-pay-not-delivered",
+        aggregate_type: "payment",
+        aggregate_id: "pay-not-delivered",
+        event_type: "PAYMENT_CAPTURE_REQUESTED",
+        payload: { paymentId: "pay-not-delivered", requestId: "req-pay-not-delivered" },
         retry_count: 0
       },
       createLoggerStub()

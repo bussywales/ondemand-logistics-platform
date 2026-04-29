@@ -89,7 +89,7 @@ type CustomerOrderRow = {
   customer_phone: string;
   delivery_address: string;
   delivery_notes: string | null;
-  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED";
+  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "COMPLETED";
   subtotal_cents: number;
   delivery_fee_cents: number;
   total_cents: number;

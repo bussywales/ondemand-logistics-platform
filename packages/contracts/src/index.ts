@@ -463,7 +463,7 @@ export const PublicRestaurantMenuSchema = z.object({
 });
 export type PublicRestaurantMenuDto = z.infer<typeof PublicRestaurantMenuSchema>;
 
-export const CustomerOrderStatusSchema = z.enum(["SUBMITTED", "PAYMENT_AUTHORIZED", "PAYMENT_FAILED"]);
+export const CustomerOrderStatusSchema = z.enum(["SUBMITTED", "PAYMENT_AUTHORIZED", "PAYMENT_FAILED", "COMPLETED"]);
 export type CustomerOrderStatus = z.infer<typeof CustomerOrderStatusSchema>;
 
 export const SubmitCustomerOrderItemSchema = z.object({

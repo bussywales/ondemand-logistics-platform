@@ -104,6 +104,7 @@ The command prints concise `PASS` lines and ends with JSON similar to:
   "paymentId": "...",
   "podId": "...",
   "finalJobStatus": "DELIVERED",
+  "finalOrderStatus": "COMPLETED",
   "paymentStatus": "CAPTURED",
   "customerOrderItemsCount": 1,
   "jobEventsCount": 5,
@@ -112,7 +113,7 @@ The command prints concise `PASS` lines and ends with JSON similar to:
 }
 ```
 
-If `paymentStatus` remains `AUTHORIZED`, inspect worker logs and `PAYMENT_CAPTURE_REQUESTED` outbox rows. Delivery should enqueue capture through the existing payment architecture; worker processing is what moves the payment to captured.
+If `paymentStatus` remains `AUTHORIZED`, inspect worker logs and `PAYMENT_CAPTURE_REQUESTED` outbox rows. Delivery should enqueue capture through the existing payment architecture; worker processing is what moves the payment to captured. If `finalOrderStatus` is not `COMPLETED`, the customer-order completion hook did not run after the delivered job and captured payment state converged.
 
 ## Failure Handling
 - `restaurant_menu_empty`: load an active menu for the pilot restaurant before rerunning.
