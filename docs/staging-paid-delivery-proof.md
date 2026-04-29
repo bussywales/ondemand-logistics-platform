@@ -15,15 +15,16 @@ Use it after migrations, `/healthz`, `/readyz`, and the standard staging smoke p
 - Render API staging has Stripe test mode env configured.
 - A pilot restaurant exists with an active menu at `pilot-kitchen-1777370757`.
 - Local shell has Supabase and database env values from `.env.proof.example`.
+- `SUPABASE_SERVICE_ROLE_KEY` is recommended for repeatable fixture creation and required if Supabase email signup is rate-limited.
 
 ## Fixture
 The proof harness creates or refreshes these staging users:
 
 | Role | Email | Purpose |
 | --- | --- | --- |
-| Business operator | `staging-business-operator@shipwright.local` | Owns the seeded staging org. |
-| Driver | `staging-driver@shipwright.local` | Receives and completes the dispatch offer. |
-| Consumer | `staging-consumer@shipwright.local` | Reserved fixture for customer-facing checks. |
+| Business operator | `staging-business-operator@shipwright.example.com` | Owns the seeded staging org. |
+| Driver | `staging-driver@shipwright.example.com` | Receives and completes the dispatch offer. |
+| Consumer | `staging-consumer@shipwright.example.com` | Reserved fixture for customer-facing checks. |
 
 The driver fixture is reset to the minimum dispatch-eligible state:
 - `drivers.is_active = true`
@@ -34,6 +35,7 @@ The driver fixture is reset to the minimum dispatch-eligible state:
 - primary `BIKE` vehicle row
 
 This fixture is for staging proof only. Do not use it as production data.
+The public customer path does not require a Supabase customer login; the proof submits a public guest checkout order.
 
 ## How To Run
 ```bash
@@ -115,6 +117,7 @@ If `paymentStatus` remains `AUTHORIZED`, inspect worker logs and `PAYMENT_CAPTUR
 ## Failure Handling
 - `restaurant_menu_empty`: load an active menu for the pilot restaurant before rerunning.
 - `poll_timeout:driver_offer`: confirm the staged driver is ONLINE, BIKE, approved, not on another active job, and close to pickup.
+- `signup_rate_limited`: add `SUPABASE_SERVICE_ROLE_KEY` to `.env.proof` or wait for the Supabase auth email rate limit to reset.
 - `request_failed:503` from checkout: confirm Render API Stripe test env.
 - payment remains `AUTHORIZED`: confirm the worker is running and has Stripe env.
 - outbox rows with `last_error`: inspect the exact event type and worker log.

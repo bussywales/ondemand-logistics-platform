@@ -4,11 +4,12 @@ import { Client, type ClientConfig, type PoolClient } from "pg";
 import { createLogger } from "@shipwright/observability";
 import { dispatchSideEffect } from "../../worker/src/index.ts";
 
-type FixtureSlug = "business" | "driver" | "consumer";
+type FixtureSlug = "business" | "driver";
 
 type FixtureSpec = {
   slug: FixtureSlug;
   email: string;
+  alternateEmails?: string[];
   password: string;
   displayName: string;
 };
@@ -16,6 +17,8 @@ type FixtureSpec = {
 type FixtureAuth = {
   userId: string;
   accessToken: string;
+  email: string;
+  displayName: string;
 };
 
 type PublicMenu = {
@@ -61,21 +64,17 @@ const DRIVER_LONGITUDE = -0.1099;
 const FIXTURES: FixtureSpec[] = [
   {
     slug: "business",
-    email: "staging-business-operator@shipwright.local",
+    email: "staging-business-operator@shipwright.example.com",
+    alternateEmails: ["staging-business-operator@shipwright.local"],
     password: "ShipwrightBusiness!2026",
     displayName: "Staging Business Operator"
   },
   {
     slug: "driver",
-    email: "staging-driver@shipwright.local",
+    email: "staging-driver@shipwright.example.com",
+    alternateEmails: ["staging-driver@shipwright.local"],
     password: "ShipwrightDriver!2026",
     displayName: "Staging Driver"
-  },
-  {
-    slug: "consumer",
-    email: "staging-consumer@shipwright.local",
-    password: "ShipwrightConsumer!2026",
-    displayName: "Staging Consumer"
   }
 ];
 
@@ -130,7 +129,31 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-async function signUpOrReuseUser(supabaseUrl: string, anonKey: string, fixture: FixtureSpec): Promise<FixtureAuth> {
+async function signUpOrReuseUser(
+  supabaseUrl: string,
+  anonKey: string,
+  serviceRoleKey: string | null,
+  fixture: FixtureSpec
+): Promise<FixtureAuth> {
+  for (const email of [fixture.email, ...(fixture.alternateEmails ?? [])]) {
+    const existingToken = await requestPasswordGrant(supabaseUrl, anonKey, {
+      ...fixture,
+      email
+    });
+    if (existingToken) {
+      return existingToken;
+    }
+  }
+
+  if (serviceRoleKey) {
+    await createOrUpdateAdminUser(supabaseUrl, serviceRoleKey, fixture);
+    const token = await requestPasswordGrant(supabaseUrl, anonKey, fixture);
+    if (token) {
+      return token;
+    }
+    throw new Error(`password_grant_failed:${fixture.slug}:admin_user_created_but_password_grant_failed`);
+  }
+
   const signupResponse = await fetch(`${supabaseUrl}/auth/v1/signup`, {
     method: "POST",
     headers: {
@@ -151,11 +174,103 @@ async function signUpOrReuseUser(supabaseUrl: string, anonKey: string, fixture: 
   if (!signupResponse.ok) {
     const payload = await readJson(signupResponse);
     const detail = JSON.stringify(payload);
+    if (/over_email_send_rate_limit|email rate limit/i.test(detail)) {
+      throw new Error(
+        `signup_rate_limited:${fixture.slug}:set SUPABASE_SERVICE_ROLE_KEY or wait for Supabase email rate limit to reset:${detail}`
+      );
+    }
     if (!/already registered|user_already_exists/i.test(detail)) {
       throw new Error(`signup_failed:${fixture.slug}:${signupResponse.status}:${detail}`);
     }
   }
 
+  const token = await requestPasswordGrant(supabaseUrl, anonKey, fixture);
+  if (!token) {
+    throw new Error(`password_grant_failed:${fixture.slug}:signup_completed_but_password_grant_failed`);
+  }
+
+  return token;
+}
+
+async function createOrUpdateAdminUser(supabaseUrl: string, serviceRoleKey: string, fixture: FixtureSpec) {
+  const existing = await findAdminUserByEmail(supabaseUrl, serviceRoleKey, fixture.email);
+  if (existing?.id) {
+    const updateResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${existing.id}`, {
+      method: "PUT",
+      headers: {
+        apikey: serviceRoleKey,
+        authorization: `Bearer ${serviceRoleKey}`,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        email: fixture.email,
+        password: fixture.password,
+        email_confirm: true,
+        user_metadata: {
+          display_name: fixture.displayName,
+          fixture_slug: fixture.slug
+        }
+      })
+    });
+    if (!updateResponse.ok) {
+      throw new Error(`admin_user_update_failed:${fixture.slug}:${updateResponse.status}:${JSON.stringify(await readJson(updateResponse))}`);
+    }
+    return;
+  }
+
+  const createResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      authorization: `Bearer ${serviceRoleKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      email: fixture.email,
+      password: fixture.password,
+      email_confirm: true,
+      user_metadata: {
+        display_name: fixture.displayName,
+        fixture_slug: fixture.slug
+      }
+    })
+  });
+  if (!createResponse.ok) {
+    const payload = await readJson(createResponse);
+    throw new Error(`admin_user_create_failed:${fixture.slug}:${createResponse.status}:${JSON.stringify(payload)}`);
+  }
+}
+
+async function findAdminUserByEmail(supabaseUrl: string, serviceRoleKey: string, email: string) {
+  for (let page = 1; page <= 10; page += 1) {
+    const response = await fetch(`${supabaseUrl}/auth/v1/admin/users?page=${page}&per_page=100`, {
+      headers: {
+        apikey: serviceRoleKey,
+        authorization: `Bearer ${serviceRoleKey}`
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`admin_user_list_failed:${response.status}:${JSON.stringify(await readJson(response))}`);
+    }
+
+    const payload = (await readJson(response)) as { users?: Array<{ id?: string; email?: string }> } | null;
+    const found = payload?.users?.find((user) => user.email?.toLowerCase() === email.toLowerCase());
+    if (found) {
+      return found;
+    }
+    if (!payload?.users || payload.users.length < 100) {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function requestPasswordGrant(
+  supabaseUrl: string,
+  anonKey: string,
+  fixture: FixtureSpec
+): Promise<FixtureAuth | null> {
   const tokenResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: {
@@ -171,7 +286,7 @@ async function signUpOrReuseUser(supabaseUrl: string, anonKey: string, fixture: 
 
   const tokenPayload = (await readJson(tokenResponse)) as Record<string, unknown> | null;
   if (!tokenResponse.ok) {
-    throw new Error(`password_grant_failed:${fixture.slug}:${tokenResponse.status}:${JSON.stringify(tokenPayload)}`);
+    return null;
   }
 
   const user = tokenPayload?.user as { id?: string } | undefined;
@@ -182,7 +297,9 @@ async function signUpOrReuseUser(supabaseUrl: string, anonKey: string, fixture: 
 
   return {
     userId: user.id,
-    accessToken
+    accessToken,
+    email: fixture.email,
+    displayName: fixture.displayName
   };
 }
 
@@ -191,20 +308,17 @@ async function seedDriverFixture(client: Client, fixtures: Record<FixtureSlug, F
   try {
     await client.query(
       `insert into public.users (id, email, display_name)
-       values ($1, $2, $3), ($4, $5, $6), ($7, $8, $9)
+       values ($1, $2, $3), ($4, $5, $6)
        on conflict (id) do update
        set email = excluded.email,
            display_name = excluded.display_name`,
       [
         fixtures.business.userId,
-        FIXTURES[0].email,
-        FIXTURES[0].displayName,
+        fixtures.business.email,
+        fixtures.business.displayName,
         fixtures.driver.userId,
-        FIXTURES[1].email,
-        FIXTURES[1].displayName,
-        fixtures.consumer.userId,
-        FIXTURES[2].email,
-        FIXTURES[2].displayName
+        fixtures.driver.email,
+        fixtures.driver.displayName
       ]
     );
 
@@ -397,6 +511,7 @@ export async function runPaidDeliveryProof() {
   const paymentMethodId = optionalEnv("STAGING_PROOF_PAYMENT_METHOD_ID", "pm_card_visa");
   const supabaseUrl = requiredEnv("SUPABASE_URL");
   const anonKey = requiredEnv("SUPABASE_ANON_KEY");
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null;
   const databaseUrl = requiredEnv("DATABASE_URL");
   const runId = randomUUID().slice(0, 8);
 
@@ -405,7 +520,9 @@ export async function runPaidDeliveryProof() {
 
   try {
     const fixtures = Object.fromEntries(
-      await Promise.all(FIXTURES.map(async (fixture) => [fixture.slug, await signUpOrReuseUser(supabaseUrl, anonKey, fixture)]))
+      await Promise.all(
+        FIXTURES.map(async (fixture) => [fixture.slug, await signUpOrReuseUser(supabaseUrl, anonKey, serviceRoleKey, fixture)])
+      )
     ) as Record<FixtureSlug, FixtureAuth>;
 
     await seedDriverFixture(client, fixtures);
@@ -420,7 +537,7 @@ export async function runPaidDeliveryProof() {
     const orderPayload = {
       customer: {
         name: `Proof Customer ${runId}`,
-        email: `proof-customer-${runId}@shipwright.local`,
+        email: `proof-customer-${runId}@shipwright.example.com`,
         phone: "07500000000"
       },
       delivery: {

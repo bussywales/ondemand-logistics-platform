@@ -158,9 +158,9 @@ pnpm fixtures:staging-auth
 ```
 
 The fixture script creates or reuses:
-- `staging-business-operator@shipwright.local`
-- `staging-driver@shipwright.local`
-- `staging-consumer@shipwright.local`
+- `staging-business-operator@shipwright.example.com`
+- `staging-driver@shipwright.example.com`
+- `staging-consumer@shipwright.example.com`
 
 It prints current user ids, the seeded driver id, the seeded org id, and current bearer tokens for sample curls.
 

@@ -20,19 +20,19 @@ const DRIVER_LONGITUDE = -0.1099;
 const FIXTURES: FixtureSpec[] = [
   {
     slug: "business",
-    email: "staging-business-operator@shipwright.local",
+    email: "staging-business-operator@shipwright.example.com",
     password: "ShipwrightBusiness!2026",
     displayName: "Staging Business Operator"
   },
   {
     slug: "driver",
-    email: "staging-driver@shipwright.local",
+    email: "staging-driver@shipwright.example.com",
     password: "ShipwrightDriver!2026",
     displayName: "Staging Driver"
   },
   {
     slug: "consumer",
-    email: "staging-consumer@shipwright.local",
+    email: "staging-consumer@shipwright.example.com",
     password: "ShipwrightConsumer!2026",
     displayName: "Staging Consumer"
   }

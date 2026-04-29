@@ -40,7 +40,7 @@ curl -X POST "$API_BASE_URL/v1/business/orgs" \
   -d '{
     "businessName": "ShipWright Retail Ops",
     "contactName": "Busayo Adewale",
-    "email": "staging-business-operator@shipwright.local",
+    "email": "staging-business-operator@shipwright.example.com",
     "phone": "+44 20 7946 0958",
     "city": "London"
   }'
