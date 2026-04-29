@@ -283,16 +283,18 @@ describe("DriverService", () => {
   });
 
   it("allows valid driver status transitions", async () => {
+    const createdAt = new Date("2026-04-29T11:00:00.000Z");
     const clientQuery = vi
       .fn()
-      .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "ASSIGNED" })] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "EN_ROUTE_PICKUP" })] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "ASSIGNED", created_at: createdAt })] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "EN_ROUTE_PICKUP", created_at: createdAt })] })
       .mockResolvedValue({ rowCount: 1, rows: [] });
 
     const { service } = makeService(clientQuery);
     const result = await service.transitionToEnRoutePickup(JOB_ID, ACTOR_ID, "idem-transition-1");
 
     expect(result.body.status).toBe("EN_ROUTE_PICKUP");
+    expect(result.body.createdAt).toBe(createdAt.toISOString());
   });
 
   it("rejects invalid status transitions", async () => {
@@ -338,7 +340,7 @@ describe("DriverService", () => {
   });
 
   it("records proof of delivery before delivery completion", async () => {
-    const deliveredAt = new Date().toISOString();
+    const deliveredAt = new Date("2026-04-29T11:10:00.000Z");
     const clientQuery = vi
       .fn()
       .mockResolvedValueOnce({ rowCount: 1, rows: [jobRow({ status: "EN_ROUTE_DROP" })] })
@@ -377,5 +379,6 @@ describe("DriverService", () => {
 
     expect(result.body.jobId).toBe(JOB_ID);
     expect(result.body.photoUrl).toBe("https://example.com/pod.jpg");
+    expect(result.body.deliveredAt).toBe(deliveredAt.toISOString());
   });
 });

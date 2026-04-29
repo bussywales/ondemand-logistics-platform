@@ -31,7 +31,7 @@ import {
 } from "@shipwright/contracts";
 import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/observability";
 import type { PoolClient } from "pg";
-import { toFiniteNumber, toIsoDateTime } from "../database/mapper.js";
+import { toFiniteNumber, toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 import { PaymentsService } from "../payments/payments.service.js";
 
@@ -41,7 +41,7 @@ type DriverRecord = {
   latest_latitude: string | null;
   latest_longitude: string | null;
   available_since: string | null;
-  last_location_at: string | null;
+  last_location_at: string | Date | null;
   active_job_id: string | null;
 };
 
@@ -94,10 +94,10 @@ type JobRow = {
   pricing_version: string;
   premium_distance_flag: boolean;
   created_by_user_id: string;
-  created_at: string;
-  dispatch_requested_at: string;
-  dispatch_failed_at: string | null;
-  updated_at: string;
+  created_at: string | Date;
+  dispatch_requested_at: string | Date;
+  dispatch_failed_at: string | Date | null;
+  updated_at: string | Date;
 };
 
 type ProofOfDeliveryRow = {
@@ -107,7 +107,7 @@ type ProofOfDeliveryRow = {
   photo_url: string | null;
   recipient_name: string | null;
   delivery_note: string | null;
-  delivered_at: string;
+  delivered_at: string | Date;
   latitude: string | null;
   longitude: string | null;
   otp_verified: boolean;
@@ -936,8 +936,8 @@ export class DriverService {
               longitude: Number(row.latest_longitude)
             }
           : null,
-      availableSince: row.available_since,
-      lastLocationAt: row.last_location_at
+      availableSince: toNullableIsoDateTime(row.available_since),
+      lastLocationAt: toNullableIsoDateTime(row.last_location_at)
     });
   }
 
@@ -971,7 +971,7 @@ export class DriverService {
       attentionLevel: attention.level,
       attentionReason: attention.reason,
       createdByUserId: row.created_by_user_id,
-      createdAt: row.created_at
+      createdAt: toIsoDateTime(row.created_at)
     });
   }
 
@@ -1005,7 +1005,7 @@ export class DriverService {
       photoUrl: row.photo_url,
       recipientName: row.recipient_name,
       deliveryNote: row.delivery_note,
-      deliveredAt: row.delivered_at,
+      deliveredAt: toIsoDateTime(row.delivered_at),
       coordinates:
         row.latitude && row.longitude
           ? {

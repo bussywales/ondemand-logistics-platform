@@ -367,19 +367,19 @@ async function seedDriverFixture(client: Client, fixtures: Record<FixtureSlug, F
     await client.query(
       `delete from public.driver_vehicle
        where driver_id = $1
-         and not (vehicle_type = 'BIKE' and coalesce(plate_number, '') = 'STAGING-BIKE' and is_primary = true)`,
+         and not (vehicle_type = 'BIKE' and plate_number is null and is_primary = true)`,
       [DRIVER_ID]
     );
 
     await client.query(
       `insert into public.driver_vehicle (driver_id, vehicle_type, plate_number, is_primary)
-       select $1, 'BIKE', 'STAGING-BIKE', true
+       select $1, 'BIKE', null, true
        where not exists (
          select 1
          from public.driver_vehicle
          where driver_id = $1
            and vehicle_type = 'BIKE'
-           and plate_number = 'STAGING-BIKE'
+           and plate_number is null
            and is_primary = true
        )`,
       [DRIVER_ID]
