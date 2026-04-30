@@ -174,6 +174,7 @@ export const DriverOfferSchema = z.object({
   distanceMiles: DistanceMilesSchema,
   etaMinutes: EtaMinutesSchema,
   payoutGrossCents: CurrencyAmountSchema,
+  vehicleRequired: VehicleTypeSchema,
   pickupAddress: z.string(),
   dropoffAddress: z.string()
 });

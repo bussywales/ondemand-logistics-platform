@@ -53,6 +53,7 @@ type OfferRow = {
   distance_miles_snapshot: string;
   eta_minutes_snapshot: number;
   payout_gross_snapshot: number;
+  vehicle_required: string;
   pickup_address: string;
   dropoff_address: string;
 };
@@ -261,7 +262,7 @@ export class DriverService {
     const result = await this.pg.query<OfferRow>(
       `select o.id, o.job_id, o.status, o.expires_at, o.distance_miles_snapshot,
               o.eta_minutes_snapshot, o.payout_gross_snapshot,
-              j.pickup_address, j.dropoff_address
+              j.vehicle_required, j.pickup_address, j.dropoff_address
        from public.job_offers o
        join public.drivers d on d.id = o.driver_id
        join public.jobs j on j.id = o.job_id
@@ -281,6 +282,7 @@ export class DriverService {
         distanceMiles: toFiniteNumber(row.distance_miles_snapshot, "job_offer.distance_miles_snapshot"),
         etaMinutes: row.eta_minutes_snapshot,
         payoutGrossCents: row.payout_gross_snapshot,
+        vehicleRequired: row.vehicle_required,
         pickupAddress: row.pickup_address,
         dropoffAddress: row.dropoff_address
       })

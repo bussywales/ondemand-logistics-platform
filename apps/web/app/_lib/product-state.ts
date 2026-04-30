@@ -264,6 +264,7 @@ export type DriverOffer = {
   distanceMiles: number;
   etaMinutes: number;
   payoutGrossCents: number;
+  vehicleRequired: VehicleType;
   pickupAddress: string;
   dropoffAddress: string;
 };

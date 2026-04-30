@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getDriverBlockedReason, getDriverExecutionSteps } from "./driver-execution";
+import {
+  getDriverActiveStep,
+  getDriverBlockedReason,
+  getDriverBlockedState,
+  getDriverExecutionSteps,
+  getDriverHeroState,
+  getDriverOfferEmptyState
+} from "./driver-execution";
 import type { DriverJob } from "./product-state";
 
 const baseJob: DriverJob = {
@@ -44,9 +51,39 @@ describe("driver execution helpers", () => {
     expect(withProof.find((step) => step.key === "delivered")?.actionLabel).toBe("Complete delivery");
   });
 
+  it("surfaces the current active step for driver execution", () => {
+    const activeStep = getDriverActiveStep(getDriverExecutionSteps({ ...baseJob, status: "PICKED_UP" }, false));
+
+    expect(activeStep?.key).toBe("go_to_drop");
+    expect(activeStep?.actionLabel).toBe("Go to drop-off");
+  });
+
+  it("describes the ready-to-receive-offers state for online drivers without work", () => {
+    expect(getDriverHeroState({ availability: "ONLINE", hasCurrentJob: false, offerCount: 0 })).toEqual(
+      expect.objectContaining({
+        title: "Ready to receive offers",
+        tone: "online"
+      })
+    );
+  });
+
+  it("describes the no-offer state differently when the driver is offline", () => {
+    expect(getDriverOfferEmptyState({ availability: "OFFLINE", hasCurrentJob: false }).title).toBe(
+      "Go online to receive offers"
+    );
+  });
+
   it("returns a clear blocked-state message for users without driver profile", () => {
     expect(getDriverBlockedReason({ hasSession: true, driverError: "driver_record_required" })).toContain(
       "Driver profile not ready"
+    );
+  });
+
+  it("returns a richer blocked-state view for unauthenticated drivers", () => {
+    expect(getDriverBlockedState({ hasSession: false, driverError: null })).toEqual(
+      expect.objectContaining({
+        title: "Sign in to continue"
+      })
     );
   });
 });

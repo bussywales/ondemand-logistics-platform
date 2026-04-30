@@ -167,6 +167,7 @@ describe("DriverService", () => {
               distance_miles_snapshot: "4.2",
               eta_minutes_snapshot: 16,
               payout_gross_snapshot: 1100,
+              vehicle_required: "BIKE",
               pickup_address: "101 Main St",
               dropoff_address: "202 Oak Ave"
             }
@@ -185,7 +186,8 @@ describe("DriverService", () => {
       expect.objectContaining({
         offerId: OFFER_ID,
         expiresAt: expiry.toISOString(),
-        distanceMiles: 4.2
+        distanceMiles: 4.2,
+        vehicleRequired: "BIKE"
       })
     ]);
   });

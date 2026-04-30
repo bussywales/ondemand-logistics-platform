@@ -10,6 +10,25 @@ export type DriverExecutionStep = {
   transition: "en-route-pickup" | "picked-up" | "en-route-drop" | "delivered" | null;
 };
 
+export type DriverHeroState = {
+  title: string;
+  message: string;
+  readinessLabel: string;
+  readinessCopy: string;
+  tone: "online" | "offline" | "active";
+};
+
+export type DriverBlockedStateView = {
+  title: string;
+  message: string;
+  supporting: string;
+};
+
+export type DriverEmptyStateView = {
+  title: string;
+  copy: string;
+};
+
 const statusRank: Record<DriverJob["status"], number> = {
   REQUESTED: 0,
   ASSIGNED: 1,
@@ -75,14 +94,95 @@ export function getDriverExecutionSteps(job: DriverJob | null, hasProofOfDeliver
   ];
 }
 
-export function getDriverBlockedReason(input: { hasSession: boolean; driverError: string | null }) {
+export function getDriverActiveStep(steps: DriverExecutionStep[]) {
+  return steps.find((step) => step.active) ?? steps.find((step) => !step.complete) ?? steps.at(-1) ?? null;
+}
+
+export function getDriverHeroState(input: {
+  availability: "ONLINE" | "OFFLINE";
+  hasCurrentJob: boolean;
+  offerCount: number;
+}): DriverHeroState {
+  if (input.hasCurrentJob) {
+    return {
+      title: "Delivery in progress",
+      message: "Work the active job step by step and keep proof of delivery complete before finishing.",
+      readinessLabel: "Live job",
+      readinessCopy: "The next execution action is ready below.",
+      tone: "active"
+    };
+  }
+
+  if (input.availability === "ONLINE") {
+    return {
+      title: "Ready to receive offers",
+      message: "Stay online to receive staged dispatch offers for nearby delivery work.",
+      readinessLabel: input.offerCount > 0 ? "Offer waiting" : "Listening for dispatch",
+      readinessCopy:
+        input.offerCount > 0
+          ? `${input.offerCount} offer${input.offerCount === 1 ? "" : "s"} ready for review.`
+          : "No offer is waiting right now, but dispatch can route new work here.",
+      tone: "online"
+    };
+  }
+
+  return {
+    title: "Offline",
+    message: "Go online when you are ready to receive offers and start delivery work.",
+    readinessLabel: "Dispatch paused",
+    readinessCopy: "No offers will reach this device until the driver is online.",
+    tone: "offline"
+  };
+}
+
+export function getDriverBlockedState(input: { hasSession: boolean; driverError: string | null }): DriverBlockedStateView {
   if (!input.hasSession) {
-    return "Sign in before using the driver execution app.";
+    return {
+      title: "Sign in to continue",
+      message: "Driver execution is only available after authenticating the staged driver account.",
+      supporting: "Use the driver account issued for staging, then return here to receive offers and progress jobs."
+    };
   }
 
   if (input.driverError?.includes("driver_record_required")) {
-    return "Driver profile not ready. Dispatch access requires an approved active driver profile.";
+    return {
+      title: "Driver profile not ready",
+      message: "Driver profile not ready. Dispatch access requires an approved active driver profile before this route can receive offers.",
+      supporting: "Check driver onboarding, verification approval, vehicle setup, and activation before retrying."
+    };
   }
 
-  return input.driverError;
+  return {
+    title: "Driver access blocked",
+    message: input.driverError ?? "Driver execution is not available right now.",
+    supporting: "Refresh the workspace after the driver profile and approval state are corrected."
+  };
+}
+
+export function getDriverOfferEmptyState(input: {
+  availability: "ONLINE" | "OFFLINE";
+  hasCurrentJob: boolean;
+}): DriverEmptyStateView {
+  if (input.hasCurrentJob) {
+    return {
+      title: "Focus on the active delivery",
+      copy: "New offers stay out of the way while the current job is still in motion."
+    };
+  }
+
+  if (input.availability === "OFFLINE") {
+    return {
+      title: "Go online to receive offers",
+      copy: "Dispatch only sends staged work to drivers who are online and ready."
+    };
+  }
+
+  return {
+    title: "No offers available",
+    copy: "Dispatch offers will appear here while you are online, approved, and close enough for the job."
+  };
+}
+
+export function getDriverBlockedReason(input: { hasSession: boolean; driverError: string | null }) {
+  return getDriverBlockedState(input).message;
 }
