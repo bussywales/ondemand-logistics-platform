@@ -1,0 +1,24 @@
+{
+  "capturedAt": "2026-04-30T16:40:59.587Z",
+  "environment": "staging",
+  "apiBaseUrl": "https://api-staging-qvmv.onrender.com",
+  "webBaseUrl": "https://ondemand-logistics-platform-web.vercel.app",
+  "restaurantSlug": "pilot-kitchen-1777370757",
+  "result": "pass",
+  "proofType": "paid_delivery_loop",
+  "summary": {
+    "orderId": "eb807eff-837e-45ec-9bcd-691ebc52b34f",
+    "jobId": "c7f7b7f5-f98e-4107-bdc6-7dade8e44902",
+    "offerId": "2f6faaff-f9f8-4b86-88b8-edb0fecf8838",
+    "paymentId": "f7386155-2a39-4d17-bbd5-70a53dcd7566",
+    "podId": "85ff1481-8603-4d00-be71-6c38be6b9cbe",
+    "paymentStatus": "CAPTURED",
+    "jobStatus": "DELIVERED",
+    "orderStatus": "FULFILLED"
+  },
+  "notes": [
+    "This is the latest documented staging proof result, not a live status feed.",
+    "External notification delivery was still provider-gated at the time of capture; operational proof remained valid."
+  ],
+  "sourceDocument": "/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md"
+}

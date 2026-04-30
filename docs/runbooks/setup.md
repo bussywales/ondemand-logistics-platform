@@ -191,6 +191,26 @@ set is_active = true,
 
 Use that account to access `/admin`. Admin Control Plane v1 is intentionally operational and read-only; it does not replace org-scoped `/app` workflows.
 
+## 5.2) Investor demo reset guidance
+
+Prepare the demo environment without rewriting historical evidence:
+
+1. Refresh the staging auth fixtures:
+
+```bash
+pnpm fixtures:staging-auth
+```
+
+2. Rerun the paid-delivery proof when you need a fresh reference record set:
+
+```bash
+pnpm proof:staging-paid-delivery
+```
+
+3. Prefer additive fresh proof records over mutating or deleting prior staging orders/jobs during rehearsal.
+4. If the demo needs a clean narrative, start from the newest proof order rather than trying to repair stale blocked records live.
+5. If Stripe or external notification provider env is unavailable, switch to the documented fallback talk track instead of improvising fake success.
+
 For the full paid customer order to delivered-job proof, use `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`.
 
 ### Create a real staging business account manually

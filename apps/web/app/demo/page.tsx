@@ -6,22 +6,22 @@ export default function DemoPage() {
     <PlaceholderPage
       actions={
         <>
-          <Link className="button button-primary" href="/get-started">
-            Start onboarding
+          <Link className="button button-primary" href="/demo/investor">
+            Open investor demo
           </Link>
-          <Link className="button button-secondary" href="/app">
-            Open dashboard shell
+          <Link className="button button-secondary" href="/restaurants/pilot-kitchen-1777370757">
+            Open public restaurant
           </Link>
         </>
       }
       eyebrow="Demo"
-      title="Walk through the delivery workflow before rollout."
-      body="Use the dashboard shell to create a delivery request, inspect tracking, and see payment state without waiting for a full production auth layer."
+      title="Run the guided Stage 1 investor demo."
+      body="Use the investor demo route to present the proven merchant -> paid order -> dispatch -> delivery -> fulfilment loop with real screens and documented staging evidence."
     >
       <ul className="stack-list">
-        <li>Start in staged mode for a frictionless walkthrough.</li>
-        <li>Switch to live mode when you have the staging bearer token and IDs.</li>
-        <li>Use the job detail view to inspect tracking and payment state per request.</li>
+        <li>Open the investor route for the screen sequence and control panel.</li>
+        <li>Use seeded staging accounts for operator, driver, and platform-admin views.</li>
+        <li>Use the documented proof summary when live staging verification has not just been rerun.</li>
       </ul>
     </PlaceholderPage>
   );

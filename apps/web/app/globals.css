@@ -7671,3 +7671,146 @@ select:hover,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.investor-demo-shell {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.investor-demo-hero {
+  display: grid;
+  gap: 1rem;
+  padding: 1.75rem;
+}
+
+.investor-demo-hero h1 {
+  margin: 0.45rem 0 0;
+  font: var(--sw-type-page-title);
+  color: var(--sw-color-text-primary);
+}
+
+.investor-demo-hero p:last-child {
+  max-width: 56rem;
+  margin: 0.75rem 0 0;
+  color: var(--sw-color-text-muted);
+}
+
+.investor-demo-actions {
+  align-items: flex-start;
+}
+
+.investor-demo-actions-left {
+  justify-content: flex-start;
+}
+
+.investor-demo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.investor-demo-section {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.investor-demo-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.investor-demo-section-header h2 {
+  margin: 0.35rem 0 0;
+  font: var(--sw-type-section-title);
+  color: var(--sw-color-text-primary);
+}
+
+.investor-demo-step-list,
+.investor-demo-note-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.investor-demo-step {
+  padding: 1rem;
+}
+
+.investor-demo-step-index {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: var(--sw-color-navy-100);
+  color: var(--sw-color-navy-900);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.investor-demo-step-meta,
+.investor-demo-doc-note {
+  color: var(--sw-color-text-muted);
+  font-size: 0.86rem;
+}
+
+.investor-demo-step h3 {
+  margin: 0.35rem 0 0;
+  font: var(--sw-type-card-title);
+  color: var(--sw-color-text-primary);
+}
+
+.investor-demo-step p {
+  margin: 0.5rem 0 0;
+  color: var(--sw-color-text-muted);
+}
+
+.investor-demo-step-value {
+  color: var(--sw-color-text-primary) !important;
+  font-weight: 600;
+}
+
+.investor-demo-links-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.investor-demo-link-card {
+  min-height: auto;
+}
+
+.investor-demo-proof-copy {
+  margin: 0;
+  color: var(--sw-color-text-muted);
+}
+
+.investor-demo-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.investor-demo-proof-card {
+  padding: 1rem;
+}
+
+.investor-demo-warning-list {
+  margin: 0;
+}
+
+.investor-demo-proof-empty {
+  min-height: 14rem;
+}
+
+@media (max-width: 920px) {
+  .investor-demo-grid,
+  .investor-demo-proof-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .investor-demo-section-header {
+    flex-direction: column;
+  }
+}
