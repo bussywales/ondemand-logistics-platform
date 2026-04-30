@@ -7,6 +7,17 @@ import {
   type InternalPaymentStatus,
   type PaymentProvider
 } from "@shipwright/payments";
+import {
+  NoopExternalNotificationProvider,
+  ResendExternalNotificationProvider,
+  buildBusinessNewOrderEmail,
+  buildCustomerOrderConfirmationEmail,
+  buildDeliveryCompletedEmail,
+  buildDriverOfferEmail,
+  buildPaymentCapturedEmail,
+  type ExternalNotificationEmail,
+  type ExternalNotificationProvider
+} from "./notifications.js";
 
 type OutboxMessage = {
   id: string;
@@ -53,6 +64,38 @@ type OfferState = {
   expires_at: string;
 };
 
+type CustomerOrderNotificationRow = {
+  order_id: string;
+  org_id: string;
+  job_id: string;
+  payment_id: string;
+  customer_name: string;
+  customer_email: string;
+  delivery_address: string;
+  total_cents: number;
+  currency: string;
+  restaurant_name: string;
+  restaurant_slug: string;
+  org_name: string;
+  business_email: string | null;
+};
+
+type DriverOfferNotificationRow = {
+  offer_id: string;
+  job_id: string;
+  driver_id: string;
+  org_id: string | null;
+  driver_name: string;
+  driver_email: string;
+  pickup_address: string;
+  dropoff_address: string;
+  vehicle_required: "BIKE" | "CAR";
+  distance_miles_snapshot: string;
+  eta_minutes_snapshot: number;
+  payout_gross_snapshot: number;
+  restaurant_name: string | null;
+};
+
 type PaymentWorkItem = {
   id: string;
   job_id: string;
@@ -87,6 +130,14 @@ let paymentProvider: PaymentProvider = new StripePaymentProvider({
   secretKey: process.env.STRIPE_SECRET_KEY,
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET
 });
+let notificationProvider: ExternalNotificationProvider =
+  process.env.RESEND_API_KEY && process.env.NOTIFICATION_FROM_EMAIL
+    ? new ResendExternalNotificationProvider({
+        apiKey: process.env.RESEND_API_KEY,
+        fromEmail: process.env.NOTIFICATION_FROM_EMAIL,
+        replyToEmail: process.env.NOTIFICATION_REPLY_TO_EMAIL
+      })
+    : new NoopExternalNotificationProvider();
 let activeLogger: AppLogger = defaultLogger;
 let workerPool: Pool | undefined;
 let workerRunning = false;
@@ -198,6 +249,112 @@ async function insertAuditLog(
       JSON.stringify(input.metadata)
     ]
   );
+}
+
+async function loadCustomerOrderNotificationByOrderId(client: PoolClient, orderId: string) {
+  const result = await client.query<CustomerOrderNotificationRow>(
+    `select o.id as order_id,
+            o.org_id,
+            o.job_id,
+            o.payment_id,
+            o.customer_name,
+            o.customer_email,
+            o.delivery_address,
+            o.total_cents,
+            o.currency,
+            r.name as restaurant_name,
+            r.slug as restaurant_slug,
+            org.name as org_name,
+            coalesce(org.contact_email, creator.email) as business_email
+     from public.customer_orders o
+     join public.restaurants r on r.id = o.restaurant_id
+     join public.orgs org on org.id = o.org_id
+     join public.users creator on creator.id = org.created_by
+     where o.id = $1`,
+    [orderId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+async function loadCustomerOrderNotificationByJobId(client: PoolClient, jobId: string) {
+  const result = await client.query<CustomerOrderNotificationRow>(
+    `select o.id as order_id,
+            o.org_id,
+            o.job_id,
+            o.payment_id,
+            o.customer_name,
+            o.customer_email,
+            o.delivery_address,
+            o.total_cents,
+            o.currency,
+            r.name as restaurant_name,
+            r.slug as restaurant_slug,
+            org.name as org_name,
+            coalesce(org.contact_email, creator.email) as business_email
+     from public.customer_orders o
+     join public.restaurants r on r.id = o.restaurant_id
+     join public.orgs org on org.id = o.org_id
+     join public.users creator on creator.id = org.created_by
+     where o.job_id = $1`,
+    [jobId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+async function loadCustomerOrderNotificationByPaymentId(client: PoolClient, paymentId: string) {
+  const result = await client.query<CustomerOrderNotificationRow>(
+    `select o.id as order_id,
+            o.org_id,
+            o.job_id,
+            o.payment_id,
+            o.customer_name,
+            o.customer_email,
+            o.delivery_address,
+            o.total_cents,
+            o.currency,
+            r.name as restaurant_name,
+            r.slug as restaurant_slug,
+            org.name as org_name,
+            coalesce(org.contact_email, creator.email) as business_email
+     from public.customer_orders o
+     join public.restaurants r on r.id = o.restaurant_id
+     join public.orgs org on org.id = o.org_id
+     join public.users creator on creator.id = org.created_by
+     where o.payment_id = $1`,
+    [paymentId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+async function loadDriverOfferNotification(client: PoolClient, offerId: string) {
+  const result = await client.query<DriverOfferNotificationRow>(
+    `select o.id as offer_id,
+            o.job_id,
+            o.driver_id,
+            j.org_id,
+            u.display_name as driver_name,
+            u.email as driver_email,
+            j.pickup_address,
+            j.dropoff_address,
+            j.vehicle_required,
+            o.distance_miles_snapshot,
+            o.eta_minutes_snapshot,
+            o.payout_gross_snapshot,
+            r.name as restaurant_name
+     from public.job_offers o
+     join public.drivers d on d.id = o.driver_id
+     join public.users u on u.id = d.user_id
+     join public.jobs j on j.id = o.job_id
+     left join public.customer_orders co on co.job_id = j.id
+     left join public.restaurants r on r.id = co.restaurant_id
+     where o.id = $1`,
+    [offerId]
+  );
+
+  return result.rows[0] ?? null;
 }
 
 async function nextDispatchAttemptNumber(client: PoolClient, jobId: string) {
@@ -617,6 +774,19 @@ async function createSequentialOffer(
     nextAttemptAt: offer.expires_at
   });
 
+  await enqueueOutboxMessage(client, {
+    aggregateType: "job_offer",
+    aggregateId: offer.id,
+    eventType: "NOTIFY_DRIVER_OFFER",
+    payload: {
+      offerId: offer.id,
+      jobId: job.id,
+      driverId: offer.driver_id,
+      requestId
+    },
+    idempotencyKey: `notify-driver-offer:${offer.id}`
+  });
+
   logger.info(
     {
       job_id: job.id,
@@ -873,6 +1043,278 @@ async function completeCustomerOrderIfPaidAndDelivered(
   });
 }
 
+async function recordExternalNotificationOutcome(
+  client: PoolClient,
+  input: {
+    requestId: string;
+    actorId?: string | null;
+    orgId: string | null;
+    entityType: string;
+    entityId: string;
+    action: "external_notification_sent" | "external_notification_skipped";
+    metadata: Record<string, unknown>;
+  }
+) {
+  await insertAuditLog(client, {
+    requestId: input.requestId,
+    actorId: input.actorId ?? null,
+    orgId: input.orgId,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    action: input.action,
+    metadata: input.metadata
+  });
+}
+
+async function sendExternalEmailOrSkip(
+  client: PoolClient,
+  input: {
+    entityType: string;
+    entityId: string;
+    eventType: string;
+    logger: AppLogger;
+    message: OutboxMessage;
+    metadata: Record<string, unknown>;
+    orgId: string | null;
+    email: ExternalNotificationEmail;
+  }
+) {
+  const requestId = String(input.message.payload.requestId ?? input.message.id);
+
+  if (!notificationProvider.isConfigured()) {
+    await recordExternalNotificationOutcome(client, {
+      requestId,
+      orgId: input.orgId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      action: "external_notification_skipped",
+      metadata: {
+        eventType: input.eventType,
+        provider: notificationProvider.provider,
+        reason: "provider_not_configured",
+        recipient: input.email.to,
+        ...input.metadata
+      }
+    });
+    input.logger.info({ event_type: input.eventType, recipient: input.email.to }, "external_notification_skipped");
+    return;
+  }
+
+  const result = await notificationProvider.sendEmail(input.email);
+  await recordExternalNotificationOutcome(client, {
+    requestId,
+    orgId: input.orgId,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    action: "external_notification_sent",
+    metadata: {
+      eventType: input.eventType,
+      provider: notificationProvider.provider,
+      providerMessageId: result.providerMessageId,
+      recipient: input.email.to,
+      subject: input.email.subject,
+      ...input.metadata
+    }
+  });
+  input.logger.info({ event_type: input.eventType, recipient: input.email.to }, "external_notification_sent");
+}
+
+async function handleExternalNotificationRequested(
+  client: PoolClient,
+  message: OutboxMessage,
+  logger: AppLogger
+) {
+  const requestId = String(message.payload.requestId ?? message.id);
+
+  switch (message.event_type) {
+    case "NOTIFY_CUSTOMER_ORDER_CONFIRMATION": {
+      const orderId = String(message.payload.orderId ?? message.aggregate_id);
+      const order = await loadCustomerOrderNotificationByOrderId(client, orderId);
+      if (!order) {
+        logger.warn({ order_id: orderId, outbox_message_id: message.id }, "notification_order_missing");
+        return;
+      }
+
+      await sendExternalEmailOrSkip(client, {
+        entityType: "customer_order",
+        entityId: order.order_id,
+        eventType: message.event_type,
+        logger,
+        message,
+        orgId: order.org_id,
+        metadata: { orderId: order.order_id, jobId: order.job_id },
+        email: buildCustomerOrderConfirmationEmail({
+          customerEmail: order.customer_email,
+          customerName: order.customer_name,
+          deliveryAddress: order.delivery_address,
+          jobId: order.job_id,
+          orderId: order.order_id,
+          orgName: order.org_name,
+          restaurantName: order.restaurant_name,
+          restaurantSlug: order.restaurant_slug,
+          totalCents: order.total_cents,
+          currency: order.currency
+        })
+      });
+      return;
+    }
+    case "NOTIFY_BUSINESS_NEW_ORDER": {
+      const orderId = String(message.payload.orderId ?? message.aggregate_id);
+      const order = await loadCustomerOrderNotificationByOrderId(client, orderId);
+      if (!order) {
+        logger.warn({ order_id: orderId, outbox_message_id: message.id }, "notification_order_missing");
+        return;
+      }
+      if (!order.business_email) {
+        await recordExternalNotificationOutcome(client, {
+          requestId,
+          orgId: order.org_id,
+          entityType: "customer_order",
+          entityId: order.order_id,
+          action: "external_notification_skipped",
+          metadata: {
+            eventType: message.event_type,
+            provider: notificationProvider.provider,
+            reason: "business_email_missing",
+            orderId: order.order_id
+          }
+        });
+        logger.info({ order_id: order.order_id }, "external_notification_skipped");
+        return;
+      }
+
+      await sendExternalEmailOrSkip(client, {
+        entityType: "customer_order",
+        entityId: order.order_id,
+        eventType: message.event_type,
+        logger,
+        message,
+        orgId: order.org_id,
+        metadata: { orderId: order.order_id, jobId: order.job_id },
+        email: buildBusinessNewOrderEmail({
+          businessEmail: order.business_email,
+          customerName: order.customer_name,
+          deliveryAddress: order.delivery_address,
+          jobId: order.job_id,
+          orderId: order.order_id,
+          orgName: order.org_name,
+          restaurantName: order.restaurant_name,
+          totalCents: order.total_cents,
+          currency: order.currency
+        })
+      });
+      return;
+    }
+    case "NOTIFY_DRIVER_OFFER": {
+      const offerId = String(message.payload.offerId ?? message.aggregate_id);
+      const offer = await loadDriverOfferNotification(client, offerId);
+      if (!offer) {
+        logger.warn({ offer_id: offerId, outbox_message_id: message.id }, "notification_offer_missing");
+        return;
+      }
+
+      await sendExternalEmailOrSkip(client, {
+        entityType: "job_offer",
+        entityId: offer.offer_id,
+        eventType: message.event_type,
+        logger,
+        message,
+        orgId: offer.org_id,
+        metadata: { offerId: offer.offer_id, jobId: offer.job_id, driverId: offer.driver_id },
+        email: buildDriverOfferEmail({
+          distanceMiles: Number(offer.distance_miles_snapshot),
+          driverEmail: offer.driver_email,
+          driverName: offer.driver_name,
+          etaMinutes: offer.eta_minutes_snapshot,
+          jobId: offer.job_id,
+          offerId: offer.offer_id,
+          payoutGrossCents: offer.payout_gross_snapshot,
+          pickupAddress: offer.pickup_address,
+          dropoffAddress: offer.dropoff_address,
+          restaurantName: offer.restaurant_name,
+          vehicleRequired: offer.vehicle_required,
+          currency: "gbp"
+        })
+      });
+      return;
+    }
+    case "NOTIFY_JOB_DELIVERED": {
+      const jobId = String(message.payload.jobId ?? message.aggregate_id);
+      const order = await loadCustomerOrderNotificationByJobId(client, jobId);
+      if (!order) {
+        logger.warn({ job_id: jobId, outbox_message_id: message.id }, "notification_order_missing");
+        return;
+      }
+
+      await sendExternalEmailOrSkip(client, {
+        entityType: "job",
+        entityId: order.job_id,
+        eventType: message.event_type,
+        logger,
+        message,
+        orgId: order.org_id,
+        metadata: { orderId: order.order_id, jobId: order.job_id },
+        email: buildDeliveryCompletedEmail({
+          customerEmail: order.customer_email,
+          customerName: order.customer_name,
+          jobId: order.job_id,
+          orderId: order.order_id,
+          restaurantName: order.restaurant_name
+        })
+      });
+      return;
+    }
+    case "NOTIFY_PAYMENT_CAPTURED": {
+      const paymentId = String(message.payload.paymentId ?? message.aggregate_id);
+      const order = await loadCustomerOrderNotificationByPaymentId(client, paymentId);
+      if (!order) {
+        logger.warn({ payment_id: paymentId, outbox_message_id: message.id }, "notification_order_missing");
+        return;
+      }
+      if (!order.business_email) {
+        await recordExternalNotificationOutcome(client, {
+          requestId,
+          orgId: order.org_id,
+          entityType: "payment",
+          entityId: order.payment_id,
+          action: "external_notification_skipped",
+          metadata: {
+            eventType: message.event_type,
+            provider: notificationProvider.provider,
+            reason: "business_email_missing",
+            paymentId: order.payment_id
+          }
+        });
+        logger.info({ payment_id: order.payment_id }, "external_notification_skipped");
+        return;
+      }
+
+      await sendExternalEmailOrSkip(client, {
+        entityType: "payment",
+        entityId: order.payment_id,
+        eventType: message.event_type,
+        logger,
+        message,
+        orgId: order.org_id,
+        metadata: { orderId: order.order_id, jobId: order.job_id, paymentId: order.payment_id },
+        email: buildPaymentCapturedEmail({
+          businessEmail: order.business_email,
+          jobId: order.job_id,
+          orderId: order.order_id,
+          paymentId: order.payment_id,
+          orgName: order.org_name,
+          restaurantName: order.restaurant_name,
+          totalCents: order.total_cents,
+          currency: order.currency
+        })
+      });
+      return;
+    }
+    default:
+      return;
+  }
+}
+
 async function handlePaymentIntentCreateRequested(
   client: PoolClient,
   message: OutboxMessage,
@@ -954,6 +1396,17 @@ async function handlePaymentCaptureRequested(
 
   if (payment.status === "CAPTURED") {
     await completeCustomerOrderIfPaidAndDelivered(client, payment, requestId);
+    await enqueueOutboxMessage(client, {
+      aggregateType: "payment",
+      aggregateId: payment.id,
+      eventType: "NOTIFY_PAYMENT_CAPTURED",
+      payload: {
+        paymentId: payment.id,
+        jobId: payment.job_id,
+        requestId
+      },
+      idempotencyKey: `notify-payment-captured:${payment.id}`
+    });
     logger.info({ payment_id: payment.id, payment_status: payment.status }, "payment_capture_already_captured");
     return;
   }
@@ -990,6 +1443,17 @@ async function handlePaymentCaptureRequested(
 
   if (snapshot.status === "CAPTURED") {
     await completeCustomerOrderIfPaidAndDelivered(client, payment, requestId);
+    await enqueueOutboxMessage(client, {
+      aggregateType: "payment",
+      aggregateId: payment.id,
+      eventType: "NOTIFY_PAYMENT_CAPTURED",
+      payload: {
+        paymentId: payment.id,
+        jobId: payment.job_id,
+        requestId
+      },
+      idempotencyKey: `notify-payment-captured:${payment.id}`
+    });
     await upsertPayoutLedgerReady(
       client,
       {
@@ -1146,6 +1610,13 @@ export async function dispatchSideEffect(
       return;
     case "JOB_OFFER_EXPIRY_CHECK":
       await handleOfferExpiryCheck(client, message, logger);
+      return;
+    case "NOTIFY_CUSTOMER_ORDER_CONFIRMATION":
+    case "NOTIFY_BUSINESS_NEW_ORDER":
+    case "NOTIFY_DRIVER_OFFER":
+    case "NOTIFY_JOB_DELIVERED":
+    case "NOTIFY_PAYMENT_CAPTURED":
+      await handleExternalNotificationRequested(client, message, logger);
       return;
     case "PAYMENT_INTENT_CREATE_REQUESTED":
       await handlePaymentIntentCreateRequested(client, message, logger);
@@ -1343,8 +1814,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { computeRetrySeconds, createSequentialOffer, handleDispatchRequested, handleOfferExpiryCheck };
+export { computeRetrySeconds, createSequentialOffer, handleDispatchRequested, handleOfferExpiryCheck, processBatchWithLogger };
 
 export function setPaymentProviderForTests(provider: PaymentProvider) {
   paymentProvider = provider;
+}
+
+export function setNotificationProviderForTests(provider: ExternalNotificationProvider) {
+  notificationProvider = provider;
 }

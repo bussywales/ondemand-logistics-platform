@@ -708,16 +708,6 @@ export class RestaurantsService {
           ]
         );
 
-        await this.insertCustomerJobSideEffects(client, {
-          requestId,
-          consumerId,
-          orgId: restaurant.org_id,
-          jobId: job.rows[0].id,
-          quoteId: quote.rows[0].id,
-          restaurantId: restaurant.id,
-          itemCount: orderLines.reduce((total, line) => total + line.quantity, 0)
-        });
-
         const payment = await this.payments.createPaymentForJob(client, {
           jobId: job.rows[0].id,
           consumerId,
@@ -764,6 +754,17 @@ export class RestaurantsService {
             currency
           ]
         );
+
+        await this.insertCustomerJobSideEffects(client, {
+          requestId,
+          consumerId,
+          orgId: restaurant.org_id,
+          orderId: order.rows[0].id,
+          jobId: job.rows[0].id,
+          quoteId: quote.rows[0].id,
+          restaurantId: restaurant.id,
+          itemCount: orderLines.reduce((total, line) => total + line.quantity, 0)
+        });
 
         const orderItems = await this.insertCustomerOrderItems(client, order.rows[0].id, orderLines);
         const authorization = await this.payments.authorizeCustomerOrderPayment(client, {
@@ -980,6 +981,7 @@ export class RestaurantsService {
       requestId: string;
       consumerId: string;
       orgId: string;
+      orderId: string;
       jobId: string;
       quoteId: string;
       restaurantId: string;
@@ -1035,6 +1037,36 @@ export class RestaurantsService {
           trigger: "customer_order_submitted"
         }),
         `dispatch:${input.jobId}`
+      ]
+    );
+
+    await client.query(
+      `insert into public.outbox_messages (
+         aggregate_type,
+         aggregate_id,
+         event_type,
+         payload,
+         idempotency_key
+       ) values ($1, $2, $3, $4::jsonb, $5), ($6, $7, $8, $9::jsonb, $10)`,
+      [
+        "customer_order",
+        input.orderId,
+        "NOTIFY_CUSTOMER_ORDER_CONFIRMATION",
+        JSON.stringify({
+          orderId: input.orderId,
+          jobId: input.jobId,
+          requestId: input.requestId
+        }),
+        `notify-customer-order-confirmation:${input.orderId}`,
+        "customer_order",
+        input.orderId,
+        "NOTIFY_BUSINESS_NEW_ORDER",
+        JSON.stringify({
+          orderId: input.orderId,
+          jobId: input.jobId,
+          requestId: input.requestId
+        }),
+        `notify-business-new-order:${input.orderId}`
       ]
     );
   }

@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { computeRetrySeconds, dispatchSideEffect, setPaymentProviderForTests } from "./index.js";
+import {
+  computeRetrySeconds,
+  dispatchSideEffect,
+  processBatchWithLogger,
+  setNotificationProviderForTests,
+  setPaymentProviderForTests
+} from "./index.js";
 
 function createLoggerStub() {
   return {
@@ -142,6 +148,7 @@ describe("dispatchSideEffect", () => {
       { match: "update public.jobs" },
       { match: "insert into public.job_events" },
       { match: "insert into public.audit_log" },
+      { match: "insert into public.outbox_messages" },
       { match: "insert into public.outbox_messages" }
     ]);
 
@@ -219,6 +226,7 @@ describe("dispatchSideEffect", () => {
       { match: "update public.jobs" },
       { match: "insert into public.job_events" },
       { match: "insert into public.audit_log" },
+      { match: "insert into public.outbox_messages" },
       { match: "insert into public.outbox_messages" }
     ]);
 
@@ -296,6 +304,7 @@ describe("dispatchSideEffect", () => {
       { match: "insert into public.payment_events" },
       { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-1", status: "FULFILLED" }] } },
       { match: "insert into public.audit_log" },
+      { match: "insert into public.outbox_messages" },
       { match: "insert into public.payout_ledger" },
       { match: "insert into public.audit_log" }
     ]);
@@ -349,7 +358,8 @@ describe("dispatchSideEffect", () => {
         }
       },
       { match: "update public.customer_orders", result: { rowCount: 1, rows: [{ id: "order-replay", status: "FULFILLED" }] } },
-      { match: "insert into public.audit_log" }
+      { match: "insert into public.audit_log" },
+      { match: "insert into public.outbox_messages" }
     ]);
 
     await dispatchSideEffect(
@@ -465,6 +475,171 @@ describe("dispatchSideEffect", () => {
       createLoggerStub()
     );
 
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("skips external notifications safely when the provider is not configured", async () => {
+    setNotificationProviderForTests({
+      provider: "noop",
+      isConfigured: () => false,
+      sendEmail: vi.fn()
+    });
+
+    const client = createClientStub([
+      {
+        match: "from public.customer_orders o",
+        result: {
+          rows: [
+            {
+              order_id: "order-10",
+              org_id: "org-10",
+              job_id: "job-10",
+              payment_id: "payment-10",
+              customer_name: "Ada Customer",
+              customer_email: "ada@example.com",
+              delivery_address: "10 Pilot Street, London",
+              total_cents: 1886,
+              currency: "gbp",
+              restaurant_name: "Pilot Kitchen",
+              restaurant_slug: "pilot-kitchen",
+              org_name: "Pilot Org",
+              business_email: "ops@example.com"
+            }
+          ]
+        }
+      },
+      { match: "insert into public.audit_log" }
+    ]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-notify-1",
+        aggregate_type: "customer_order",
+        aggregate_id: "order-10",
+        event_type: "NOTIFY_CUSTOMER_ORDER_CONFIRMATION",
+        payload: { orderId: "order-10", requestId: "req-notify-1" },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("sends external notifications successfully with a mocked provider", async () => {
+    const sendEmail = vi.fn().mockResolvedValue({ providerMessageId: "email_123" });
+    setNotificationProviderForTests({
+      provider: "resend",
+      isConfigured: () => true,
+      sendEmail
+    });
+
+    const client = createClientStub([
+      {
+        match: "from public.customer_orders o",
+        result: {
+          rows: [
+            {
+              order_id: "order-11",
+              org_id: "org-11",
+              job_id: "job-11",
+              payment_id: "payment-11",
+              customer_name: "Ada Customer",
+              customer_email: "ada@example.com",
+              delivery_address: "10 Pilot Street, London",
+              total_cents: 1886,
+              currency: "gbp",
+              restaurant_name: "Pilot Kitchen",
+              restaurant_slug: "pilot-kitchen",
+              org_name: "Pilot Org",
+              business_email: "ops@example.com"
+            }
+          ]
+        }
+      },
+      { match: "insert into public.audit_log" }
+    ]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-notify-2",
+        aggregate_type: "customer_order",
+        aggregate_id: "order-11",
+        event_type: "NOTIFY_BUSINESS_NEW_ORDER",
+        payload: { orderId: "order-11", requestId: "req-notify-2" },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(sendEmail).toHaveBeenCalledOnce();
+    expect(client.remainingSteps()).toBe(0);
+  });
+});
+
+describe("processBatchWithLogger", () => {
+  it("does not crash the worker loop when an external notification provider fails", async () => {
+    setNotificationProviderForTests({
+      provider: "resend",
+      isConfigured: () => true,
+      sendEmail: vi.fn().mockRejectedValue(new Error("provider_down"))
+    });
+
+    const client = createClientStub([
+      {
+        match: "from public.outbox_messages",
+        result: {
+          rows: [
+            {
+              id: "msg-batch-1",
+              aggregate_type: "customer_order",
+              aggregate_id: "order-12",
+              event_type: "NOTIFY_CUSTOMER_ORDER_CONFIRMATION",
+              payload: { orderId: "order-12", requestId: "req-batch-1" },
+              retry_count: 0
+            }
+          ]
+        }
+      },
+      {
+        match: "from public.customer_orders o",
+        result: {
+          rows: [
+            {
+              order_id: "order-12",
+              org_id: "org-12",
+              job_id: "job-12",
+              payment_id: "payment-12",
+              customer_name: "Ada Customer",
+              customer_email: "ada@example.com",
+              delivery_address: "10 Pilot Street, London",
+              total_cents: 1886,
+              currency: "gbp",
+              restaurant_name: "Pilot Kitchen",
+              restaurant_slug: "pilot-kitchen",
+              org_name: "Pilot Org",
+              business_email: "ops@example.com"
+            }
+          ]
+        }
+      },
+      { match: "update public.outbox_messages" }
+    ]);
+
+    const handled = await processBatchWithLogger(
+      client as never,
+      {
+        databaseUrl: "postgres://example",
+        pollIntervalMs: 1000,
+        batchSize: 20,
+        maxRetries: 10
+      },
+      createLoggerStub()
+    );
+
+    expect(handled).toBe(1);
     expect(client.remainingSteps()).toBe(0);
   });
 });

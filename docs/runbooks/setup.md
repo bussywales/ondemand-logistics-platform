@@ -55,6 +55,10 @@
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
   - `STRIPE_PUBLISHABLE_KEY` only needed later for browser flows
+  - Optional external notification email delivery:
+    - `RESEND_API_KEY`
+    - `NOTIFICATION_FROM_EMAIL`
+    - `NOTIFICATION_REPLY_TO_EMAIL` optional
 
 ### Vercel: `ondemand-logistics-platform-web`
 - Root directory: repo root (`.`)
@@ -218,6 +222,22 @@ POST /v1/jobs/:jobId/payment/authorize
    - enter cardholder details
    - enter a Stripe test card in the embedded card field
    - save the payment method
+
+## 5.2) External operational notifications
+
+- External notifications v1 are email-only.
+- Supported outbound operational events:
+  - customer order confirmation
+  - business new order alert
+  - driver offer alert
+  - delivery completed
+  - payment captured
+- The worker reuses the existing outbox pipeline.
+- Provider behavior:
+  - when `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL` are set, the worker sends email through Resend
+  - when either env var is missing, the worker does not crash
+  - instead, it records `external_notification_skipped` in `audit_log` and continues processing the rest of the outbox batch
+- This means staging/dev can run safely without an email provider while still exercising event mapping and auditability.
    - authorize the payment
 4. Confirm the payment status moves from `REQUIRES_PAYMENT_METHOD` or `FAILED` to `AUTHORIZED`.
 
@@ -248,7 +268,7 @@ Required GitHub Actions checks:
 - Driver availability, location, sequential offers, reject-driven redispatch, and guarded status progression.
 - Proof of delivery is required before `DELIVERED`.
 - Cancellation is restricted to consumer/business actors and pre-drop states only.
-- Notification hooks are durable outbox messages; provider fan-out remains deferred.
+- Notification hooks are durable outbox messages with optional Resend email fan-out; missing provider env degrades to audited skip behavior.
 - Payment provider calls are centralized behind a Stripe abstraction and webhook verification path.
 - Payment capture happens only after delivered jobs with POD; payout ledger readiness depends on successful capture.
 - Idempotent writes, append-only audit trails, transactional outbox side effects.

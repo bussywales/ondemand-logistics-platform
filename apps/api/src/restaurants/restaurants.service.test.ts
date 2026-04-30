@@ -553,10 +553,11 @@ describe("RestaurantsService", () => {
                 }
               ]
             })
-            .mockResolvedValueOnce({ rowCount: 1, rows: [] })
-            .mockResolvedValueOnce({ rowCount: 1, rows: [] })
-            .mockResolvedValueOnce({ rowCount: 1, rows: [] })
             .mockResolvedValueOnce({ rowCount: 1, rows: [orderRow()] })
+            .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+            .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+            .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+            .mockResolvedValueOnce({ rowCount: 1, rows: [] })
             .mockResolvedValueOnce({ rowCount: 1, rows: [orderItemRow()] })
             .mockResolvedValueOnce({ rowCount: 1, rows: [orderRow({ status: "PAYMENT_AUTHORIZED" })] })
         }))
