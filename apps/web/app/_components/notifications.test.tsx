@@ -15,6 +15,17 @@ const notifications: BusinessNotification[] = [
     entityId: "04f99ff2-df87-4f8b-aa10-8aef6d675fd4",
     createdAt: "2026-04-29T09:00:00.000Z",
     read: false
+  },
+  {
+    id: "payment_event:22",
+    type: "PAYMENT_CAPTURED",
+    title: "Payment captured",
+    message: "Funds were captured successfully.",
+    severity: "success",
+    entityType: "order",
+    entityId: "14f99ff2-df87-4f8b-aa10-8aef6d675fd4",
+    createdAt: "2026-04-29T10:00:00.000Z",
+    read: true
   }
 ];
 
@@ -31,6 +42,8 @@ describe("NotificationFeed", () => {
     expect(markup).toContain("Dispatch failed");
     expect(markup).toContain("No eligible driver accepted the job. It needs review.");
     expect(markup).toContain("/app/jobs/04f99ff2-df87-4f8b-aa10-8aef6d675fd4");
+    expect(markup).toContain("notifications-item-unread");
+    expect(markup).toContain("notifications-item-read");
   });
 
   it("renders the empty state safely", () => {

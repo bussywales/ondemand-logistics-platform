@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { listBusinessNotifications } from "../_lib/api";
+import { listBusinessNotifications, markAllBusinessNotificationsRead, markBusinessNotificationRead } from "../_lib/api";
 import type { BusinessNotification, BusinessSession } from "../_lib/product-state";
 import { useBusinessAuth } from "./business-auth-provider";
 import { BrandLogo } from "./brand-logo";
@@ -19,6 +19,7 @@ export function NotificationsShell() {
   const session = router.session;
   const [items, setItems] = useState<BusinessNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,6 +47,40 @@ export function NotificationsShell() {
   async function handleSignOut() {
     await router.signOut();
     window.location.href = "/";
+  }
+
+  async function handleOpenNotification(item: BusinessNotification) {
+    if (!session || item.read) {
+      return;
+    }
+
+    setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, read: true } : entry)));
+
+    try {
+      await markBusinessNotificationRead(session, item.id);
+    } catch (issue) {
+      setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, read: false } : entry)));
+      setError(issue instanceof Error ? issue.message : "Unable to update notification state.");
+    }
+  }
+
+  async function handleMarkAllRead() {
+    if (!session || markingAll || items.every((item) => item.read)) {
+      return;
+    }
+
+    const previous = items;
+    setMarkingAll(true);
+    setItems((current) => current.map((item) => ({ ...item, read: true })));
+
+    try {
+      await markAllBusinessNotificationsRead(session);
+    } catch (issue) {
+      setItems(previous);
+      setError(issue instanceof Error ? issue.message : "Unable to update notification state.");
+    } finally {
+      setMarkingAll(false);
+    }
   }
 
   if (router.status === "loading") {
@@ -203,6 +238,11 @@ export function NotificationsShell() {
               <div className="orders-command-actions">
                 <span className={`ops-count-pill ${dangerCount > 0 ? "ops-count-pill-alert" : ""}`}>{unreadCount} unread</span>
                 <span className="ops-count-pill">{items.length} total</span>
+                {unreadCount > 0 ? (
+                  <button className="button button-secondary" onClick={() => void handleMarkAllRead()} type="button">
+                    {markingAll ? "Marking..." : "Mark all read"}
+                  </button>
+                ) : null}
               </div>
             </section>
 
@@ -226,7 +266,7 @@ export function NotificationsShell() {
                   <p className="sw-empty-copy">Checking the latest dispatch, payment, and delivery events.</p>
                 </div>
               ) : (
-                <GroupedNotificationFeed items={items} />
+                <GroupedNotificationFeed items={items} onOpenNotification={(item) => void handleOpenNotification(item)} />
               )}
             </section>
           </section>

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { listBusinessNotifications } from "../_lib/api";
+import { listBusinessNotifications, markAllBusinessNotificationsRead, markBusinessNotificationRead } from "../_lib/api";
 import {
   groupNotificationsByDate,
   mapNotification,
@@ -31,6 +31,7 @@ function severityClass(severity: NotificationSeverity) {
 function NotificationListItem(props: {
   compact?: boolean;
   item: NotificationPresentation;
+  onOpenNotification?: (item: BusinessNotification) => void;
   onNavigate?: () => void;
 }) {
   const content = (
@@ -51,9 +52,14 @@ function NotificationListItem(props: {
   if (props.item.href) {
     return (
       <Link
-        className={`sw-supporting-surface notifications-item ${props.compact ? "notifications-item-compact" : ""}`}
+        className={`sw-supporting-surface notifications-item ${props.item.read ? "notifications-item-read" : "notifications-item-unread"} ${
+          props.compact ? "notifications-item-compact" : ""
+        }`}
         href={props.item.href}
-        onClick={props.onNavigate}
+        onClick={() => {
+          props.onOpenNotification?.(props.item);
+          props.onNavigate?.();
+        }}
       >
         {content}
       </Link>
@@ -61,7 +67,11 @@ function NotificationListItem(props: {
   }
 
   return (
-    <div className={`sw-supporting-surface notifications-item ${props.compact ? "notifications-item-compact" : ""}`}>
+    <div
+      className={`sw-supporting-surface notifications-item ${props.item.read ? "notifications-item-read" : "notifications-item-unread"} ${
+        props.compact ? "notifications-item-compact" : ""
+      }`}
+    >
       {content}
     </div>
   );
@@ -72,6 +82,7 @@ export function NotificationFeed(props: {
   emptyCopy: string;
   emptyTitle: string;
   items: BusinessNotification[];
+  onOpenNotification?: (item: BusinessNotification) => void;
   onNavigate?: () => void;
 }) {
   if (props.items.length === 0) {
@@ -89,7 +100,13 @@ export function NotificationFeed(props: {
   return (
     <div className={`notifications-list ${props.compact ? "notifications-list-compact" : ""}`}>
       {props.items.map((item) => (
-        <NotificationListItem compact={props.compact} item={mapNotification(item)} key={item.id} onNavigate={props.onNavigate} />
+        <NotificationListItem
+          compact={props.compact}
+          item={mapNotification(item)}
+          key={item.id}
+          onNavigate={props.onNavigate}
+          onOpenNotification={props.onOpenNotification}
+        />
       ))}
     </div>
   );
@@ -99,6 +116,7 @@ export function NotificationsBell(props: { session: BusinessSession }) {
   const [items, setItems] = useState<BusinessNotification[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [markingAll, setMarkingAll] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -150,6 +168,41 @@ export function NotificationsBell(props: { session: BusinessSession }) {
   const unreadCount = items.filter((item) => !item.read).length;
   const latestItems = items.slice(0, 6);
 
+  function markReadLocally(notificationId: string) {
+    setItems((current) => current.map((item) => (item.id === notificationId ? { ...item, read: true } : item)));
+  }
+
+  async function handleOpenNotification(item: BusinessNotification) {
+    if (item.read) {
+      return;
+    }
+
+    markReadLocally(item.id);
+    try {
+      await markBusinessNotificationRead(props.session, item.id);
+    } catch {
+      setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, read: false } : entry)));
+    }
+  }
+
+  async function handleMarkAllRead() {
+    if (markingAll || unreadCount === 0) {
+      return;
+    }
+
+    const previous = items;
+    setMarkingAll(true);
+    setItems((current) => current.map((item) => ({ ...item, read: true })));
+
+    try {
+      await markAllBusinessNotificationsRead(props.session);
+    } catch {
+      setItems(previous);
+    } finally {
+      setMarkingAll(false);
+    }
+  }
+
   return (
     <div className="notifications-menu" ref={menuRef}>
       <button
@@ -172,9 +225,16 @@ export function NotificationsBell(props: { session: BusinessSession }) {
               <p className="eyebrow">Notifications</p>
               <strong>{unreadCount > 0 ? `${unreadCount} unread` : "All clear"}</strong>
             </div>
-            <Link className="text-action" href="/app/notifications" onClick={() => setOpen(false)}>
-              View all
-            </Link>
+            <div className="notifications-dropdown-actions">
+              {unreadCount > 0 ? (
+                <button className="text-action notifications-mark-all" onClick={() => void handleMarkAllRead()} type="button">
+                  {markingAll ? "Marking..." : "Mark all read"}
+                </button>
+              ) : null}
+              <Link className="text-action" href="/app/notifications" onClick={() => setOpen(false)}>
+                View all
+              </Link>
+            </div>
           </div>
 
           {loading ? (
@@ -188,6 +248,7 @@ export function NotificationsBell(props: { session: BusinessSession }) {
               emptyCopy="Dispatch, payment, and delivery events will appear here."
               emptyTitle="No notifications yet"
               items={latestItems}
+              onOpenNotification={(item) => void handleOpenNotification(item)}
               onNavigate={() => setOpen(false)}
             />
           )}
@@ -197,7 +258,10 @@ export function NotificationsBell(props: { session: BusinessSession }) {
   );
 }
 
-export function GroupedNotificationFeed(props: { items: BusinessNotification[] }) {
+export function GroupedNotificationFeed(props: {
+  items: BusinessNotification[];
+  onOpenNotification?: (item: BusinessNotification) => void;
+}) {
   const groups = groupNotificationsByDate(props.items);
 
   if (groups.length === 0) {
@@ -224,6 +288,7 @@ export function GroupedNotificationFeed(props: { items: BusinessNotification[] }
             emptyCopy=""
             emptyTitle=""
             items={group.items}
+            onOpenNotification={props.onOpenNotification}
           />
         </section>
       ))}

@@ -6778,6 +6778,20 @@ select:hover,
   color: var(--sw-color-text-primary, #0a2142);
 }
 
+.notifications-dropdown-actions {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.notifications-mark-all {
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
 .notifications-list,
 .notifications-group-stack,
 .notifications-stack {
@@ -6795,6 +6809,22 @@ select:hover,
 .notifications-item:hover {
   box-shadow: var(--sw-shadow-md, 0 18px 48px rgba(10, 33, 66, 0.1));
   transform: translateY(-1px);
+}
+
+.notifications-item-read {
+  background: color-mix(in srgb, var(--sw-color-surface, #fff) 78%, var(--sw-color-background, #edeff3));
+  border-color: color-mix(in srgb, var(--sw-color-border, rgba(10, 33, 66, 0.08)) 82%, transparent);
+  box-shadow: var(--sw-shadow-sm, 0 10px 24px rgba(10, 33, 66, 0.06));
+}
+
+.notifications-item-read .notifications-item-copy strong,
+.notifications-item-read .notifications-item-header span,
+.notifications-item-read .notifications-item-copy p {
+  opacity: 0.74;
+}
+
+.notifications-item-unread {
+  box-shadow: var(--sw-shadow-md, 0 18px 48px rgba(10, 33, 66, 0.1));
 }
 
 .notifications-item-compact {
@@ -6880,6 +6910,10 @@ select:hover,
     min-width: auto;
     right: auto;
     width: min(24rem, calc(100vw - 2rem));
+  }
+
+  .notifications-dropdown-actions {
+    justify-content: flex-start;
   }
 
   .notifications-item,

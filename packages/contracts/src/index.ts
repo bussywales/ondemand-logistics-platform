@@ -657,6 +657,20 @@ export const BusinessNotificationListSchema = z.object({
 });
 export type BusinessNotificationListDto = z.infer<typeof BusinessNotificationListSchema>;
 
+export const BusinessNotificationReadSchema = z.object({
+  ok: z.literal(true),
+  notificationId: z.string().min(2),
+  readAt: IsoDateTimeSchema
+});
+export type BusinessNotificationReadDto = z.infer<typeof BusinessNotificationReadSchema>;
+
+export const BusinessNotificationReadAllSchema = z.object({
+  ok: z.literal(true),
+  readAt: IsoDateTimeSchema,
+  updatedCount: z.number().int().nonnegative()
+});
+export type BusinessNotificationReadAllDto = z.infer<typeof BusinessNotificationReadAllSchema>;
+
 export const PaymentProviderSchema = z.enum(["stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 

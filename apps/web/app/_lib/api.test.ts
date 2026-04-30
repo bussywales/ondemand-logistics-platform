@@ -13,6 +13,8 @@ import {
   listBusinessNotifications,
   listBusinessOrders,
   listDriverOffers,
+  markAllBusinessNotificationsRead,
+  markBusinessNotificationRead,
   rejectDriverOffer,
   transitionDriverJob,
   updateDriverAvailability
@@ -285,6 +287,48 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/business/notifications');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(notifications[0]?.type).toBe('JOB_DISPATCH_FAILED');
+  });
+
+  it('marks a business notification as read with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          ok: true,
+          notificationId: 'job_event:12',
+          readAt: new Date().toISOString()
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await markBusinessNotificationRead(session, 'job_event:12');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/notifications/job_event%3A12/read');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(init.method).toBe('POST');
+    expect(result.ok).toBe(true);
+  });
+
+  it('marks all business notifications as read with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          ok: true,
+          readAt: new Date().toISOString(),
+          updatedCount: 3
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await markAllBusinessNotificationsRead(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/notifications/read-all');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(init.method).toBe('POST');
+    expect(result.updatedCount).toBe(3);
   });
 
   it('reads and updates driver execution state with bearer auth', async () => {

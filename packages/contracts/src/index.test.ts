@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   BusinessContextSchema,
+  BusinessNotificationReadAllSchema,
+  BusinessNotificationReadSchema,
   BusinessNotificationListSchema,
   CancelJobSchema,
   CreateBusinessOrgSchema,
@@ -238,6 +240,26 @@ describe("read models", () => {
           read: false
         }
       ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses notification read acknowledgements", () => {
+    const parsed = BusinessNotificationReadSchema.safeParse({
+      ok: true,
+      notificationId: "job_event:12",
+      readAt: new Date().toISOString()
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses notification read-all acknowledgements", () => {
+    const parsed = BusinessNotificationReadAllSchema.safeParse({
+      ok: true,
+      readAt: new Date().toISOString(),
+      updatedCount: 4
     });
 
     expect(parsed.success).toBe(true);

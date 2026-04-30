@@ -126,6 +126,16 @@ type SubmitCustomerOrderResponse = CustomerOrderSubmission;
 type BusinessCustomerOrderListResponse = BusinessCustomerOrderList;
 type BusinessCustomerOrderResponse = BusinessCustomerOrder;
 type BusinessNotificationListResponse = BusinessNotificationList;
+type BusinessNotificationReadResponse = {
+  ok: true;
+  notificationId: string;
+  readAt: string;
+};
+type BusinessNotificationReadAllResponse = {
+  ok: true;
+  readAt: string;
+  updatedCount: number;
+};
 type DriverStateResponse = DriverState;
 type DriverOfferResponse = DriverOffer;
 type EligibleDriverListResponse = {
@@ -395,6 +405,31 @@ export async function listBusinessNotifications(session: BusinessSession): Promi
   });
 
   return payload.items;
+}
+
+export async function markBusinessNotificationRead(
+  session: BusinessSession,
+  notificationId: string
+): Promise<BusinessNotificationReadResponse> {
+  return apiFetch<BusinessNotificationReadResponse>(
+    session,
+    `/v1/business/notifications/${encodeURIComponent(notificationId)}/read`,
+    {
+      method: "POST",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-notification-read`
+      }
+    }
+  );
+}
+
+export async function markAllBusinessNotificationsRead(session: BusinessSession): Promise<BusinessNotificationReadAllResponse> {
+  return apiFetch<BusinessNotificationReadAllResponse>(session, "/v1/business/notifications/read-all", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-notification-read-all`
+    }
+  });
 }
 
 export async function getDriverState(session: BusinessSession): Promise<DriverState> {

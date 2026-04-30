@@ -1,5 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import {
+  BusinessNotificationReadAllSchema,
+  BusinessNotificationReadSchema,
   BusinessNotificationListSchema,
   type BusinessNotificationDto,
   type BusinessNotificationEntityType,
@@ -19,6 +21,16 @@ type NotificationEventRow = {
   order_id: string | null;
   payment_id: string | null;
   payload: Record<string, unknown> | null;
+};
+
+type NotificationReadRow = {
+  notification_id: string;
+};
+
+type ParsedNotificationId = {
+  notificationId: string;
+  source: NotificationSource;
+  sourceId: string;
 };
 
 const JOB_NOTIFICATION_EVENTS = [
@@ -206,6 +218,30 @@ function resolveEntity(row: NotificationEventRow): { entityId: string; entityTyp
   throw new Error("notification_entity_missing");
 }
 
+function parseNotificationId(notificationId: string): ParsedNotificationId | null {
+  const separatorIndex = notificationId.indexOf(":");
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  const source = notificationId.slice(0, separatorIndex);
+  const sourceId = notificationId.slice(separatorIndex + 1);
+
+  if (sourceId.length === 0) {
+    return null;
+  }
+
+  if (source !== "job_event" && source !== "outbox" && source !== "payment_event") {
+    return null;
+  }
+
+  return {
+    notificationId,
+    source,
+    sourceId
+  };
+}
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = createLogger({ name: "api-notifications" });
@@ -213,18 +249,77 @@ export class NotificationsService {
   constructor(private readonly pg: PgService) {}
 
   async listBusinessNotifications(userId: string) {
-    const [jobEvents, outboxEvents, paymentEvents] = await Promise.all([
-      this.loadJobEvents(userId),
-      this.loadOutboxEvents(userId),
-      this.loadPaymentEvents(userId)
-    ]);
-
-    const items = [...jobEvents, ...outboxEvents, ...paymentEvents]
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, 50);
+    const items = await this.buildBusinessNotifications(userId);
 
     this.logger.info({ actor_id: userId, notification_count: items.length }, "business_notifications_listed");
     return BusinessNotificationListSchema.parse({ items });
+  }
+
+  async markBusinessNotificationRead(userId: string, notificationId: string) {
+    const notification = parseNotificationId(notificationId);
+    if (!notification) {
+      throw new NotFoundException("Notification not found.");
+    }
+
+    const visible = await this.notificationVisibleToUser(userId, notification);
+    if (!visible) {
+      throw new NotFoundException("Notification not found.");
+    }
+
+    const result = await this.pg.query<{ read_at: string | Date }>(
+      `insert into public.notification_reads (user_id, notification_id, notification_source, read_at)
+       values ($1, $2, $3, now())
+       on conflict (user_id, notification_id)
+       do update set read_at = excluded.read_at
+       returning read_at`,
+      [userId, notification.notificationId, notification.source]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("notification_read_persist_failed");
+    }
+
+    this.logger.info({ actor_id: userId, notification_id: notificationId }, "business_notification_read");
+    return BusinessNotificationReadSchema.parse({
+      ok: true,
+      notificationId,
+      readAt: toIsoDateTime(row.read_at)
+    });
+  }
+
+  async markAllBusinessNotificationsRead(userId: string) {
+    const items = await this.buildBusinessNotifications(userId, { includeReadState: false });
+    const parsedNotifications = items
+      .map((item) => parseNotificationId(item.id))
+      .filter((item): item is ParsedNotificationId => item !== null);
+
+    if (parsedNotifications.length === 0) {
+      return BusinessNotificationReadAllSchema.parse({
+        ok: true,
+        readAt: new Date().toISOString(),
+        updatedCount: 0
+      });
+    }
+
+    const result = await this.pg.query<{ read_at: string | Date }>(
+      `insert into public.notification_reads (user_id, notification_id, notification_source, read_at)
+       select $1, entry.notification_id, entry.notification_source, now()
+       from unnest($2::text[], $3::text[]) as entry(notification_id, notification_source)
+       on conflict (user_id, notification_id)
+       do update set read_at = excluded.read_at
+       returning read_at`,
+      [userId, parsedNotifications.map((item) => item.notificationId), parsedNotifications.map((item) => item.source)]
+    );
+
+    const readAt = result.rows[0]?.read_at ?? new Date().toISOString();
+    this.logger.info({ actor_id: userId, notification_count: parsedNotifications.length }, "business_notifications_read_all");
+
+    return BusinessNotificationReadAllSchema.parse({
+      ok: true,
+      readAt: toIsoDateTime(readAt),
+      updatedCount: parsedNotifications.length
+    });
   }
 
   private async loadJobEvents(userId: string): Promise<BusinessNotificationDto[]> {
@@ -315,6 +410,105 @@ export class NotificationsService {
     );
 
     return result.rows.map((row) => this.mapNotification("payment_event", row));
+  }
+
+  private async buildBusinessNotifications(userId: string, options?: { includeReadState?: boolean }) {
+    const [jobEvents, outboxEvents, paymentEvents] = await Promise.all([
+      this.loadJobEvents(userId),
+      this.loadOutboxEvents(userId),
+      this.loadPaymentEvents(userId)
+    ]);
+
+    const items = [...jobEvents, ...outboxEvents, ...paymentEvents]
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, 50);
+
+    if (options?.includeReadState === false || items.length === 0) {
+      return items;
+    }
+
+    const result = await this.pg.query<NotificationReadRow>(
+      `select notification_id
+       from public.notification_reads
+       where user_id = $1
+         and notification_id = any($2::text[])`,
+      [userId, items.map((item) => item.id)]
+    );
+
+    const reads = new Set(result.rows.map((row) => row.notification_id));
+    return items.map((item) => ({
+      ...item,
+      read: reads.has(item.id)
+    }));
+  }
+
+  private async notificationVisibleToUser(userId: string, notification: ParsedNotificationId) {
+    if (notification.source === "job_event") {
+      const result = await this.pg.query(
+        `select 1
+         from public.job_events je
+         join public.jobs j on j.id = je.job_id
+         where je.id::text = $2
+           and je.event_type = any($3::text[])
+           and exists (
+             select 1
+             from public.org_memberships m
+             where m.org_id = j.org_id
+               and m.user_id = $1
+               and m.is_active = true
+               and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+           )
+         limit 1`,
+        [userId, notification.sourceId, [...JOB_NOTIFICATION_EVENTS]]
+      );
+
+      return (result.rowCount ?? 0) > 0;
+    }
+
+    if (notification.source === "outbox") {
+      const result = await this.pg.query(
+        `select 1
+         from public.outbox_messages om
+         join public.jobs j
+           on om.aggregate_type = 'job'
+          and om.aggregate_id = j.id
+         where om.id::text = $2
+           and om.event_type = any($3::text[])
+           and exists (
+             select 1
+             from public.org_memberships m
+             where m.org_id = j.org_id
+               and m.user_id = $1
+               and m.is_active = true
+               and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+           )
+         limit 1`,
+        [userId, notification.sourceId, [...OUTBOX_NOTIFICATION_EVENTS]]
+      );
+
+      return (result.rowCount ?? 0) > 0;
+    }
+
+    const result = await this.pg.query(
+      `select 1
+       from public.payment_events pe
+       join public.payments p on p.id = pe.payment_id
+       join public.jobs j on j.id = p.job_id
+       where pe.id::text = $2
+         and pe.event_type = any($3::text[])
+         and exists (
+           select 1
+           from public.org_memberships m
+           where m.org_id = j.org_id
+             and m.user_id = $1
+             and m.is_active = true
+             and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+         )
+       limit 1`,
+      [userId, notification.sourceId, [...PAYMENT_NOTIFICATION_EVENTS]]
+    );
+
+    return (result.rowCount ?? 0) > 0;
   }
 
   private mapNotification(source: NotificationSource, row: NotificationEventRow): BusinessNotificationDto {
