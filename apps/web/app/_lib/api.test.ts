@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  ApiRequestError,
   acceptDriverOffer,
   authorizePayment,
   createProofOfDelivery,
   createRestaurant,
+  getDriverAssignmentIneligibility,
   getBusinessOrder,
   getCurrentDriverJob,
   getDriverState,
@@ -213,6 +215,30 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/business/orders');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(orders[0]?.payment.status).toBe('AUTHORIZED');
+  });
+
+  it('parses structured driver assignment ineligibility errors', () => {
+    const error = new ApiRequestError('driver_not_eligible_for_reassign', 422, {
+      message: 'driver_not_eligible_for_reassign',
+      reason: 'OFFLINE',
+      suitabilityFlags: ['OFFLINE', 'NO_LIVE_LOCATION'],
+      suitabilityReason: 'Driver is offline and will not receive manual assignment.'
+    });
+
+    expect(getDriverAssignmentIneligibility(error)).toEqual({
+      message: 'driver_not_eligible_for_reassign',
+      reason: 'OFFLINE',
+      suitabilityFlags: ['OFFLINE', 'NO_LIVE_LOCATION'],
+      suitabilityReason: 'Driver is offline and will not receive manual assignment.'
+    });
+  });
+
+  it('returns null for non-driver-assignment errors', () => {
+    expect(
+      getDriverAssignmentIneligibility(
+        new ApiRequestError('job_not_retryable', 409, { message: 'job_not_retryable' })
+      )
+    ).toBeNull();
   });
 
   it('reads a business customer order detail', async () => {

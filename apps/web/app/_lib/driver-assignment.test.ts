@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   filterEligibleDrivers,
+  getBlockedDriverLabel,
   getEligibleDriverEmptyState,
   getEligibleDriverFlagLabel,
-  getEligibleDriverTone
+  getEligibleDriverTone,
+  getDriverAssignmentNextSteps,
+  toDriverAssignmentFailureModel
 } from "./driver-assignment";
 import type { EligibleDriver } from "./product-state";
 
@@ -54,5 +57,26 @@ describe("driver assignment helpers", () => {
     expect(filterEligibleDrivers(drivers, "alex")).toHaveLength(1);
     expect(filterEligibleDrivers(drivers, "bike")).toHaveLength(1);
     expect(filterEligibleDrivers(drivers, "pending")).toHaveLength(1);
+  });
+
+  it("builds blocked driver labels and next steps", () => {
+    expect(getBlockedDriverLabel(drivers[0])).toBe("Assignable now");
+    expect(getBlockedDriverLabel(drivers[1])).toBe("Blocked: already on a job");
+    expect(getDriverAssignmentNextSteps(["OFFLINE", "VEHICLE_MISMATCH"])).toEqual([
+      "Choose another driver or ask this driver to go online.",
+      "Pick a driver with the required vehicle type for this delivery."
+    ]);
+  });
+
+  it("builds a failure model that keeps the picker open", () => {
+    const model = toDriverAssignmentFailureModel({
+      suitabilityReason: "Driver already has an active job and cannot be reassigned.",
+      suitabilityFlags: ["ACTIVE_JOB", "NO_LIVE_LOCATION"]
+    });
+
+    expect(model.keepPickerOpen).toBe(true);
+    expect(model.suitabilityFlags).toEqual(["ACTIVE_JOB", "NO_LIVE_LOCATION"]);
+    expect(model.nextSteps).toContain("Choose a driver who is not already on an active delivery.");
+    expect(model.nextSteps).toContain("Confirm the driver app is sending live location before assigning.");
   });
 });

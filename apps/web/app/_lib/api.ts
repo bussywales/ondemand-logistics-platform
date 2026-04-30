@@ -8,6 +8,7 @@ import type {
   CustomerOrderSubmission,
   DriverAvailabilityStatus,
   EligibleDriver,
+  EligibleDriverSuitabilityFlag,
   DriverJob,
   DriverOffer,
   DriverOfferAcceptResult,
@@ -153,6 +154,56 @@ function normalizeBaseUrl(value: string) {
   return value.trim().replace(/\/$/, "");
 }
 
+type DriverAssignmentIneligibilityPayload = {
+  message: string;
+  reason: string;
+  suitabilityFlags: EligibleDriverSuitabilityFlag[];
+  suitabilityReason: string;
+};
+
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly payload: unknown
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
+export function getDriverAssignmentIneligibility(
+  error: unknown
+): DriverAssignmentIneligibilityPayload | null {
+  if (!(error instanceof ApiRequestError) || error.status !== 422) {
+    return null;
+  }
+
+  const payload = error.payload;
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    typeof (payload as { message?: unknown }).message !== "string" ||
+    typeof (payload as { reason?: unknown }).reason !== "string" ||
+    typeof (payload as { suitabilityReason?: unknown }).suitabilityReason !== "string" ||
+    !Array.isArray((payload as { suitabilityFlags?: unknown }).suitabilityFlags)
+  ) {
+    return null;
+  }
+
+  const suitabilityFlags = (payload as { suitabilityFlags: unknown[] }).suitabilityFlags;
+  if (!suitabilityFlags.every((flag) => typeof flag === "string")) {
+    return null;
+  }
+
+  return {
+    message: (payload as { message: string }).message,
+    reason: (payload as { reason: string }).reason,
+    suitabilityFlags: suitabilityFlags as EligibleDriverSuitabilityFlag[],
+    suitabilityReason: (payload as { suitabilityReason: string }).suitabilityReason
+  };
+}
+
 async function apiFetch<T>(session: BusinessSession, path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${normalizeBaseUrl(apiBaseUrl)}${path}`, {
     ...init,
@@ -179,7 +230,7 @@ async function apiFetch<T>(session: BusinessSession, path: string, init?: Reques
             "message" in ((payload as { error?: Record<string, unknown> }).error ?? {})
           ? String((payload as { error: { message?: unknown } }).error.message)
         : `Request failed with status ${response.status}`;
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status, payload);
   }
 
   return payload as T;
@@ -210,7 +261,7 @@ async function publicApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
             "message" in ((payload as { error?: Record<string, unknown> }).error ?? {})
           ? String((payload as { error: { message?: unknown } }).error.message)
         : `Request failed with status ${response.status}`;
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status, payload);
   }
 
   return payload as T;

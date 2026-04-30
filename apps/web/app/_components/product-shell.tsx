@@ -10,6 +10,7 @@ import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMet
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
+  getDriverAssignmentIneligibility,
   authorizePayment,
   cancelJob,
   createLiveJob,
@@ -32,9 +33,12 @@ import {
 } from "../_lib/product-state";
 import {
   filterEligibleDrivers,
+  getBlockedDriverLabel,
   getEligibleDriverEmptyState,
   getEligibleDriverFlagLabel,
-  getEligibleDriverTone
+  getEligibleDriverTone,
+  toDriverAssignmentFailureModel,
+  type DriverAssignmentFailureModel
 } from "../_lib/driver-assignment";
 import {
   getDispatchIntelligence,
@@ -259,6 +263,8 @@ export function ProductShell(props: ProductShellProps) {
   const [eligibleDriversLoadedForJob, setEligibleDriversLoadedForJob] = useState<string | null>(null);
   const [driverPickerOpen, setDriverPickerOpen] = useState(false);
   const [driverPickerQuery, setDriverPickerQuery] = useState("");
+  const [driverAssignmentError, setDriverAssignmentError] = useState<DriverAssignmentFailureModel | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("Operator cancelled");
 
   useEffect(() => {
@@ -284,6 +290,8 @@ export function ProductShell(props: ProductShellProps) {
     setEligibleDrivers([]);
     setEligibleDriversLoadedForJob(null);
     setDriverPickerQuery("");
+    setDriverAssignmentError(null);
+    setSelectedDriverId(null);
   }, [props.jobId]);
 
   const workspaceSummary = useMemo(() => {
@@ -432,6 +440,7 @@ export function ProductShell(props: ProductShellProps) {
 
     setEligibleDriversLoading(true);
     setError(null);
+    setDriverAssignmentError(null);
 
     try {
       const nextDrivers = await listEligibleDrivers(session, job.id);
@@ -447,6 +456,8 @@ export function ProductShell(props: ProductShellProps) {
   async function openDriverPicker(job: AppJob) {
     setDriverPickerOpen(true);
     setDriverPickerQuery("");
+    setDriverAssignmentError(null);
+    setSelectedDriverId(null);
 
     if (eligibleDriversLoadedForJob === job.id) {
       return;
@@ -462,14 +473,27 @@ export function ProductShell(props: ProductShellProps) {
 
     setActionSubmitting(true);
     setError(null);
+    setDriverAssignmentError(null);
+    setSelectedDriverId(driverId);
 
     try {
       const nextJob = await reassignDriver(session, job.id, driverId);
       syncJob(nextJob);
       setDriverPickerOpen(false);
+      setSelectedDriverId(null);
       await loadEligibleDriversForJob(nextJob);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to assign driver.");
+      const structured = getDriverAssignmentIneligibility(issue);
+      if (structured) {
+        setDriverAssignmentError(
+          toDriverAssignmentFailureModel({
+            suitabilityReason: structured.suitabilityReason,
+            suitabilityFlags: structured.suitabilityFlags
+          })
+        );
+      } else {
+        setError(issue instanceof Error ? issue.message : "Unable to assign driver.");
+      }
     } finally {
       setActionSubmitting(false);
     }
@@ -1529,6 +1553,37 @@ export function ProductShell(props: ProductShellProps) {
                         />
                       </label>
 
+                      {driverAssignmentError ? (
+                        <div className="sw-decision-surface assignment-error-panel" role="alert">
+                          <div className="assignment-error-header">
+                            <span className="sw-icon-badge sw-icon-badge--danger" aria-hidden="true">
+                              <ShipWrightIcon name="alert" />
+                            </span>
+                            <div>
+                              <p className="eyebrow">Assignment blocked</p>
+                              <strong>{driverAssignmentError.title}</strong>
+                            </div>
+                          </div>
+                          <p className="assignment-error-copy">{driverAssignmentError.suitabilityReason}</p>
+                          <div className="assignment-flag-list">
+                            {driverAssignmentError.suitabilityFlags.map((flag) => (
+                              <span className={`status-badge ${getEligibleDriverTone(flag)}`} key={`assignment-error-${flag}`}>
+                                {getEligibleDriverFlagLabel(flag)}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="assignment-next-steps">
+                            <p className="ops-section-label">What to do next</p>
+                            <ul>
+                              {driverAssignmentError.nextSteps.map((step) => (
+                                <li key={step}>{step}</li>
+                              ))}
+                              <li>Choose another driver from the eligible pool below.</li>
+                            </ul>
+                          </div>
+                        </div>
+                      ) : null}
+
                       {eligibleDriversLoading ? (
                         <div className="ops-empty-state assignment-empty-state">
                           <strong>Loading driver pool</strong>
@@ -1558,7 +1613,7 @@ export function ProductShell(props: ProductShellProps) {
                                     </p>
                                   </div>
                                   <span className={`status-badge ${driver.eligible ? "status-positive" : "status-negative"}`}>
-                                    {driver.eligible ? "Assignable" : "Blocked"}
+                                    {getBlockedDriverLabel(driver)}
                                   </span>
                                 </div>
 
@@ -1593,7 +1648,9 @@ export function ProductShell(props: ProductShellProps) {
                                   type="button"
                                 >
                                   <ShipWrightIcon name="assign" />
-                                  <span>{actionSubmitting ? "Assigning..." : "Assign driver"}</span>
+                                  <span>
+                                    {actionSubmitting && selectedDriverId === driver.id ? "Assigning..." : "Assign driver"}
+                                  </span>
                                 </button>
                               </div>
                             </div>
