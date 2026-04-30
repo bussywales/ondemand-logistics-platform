@@ -7,6 +7,7 @@ import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
 import { NotificationsBell } from "./notifications";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
+import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
 import { getBusinessOrder, listBusinessOrders } from "../_lib/api";
 import {
@@ -688,26 +689,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
 
       <section className="ops-layout">
         <aside className="ops-sidebar">
-          <nav className="ops-nav" aria-label="Workspace navigation">
-            <Link className="ops-nav-link" href="/app">
-              Operations
-            </Link>
-            <Link className="ops-nav-link" href="/app/jobs">
-              Jobs
-            </Link>
-            <Link className="ops-nav-link active" href="/app/orders">
-              Orders
-            </Link>
-            <Link className="ops-nav-link" href="/app/notifications">
-              Notifications
-            </Link>
-            <Link className="ops-nav-link" href="/app/restaurant">
-              Restaurant
-            </Link>
-            <Link className="ops-nav-link" href="/help">
-              Help
-            </Link>
-          </nav>
+          <WorkspaceNav active="orders" platformAdmin={session.context.platformAdmin} />
 
           <section className="ops-sidebar-section">
             <span className="ops-section-label">Operator</span>

@@ -8,6 +8,7 @@ import { ContextualHelpLink } from "./help";
 import { NotificationsBell } from "./notifications";
 import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMethod } from "./payment-method-form";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
+import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
   getDriverAssignmentIneligibility,
@@ -620,26 +621,10 @@ export function ProductShell(props: ProductShellProps) {
 
       <section className="ops-layout">
         <aside className="ops-sidebar">
-          <nav className="ops-nav" aria-label="Workspace navigation">
-            <Link className={props.view === "home" ? "ops-nav-link active" : "ops-nav-link"} href="/app">
-              Operations
-            </Link>
-            <Link className={props.view !== "home" ? "ops-nav-link active" : "ops-nav-link"} href="/app/jobs">
-              Jobs
-            </Link>
-            <Link className="ops-nav-link" href="/app/orders">
-              Orders
-            </Link>
-            <Link className="ops-nav-link" href="/app/notifications">
-              Notifications
-            </Link>
-            <Link className="ops-nav-link" href="/app/restaurant">
-              Restaurant
-            </Link>
-            <Link className="ops-nav-link" href="/help">
-              Help
-            </Link>
-          </nav>
+          <WorkspaceNav
+            active={props.view === "home" ? "operations" : "jobs"}
+            platformAdmin={session.context.platformAdmin}
+          />
 
           <section className="ops-sidebar-section">
             <span className="ops-section-label">Operator</span>

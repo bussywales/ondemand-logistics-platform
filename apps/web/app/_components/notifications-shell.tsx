@@ -9,6 +9,7 @@ import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
 import { GroupedNotificationFeed, NotificationsBell } from "./notifications";
 import { ShipWrightIcon } from "./shipwright-icon";
+import { WorkspaceNav } from "./workspace-nav";
 
 function severityCount(items: BusinessNotification[], severity: BusinessNotification["severity"]) {
   return items.filter((item) => item.severity === severity).length;
@@ -148,26 +149,7 @@ export function NotificationsShell() {
 
       <section className="ops-layout">
         <aside className="ops-sidebar">
-          <nav className="ops-nav" aria-label="Workspace navigation">
-            <Link className="ops-nav-link" href="/app">
-              Operations
-            </Link>
-            <Link className="ops-nav-link" href="/app/jobs">
-              Jobs
-            </Link>
-            <Link className="ops-nav-link" href="/app/orders">
-              Orders
-            </Link>
-            <Link className="ops-nav-link active" href="/app/notifications">
-              Notifications
-            </Link>
-            <Link className="ops-nav-link" href="/app/restaurant">
-              Restaurant
-            </Link>
-            <Link className="ops-nav-link" href="/help">
-              Help
-            </Link>
-          </nav>
+          <WorkspaceNav active="notifications" platformAdmin={session.context.platformAdmin} />
 
           <section className="ops-sidebar-section">
             <span className="ops-section-label">Operator</span>

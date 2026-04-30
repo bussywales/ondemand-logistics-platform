@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
+import { AdminWorkspaceLink } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
 import { getAdminOverview, listAdminJobs, listAdminOrders, listAdminOutbox } from "../_lib/api";
 import { formatCurrency, formatDateTime, type AdminInterventionItem, type AdminJobSummary, type AdminOrderSummary, type AdminOutboxItem } from "../_lib/product-state";
@@ -238,6 +239,7 @@ export function AdminShell() {
           <p>Cross-org oversight for pilot support, intervention, and release confidence.</p>
         </div>
         <div className="hero-actions">
+          <AdminWorkspaceLink />
           <button className="button button-secondary" onClick={() => void refreshBusinessSession()} type="button">
             Refresh
           </button>

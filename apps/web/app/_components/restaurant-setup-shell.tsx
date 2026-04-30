@@ -6,6 +6,7 @@ import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
 import { NotificationsBell } from "./notifications";
 import { ShipWrightIcon } from "./shipwright-icon";
+import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
   createMenuCategory,
@@ -386,16 +387,7 @@ export function RestaurantSetupShell() {
 
       <section className="merchant-layout">
         <aside className="merchant-sidebar">
-          <nav className="merchant-nav" aria-label="Workspace navigation">
-            <Link href="/app">Operations</Link>
-            <Link href="/app/jobs">Jobs</Link>
-            <Link href="/app/orders">Orders</Link>
-            <Link href="/app/notifications">Notifications</Link>
-            <Link className="active" href="/app/restaurant">
-              Merchant setup
-            </Link>
-            <Link href="/help">Help</Link>
-          </nav>
+          <WorkspaceNav active="restaurant" className="merchant-nav" platformAdmin={session.context.platformAdmin} />
 
           <section className="merchant-side-section">
             <span className="ops-section-label">Operator</span>
