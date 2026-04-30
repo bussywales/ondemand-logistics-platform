@@ -22,19 +22,30 @@ cp .env.smoke.example .env.smoke
 set -a
 source .env.smoke
 set +a
-pnpm --filter api verify:staging
+pnpm release:verify-staging
 ```
 
 The command runs the release-critical verification sequence in order:
-1. operator reminder to confirm migrations were applied
-2. operator reminder to confirm deploy is live
-3. `GET /healthz`
-4. `GET /readyz`
-5. authenticated business smoke:
+1. `GET /healthz`
+2. `GET /readyz`
+3. schema sanity check against the staging database:
+   - `platform_admins`
+   - `notification_reads`
+   - `customer_orders`
+   - `payments`
+   - `jobs`
+   - `outbox_messages`
+   - `customer_orders.status` supports `FULFILLED`
+4. optional authenticated business smoke when `SMOKE_BUSINESS_BEARER_TOKEN` is set:
+   - `GET /v1/business/restaurants`
    - `GET /v1/business/jobs?page=1&limit=20`
-6. optional authenticated driver/dispatch smoke when `SMOKE_DRIVER_BEARER_TOKEN` is set:
+5. optional authenticated driver smoke when `SMOKE_DRIVER_BEARER_TOKEN` is set:
    - `GET /v1/driver/me/offers`
-7. release decision
+6. optional authenticated admin smoke when `SMOKE_ADMIN_BEARER_TOKEN` is set:
+   - `GET /v1/admin/overview`
+7. external notification status from recent audit signals
+8. proof artifact write to `docs/proofs/release-verify-<timestamp>.json`
+9. release decision
 
 For Stage 1 paid-delivery proof, run the deeper loop verification after this command passes:
 
@@ -47,6 +58,7 @@ pnpm proof:staging-paid-delivery
 ```
 
 See `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`.
+The proof writes a timestamped artifact to `docs/proofs/paid-delivery-<timestamp>.json`.
 
 ## 4) Required Pass Conditions
 - `GET /healthz` returns `200`
@@ -120,7 +132,16 @@ This redirect is intentional fail-closed behavior, not a silent success path.
 - `healthz` result
 - `readyz` result
 - verify command output
+- proof artifact path under `docs/proofs/`
 - any request ids from failed checks
+
+## 9) Skipped Checks
+- `SKIP` is acceptable only for optional checks:
+  - business smoke when `SMOKE_BUSINESS_BEARER_TOKEN` is absent
+  - driver smoke when `SMOKE_DRIVER_BEARER_TOKEN` is absent
+  - admin smoke when `SMOKE_ADMIN_BEARER_TOKEN` is absent
+  - external notifications when no recent provider signal exists
+- Do not treat skipped optional checks as proof that the corresponding path is healthy.
 
 ## 8) Operator Dispatch Mutation Hardening
 The operator dispatch mutations are now release-critical hardened paths:

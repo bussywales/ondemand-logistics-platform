@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { Client, type ClientConfig, type PoolClient } from "pg";
 import { createLogger } from "@shipwright/observability";
 import { dispatchSideEffect } from "../../worker/src/index.ts";
+import { getGitCommit, writeProofArtifact } from "./proof-artifacts.ts";
 
 type FixtureSlug = "business" | "driver";
 
@@ -54,6 +55,45 @@ type OutboxMessage = {
   event_type: string;
   payload: Record<string, unknown>;
   retry_count: number;
+};
+
+type PaidDeliveryProofResult = {
+  fixture: {
+    orgId: string;
+    driverId: string;
+    driverUserId: string;
+    vehicleType: string;
+    availability: string;
+    latestLocation: { latitude: number; longitude: number };
+  };
+  orderId: string;
+  jobId: string;
+  driverId: string;
+  offerId: string;
+  paymentId: string;
+  podId: string;
+  finalJobStatus: string;
+  finalOrderStatus: string;
+  paymentStatus: string;
+  providerPaymentIntentId: string | null;
+  duplicateRetry: {
+    idempotencyKey: string;
+    orderId: string;
+    jobId: string;
+    paymentId: string;
+  };
+  customerOrderItemsCount: number;
+  jobEventsCount: number;
+  auditLogCount: number;
+  outbox: Array<{
+    event_type: string;
+    count: number;
+    processed_count: number;
+    failed_count: number;
+  }>;
+  timestamp: string;
+  apiBaseUrl: string;
+  gitCommit: string | null;
 };
 
 const ORG_ID = "70d56b02-f2b8-487a-8c97-8e30fd9e631f";
@@ -680,42 +720,45 @@ export async function runPaidDeliveryProof() {
       );
     }
 
+    const proofResult: PaidDeliveryProofResult = {
+      fixture: {
+        orgId: ORG_ID,
+        driverId: DRIVER_ID,
+        driverUserId: fixtures.driver.userId,
+        vehicleType: "BIKE",
+        availability: "ONLINE",
+        latestLocation: { latitude: DRIVER_LATITUDE, longitude: DRIVER_LONGITUDE }
+      },
+      orderId: order.order.id,
+      jobId: order.order.jobId,
+      driverId: DRIVER_ID,
+      offerId: offer.offerId,
+      paymentId: order.order.paymentId,
+      podId: verified.pod?.id ?? pod.id,
+      finalJobStatus,
+      finalOrderStatus,
+      paymentStatus,
+      providerPaymentIntentId: verified.payment?.provider_payment_intent_id ?? null,
+      duplicateRetry: {
+        idempotencyKey: orderIdempotencyKey,
+        orderId: orderReplay.order.id,
+        jobId: orderReplay.order.jobId,
+        paymentId: orderReplay.order.paymentId
+      },
+      customerOrderItemsCount: verified.customerOrderItemsCount,
+      jobEventsCount: verified.jobEventsCount,
+      auditLogCount: verified.auditLogCount,
+      outbox: verified.outbox,
+      timestamp: new Date().toISOString(),
+      apiBaseUrl,
+      gitCommit: getGitCommit()
+    };
+
+    const artifact = await writeProofArtifact("paid-delivery", proofResult);
+    console.log(`PASS proof artifact written | ${artifact.filename}`);
     console.log("PASS staging_paid_delivery_proof_complete");
-    console.log(
-      JSON.stringify(
-        {
-          fixture: {
-            orgId: ORG_ID,
-            driverId: DRIVER_ID,
-            driverUserId: fixtures.driver.userId,
-            vehicleType: "BIKE",
-            availability: "ONLINE",
-            latestLocation: { latitude: DRIVER_LATITUDE, longitude: DRIVER_LONGITUDE }
-          },
-          orderId: order.order.id,
-          jobId: order.order.jobId,
-          offerId: offer.offerId,
-          paymentId: order.order.paymentId,
-          podId: verified.pod?.id ?? pod.id,
-          finalJobStatus,
-          finalOrderStatus,
-          paymentStatus,
-          providerPaymentIntentId: verified.payment?.provider_payment_intent_id ?? null,
-          duplicateRetry: {
-            idempotencyKey: orderIdempotencyKey,
-            orderId: orderReplay.order.id,
-            jobId: orderReplay.order.jobId,
-            paymentId: orderReplay.order.paymentId
-          },
-          customerOrderItemsCount: verified.customerOrderItemsCount,
-          jobEventsCount: verified.jobEventsCount,
-          auditLogCount: verified.auditLogCount,
-          outbox: verified.outbox
-        },
-        null,
-        2
-      )
-    );
+    console.log(JSON.stringify(proofResult, null, 2));
+    return proofResult;
   } finally {
     await client.end();
   }

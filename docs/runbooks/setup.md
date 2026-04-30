@@ -207,6 +207,24 @@ pnpm fixtures:staging-auth
 pnpm proof:staging-paid-delivery
 ```
 
+This writes a timestamped proof archive file to:
+- `docs/proofs/paid-delivery-<timestamp>.json`
+
+2.1 Run the release verification command before wider demos or stakeholder walkthroughs:
+
+```bash
+cp .env.smoke.example .env.smoke
+set -a
+source .env.smoke
+set +a
+pnpm release:verify-staging
+```
+
+This writes:
+- `docs/proofs/release-verify-<timestamp>.json`
+
+`SKIP` output means the check was intentionally not run because a token or recent signal was unavailable. Treat skipped checks as missing evidence, not as a pass.
+
 3. Prefer additive fresh proof records over mutating or deleting prior staging orders/jobs during rehearsal.
 4. If the demo needs a clean narrative, start from the newest proof order rather than trying to repair stale blocked records live.
 5. If Stripe or external notification provider env is unavailable, switch to the documented fallback talk track instead of improvising fake success.

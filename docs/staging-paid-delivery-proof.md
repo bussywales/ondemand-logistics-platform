@@ -51,6 +51,10 @@ The command defaults to:
 - `STAGING_PROOF_RESTAURANT_SLUG=pilot-kitchen-1777370757`
 - `STAGING_PROOF_PAYMENT_METHOD_ID=pm_card_visa`
 
+When the proof passes it also writes a timestamped archive artifact:
+
+- `docs/proofs/paid-delivery-<timestamp>.json`
+
 ## Outbox Processing Mode
 Default mode leaves outbox processing to the deployed staging worker:
 
@@ -113,6 +117,11 @@ The command prints concise `PASS` lines and ends with JSON similar to:
 }
 ```
 
+The proof artifact stores the same result payload plus:
+- `timestamp`
+- `apiBaseUrl`
+- `gitCommit` when available locally
+
 If `paymentStatus` remains `AUTHORIZED`, inspect worker logs and `PAYMENT_CAPTURE_REQUESTED` outbox rows. Delivery should enqueue capture through the existing payment architecture; worker processing is what moves the payment to captured. If `finalOrderStatus` is not `FULFILLED`, the customer-order completion hook did not run after the delivered job and captured payment state converged.
 
 ## Failure Handling
@@ -124,3 +133,8 @@ If `paymentStatus` remains `AUTHORIZED`, inspect worker logs and `PAYMENT_CAPTUR
 - outbox rows with `last_error`: inspect the exact event type and worker log.
 
 Do not mark Stage 1 paid delivery proven unless both user-visible completion and downstream record integrity are verified.
+
+## Proof Archive
+- Store generated artifacts under `docs/proofs/`.
+- Do not edit the JSON manually.
+- Generate a fresh proof when you need updated evidence.
