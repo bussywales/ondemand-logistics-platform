@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { JobsService } from "./jobs.service.js";
 
@@ -451,6 +451,96 @@ describe("JobsService", () => {
     ).toBe(true);
   });
 
+  it("replays retry dispatch idempotently without creating duplicate side effects", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockResolvedValue({
+        replay: true,
+        responseCode: 200,
+        body: { ...createJobRow({ org_id: QUOTE_ID, status: "REQUESTED" }), orgId: QUOTE_ID }
+      })
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.retryDispatch(JOB_ID, ACTOR_ID, "idem-retry-replay-1");
+
+    expect(result.replay).toBe(true);
+    expect(pg.withIdempotency).toHaveBeenCalledOnce();
+  });
+
+  it("blocks retry dispatch for delivered jobs", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
+        execute({
+          query: vi.fn().mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [createJobRow({ org_id: QUOTE_ID, status: "DELIVERED" })]
+          })
+        })
+      )
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+
+    await expect(service.retryDispatch(JOB_ID, ACTOR_ID, "idem-retry-delivered-1")).rejects.toThrow(
+      new ConflictException("job_not_retryable")
+    );
+  });
+
+  it("blocks retry dispatch for cancelled jobs", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
+        execute({
+          query: vi.fn().mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [createJobRow({ org_id: QUOTE_ID, status: "CANCELLED" })]
+          })
+        })
+      )
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+
+    await expect(service.retryDispatch(JOB_ID, ACTOR_ID, "idem-retry-cancelled-1")).rejects.toThrow(
+      new ConflictException("job_not_retryable")
+    );
+  });
+
+  it("fails closed for cross-org retry dispatch access", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
+        execute({
+          query: vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        })
+      )
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+
+    await expect(service.retryDispatch(JOB_ID, ACTOR_ID, "idem-retry-cross-org-1")).rejects.toThrow(
+      new NotFoundException("job_not_found")
+    );
+  });
+
   it("creates a manual reassign offer for an eligible driver", async () => {
     const clientQuery = vi
       .fn()
@@ -465,7 +555,27 @@ describe("JobsService", () => {
           })
         ]
       })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ driver_id: DRIVER_ID }] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            driver_id: DRIVER_ID,
+            display_name: "Alex Rider",
+            is_active: true,
+            availability_status: "ONLINE",
+            latest_latitude: "51.500000",
+            latest_longitude: "-0.100000",
+            last_location_at: new Date("2026-04-29T09:00:00.000Z"),
+            active_job_id: null,
+            active_job_status: null,
+            verification_status: "APPROVED",
+            vehicle_type: "BIKE",
+            has_matching_vehicle: true,
+            has_open_offer: false,
+            distance_miles: "0.40"
+          }
+        ]
+      })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
       .mockResolvedValueOnce({
@@ -516,7 +626,27 @@ describe("JobsService", () => {
           })
         ]
       })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ driver_id: DRIVER_ID }] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            driver_id: DRIVER_ID,
+            display_name: "Alex Rider",
+            is_active: true,
+            availability_status: "ONLINE",
+            latest_latitude: "51.500000",
+            latest_longitude: "-0.100000",
+            last_location_at: new Date("2026-04-29T09:00:00.000Z"),
+            active_job_id: null,
+            active_job_status: null,
+            verification_status: "APPROVED",
+            vehicle_type: "BIKE",
+            has_matching_vehicle: true,
+            has_open_offer: false,
+            distance_miles: "0.40"
+          }
+        ]
+      })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
       .mockResolvedValueOnce({
         rowCount: 1,
@@ -542,6 +672,92 @@ describe("JobsService", () => {
     const result = await service.reassignDriver(JOB_ID, { driverId: DRIVER_ID }, ACTOR_ID, "idem-reassign-2");
 
     expect(result.body.status).toBe("REQUESTED");
+  });
+
+  it("rejects manual reassignment for ineligible drivers with a machine-readable reason", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          createJobRow({
+            org_id: QUOTE_ID,
+            status: "DISPATCH_FAILED"
+          })
+        ]
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            driver_id: DRIVER_ID,
+            display_name: "Jamie Offline",
+            is_active: true,
+            availability_status: "OFFLINE",
+            latest_latitude: null,
+            latest_longitude: null,
+            last_location_at: null,
+            active_job_id: null,
+            active_job_status: null,
+            verification_status: "APPROVED",
+            vehicle_type: "BIKE",
+            has_matching_vehicle: true,
+            has_open_offer: false,
+            distance_miles: null
+          }
+        ]
+      });
+
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+
+    await expect(
+      service.reassignDriver(JOB_ID, { driverId: DRIVER_ID }, ACTOR_ID, "idem-reassign-ineligible-1")
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: "driver_not_eligible_for_reassign",
+        reason: "OFFLINE",
+        suitabilityFlags: ["OFFLINE", "NO_LIVE_LOCATION"]
+      })
+    });
+    expect(clientQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("replays reassign driver idempotently without creating duplicate side effects", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockResolvedValue({
+        replay: true,
+        responseCode: 200,
+        body: { ...createJobRow({ org_id: QUOTE_ID, status: "REQUESTED" }), orgId: QUOTE_ID }
+      })
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.reassignDriver(
+      JOB_ID,
+      { driverId: DRIVER_ID },
+      ACTOR_ID,
+      "idem-reassign-replay-1"
+    );
+
+    expect(result.replay).toBe(true);
+    expect(pg.withIdempotency).toHaveBeenCalledOnce();
   });
 
   it("lists eligible and blocked drivers for operator assignment", async () => {
@@ -622,8 +838,8 @@ describe("JobsService", () => {
 
   it("blocks eligible driver lookup for non-operators", async () => {
     const query = vi.fn().mockResolvedValueOnce({
-      rowCount: 1,
-      rows: [createJobRow({ org_id: QUOTE_ID, operator_role: null })]
+      rowCount: 0,
+      rows: []
     });
     const pg = { query };
     const payments = {
@@ -634,19 +850,14 @@ describe("JobsService", () => {
 
     const service = new JobsService(pg as never, payments as never);
 
-    await expect(service.listEligibleDrivers(JOB_ID, ACTOR_ID)).rejects.toThrow(
-      new ForbiddenException("org_operator_required")
-    );
+    await expect(service.listEligibleDrivers(JOB_ID, ACTOR_ID)).rejects.toThrow(new NotFoundException("job_not_found"));
   });
 
-  it("blocks cancellation for unauthorized actors", async () => {
+  it("fails closed for unauthorized cancellation access", async () => {
     const pg = {
       withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
         execute({
-          query: vi.fn().mockResolvedValueOnce({
-            rowCount: 1,
-            rows: [createJobRow({ consumer_id: DRIVER_USER_ID, operator_role: null })]
-          })
+          query: vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] })
         })
       )
     };
@@ -665,7 +876,7 @@ describe("JobsService", () => {
         ACTOR_ID,
         "idem-cancel-1"
       )
-    ).rejects.toThrow(new ForbiddenException("job_cancel_not_allowed"));
+    ).rejects.toThrow(new NotFoundException("job_not_found"));
   });
 
   it("rejects cancellation after pickup", async () => {
@@ -752,5 +963,86 @@ describe("JobsService", () => {
         String(sql).includes("insert into public.outbox_messages") && params?.[2] === "NOTIFY_JOB_CANCELLED"
     );
     expect(outboxCall).toBeTruthy();
+  });
+
+  it("replays cancel idempotently without duplicate side effects", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockResolvedValue({
+        replay: true,
+        responseCode: 200,
+        body: { ...createJobRow({ status: "CANCELLED" }), orgId: null }
+      })
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.cancelJob(
+      JOB_ID,
+      { reason: "Store closed early", settlementPolicyCode: "PENDING_PAYMENT_RULES" },
+      ACTOR_ID,
+      "idem-cancel-replay-1"
+    );
+
+    expect(result.replay).toBe(true);
+    expect(payments.enqueueCancellationSettlement).not.toHaveBeenCalled();
+  });
+
+  it("blocks cancellation for delivered jobs", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
+        execute({
+          query: vi.fn().mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [createJobRow({ status: "DELIVERED", consumer_id: ACTOR_ID, operator_role: null })]
+          })
+        })
+      )
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+
+    await expect(
+      service.cancelJob(
+        JOB_ID,
+        { reason: "Store closed early", settlementPolicyCode: "PENDING_PAYMENT_RULES" },
+        ACTOR_ID,
+        "idem-cancel-delivered-1"
+      )
+    ).rejects.toThrow(new ConflictException("job_not_cancelable"));
+  });
+
+  it("fails closed for cross-org cancel access", async () => {
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>
+        execute({
+          query: vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        })
+      )
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+
+    await expect(
+      service.cancelJob(
+        JOB_ID,
+        { reason: "Store closed early", settlementPolicyCode: "PENDING_PAYMENT_RULES" },
+        ACTOR_ID,
+        "idem-cancel-cross-org-1"
+      )
+    ).rejects.toThrow(new NotFoundException("job_not_found"));
   });
 });

@@ -122,14 +122,24 @@ This redirect is intentional fail-closed behavior, not a silent success path.
 - verify command output
 - any request ids from failed checks
 
-## 8) Next Hardening Candidate
-Next likely high-risk endpoint family:
-- operator dispatch mutations
+## 8) Operator Dispatch Mutation Hardening
+The operator dispatch mutations are now release-critical hardened paths:
+- `POST /v1/jobs/:jobId/retry-dispatch`
+- `POST /v1/jobs/:jobId/reassign-driver`
+- `POST /v1/jobs/:jobId/cancel`
 
-Why:
-- state-changing retry / reassign actions
-- idempotency and ownership checks
-- side effects in outbox and offer state transitions
-- higher risk than the read-only driver offers smoke
+Operator expectations:
+- every call must include `Idempotency-Key`
+- cross-org access fails closed as `404`
+- invalid job state returns `409`
+- ineligible driver assignment returns `422`
 
-Do not harden this in this phase. Treat it as the next operational hardening target after the current driver offers / dispatch read coverage.
+Troubleshooting meanings:
+- `job_not_retryable`: the job is already terminal or in a state where retry would be unsafe
+- `job_dispatch_already_in_progress`: an open offer already exists for this job
+- `driver_not_eligible_for_reassign`: inspect the returned `reason`, `suitabilityFlags`, and `suitabilityReason`
+- `job_not_cancelable`: the job has already moved beyond the cancellable state window
+
+Operator verification:
+- retry/reassign/cancel must not create duplicate outbox rows, job events, or audit entries on idempotent replay
+- if a mutation fails, no partial side effects should appear in `job_events`, `audit_log`, or `outbox_messages`

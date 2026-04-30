@@ -107,6 +107,7 @@ type DispatchAttemptRow = {
 type EligibleDriverRow = {
   driver_id: string;
   display_name: string;
+  is_active: boolean;
   availability_status: "ONLINE" | "OFFLINE";
   latest_latitude: string | null;
   latest_longitude: string | null;
@@ -683,6 +684,20 @@ export class JobsService {
                   ) as operator_role
            from public.jobs j
            where j.id = $1
+             and (
+               j.consumer_id = $2
+               or (
+                 j.org_id is not null
+                 and exists (
+                   select 1
+                   from public.org_memberships m
+                   where m.org_id = j.org_id
+                     and m.user_id = $2
+                     and m.is_active = true
+                     and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+                 )
+               )
+             )
            for update`,
           [jobId, userId]
         );
@@ -884,47 +899,41 @@ export class JobsService {
 
   private async loadOperatorJob(jobId: string, userId: string) {
     const result = await this.pg.query<OperatorJobRow>(
-      `select ${JOB_COLUMNS},
-              (
-                select m.role::text
-                from public.org_memberships m
-                where m.org_id = j.org_id
-                  and m.user_id = $2
-                  and m.is_active = true
-                  and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
-                limit 1
-              ) as operator_role
+      `select ${JOB_COLUMNS}
        from public.jobs j
-       where j.id = $1`,
+       where j.id = $1
+         and j.org_id is not null
+         and exists (
+           select 1
+           from public.org_memberships m
+           where m.org_id = j.org_id
+             and m.user_id = $2
+             and m.is_active = true
+             and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+         )`,
       [jobId, userId]
     );
 
     if ((result.rowCount ?? 0) !== 1) {
       throw new NotFoundException("job_not_found");
     }
-
-    const job = result.rows[0];
-    if (!job.operator_role) {
-      throw new ForbiddenException("org_operator_required");
-    }
-
-    return job;
+    return result.rows[0];
   }
 
   private async loadOperatorJobForUpdate(client: PoolClient, jobId: string, userId: string) {
     const result = await client.query<OperatorJobRow>(
-      `select ${JOB_COLUMNS},
-              (
-                select m.role::text
-                from public.org_memberships m
-                where m.org_id = j.org_id
-                  and m.user_id = $2
-                  and m.is_active = true
-                  and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
-                limit 1
-              ) as operator_role
+      `select ${JOB_COLUMNS}
        from public.jobs j
        where j.id = $1
+         and j.org_id is not null
+         and exists (
+           select 1
+           from public.org_memberships m
+           where m.org_id = j.org_id
+             and m.user_id = $2
+             and m.is_active = true
+             and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+         )
        for update`,
       [jobId, userId]
     );
@@ -932,19 +941,14 @@ export class JobsService {
     if ((result.rowCount ?? 0) !== 1) {
       throw new NotFoundException("job_not_found");
     }
-
-    const job = result.rows[0];
-    if (!job.operator_role) {
-      throw new ForbiddenException("org_operator_required");
-    }
-
-    return job;
+    return result.rows[0];
   }
 
   private async loadEligibleDriverCandidates(jobId: string, vehicleRequired: string) {
     const result = await this.pg.query<EligibleDriverRow>(
       `select d.id as driver_id,
               u.display_name,
+              d.is_active,
               d.availability_status,
               d.latest_latitude,
               d.latest_longitude,
@@ -1054,43 +1058,130 @@ export class JobsService {
     jobId: string,
     vehicleRequired: string
   ) {
-    const result = await client.query<{ driver_id: string }>(
-      `select d.id as driver_id
+    const result = await client.query<EligibleDriverRow>(
+      `select d.id as driver_id,
+              u.display_name,
+              d.is_active,
+              d.availability_status,
+              d.latest_latitude,
+              d.latest_longitude,
+              d.last_location_at,
+              d.active_job_id,
+              aj.status::text as active_job_status,
+              coalesce(vmatch.vehicle_type, vprimary.vehicle_type) as vehicle_type,
+              (vmatch.vehicle_type is not null) as has_matching_vehicle,
+              coalesce(vstatus.status, 'MISSING')::text as verification_status,
+              exists (
+                select 1
+                from public.job_offers o
+                where o.job_id = $3
+                  and o.driver_id = d.id
+                  and o.status in ('OFFERED', 'ACCEPTED')
+              ) as has_open_offer,
+              case
+                when d.latest_latitude is null or d.latest_longitude is null then null
+                else (
+                  3959 * acos(
+                    least(
+                      1,
+                      greatest(
+                        -1,
+                        cos(radians(j.pickup_latitude::float8)) * cos(radians(d.latest_latitude::float8))
+                        * cos(radians(d.latest_longitude::float8) - radians(j.pickup_longitude::float8))
+                        + sin(radians(j.pickup_latitude::float8)) * sin(radians(d.latest_latitude::float8))
+                      )
+                    )
+                  )
+                )::numeric(6,2)::text
+              end as distance_miles
        from public.drivers d
-       where d.id = $1
-         and d.is_active = true
-         and d.availability_status = 'ONLINE'
-         and d.active_job_id is null
-         and exists (
-           select 1
-           from public.driver_verifications dvf
-           where dvf.driver_id = d.id
-             and dvf.status = 'APPROVED'
-         )
-         and exists (
-           select 1
-           from public.driver_vehicle dv
-           where dv.driver_id = d.id
-             and dv.vehicle_type = $2
-         )
-         and not exists (
-           select 1
-           from public.job_offers o
-           where o.job_id = $3
-             and o.driver_id = d.id
-             and o.status in ('OFFERED', 'ACCEPTED')
-         )`,
+       join public.jobs j on j.id = $3
+       join public.users u on u.id = d.user_id
+       left join public.jobs aj on aj.id = d.active_job_id
+       left join lateral (
+         select dv.vehicle_type::text as vehicle_type
+         from public.driver_vehicle dv
+         where dv.driver_id = d.id
+           and dv.vehicle_type = $2::public.vehicle_type
+         limit 1
+       ) vmatch on true
+       left join lateral (
+         select dv.vehicle_type::text as vehicle_type
+         from public.driver_vehicle dv
+         where dv.driver_id = d.id
+         order by dv.is_primary desc, dv.created_at asc
+         limit 1
+       ) vprimary on true
+       left join lateral (
+         select dvf.status::text as status
+         from public.driver_verifications dvf
+         where dvf.driver_id = d.id
+         order by
+           case dvf.status
+             when 'APPROVED' then 1
+             when 'PENDING' then 2
+             else 3
+           end,
+           dvf.updated_at desc
+         limit 1
+       ) vstatus on true
+       where d.id = $1`,
       [driverId, vehicleRequired, jobId]
     );
 
     if ((result.rowCount ?? 0) !== 1) {
-      throw new ConflictException("driver_not_eligible_for_reassign");
+      throw new UnprocessableEntityException({
+        message: "driver_not_eligible_for_reassign",
+        reason: "DRIVER_NOT_FOUND",
+        suitabilityFlags: [],
+        suitabilityReason: "Driver could not be found for reassignment."
+      });
     }
 
-    return result.rows[0];
+    const driver = result.rows[0];
+    const eligibility = this.evaluateDriverEligibility(driver);
+
+    if (!driver.is_active) {
+      throw new UnprocessableEntityException({
+        message: "driver_not_eligible_for_reassign",
+        reason: "INACTIVE_DRIVER",
+        suitabilityFlags: [],
+        suitabilityReason: "Driver is inactive and cannot receive manual assignment."
+      });
+    }
+
+    if (!eligibility.eligible) {
+      throw new UnprocessableEntityException({
+        message: "driver_not_eligible_for_reassign",
+        reason: eligibility.suitabilityFlags[0] ?? "UNKNOWN",
+        suitabilityFlags: eligibility.suitabilityFlags,
+        suitabilityReason: eligibility.suitabilityReason
+      });
+    }
+
+    return { driver_id: driver.driver_id };
   }
 
   private mapEligibleDriver(row: EligibleDriverRow): EligibleDriverDto {
+    const { eligible, suitabilityFlags, suitabilityReason } = this.evaluateDriverEligibility(row);
+
+    return {
+      id: row.driver_id,
+      displayName: row.display_name,
+      vehicleType: row.vehicle_type,
+      availabilityStatus: row.availability_status,
+      distanceMiles: row.distance_miles === null ? null : toFiniteNumber(row.distance_miles, "eligible_driver.distance_miles"),
+      lastLocationAt: toNullableIsoDateTime(row.last_location_at),
+      verificationStatus: row.verification_status,
+      activeJobId: row.active_job_id,
+      activeJobStatus: row.active_job_status as EligibleDriverDto["activeJobStatus"],
+      eligible,
+      suitabilityFlags,
+      suitabilityReason
+    };
+  }
+
+  private evaluateDriverEligibility(row: EligibleDriverRow) {
     const flags: EligibleDriverDto["suitabilityFlags"] = [];
 
     if (row.availability_status !== "ONLINE") {
@@ -1118,23 +1209,14 @@ export class JobsService {
     }
 
     const eligible = flags.every((flag) => flag === "NO_LIVE_LOCATION") || flags.length === 0;
-    const normalizedFlags: EligibleDriverDto["suitabilityFlags"] = eligible
+    const suitabilityFlags: EligibleDriverDto["suitabilityFlags"] = eligible
       ? ["READY", ...flags.filter((flag) => flag === "NO_LIVE_LOCATION")]
       : flags;
 
     return {
-      id: row.driver_id,
-      displayName: row.display_name,
-      vehicleType: row.vehicle_type,
-      availabilityStatus: row.availability_status,
-      distanceMiles: row.distance_miles === null ? null : toFiniteNumber(row.distance_miles, "eligible_driver.distance_miles"),
-      lastLocationAt: toNullableIsoDateTime(row.last_location_at),
-      verificationStatus: row.verification_status,
-      activeJobId: row.active_job_id,
-      activeJobStatus: row.active_job_status as EligibleDriverDto["activeJobStatus"],
       eligible,
-      suitabilityFlags: normalizedFlags,
-      suitabilityReason: this.buildEligibleDriverReason(normalizedFlags)
+      suitabilityFlags,
+      suitabilityReason: this.buildEligibleDriverReason(suitabilityFlags)
     };
   }
 
