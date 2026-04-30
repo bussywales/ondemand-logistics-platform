@@ -125,6 +125,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
     ],
     description: "Business operators can view paid customer orders created from public restaurant checkout and inspect the linked job and payment state.",
     operatorActions: [
+      "Use the queue filters to separate new/authorized orders, in-delivery work, fulfilled records, and payment failures.",
       "Open the order detail to review customer, items, delivery address, payment, and linked job.",
       "Open the linked delivery job when dispatch or delivery state needs action.",
       "Treat dispatch failures as operational blockers even if payment is authorized."
@@ -140,6 +141,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
     whatThisScreenDoes: [
       "Lists customer orders created by the branded restaurant route.",
       "Shows order, payment, and linked delivery status in one business view.",
+      "Turns each order into a clear operator decision surface from payment through fulfilment.",
       "Lets operators jump from an order to its delivery job."
     ],
     whatToDoNext: [

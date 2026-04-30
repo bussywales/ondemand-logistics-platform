@@ -15,18 +15,24 @@ import {
   type BusinessCustomerOrder,
   type BusinessSession
 } from "../_lib/product-state";
+import {
+  formatOrderStatusLabel,
+  formatOrderTimeAgo,
+  getDeliveryCopy,
+  getOrderDecisionState,
+  getOrderShortId,
+  getPaymentCopy,
+  isOrderBlocked,
+  isOrderFulfilled,
+  isOrderInDelivery,
+  matchesOrderFilter,
+  ORDER_FILTERS,
+  type OrderFilterKey
+} from "../_lib/orders-state";
 
 export type OrdersShellProps = {
   orderId?: string;
 };
-
-function formatStatusLabel(status: string) {
-  return status.replace(/_/g, " ");
-}
-
-function getShortId(id: string) {
-  return id.slice(0, 8).toUpperCase();
-}
 
 function statusTone(status: string) {
   if (["PAYMENT_AUTHORIZED", "AUTHORIZED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(status)) {
@@ -57,35 +63,36 @@ function statusIconName(status: string): ShipWrightIconName {
     return "payment";
   }
 
+  if (["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(status)) {
+    return "route";
+  }
+
   return "queue";
 }
 
-function paymentCopy(order: BusinessCustomerOrder) {
-  if (order.payment.status === "AUTHORIZED") {
-    return "Payment authorized and ready for operational fulfilment.";
+function statusSummaryLabel(status: BusinessCustomerOrder["status"]) {
+  if (status === "PAYMENT_AUTHORIZED") {
+    return "Authorised";
   }
 
-  if (order.payment.status === "FAILED") {
-    return order.payment.lastError ?? "Payment failed. The customer order cannot proceed until payment is resolved.";
+  if (status === "FULFILLED") {
+    return "Fulfilled";
   }
 
-  if (order.payment.status === "REQUIRES_PAYMENT_METHOD") {
-    return "Payment method is required before this order can move forward.";
+  if (status === "PAYMENT_FAILED") {
+    return "Payment failed";
   }
 
-  return `Payment is ${formatStatusLabel(order.payment.status).toLowerCase()}.`;
+  return "Submitted";
 }
 
-function deliveryCopy(order: BusinessCustomerOrder) {
-  if (order.job.status === "DISPATCH_FAILED") {
-    return "Delivery job is blocked because dispatch did not secure a driver.";
-  }
-
-  if (order.job.status === "DELIVERED" || order.job.status === "COMPLETED") {
-    return "Delivery has been completed.";
-  }
-
-  return `Linked delivery job is ${formatStatusLabel(order.job.status).toLowerCase()}.`;
+function StatusBadge(props: { status: string }) {
+  return (
+    <span className={`status-badge status-with-icon ${statusTone(props.status)}`}>
+      <ShipWrightIcon name={statusIconName(props.status)} />
+      <span>{formatOrderStatusLabel(props.status)}</span>
+    </span>
+  );
 }
 
 function OrdersEmptyState() {
@@ -95,51 +102,107 @@ function OrdersEmptyState() {
         <ShipWrightIcon name="document" />
       </span>
       <strong className="sw-empty-title">No customer orders yet</strong>
-      <p className="sw-empty-copy">Paid orders from public restaurant checkout will appear here for operator review.</p>
+      <p className="sw-empty-copy">Paid orders from the public restaurant checkout will appear here for operator fulfilment review.</p>
       <Link className="sw-button sw-button--secondary button button-secondary" href="/app/restaurant">
         <ShipWrightIcon name="restaurant" />
-        <span>Review restaurant setup</span>
+        <span>Open merchant setup</span>
       </Link>
     </div>
   );
 }
 
-function StatusBadge(props: { status: string }) {
+function OrdersErrorState(props: { message: string }) {
   return (
-    <span className={`status-badge status-with-icon ${statusTone(props.status)}`}>
-      <ShipWrightIcon name={statusIconName(props.status)} />
-      <span>{formatStatusLabel(props.status)}</span>
-    </span>
+    <div className="sw-empty-state orders-empty-state orders-empty-state-danger">
+      <span className="empty-state-icon" aria-hidden="true">
+        <ShipWrightIcon name="alert" />
+      </span>
+      <strong className="sw-empty-title">Unable to load orders</strong>
+      <p className="sw-empty-copy">{props.message}</p>
+    </div>
+  );
+}
+
+function FilterChip(props: {
+  active: boolean;
+  count: number;
+  filter: { key: OrderFilterKey; label: string };
+  onClick: (key: OrderFilterKey) => void;
+}) {
+  return (
+    <button
+      className={`mode-chip orders-filter-chip ${props.active ? "mode-chip-active orders-filter-chip-active" : ""}`}
+      onClick={() => props.onClick(props.filter.key)}
+      type="button"
+    >
+      <span>{props.filter.label}</span>
+      <strong>{props.count}</strong>
+    </button>
   );
 }
 
 function OrderQueueRow({ order }: { order: BusinessCustomerOrder }) {
-  const isBlocked = order.payment.status === "FAILED" || order.job.status === "DISPATCH_FAILED";
+  const blocked = isOrderBlocked(order);
+  const inDelivery = isOrderInDelivery(order);
+  const fulfilled = isOrderFulfilled(order);
+  const toneClass = blocked ? "orders-queue-row-danger" : inDelivery ? "orders-queue-row-info" : fulfilled ? "orders-queue-row-success" : "";
 
   return (
-    <article className={`sw-queue-row orders-queue-row ${isBlocked ? "sw-queue-row--danger" : ""}`}>
+    <article className={`sw-queue-row orders-queue-row ${toneClass}`}>
       <div className="sw-queue-row-main orders-queue-main">
-        <div className="orders-queue-title">
-          <span className={`icon-chip ${isBlocked ? "icon-chip-blocker" : "icon-chip-info"}`} aria-hidden="true">
-            <ShipWrightIcon name={isBlocked ? "alert" : "document"} />
+        <div className="orders-queue-identity">
+          <span
+            className={`icon-chip ${
+              blocked ? "icon-chip-blocker" : fulfilled ? "icon-chip-success" : inDelivery ? "icon-chip-info" : "icon-chip-risk"
+            }`}
+            aria-hidden="true"
+          >
+            <ShipWrightIcon name={blocked ? "alert" : fulfilled ? "check" : inDelivery ? "route" : "document"} />
           </span>
           <div>
-            <span className="ops-section-label">Order {getShortId(order.id)}</span>
+            <span className="ops-section-label">Order {getOrderShortId(order.id)}</span>
             <h3>{order.customer.name}</h3>
+            <p>
+              {order.restaurant.name} · {formatOrderTimeAgo(order.createdAt)}
+            </p>
           </div>
         </div>
-        <div className="orders-queue-meta">
-          <span>{order.restaurant.name}</span>
-          <span>{order.delivery.addressSummary}</span>
-          <span>{formatDateTime(order.createdAt)}</span>
+
+        <div className="orders-queue-facts" aria-label="Order queue facts">
+          <div>
+            <span>Customer</span>
+            <strong>{order.customer.email}</strong>
+          </div>
+          <div>
+            <span>Restaurant</span>
+            <strong>{order.restaurant.name}</strong>
+          </div>
+          <div>
+            <span>Received</span>
+            <strong>{formatDateTime(order.createdAt)}</strong>
+          </div>
+          <div>
+            <span>Total</span>
+            <strong>{formatCurrency(order.totalCents, order.currency)}</strong>
+          </div>
         </div>
-        <div className="orders-status-row" aria-label="Order status summary">
-          <StatusBadge status={order.status} />
-          <StatusBadge status={order.payment.status} />
-          <StatusBadge status={order.job.status} />
-          <strong>{formatCurrency(order.totalCents, order.currency)}</strong>
+
+        <div className="orders-queue-status-cluster" aria-label="Order status summary">
+          <div className="orders-status-block">
+            <span>Fulfilment</span>
+            <StatusBadge status={order.status} />
+          </div>
+          <div className="orders-status-block">
+            <span>Payment</span>
+            <StatusBadge status={order.payment.status} />
+          </div>
+          <div className="orders-status-block">
+            <span>Delivery</span>
+            <StatusBadge status={order.job.status} />
+          </div>
         </div>
       </div>
+
       <div className="sw-queue-row-actions orders-queue-actions">
         <Link className="sw-button sw-button--primary button button-primary" href={`/app/orders/${order.id}`}>
           <ShipWrightIcon name="arrow" />
@@ -147,35 +210,110 @@ function OrderQueueRow({ order }: { order: BusinessCustomerOrder }) {
         </Link>
         <Link className="sw-button sw-button--secondary button button-secondary" href={`/app/jobs/${order.job.id}`}>
           <ShipWrightIcon name="route" />
-          <span>View delivery</span>
+          <span>View delivery job</span>
         </Link>
       </div>
     </article>
   );
 }
 
+function DetailInsight(props: {
+  icon: ShipWrightIconName;
+  label: string;
+  tone: "danger" | "warning" | "info" | "success";
+  value: string;
+  copy: string;
+}) {
+  return (
+    <div className="ops-decision-tile orders-decision-tile">
+      <span className={`decision-tile-icon decision-tile-icon-${props.tone === "danger" ? "danger" : props.tone === "warning" ? "warning" : props.tone === "success" ? "success" : "teal"}`} aria-hidden="true">
+        <ShipWrightIcon name={props.icon} />
+      </span>
+      <span className="ops-section-label">{props.label}</span>
+      <strong>{props.value}</strong>
+      <p>{props.copy}</p>
+    </div>
+  );
+}
+
 function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
+  const decision = getOrderDecisionState(order);
+  const fulfilled = isOrderFulfilled(order);
+
   return (
     <section className="ops-stack orders-detail-stack">
-      <section className="sw-command-surface orders-command-surface">
-        <div className="ops-command-copy">
-          <span className="ops-command-icon" aria-hidden="true">
-            <ShipWrightIcon name={order.job.status === "DISPATCH_FAILED" ? "alert" : "document"} />
-          </span>
-          <div>
-            <p className="eyebrow">Customer order</p>
-            <h2>Order {getShortId(order.id)}</h2>
-            <p>
-              {order.customer.name} ordered from {order.restaurant.name}. {deliveryCopy(order)}
-            </p>
+      <section
+        className={`sw-decision-surface ops-decision-banner orders-decision-surface ${
+          decision.severity === "danger" ? "ops-job-hero-blocker" : decision.severity === "success" ? "orders-decision-surface-success" : "orders-decision-surface-neutral"
+        }`}
+      >
+        <div className="ops-decision-header">
+          <div className="ops-decision-lead">
+            <span
+              className={`decision-hero-icon ${
+                decision.severity === "danger"
+                  ? "decision-hero-icon-blocker"
+                  : decision.severity === "success"
+                    ? "orders-decision-hero-success"
+                    : "orders-decision-hero-neutral"
+              }`}
+              aria-hidden="true"
+            >
+              <ShipWrightIcon name={decision.severity === "danger" ? "alert" : decision.severity === "success" ? "check" : "document"} />
+            </span>
+            <div className="ops-job-header ops-decision-copy">
+              <p className="eyebrow">Customer order</p>
+              <h2>
+                {decision.headline} — Order {getOrderShortId(order.id)}
+              </h2>
+              <p className="ops-detail-note">{decision.summary}</p>
+            </div>
+          </div>
+
+          <div className="ops-job-statuses orders-decision-statuses">
+            <StatusBadge status={order.status} />
+            <StatusBadge status={order.payment.status} />
+            <StatusBadge status={order.job.status} />
           </div>
         </div>
-        <div className="orders-command-actions">
-          <StatusBadge status={order.status} />
-          <StatusBadge status={order.payment.status} />
-          <StatusBadge status={order.job.status} />
+
+        <div className="ops-decision-grid orders-decision-grid">
+          <DetailInsight
+            copy="Customer fulfilment state visible in the business queue."
+            icon="document"
+            label="Fulfilment"
+            tone={decision.severity === "success" ? "success" : decision.severity === "danger" ? "danger" : "warning"}
+            value={statusSummaryLabel(order.status)}
+          />
+          <DetailInsight copy={getPaymentCopy(order)} icon="payment" label="Payment" tone={order.payment.status === "FAILED" ? "danger" : order.payment.status === "CAPTURED" ? "success" : "info"} value={formatOrderStatusLabel(order.payment.status)} />
+          <DetailInsight copy={getDeliveryCopy(order)} icon="route" label="Delivery job" tone={order.job.status === "DISPATCH_FAILED" ? "danger" : order.job.status === "DELIVERED" ? "success" : isOrderInDelivery(order) ? "info" : "warning"} value={formatOrderStatusLabel(order.job.status)} />
+          <DetailInsight copy={decision.impact} icon={fulfilled ? "check" : decision.severity === "danger" ? "warning" : "arrow"} label="Next action" tone={decision.severity} value={decision.nextAction} />
+        </div>
+
+        <div className="ops-decision-actions orders-decision-actions">
+          <Link className="sw-button sw-button--primary button button-primary" href={decision.nextHref}>
+            <ShipWrightIcon name={fulfilled ? "timeline" : "route"} />
+            <span>{fulfilled ? "Review delivery timeline" : "Open linked delivery job"}</span>
+          </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
+            <ShipWrightIcon name="queue" />
+            <span>Back to orders queue</span>
+          </Link>
         </div>
       </section>
+
+      {fulfilled ? (
+        <section className="sw-command-surface orders-success-callout">
+          <span className="orders-success-icon" aria-hidden="true">
+            <ShipWrightIcon name="check" />
+          </span>
+          <div>
+            <p className="eyebrow">Completed</p>
+            <h3>Customer order fulfilled</h3>
+            <p>Delivery is complete and payment has been captured. This order now serves as the final operational record for support or audit review.</p>
+          </div>
+        </section>
+      ) : null}
 
       <div className="orders-detail-grid">
         <section className="sw-operational-surface ops-section orders-detail-card">
@@ -185,7 +323,7 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
             </span>
             <div>
               <p className="eyebrow">Customer</p>
-              <h2>Contact details</h2>
+              <h2>Customer details</h2>
             </div>
           </div>
           <div className="ops-definition-list">
@@ -211,7 +349,7 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
             </span>
             <div>
               <p className="eyebrow">Delivery</p>
-              <h2>Destination</h2>
+              <h2>Delivery address</h2>
             </div>
           </div>
           <div className="ops-definition-list">
@@ -220,7 +358,7 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
               <strong>{order.delivery.address}</strong>
             </div>
             <div>
-              <span>Notes</span>
+              <span>Delivery notes</span>
               <strong>{order.delivery.notes ?? "No delivery notes"}</strong>
             </div>
             <div>
@@ -278,10 +416,10 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
             </span>
             <div>
               <p className="eyebrow">Payment</p>
-              <h2>Status</h2>
+              <h2>Payment state</h2>
             </div>
           </div>
-          <p className="ops-detail-note">{paymentCopy(order)}</p>
+          <p className="ops-detail-note">{getPaymentCopy(order)}</p>
           <div className="ops-definition-list">
             <div>
               <span>Payment ID</span>
@@ -289,15 +427,15 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
             </div>
             <div>
               <span>Status</span>
-              <strong>{formatStatusLabel(order.payment.status)}</strong>
+              <strong>{formatOrderStatusLabel(order.payment.status)}</strong>
             </div>
             <div>
-              <span>Authorized</span>
+              <span>Authorised</span>
               <strong>{formatCurrency(order.payment.amountAuthorizedCents, order.payment.currency)}</strong>
             </div>
             <div>
-              <span>Total</span>
-              <strong>{formatCurrency(order.payment.totalCents, order.payment.currency)}</strong>
+              <span>Captured</span>
+              <strong>{formatCurrency(order.payment.amountCapturedCents, order.payment.currency)}</strong>
             </div>
           </div>
         </section>
@@ -311,10 +449,10 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
             </span>
             <div>
               <p className="eyebrow">Delivery job</p>
-              <h2>Linked fulfilment</h2>
+              <h2>Linked fulfilment job</h2>
             </div>
           </div>
-          <p className="ops-detail-note">{deliveryCopy(order)}</p>
+          <p className="ops-detail-note">{getDeliveryCopy(order)}</p>
           <div className="ops-definition-list">
             <div>
               <span>Job ID</span>
@@ -322,7 +460,7 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
             </div>
             <div>
               <span>Status</span>
-              <strong>{formatStatusLabel(order.job.status)}</strong>
+              <strong>{formatOrderStatusLabel(order.job.status)}</strong>
             </div>
             <div>
               <span>ETA</span>
@@ -363,7 +501,7 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
               {order.timeline.map((event) => (
                 <div className="timeline-item" key={event.id}>
                   <span>{formatDateTime(event.createdAt)}</span>
-                  <strong>{formatStatusLabel(event.eventType)}</strong>
+                  <strong>{formatOrderStatusLabel(event.eventType)}</strong>
                   <p>{event.summary}</p>
                 </div>
               ))}
@@ -383,6 +521,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(Boolean(orderId));
   const [error, setError] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<OrderFilterKey>("all");
 
   useEffect(() => {
     if (!session) {
@@ -402,16 +541,35 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   }, [orderId, session?.accessToken]);
 
   const workspaceName = session?.context.currentOrg?.name ?? "No org";
+
   const orderSummary = useMemo(() => {
     const paymentAuthorized = orders.filter((order) => order.payment.status === "AUTHORIZED").length;
     const dispatchFailed = orders.filter((order) => order.job.status === "DISPATCH_FAILED").length;
+    const inDelivery = orders.filter((order) => isOrderInDelivery(order)).length;
+    const fulfilled = orders.filter((order) => isOrderFulfilled(order)).length;
 
     return {
       total: orders.length,
       paymentAuthorized,
-      dispatchFailed
+      dispatchFailed,
+      inDelivery,
+      fulfilled
     };
   }, [orders]);
+
+  const filterCounts = useMemo(
+    () =>
+      ORDER_FILTERS.reduce<Record<OrderFilterKey, number>>((accumulator, filter) => {
+        accumulator[filter.key] = orders.filter((order) => matchesOrderFilter(order, filter.key)).length;
+        return accumulator;
+      }, { all: 0, "new-authorized": 0, "in-delivery": 0, fulfilled: 0, "payment-failed": 0 }),
+    [orders]
+  );
+
+  const filteredOrders = useMemo(
+    () => orders.filter((order) => matchesOrderFilter(order, activeFilter)),
+    [activeFilter, orders]
+  );
 
   async function refreshOrders(currentSession: BusinessSession) {
     setLoading(true);
@@ -565,12 +723,12 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
                 <span>Total</span>
               </div>
               <div>
-                <strong>{orderSummary.paymentAuthorized}</strong>
-                <span>Paid</span>
+                <strong>{orderSummary.inDelivery}</strong>
+                <span>In delivery</span>
               </div>
               <div>
-                <strong>{orderSummary.dispatchFailed}</strong>
-                <span>Blocked</span>
+                <strong>{orderSummary.fulfilled}</strong>
+                <span>Fulfilled</span>
               </div>
             </div>
           </section>
@@ -587,26 +745,24 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
                 : "No customer orders need delivery review."}
             </p>
             <span className="sidebar-live-action">
-              {orderSummary.dispatchFailed > 0 ? "Open blocked orders and resolve linked delivery jobs." : "Monitor new paid orders."}
+              {orderSummary.dispatchFailed > 0 ? "Open blocked orders and resolve the linked delivery jobs." : "Monitor new paid orders."}
             </span>
           </section>
         </aside>
 
         <div className="ops-main">
-          {error ? <div className="form-error-banner">{error}</div> : null}
-
           {!detailMode ? (
             <section className="ops-stack orders-stack">
-              <section className="sw-command-surface orders-command-surface">
+              <section className={`sw-command-surface orders-command-surface ${orderSummary.dispatchFailed > 0 ? "orders-command-surface-alert" : ""}`}>
                 <div className="ops-command-copy">
                   <span className="ops-command-icon" aria-hidden="true">
-                    <ShipWrightIcon name="document" />
+                    <ShipWrightIcon name={orderSummary.dispatchFailed > 0 ? "warning" : "document"} />
                   </span>
                   <div>
                     <p className="eyebrow">Customer orders</p>
-                    <h2>Paid orders entering operations</h2>
+                    <h2>Customer order → payment → delivery → fulfilment</h2>
                     <p>
-                      Review customer checkout orders, payment authorization, and linked delivery job state from one queue.
+                      Track each paid order through payment authorisation, dispatch, driver execution, and final fulfilment from one operator queue.
                     </p>
                   </div>
                 </div>
@@ -626,8 +782,8 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
                     </span>
                     <div>
                       <p className="eyebrow">Orders</p>
-                      <h2>Order queue</h2>
-                      <p className="ops-detail-note">Latest paid customer orders for this workspace.</p>
+                      <h2>Operational order queue</h2>
+                      <p className="ops-detail-note">Filter by payment and fulfilment state, then jump into the order or its linked delivery job.</p>
                     </div>
                   </div>
                   <Link className="sw-button sw-button--secondary button button-secondary" href="/app/restaurant">
@@ -636,22 +792,46 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
                   </Link>
                 </div>
 
-                {loading ? (
+                <div className="orders-filter-row" aria-label="Order queue filters">
+                  {ORDER_FILTERS.map((filter) => (
+                    <FilterChip
+                      active={activeFilter === filter.key}
+                      count={filterCounts[filter.key]}
+                      filter={filter}
+                      key={filter.key}
+                      onClick={setActiveFilter}
+                    />
+                  ))}
+                </div>
+
+                {error ? (
+                  <OrdersErrorState message={error} />
+                ) : loading ? (
                   <div className="sw-empty-state orders-empty-state">
                     <strong className="sw-empty-title">Loading orders</strong>
                     <p className="sw-empty-copy">Checking customer order records for this workspace.</p>
                   </div>
                 ) : orders.length === 0 ? (
                   <OrdersEmptyState />
+                ) : filteredOrders.length === 0 ? (
+                  <div className="sw-empty-state orders-empty-state">
+                    <span className="empty-state-icon" aria-hidden="true">
+                      <ShipWrightIcon name="queue" />
+                    </span>
+                    <strong className="sw-empty-title">No orders in this filter</strong>
+                    <p className="sw-empty-copy">Switch filters to review other paid orders, delivery states, or fulfilled records.</p>
+                  </div>
                 ) : (
                   <div className="orders-queue-list" aria-label="Customer orders">
-                    {orders.map((order) => (
+                    {filteredOrders.map((order) => (
                       <OrderQueueRow key={order.id} order={order} />
                     ))}
                   </div>
                 )}
               </section>
             </section>
+          ) : error ? (
+            <OrdersErrorState message={error} />
           ) : detailLoading ? (
             <section className="sw-empty-state orders-empty-state">
               <strong className="sw-empty-title">Loading order</strong>
