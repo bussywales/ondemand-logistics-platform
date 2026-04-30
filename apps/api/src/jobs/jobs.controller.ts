@@ -45,6 +45,11 @@ export class JobsController {
     return this.jobsService.getTracking(jobId, user.id);
   }
 
+  @Get("jobs/:jobId/eligible-drivers")
+  async listEligibleDrivers(@Param("jobId") jobId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.jobsService.listEligibleDrivers(jobId, user.id);
+  }
+
   @Post("jobs/:jobId/retry-dispatch")
   @HttpCode(200)
   async retryDispatch(

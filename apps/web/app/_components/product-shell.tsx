@@ -14,6 +14,7 @@ import {
   cancelJob,
   createLiveJob,
   getLiveJob,
+  listEligibleDrivers,
   listBusinessOrders,
   listLiveJobs,
   reassignDriver,
@@ -26,8 +27,15 @@ import {
   type BusinessCustomerOrder,
   type BusinessSession,
   type DeliveryFormInput,
+  type EligibleDriver,
   type VehicleType
 } from "../_lib/product-state";
+import {
+  filterEligibleDrivers,
+  getEligibleDriverEmptyState,
+  getEligibleDriverFlagLabel,
+  getEligibleDriverTone
+} from "../_lib/driver-assignment";
 import {
   getDispatchIntelligence,
   getJobShortId,
@@ -196,6 +204,21 @@ function QueueEmptyState(props: { copy: { title: string; body: string }; icon?: 
   );
 }
 
+function DriverPickerEmptyState(props: { drivers: EligibleDriver[] }) {
+  return (
+    <div className="ops-empty-state ops-queue-empty assignment-empty-state">
+      <span className="empty-state-icon" aria-hidden="true">
+        <ShipWrightIcon name="driver" />
+      </span>
+      <strong>No eligible drivers available</strong>
+      <p>{getEligibleDriverEmptyState(props.drivers)}</p>
+      <p className="support-note">
+        Likely causes: no online drivers, vehicle mismatch, driver already active, or verification not approved.
+      </p>
+    </div>
+  );
+}
+
 function SectionTitle(props: { eyebrow: string; icon: ShipWrightIconName; note?: string; title: string }) {
   return (
     <div className="section-title-row">
@@ -231,7 +254,11 @@ export function ProductShell(props: ProductShellProps) {
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collectedPaymentMethod, setCollectedPaymentMethod] = useState<CollectedPaymentMethod | null>(null);
-  const [reassignDriverId, setReassignDriverId] = useState("");
+  const [eligibleDrivers, setEligibleDrivers] = useState<EligibleDriver[]>([]);
+  const [eligibleDriversLoading, setEligibleDriversLoading] = useState(false);
+  const [eligibleDriversLoadedForJob, setEligibleDriversLoadedForJob] = useState<string | null>(null);
+  const [driverPickerOpen, setDriverPickerOpen] = useState(false);
+  const [driverPickerQuery, setDriverPickerQuery] = useState("");
   const [cancelReason, setCancelReason] = useState("Operator cancelled");
 
   useEffect(() => {
@@ -253,6 +280,10 @@ export function ProductShell(props: ProductShellProps) {
 
   useEffect(() => {
     setCollectedPaymentMethod(null);
+    setDriverPickerOpen(false);
+    setEligibleDrivers([]);
+    setEligibleDriversLoadedForJob(null);
+    setDriverPickerQuery("");
   }, [props.jobId]);
 
   const workspaceSummary = useMemo(() => {
@@ -394,7 +425,37 @@ export function ProductShell(props: ProductShellProps) {
     }
   }
 
-  async function handleReassignDriver(job: AppJob) {
+  async function loadEligibleDriversForJob(job: AppJob) {
+    if (!session) {
+      return;
+    }
+
+    setEligibleDriversLoading(true);
+    setError(null);
+
+    try {
+      const nextDrivers = await listEligibleDrivers(session, job.id);
+      setEligibleDrivers(nextDrivers);
+      setEligibleDriversLoadedForJob(job.id);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to load eligible drivers.");
+    } finally {
+      setEligibleDriversLoading(false);
+    }
+  }
+
+  async function openDriverPicker(job: AppJob) {
+    setDriverPickerOpen(true);
+    setDriverPickerQuery("");
+
+    if (eligibleDriversLoadedForJob === job.id) {
+      return;
+    }
+
+    await loadEligibleDriversForJob(job);
+  }
+
+  async function handleAssignEligibleDriver(job: AppJob, driverId: string) {
     if (!session) {
       return;
     }
@@ -403,10 +464,12 @@ export function ProductShell(props: ProductShellProps) {
     setError(null);
 
     try {
-      const nextJob = await reassignDriver(session, job.id, reassignDriverId.trim());
+      const nextJob = await reassignDriver(session, job.id, driverId);
       syncJob(nextJob);
+      setDriverPickerOpen(false);
+      await loadEligibleDriversForJob(nextJob);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to reassign driver.");
+      setError(issue instanceof Error ? issue.message : "Unable to assign driver.");
     } finally {
       setActionSubmitting(false);
     }
@@ -486,6 +549,10 @@ export function ProductShell(props: ProductShellProps) {
 
   const job = props.view === "job-detail" ? selectedJob : null;
   const jobDecision = job ? getDispatchIntelligence(job) : null;
+  const filteredEligibleDrivers = useMemo(
+    () => filterEligibleDrivers(eligibleDrivers, driverPickerQuery),
+    [eligibleDrivers, driverPickerQuery]
+  );
   const paymentPanel =
     job && session
       ? getPaymentPanelModel({
@@ -1172,10 +1239,14 @@ export function ProductShell(props: ProductShellProps) {
                     ) : null}
                     {jobDecision?.severity === "BLOCKER" ? (
                       <>
-                        <a className="sw-button sw-button--secondary button button-secondary" href="#operator-controls">
+                        <button
+                          className="sw-button sw-button--secondary button button-secondary"
+                          onClick={() => void openDriverPicker(job)}
+                          type="button"
+                        >
                           <ShipWrightIcon name="assign" />
                           <span>Assign driver</span>
-                        </a>
+                        </button>
                         <a className="sw-button sw-button--secondary button button-secondary" href="#operator-controls">
                           <ShipWrightIcon name="cancel" />
                           <span>Cancel job</span>
@@ -1421,26 +1492,116 @@ export function ProductShell(props: ProductShellProps) {
                     </button>
                   </div>
 
-                  <label className="ops-field">
-                    <span>Reassign to driver ID</span>
-                    <input
-                      onChange={(event) => setReassignDriverId(event.target.value)}
-                      placeholder="driver UUID"
-                      value={reassignDriverId}
-                    />
-                  </label>
-
-                  <div className="ops-actions ops-actions-inline">
+                  <div className="ops-actions ops-actions-inline" id="assign-driver">
                     <button
                       className="button button-secondary"
-                      disabled={actionSubmitting || !reassignDriverId.trim()}
-                      onClick={() => void handleReassignDriver(job)}
+                      disabled={actionSubmitting}
+                      onClick={() => void (driverPickerOpen ? loadEligibleDriversForJob(job) : openDriverPicker(job))}
                       type="button"
                     >
                       <ShipWrightIcon name="assign" />
-                      <span>Reassign Driver</span>
+                      <span>{driverPickerOpen ? "Refresh eligible drivers" : "Assign driver"}</span>
                     </button>
                   </div>
+
+                  {driverPickerOpen ? (
+                    <div className="sw-supporting-surface assignment-picker">
+                      <div className="assignment-picker-header">
+                        <div>
+                          <p className="eyebrow">Eligible drivers</p>
+                          <strong>Assign the best staged driver for this job.</strong>
+                        </div>
+                        <button
+                          className="text-action"
+                          onClick={() => setDriverPickerOpen(false)}
+                          type="button"
+                        >
+                          Close
+                        </button>
+                      </div>
+
+                      <label className="ops-field assignment-picker-search">
+                        <span>Search drivers</span>
+                        <input
+                          onChange={(event) => setDriverPickerQuery(event.target.value)}
+                          placeholder="Search by name, vehicle, or verification"
+                          value={driverPickerQuery}
+                        />
+                      </label>
+
+                      {eligibleDriversLoading ? (
+                        <div className="ops-empty-state assignment-empty-state">
+                          <strong>Loading driver pool</strong>
+                          <p>Checking availability, verification, location, and vehicle match.</p>
+                        </div>
+                      ) : filteredEligibleDrivers.length === 0 && driverPickerQuery.trim() ? (
+                        <div className="ops-empty-state assignment-empty-state">
+                          <strong>No matching drivers</strong>
+                          <p>Try another name, vehicle, or verification filter.</p>
+                        </div>
+                      ) : filteredEligibleDrivers.length === 0 ? (
+                        <DriverPickerEmptyState drivers={eligibleDrivers} />
+                      ) : (
+                        <div className="assignment-list">
+                          {filteredEligibleDrivers.map((driver) => (
+                            <div
+                              className={`sw-queue-row assignment-row ${driver.eligible ? "assignment-row-ready" : "assignment-row-blocked"}`}
+                              key={driver.id}
+                            >
+                              <div className="sw-queue-row-main assignment-row-main">
+                                <div className="assignment-row-head">
+                                  <div>
+                                    <strong>{driver.displayName}</strong>
+                                    <p>
+                                      {driver.vehicleType ?? "No vehicle set"} · {driver.availabilityStatus} ·{" "}
+                                      {driver.distanceMiles === null ? "Distance unavailable" : `${driver.distanceMiles.toFixed(1)} mi from pickup`}
+                                    </p>
+                                  </div>
+                                  <span className={`status-badge ${driver.eligible ? "status-positive" : "status-negative"}`}>
+                                    {driver.eligible ? "Assignable" : "Blocked"}
+                                  </span>
+                                </div>
+
+                                <p className="assignment-row-reason">{driver.suitabilityReason}</p>
+
+                                <div className="assignment-row-meta">
+                                  <span>
+                                    Verification: <strong>{driver.verificationStatus}</strong>
+                                  </span>
+                                  <span>
+                                    Latest location: <strong>{driver.lastLocationAt ? formatDateTime(driver.lastLocationAt) : "No update"}</strong>
+                                  </span>
+                                  <span>
+                                    Active job: <strong>{driver.activeJobStatus ?? "None"}</strong>
+                                  </span>
+                                </div>
+
+                                <div className="assignment-flag-list">
+                                  {driver.suitabilityFlags.map((flag) => (
+                                    <span className={`status-badge ${getEligibleDriverTone(flag)}`} key={`${driver.id}-${flag}`}>
+                                      {getEligibleDriverFlagLabel(flag)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="sw-queue-row-actions assignment-row-actions">
+                                <button
+                                  className="sw-button sw-button--primary button button-primary"
+                                  disabled={actionSubmitting || !driver.eligible}
+                                  onClick={() => void handleAssignEligibleDriver(job, driver.id)}
+                                  type="button"
+                                >
+                                  <ShipWrightIcon name="assign" />
+                                  <span>{actionSubmitting ? "Assigning..." : "Assign driver"}</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
 
                   <label className="ops-field">
                     <span>Cancel reason</span>

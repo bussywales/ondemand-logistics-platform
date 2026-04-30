@@ -502,6 +502,143 @@ describe("JobsService", () => {
     ).toBe(true);
   });
 
+  it("allows manual assignment for dispatch-failed jobs", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          createJobRow({
+            org_id: QUOTE_ID,
+            status: "DISPATCH_FAILED",
+            assigned_driver_id: null,
+            operator_role: "BUSINESS_OPERATOR"
+          })
+        ]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ driver_id: DRIVER_ID }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [createJobRow({ org_id: QUOTE_ID, status: "REQUESTED", assigned_driver_id: null })]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: "offer-manual-2" }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ next_attempt_number: 2 }] })
+      .mockResolvedValue({ rowCount: 1, rows: [] });
+
+    const pg = {
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.reassignDriver(JOB_ID, { driverId: DRIVER_ID }, ACTOR_ID, "idem-reassign-2");
+
+    expect(result.body.status).toBe("REQUESTED");
+  });
+
+  it("lists eligible and blocked drivers for operator assignment", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [createJobRow({ org_id: QUOTE_ID, operator_role: "BUSINESS_OPERATOR" })]
+      })
+      .mockResolvedValueOnce({
+        rowCount: 2,
+        rows: [
+          {
+            driver_id: DRIVER_ID,
+            display_name: "Alex Rider",
+            availability_status: "ONLINE",
+            latest_latitude: "51.500000",
+            latest_longitude: "-0.100000",
+            last_location_at: new Date("2026-04-29T09:00:00.000Z"),
+            active_job_id: null,
+            active_job_status: null,
+            verification_status: "APPROVED",
+            vehicle_type: "BIKE",
+            has_matching_vehicle: true,
+            has_open_offer: false,
+            distance_miles: "0.40"
+          },
+          {
+            driver_id: "4819d6ff-860c-4e92-b899-4d7c28dfeb85",
+            display_name: "Jamie Offline",
+            availability_status: "OFFLINE",
+            latest_latitude: null,
+            latest_longitude: null,
+            last_location_at: null,
+            active_job_id: "8ae1ea9d-5e86-4c27-a84b-f9b7e2dd5af0",
+            active_job_status: "ASSIGNED",
+            verification_status: "PENDING",
+            vehicle_type: "CAR",
+            has_matching_vehicle: false,
+            has_open_offer: true,
+            distance_miles: null
+          }
+        ]
+      });
+    const pg = { query };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+    const result = await service.listEligibleDrivers(JOB_ID, ACTOR_ID);
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: DRIVER_ID,
+        displayName: "Alex Rider",
+        eligible: true,
+        suitabilityFlags: ["READY"],
+        suitabilityReason: "Online, approved, and ready for manual assignment."
+      }),
+      expect.objectContaining({
+        id: "4819d6ff-860c-4e92-b899-4d7c28dfeb85",
+        eligible: false,
+        suitabilityFlags: expect.arrayContaining([
+          "OFFLINE",
+          "ACTIVE_JOB",
+          "VEHICLE_MISMATCH",
+          "VERIFICATION_NOT_APPROVED",
+          "NO_LIVE_LOCATION",
+          "EXISTING_OPEN_OFFER"
+        ]),
+        suitabilityReason: "Driver already has an active job and cannot be reassigned."
+      })
+    ]);
+  });
+
+  it("blocks eligible driver lookup for non-operators", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [createJobRow({ org_id: QUOTE_ID, operator_role: null })]
+    });
+    const pg = { query };
+    const payments = {
+      createPaymentForJob: vi.fn(),
+      previewCancellationSettlementForJob: vi.fn(),
+      enqueueCancellationSettlement: vi.fn()
+    };
+
+    const service = new JobsService(pg as never, payments as never);
+
+    await expect(service.listEligibleDrivers(JOB_ID, ACTOR_ID)).rejects.toThrow(
+      new ForbiddenException("org_operator_required")
+    );
+  });
+
   it("blocks cancellation for unauthorized actors", async () => {
     const pg = {
       withIdempotency: vi.fn().mockImplementation(async ({ execute }) =>

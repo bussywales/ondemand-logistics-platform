@@ -8,6 +8,7 @@ import {
   CreateProofOfDeliverySchema,
   CreateQuoteSchema,
   CustomerOrderStatusSchema,
+  EligibleDriverListSchema,
   JobPaymentSummarySchema,
   JobTrackingSchema,
   JobStatusSchema,
@@ -235,6 +236,29 @@ describe("read models", () => {
           entityId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
           createdAt: new Date().toISOString(),
           read: false
+        }
+      ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses eligible driver payloads for manual assignment", () => {
+    const parsed = EligibleDriverListSchema.safeParse({
+      items: [
+        {
+          id: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+          displayName: "Alex Rider",
+          vehicleType: "BIKE",
+          availabilityStatus: "ONLINE",
+          distanceMiles: 1.4,
+          lastLocationAt: new Date().toISOString(),
+          verificationStatus: "APPROVED",
+          activeJobId: null,
+          activeJobStatus: null,
+          eligible: true,
+          suitabilityFlags: ["READY"],
+          suitabilityReason: "Online, approved, and ready for manual assignment."
         }
       ]
     });

@@ -238,6 +238,15 @@ export type DriverProfile = {
 };
 
 export type DriverAvailabilityStatus = "ONLINE" | "OFFLINE";
+export type DriverVerificationStatus = "APPROVED" | "PENDING" | "REJECTED" | "MISSING";
+export type EligibleDriverSuitabilityFlag =
+  | "READY"
+  | "OFFLINE"
+  | "ACTIVE_JOB"
+  | "VEHICLE_MISMATCH"
+  | "VERIFICATION_NOT_APPROVED"
+  | "NO_LIVE_LOCATION"
+  | "EXISTING_OPEN_OFFER";
 
 export type DriverState = {
   driverId: string;
@@ -257,6 +266,21 @@ export type DriverOffer = {
   payoutGrossCents: number;
   pickupAddress: string;
   dropoffAddress: string;
+};
+
+export type EligibleDriver = {
+  id: string;
+  displayName: string;
+  vehicleType: VehicleType | null;
+  availabilityStatus: DriverAvailabilityStatus;
+  distanceMiles: number | null;
+  lastLocationAt: string | null;
+  verificationStatus: DriverVerificationStatus;
+  activeJobId: string | null;
+  activeJobStatus: JobStatus | null;
+  eligible: boolean;
+  suitabilityFlags: EligibleDriverSuitabilityFlag[];
+  suitabilityReason: string;
 };
 
 export type DriverJob = {

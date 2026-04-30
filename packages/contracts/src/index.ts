@@ -296,6 +296,41 @@ export const ReassignJobSchema = z.object({
 });
 export type ReassignJobInput = z.infer<typeof ReassignJobSchema>;
 
+export const EligibleDriverVerificationStatusSchema = z.enum(["APPROVED", "PENDING", "REJECTED", "MISSING"]);
+export type EligibleDriverVerificationStatus = z.infer<typeof EligibleDriverVerificationStatusSchema>;
+
+export const EligibleDriverSuitabilityFlagSchema = z.enum([
+  "READY",
+  "OFFLINE",
+  "ACTIVE_JOB",
+  "VEHICLE_MISMATCH",
+  "VERIFICATION_NOT_APPROVED",
+  "NO_LIVE_LOCATION",
+  "EXISTING_OPEN_OFFER"
+]);
+export type EligibleDriverSuitabilityFlag = z.infer<typeof EligibleDriverSuitabilityFlagSchema>;
+
+export const EligibleDriverSchema = z.object({
+  id: z.string().uuid(),
+  displayName: z.string().min(2),
+  vehicleType: VehicleTypeSchema.nullable(),
+  availabilityStatus: DriverAvailabilityStatusSchema,
+  distanceMiles: z.number().nonnegative().nullable(),
+  lastLocationAt: IsoDateTimeSchema.nullable(),
+  verificationStatus: EligibleDriverVerificationStatusSchema,
+  activeJobId: z.string().uuid().nullable(),
+  activeJobStatus: JobStatusSchema.nullable(),
+  eligible: z.boolean(),
+  suitabilityFlags: z.array(EligibleDriverSuitabilityFlagSchema),
+  suitabilityReason: z.string().min(2)
+});
+export type EligibleDriverDto = z.infer<typeof EligibleDriverSchema>;
+
+export const EligibleDriverListSchema = z.object({
+  items: z.array(EligibleDriverSchema)
+});
+export type EligibleDriverListDto = z.infer<typeof EligibleDriverListSchema>;
+
 export const CreateBusinessOrgSchema = z.object({
   businessName: z.string().min(2).max(160),
   contactName: z.string().min(2).max(160),

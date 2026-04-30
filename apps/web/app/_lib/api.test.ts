@@ -9,6 +9,7 @@ import {
   getDriverState,
   getPublicRestaurantMenu,
   getRestaurantMenu,
+  listEligibleDrivers,
   listBusinessNotifications,
   listBusinessOrders,
   listDriverOffers,
@@ -387,6 +388,41 @@ describe('authorizePayment', () => {
       3,
       'https://api-staging-qvmv.onrender.com/v1/driver/me/offers/offer-2/reject',
       expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('loads eligible drivers for operator assignment', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: 'driver-1',
+              displayName: 'Alex Rider',
+              vehicleType: 'BIKE',
+              availabilityStatus: 'ONLINE',
+              distanceMiles: 0.4,
+              lastLocationAt: '2026-04-29T09:00:00.000Z',
+              verificationStatus: 'APPROVED',
+              activeJobId: null,
+              activeJobStatus: null,
+              eligible: true,
+              suitabilityFlags: ['READY'],
+              suitabilityReason: 'Online, approved, and ready for manual assignment.'
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listEligibleDrivers(session, 'job-1')).resolves.toEqual([
+      expect.objectContaining({ id: 'driver-1', eligible: true })
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api-staging-qvmv.onrender.com/v1/jobs/job-1/eligible-drivers',
+      expect.objectContaining({ method: 'GET' })
     );
   });
 

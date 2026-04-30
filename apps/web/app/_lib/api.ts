@@ -7,6 +7,7 @@ import type {
   BusinessSession,
   CustomerOrderSubmission,
   DriverAvailabilityStatus,
+  EligibleDriver,
   DriverJob,
   DriverOffer,
   DriverOfferAcceptResult,
@@ -127,6 +128,9 @@ type BusinessCustomerOrderResponse = BusinessCustomerOrder;
 type BusinessNotificationListResponse = BusinessNotificationList;
 type DriverStateResponse = DriverState;
 type DriverOfferResponse = DriverOffer;
+type EligibleDriverListResponse = {
+  items: EligibleDriver[];
+};
 type DriverJobResponse = DriverJob | null;
 type DriverOfferAcceptResponse = DriverOfferAcceptResult;
 type DriverOfferRejectResponse = DriverOfferRejectResult;
@@ -587,6 +591,14 @@ export async function reassignDriver(session: BusinessSession, jobId: string, dr
   const payment = await fetchPayment(session, job.id).catch(() => null);
   const tracking = await fetchTracking(session, job.id).catch(() => null);
   return toAppJob(job, tracking, payment ? { payment } : null);
+}
+
+export async function listEligibleDrivers(session: BusinessSession, jobId: string): Promise<EligibleDriver[]> {
+  const result = await apiFetch<EligibleDriverListResponse>(session, `/v1/jobs/${jobId}/eligible-drivers`, {
+    method: "GET"
+  });
+
+  return result.items;
 }
 
 export async function cancelJob(session: BusinessSession, jobId: string, reason: string) {

@@ -9,10 +9,12 @@ import { randomUUID } from "node:crypto";
 import {
   CancelJobSchema,
   CreateJobRequestSchema,
+  EligibleDriverListSchema,
   JobSchema,
   JobTrackingSchema,
   PaginatedJobsSchema,
   ReassignJobSchema,
+  type EligibleDriverDto,
   type JobAttentionLevel,
   type JobDto,
   type JobTrackingDto,
@@ -102,6 +104,22 @@ type DispatchAttemptRow = {
   created_at: string | Date;
 };
 
+type EligibleDriverRow = {
+  driver_id: string;
+  display_name: string;
+  availability_status: "ONLINE" | "OFFLINE";
+  latest_latitude: string | null;
+  latest_longitude: string | null;
+  last_location_at: string | Date | null;
+  active_job_id: string | null;
+  active_job_status: string | null;
+  verification_status: "APPROVED" | "PENDING" | "REJECTED" | "MISSING";
+  vehicle_type: "BIKE" | "CAR" | null;
+  has_matching_vehicle: boolean;
+  has_open_offer: boolean;
+  distance_miles: string | null;
+};
+
 const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
   j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
   j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
@@ -132,7 +150,7 @@ const ACCESS_CONDITION = `(
 
 const CANCELLABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "DISPATCH_FAILED"] as const;
 const RETRYABLE_JOB_STATUSES = ["REQUESTED", "DISPATCH_FAILED"] as const;
-const REASSIGNABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED"] as const;
+const REASSIGNABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED", "DISPATCH_FAILED"] as const;
 const DISPATCH_OFFER_TTL_SECONDS = Number(process.env.DISPATCH_OFFER_TTL_SECONDS ?? 30);
 
 @Injectable()
@@ -627,6 +645,15 @@ export class JobsService {
     });
   }
 
+  async listEligibleDrivers(jobId: string, userId: string) {
+    const job = await this.loadOperatorJob(jobId, userId);
+    const rows = await this.loadEligibleDriverCandidates(jobId, job.vehicle_required);
+
+    return EligibleDriverListSchema.parse({
+      items: rows.map((row) => this.mapEligibleDriver(row))
+    });
+  }
+
   async cancelJob(jobId: string, input: unknown, userId: string, idempotencyKey: string) {
     const parsed = CancelJobSchema.safeParse(input);
     if (!parsed.success) {
@@ -855,6 +882,35 @@ export class JobsService {
     return result.rows[0];
   }
 
+  private async loadOperatorJob(jobId: string, userId: string) {
+    const result = await this.pg.query<OperatorJobRow>(
+      `select ${JOB_COLUMNS},
+              (
+                select m.role::text
+                from public.org_memberships m
+                where m.org_id = j.org_id
+                  and m.user_id = $2
+                  and m.is_active = true
+                  and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+                limit 1
+              ) as operator_role
+       from public.jobs j
+       where j.id = $1`,
+      [jobId, userId]
+    );
+
+    if ((result.rowCount ?? 0) !== 1) {
+      throw new NotFoundException("job_not_found");
+    }
+
+    const job = result.rows[0];
+    if (!job.operator_role) {
+      throw new ForbiddenException("org_operator_required");
+    }
+
+    return job;
+  }
+
   private async loadOperatorJobForUpdate(client: PoolClient, jobId: string, userId: string) {
     const result = await client.query<OperatorJobRow>(
       `select ${JOB_COLUMNS},
@@ -883,6 +939,99 @@ export class JobsService {
     }
 
     return job;
+  }
+
+  private async loadEligibleDriverCandidates(jobId: string, vehicleRequired: string) {
+    const result = await this.pg.query<EligibleDriverRow>(
+      `select d.id as driver_id,
+              u.display_name,
+              d.availability_status,
+              d.latest_latitude,
+              d.latest_longitude,
+              d.last_location_at,
+              d.active_job_id,
+              aj.status::text as active_job_status,
+              coalesce(vmatch.vehicle_type, vprimary.vehicle_type) as vehicle_type,
+              (vmatch.vehicle_type is not null) as has_matching_vehicle,
+              coalesce(vstatus.status, 'MISSING')::text as verification_status,
+              exists (
+                select 1
+                from public.job_offers o
+                where o.job_id = $1
+                  and o.driver_id = d.id
+                  and o.status in ('OFFERED', 'ACCEPTED')
+              ) as has_open_offer,
+              case
+                when d.latest_latitude is null or d.latest_longitude is null then null
+                else (
+                  3959 * acos(
+                    least(
+                      1,
+                      greatest(
+                        -1,
+                        cos(radians(j.pickup_latitude::float8)) * cos(radians(d.latest_latitude::float8))
+                        * cos(radians(d.latest_longitude::float8) - radians(j.pickup_longitude::float8))
+                        + sin(radians(j.pickup_latitude::float8)) * sin(radians(d.latest_latitude::float8))
+                      )
+                    )
+                  )
+                )::numeric(6,2)::text
+              end as distance_miles
+       from public.jobs j
+       join public.drivers d on d.is_active = true
+       join public.users u on u.id = d.user_id
+       left join public.jobs aj on aj.id = d.active_job_id
+       left join lateral (
+         select dv.vehicle_type::text as vehicle_type
+         from public.driver_vehicle dv
+         where dv.driver_id = d.id
+           and dv.vehicle_type = $2::public.vehicle_type
+         limit 1
+       ) vmatch on true
+       left join lateral (
+         select dv.vehicle_type::text as vehicle_type
+         from public.driver_vehicle dv
+         where dv.driver_id = d.id
+         order by dv.is_primary desc, dv.created_at asc
+         limit 1
+       ) vprimary on true
+       left join lateral (
+         select dvf.status::text as status
+         from public.driver_verifications dvf
+         where dvf.driver_id = d.id
+         order by
+           case dvf.status
+             when 'APPROVED' then 1
+             when 'PENDING' then 2
+             else 3
+           end,
+           dvf.updated_at desc
+         limit 1
+       ) vstatus on true
+       where j.id = $1
+       order by
+         case
+           when d.availability_status = 'ONLINE'
+             and d.active_job_id is null
+             and vmatch.vehicle_type is not null
+             and coalesce(vstatus.status, 'MISSING') = 'APPROVED'
+             and not exists (
+               select 1
+               from public.job_offers o
+               where o.job_id = $1
+                 and o.driver_id = d.id
+                 and o.status in ('OFFERED', 'ACCEPTED')
+             )
+           then 0
+           else 1
+         end,
+         case when d.last_location_at is null then 1 else 0 end,
+         distance_miles nulls last,
+         u.display_name asc`,
+      [jobId, vehicleRequired]
+    );
+
+    return result.rows;
   }
 
   private async hasOpenOffer(client: PoolClient, jobId: string) {
@@ -939,6 +1088,86 @@ export class JobsService {
     }
 
     return result.rows[0];
+  }
+
+  private mapEligibleDriver(row: EligibleDriverRow): EligibleDriverDto {
+    const flags: EligibleDriverDto["suitabilityFlags"] = [];
+
+    if (row.availability_status !== "ONLINE") {
+      flags.push("OFFLINE");
+    }
+
+    if (row.active_job_id) {
+      flags.push("ACTIVE_JOB");
+    }
+
+    if (!row.has_matching_vehicle) {
+      flags.push("VEHICLE_MISMATCH");
+    }
+
+    if (row.verification_status !== "APPROVED") {
+      flags.push("VERIFICATION_NOT_APPROVED");
+    }
+
+    if (!row.last_location_at) {
+      flags.push("NO_LIVE_LOCATION");
+    }
+
+    if (row.has_open_offer) {
+      flags.push("EXISTING_OPEN_OFFER");
+    }
+
+    const eligible = flags.every((flag) => flag === "NO_LIVE_LOCATION") || flags.length === 0;
+    const normalizedFlags: EligibleDriverDto["suitabilityFlags"] = eligible
+      ? ["READY", ...flags.filter((flag) => flag === "NO_LIVE_LOCATION")]
+      : flags;
+
+    return {
+      id: row.driver_id,
+      displayName: row.display_name,
+      vehicleType: row.vehicle_type,
+      availabilityStatus: row.availability_status,
+      distanceMiles: row.distance_miles === null ? null : toFiniteNumber(row.distance_miles, "eligible_driver.distance_miles"),
+      lastLocationAt: toNullableIsoDateTime(row.last_location_at),
+      verificationStatus: row.verification_status,
+      activeJobId: row.active_job_id,
+      activeJobStatus: row.active_job_status as EligibleDriverDto["activeJobStatus"],
+      eligible,
+      suitabilityFlags: normalizedFlags,
+      suitabilityReason: this.buildEligibleDriverReason(normalizedFlags)
+    };
+  }
+
+  private buildEligibleDriverReason(flags: EligibleDriverDto["suitabilityFlags"]) {
+    if (flags[0] === "READY") {
+      if (flags.includes("NO_LIVE_LOCATION")) {
+        return "Driver is assignable now, but live location has not updated recently.";
+      }
+
+      return "Online, approved, and ready for manual assignment.";
+    }
+
+    if (flags.includes("ACTIVE_JOB")) {
+      return "Driver already has an active job and cannot be reassigned.";
+    }
+
+    if (flags.includes("OFFLINE")) {
+      return "Driver is offline and will not receive manual assignment.";
+    }
+
+    if (flags.includes("VEHICLE_MISMATCH")) {
+      return "Driver does not have the required vehicle for this delivery.";
+    }
+
+    if (flags.includes("VERIFICATION_NOT_APPROVED")) {
+      return "Driver verification is not approved yet.";
+    }
+
+    if (flags.includes("EXISTING_OPEN_OFFER")) {
+      return "Driver already has an open offer for this job.";
+    }
+
+    return "Driver is not currently suitable for assignment.";
   }
 
   private async loadDispatchAttempts(jobId: string) {
