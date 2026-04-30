@@ -27,6 +27,7 @@ import {
 } from "../_lib/product-state";
 import { BrandLogo } from "./brand-logo";
 import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMethod } from "./payment-method-form";
+import { ProductUpdateAnnouncement } from "./product-updates";
 
 function mapOrderingError(error: unknown) {
   if (!(error instanceof Error)) {
@@ -137,6 +138,8 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
           Help
         </Link>
       </header>
+
+      <ProductUpdateAnnouncement routePath="/restaurants" viewer="customer" viewerKey={`customer:${slug}`} />
 
       {orderResult ? (
         <section className="customer-order-state customer-order-confirmation">

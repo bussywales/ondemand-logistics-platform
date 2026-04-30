@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { ShipWrightIcon } from "./shipwright-icon";
 
-type WorkspaceNavView = "operations" | "jobs" | "orders" | "notifications" | "restaurant" | "help";
+type WorkspaceNavView = "operations" | "jobs" | "orders" | "notifications" | "restaurant" | "updates" | "help";
 
 const items = [
   { href: "/app", label: "Operations", view: "operations" },
@@ -10,6 +10,7 @@ const items = [
   { href: "/app/orders", label: "Orders", view: "orders" },
   { href: "/app/notifications", label: "Notifications", view: "notifications" },
   { href: "/app/restaurant", label: "Restaurant", view: "restaurant" },
+  { href: "/app/updates", label: "What’s new", view: "updates" },
   { href: "/help", label: "Help", view: "help" }
 ] as const satisfies ReadonlyArray<{ href: string; label: string; view: WorkspaceNavView }>;
 

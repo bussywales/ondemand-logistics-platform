@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
+import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import {
@@ -636,6 +637,9 @@ export function DriverShell() {
       <header className="driver-topbar">
         <BrandLogo href="/" mode="responsive" />
         <div className="driver-topbar-actions">
+          <Link className="button button-secondary" href="/driver/updates">
+            What’s new
+          </Link>
           <ContextualHelpLink href="/help/driver" />
           <button
             className="button button-secondary"
@@ -655,6 +659,8 @@ export function DriverShell() {
           </button>
         </div>
       </header>
+
+      <ProductUpdateAnnouncement routePath="/driver" viewer="driver" viewerKey={session.userId} />
 
       <section className={`sw-command-surface driver-hero ${heroState?.tone === "online" ? "driver-hero-online" : heroState?.tone === "active" ? "driver-hero-active" : ""}`}>
         <div className="driver-hero-copy">

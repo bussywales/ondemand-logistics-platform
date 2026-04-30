@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
 import { NotificationsBell } from "./notifications";
+import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
@@ -686,6 +687,8 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
           </button>
         </div>
       </header>
+
+      <ProductUpdateAnnouncement routePath="/app/orders" viewer="business" viewerKey={session.userId} />
 
       <section className="ops-layout">
         <aside className="ops-sidebar">

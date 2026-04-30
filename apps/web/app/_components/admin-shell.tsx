@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
+import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { AdminWorkspaceLink } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
@@ -240,6 +241,9 @@ export function AdminShell() {
         </div>
         <div className="hero-actions">
           <AdminWorkspaceLink />
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/updates">
+            What’s new
+          </Link>
           <button className="button button-secondary" onClick={() => void refreshBusinessSession()} type="button">
             Refresh
           </button>
@@ -254,6 +258,8 @@ export function AdminShell() {
           </button>
         </div>
       </div>
+
+      <ProductUpdateAnnouncement routePath="/admin" viewer="platform_admin" viewerKey={session.userId} />
 
       {loadError ? (
         <section className="sw-empty-state admin-empty-state admin-empty-state-danger">

@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest";
+import { productUpdates } from "./product-updates";
+
+describe("product updates content", () => {
+  it("keeps seeded updates short and audience-scoped", () => {
+    expect(productUpdates.length).toBeGreaterThanOrEqual(7);
+
+    for (const update of productUpdates) {
+      expect(update.id.length).toBeGreaterThan(3);
+      expect(update.title.length).toBeGreaterThan(3);
+      expect(update.summary.length).toBeGreaterThan(12);
+      expect(update.audience.length).toBeGreaterThan(0);
+      expect(update.summary).not.toMatch(/coming soon|maybe later|placeholder/i);
+    }
+  });
+
+  it("includes the current key product updates", () => {
+    expect(productUpdates.map((update) => update.id)).toEqual(
+      expect.arrayContaining([
+        "paid-delivery-loop-proven",
+        "business-orders-queue",
+        "driver-execution-page",
+        "admin-control-plane",
+        "persistent-notifications",
+        "driver-assignment-picker",
+        "help-centre"
+      ])
+    );
+  });
+});
