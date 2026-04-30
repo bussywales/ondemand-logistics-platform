@@ -785,7 +785,7 @@ export function ProductShell(props: ProductShellProps) {
                 ) : (
                   <div className="recent-orders-list">
                     {recentOrders.map((order) => (
-                      <Link className="recent-order-row" href={`/app/orders/${order.id}`} key={order.id}>
+                      <Link className="sw-list-row recent-order-row" href={`/app/orders/${order.id}`} key={order.id}>
                         <div>
                           <span className="ops-section-label">Order {order.id.slice(0, 8).toUpperCase()}</span>
                           <strong>{order.customer.name}</strong>
@@ -842,7 +842,7 @@ export function ProductShell(props: ProductShellProps) {
                       <span>Action</span>
                     </div>
                     {activeJobs.map((item) => (
-                      <Link className="jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
+                      <Link className="sw-list-row jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
                         <div className="jobs-cell jobs-cell-id">
                           <strong>{item.id}</strong>
                           <span>{formatDateTime(item.createdAt)}</span>
@@ -892,7 +892,7 @@ export function ProductShell(props: ProductShellProps) {
                   <div className="attention-list">
                     {attentionJobs.map(({ job: item, intelligence }) => (
                       <article
-                        className={`sw-queue-row ${
+                        className={`sw-queue-row sw-list-row ${
                           intelligence.severity === "BLOCKER" ? "sw-queue-row--danger" : "sw-queue-row--warning"
                         } attention-row attention-queue-row attention-severity-${intelligence.severity.toLowerCase()}`}
                         key={item.id}
@@ -1127,7 +1127,7 @@ export function ProductShell(props: ProductShellProps) {
                       <span>Action</span>
                     </div>
                     {jobsToRender.map((item) => (
-                      <Link className="jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
+                      <Link className="sw-list-row jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
                         <div className="jobs-cell jobs-cell-id">
                           <strong>{item.id}</strong>
                           <span>{formatDateTime(item.createdAt)}</span>
@@ -1521,7 +1521,7 @@ export function ProductShell(props: ProductShellProps) {
                   </div>
 
                   {driverPickerOpen ? (
-                    <div className="sw-supporting-surface assignment-picker">
+                    <div className="sw-supporting-surface sw-stack assignment-picker">
                       <div className="assignment-picker-header">
                         <div>
                           <p className="eyebrow">Eligible drivers</p>
@@ -1592,7 +1592,7 @@ export function ProductShell(props: ProductShellProps) {
                         <div className="assignment-list">
                           {filteredEligibleDrivers.map((driver) => (
                             <div
-                              className={`sw-queue-row assignment-row ${driver.eligible ? "assignment-row-ready" : "assignment-row-blocked"}`}
+                              className={`sw-queue-row sw-list-row assignment-row ${driver.eligible ? "assignment-row-ready" : "assignment-row-blocked"}`}
                               key={driver.id}
                             >
                               <div className="sw-queue-row-main assignment-row-main">

@@ -150,7 +150,7 @@ function OrderQueueRow({ order }: { order: BusinessCustomerOrder }) {
   const toneClass = blocked ? "orders-queue-row-danger" : inDelivery ? "orders-queue-row-info" : fulfilled ? "orders-queue-row-success" : "";
 
   return (
-    <article className={`sw-queue-row orders-queue-row ${toneClass}`}>
+    <article className={`sw-queue-row sw-list-row orders-queue-row ${toneClass}`}>
       <div className="sw-queue-row-main orders-queue-main">
         <div className="orders-queue-identity">
           <span

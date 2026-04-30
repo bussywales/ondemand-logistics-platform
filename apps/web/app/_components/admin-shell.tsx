@@ -232,7 +232,7 @@ export function AdminShell() {
 
   return (
     <main className="app-shell admin-shell-page">
-      <div className="admin-shell-header">
+      <div className="sw-row-between admin-shell-header">
         <div>
           <BrandLogo />
           <p className="eyebrow">Platform control plane</p>
@@ -273,7 +273,7 @@ export function AdminShell() {
 
       {overview && commandState ? (
         <section className={`sw-command-surface admin-command-surface ${commandState.tone === "warning" ? "sw-command-surface--warning" : ""}`}>
-          <div className="admin-command-copy">
+          <div className="sw-row admin-command-copy">
             <span className={`sw-icon-badge admin-command-icon admin-command-icon-${commandState.tone}`} aria-hidden="true">
               <ShipWrightIcon name={toneToIcon(commandState.tone)} />
             </span>
@@ -305,7 +305,7 @@ export function AdminShell() {
 
       <div className="admin-grid">
         <section className="sw-operational-surface admin-section" id="intervention-queue">
-          <div className="admin-section-header">
+          <div className="sw-card-header admin-section-header">
             <div>
               <p className="eyebrow">Intervention queue</p>
               <h2>Needs review</h2>
@@ -317,7 +317,7 @@ export function AdminShell() {
               {overview.interventionQueue.map((item: AdminInterventionItem) => {
                 const canOpen = canOpenOrgConsole(session, item.orgId);
                 return (
-                  <article className={`sw-queue-row admin-intervention-row admin-intervention-row-${item.severity}`} key={item.id}>
+                  <article className={`sw-queue-row sw-admin-row admin-intervention-row admin-intervention-row-${item.severity}`} key={item.id}>
                     <div className="sw-queue-row-main">
                       <div className="admin-row-title">
                         <span className={`sw-icon-badge admin-row-icon admin-row-icon-${item.severity}`} aria-hidden="true">
@@ -349,7 +349,7 @@ export function AdminShell() {
         </section>
 
         <section className="sw-operational-surface admin-section" id="system-health">
-          <div className="admin-section-header">
+          <div className="sw-card-header admin-section-header">
             <div>
               <p className="eyebrow">System health</p>
               <h2>Release posture</h2>
@@ -385,7 +385,7 @@ export function AdminShell() {
       </div>
 
       <section className="sw-operational-surface admin-section" id="active-operations">
-        <div className="admin-section-header">
+        <div className="sw-card-header admin-section-header">
           <div>
             <p className="eyebrow">Active operations</p>
             <h2>Live jobs across orgs</h2>
@@ -397,7 +397,7 @@ export function AdminShell() {
             {jobs.map((job) => {
               const canOpen = canOpenOrgConsole(session, job.orgId);
               return (
-                <article className="sw-queue-row admin-ops-row" key={job.id}>
+                <article className="sw-queue-row sw-admin-row admin-ops-row" key={job.id}>
                   <div className="sw-queue-row-main">
                     <div className="admin-row-title">
                       <span className="sw-icon-badge admin-row-icon admin-row-icon-info" aria-hidden="true">
@@ -446,7 +446,7 @@ export function AdminShell() {
       </section>
 
       <section className="sw-operational-surface admin-section" id="recent-orders">
-        <div className="admin-section-header">
+        <div className="sw-card-header admin-section-header">
           <div>
             <p className="eyebrow">Recent orders</p>
             <h2>Paid customer demand</h2>
@@ -458,7 +458,7 @@ export function AdminShell() {
             {orders.map((order) => {
               const canOpen = canOpenOrgConsole(session, order.orgId);
               return (
-                <article className="sw-queue-row admin-order-row" key={order.id}>
+                <article className="sw-queue-row sw-admin-row admin-order-row" key={order.id}>
                   <div className="sw-queue-row-main">
                     <div className="admin-row-title">
                       <span className="sw-icon-badge admin-row-icon admin-row-icon-success" aria-hidden="true">
@@ -508,7 +508,7 @@ export function AdminShell() {
       </section>
 
       <section className="sw-operational-surface admin-section" id="outbox-monitor">
-        <div className="admin-section-header">
+        <div className="sw-card-header admin-section-header">
           <div>
             <p className="eyebrow">Outbox monitor</p>
             <h2>Worker pressure and retries</h2>
@@ -520,7 +520,7 @@ export function AdminShell() {
             {outbox.map((item) => {
               const tone = getOutboxTone(item);
               return (
-                <article className={`sw-queue-row admin-outbox-row admin-outbox-row-${tone}`} key={item.id}>
+                <article className={`sw-queue-row sw-admin-row admin-outbox-row admin-outbox-row-${tone}`} key={item.id}>
                   <div className="sw-queue-row-main">
                     <div className="admin-row-title">
                       <span className={`sw-icon-badge admin-row-icon admin-row-icon-${tone}`} aria-hidden="true">

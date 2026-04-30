@@ -106,7 +106,7 @@ function OfferCard(props: {
   onReject: (offer: DriverOffer) => void;
 }) {
   return (
-    <article className="sw-queue-row driver-offer-card">
+    <article className="sw-queue-row sw-list-row driver-offer-card">
       <div className="sw-queue-row-main">
         <div className="driver-offer-header">
           <div className="driver-offer-title">

@@ -52,7 +52,7 @@ function NotificationListItem(props: {
   if (props.item.href) {
     return (
       <Link
-        className={`sw-supporting-surface notifications-item ${props.item.read ? "notifications-item-read" : "notifications-item-unread"} ${
+        className={`sw-supporting-surface sw-notification-row notifications-item ${props.item.read ? "notifications-item-read" : "notifications-item-unread"} ${
           props.compact ? "notifications-item-compact" : ""
         }`}
         href={props.item.href}
@@ -68,7 +68,7 @@ function NotificationListItem(props: {
 
   return (
     <div
-      className={`sw-supporting-surface notifications-item ${props.item.read ? "notifications-item-read" : "notifications-item-unread"} ${
+      className={`sw-supporting-surface sw-notification-row notifications-item ${props.item.read ? "notifications-item-read" : "notifications-item-unread"} ${
         props.compact ? "notifications-item-compact" : ""
       }`}
     >

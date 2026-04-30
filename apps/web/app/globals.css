@@ -1210,7 +1210,7 @@ h3 {
   display: grid;
   align-items: center;
   gap: 1rem;
-  padding: 0.9rem 0;
+  padding: var(--sw-space-3);
   border-bottom: 1px solid var(--line);
 }
 
@@ -4516,7 +4516,6 @@ h3,
 .jobs-table-row,
 .attention-row,
 .timeline-table-row {
-  padding: 1rem;
   border-radius: var(--radius-md);
 }
 
@@ -4528,7 +4527,6 @@ h3,
 }
 
 .attention-queue-row {
-  padding: 1.1rem;
   background: rgba(255, 255, 255, 0.62);
 }
 
@@ -6087,7 +6085,6 @@ select:hover,
   display: grid;
   gap: var(--space-5, 20px);
   grid-template-columns: minmax(0, 1fr) auto;
-  padding: var(--space-5, 20px);
   border-left: 4px solid transparent;
 }
 
@@ -7093,10 +7090,10 @@ select:hover,
 }
 
 .notifications-dropdown {
+  --sw-surface-inset: var(--sw-space-4);
   display: grid;
   gap: var(--space-2, 1rem);
   min-width: min(26rem, calc(100vw - 2rem));
-  padding: var(--space-2, 1rem);
   position: absolute;
   right: 0;
   top: calc(100% + 0.75rem);
@@ -7141,7 +7138,6 @@ select:hover,
 .notifications-item {
   align-items: flex-start;
   gap: var(--space-2, 1rem);
-  padding: var(--space-2, 1rem);
   transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
 }
 
@@ -7168,7 +7164,7 @@ select:hover,
 
 .notifications-item-compact {
   border-radius: var(--sw-radius-md, 14px);
-  padding: 0.85rem 0.9rem;
+  padding: var(--sw-space-3);
 }
 
 .notifications-item-copy {
@@ -7288,7 +7284,6 @@ select:hover,
   display: grid;
   gap: var(--sw-space-4);
   margin-top: var(--sw-space-4);
-  padding: var(--sw-space-4);
   border-radius: var(--sw-radius-lg);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 252, 0.92));
   box-shadow: var(--sw-shadow-sm);
@@ -7448,9 +7443,9 @@ select:hover,
 }
 
 .admin-command-surface {
+  --sw-surface-inset: var(--sw-space-6);
   display: grid;
   gap: 1.25rem;
-  padding: 1.5rem;
 }
 
 .admin-command-copy {
@@ -7509,7 +7504,7 @@ select:hover,
 .admin-metric-card,
 .admin-health-card,
 .admin-section {
-  padding: 1.25rem;
+  --sw-surface-inset: var(--sw-space-4);
 }
 
 .admin-section {

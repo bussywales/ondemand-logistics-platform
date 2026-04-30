@@ -30,8 +30,8 @@ function audienceLabel(viewer: ProductUpdateViewerContext) {
 
 function UpdateCard(props: { update: ProductUpdate; compact?: boolean }) {
   return (
-    <article className={`sw-operational-surface product-update-card ${props.compact ? "product-update-card-compact" : ""}`}>
-      <div className="product-update-card-header">
+    <article className={`sw-operational-surface sw-update-row product-update-card ${props.compact ? "product-update-card-compact" : ""}`}>
+      <div className="sw-card-header product-update-card-header">
         <span className="sw-icon-badge sw-icon-badge--info" aria-hidden="true">
           <ShipWrightIcon name="document" />
         </span>
@@ -42,12 +42,12 @@ function UpdateCard(props: { update: ProductUpdate; compact?: boolean }) {
         <span className="status-badge status-live">New</span>
       </div>
       <p className="product-update-summary">{props.update.summary}</p>
-      <div className="product-update-meta">
+      <div className="sw-row product-update-meta">
         <span>{formatDateTime(props.update.releasedAt)}</span>
         {props.update.version ? <span>{props.update.version}</span> : null}
       </div>
       {props.update.ctaHref && props.update.ctaLabel ? (
-        <div className="product-update-actions">
+        <div className="sw-action-row product-update-actions">
           <Link className="sw-button sw-button--secondary button button-secondary" href={props.update.ctaHref}>
             <ShipWrightIcon name="arrow" />
             <span>{props.update.ctaLabel}</span>
@@ -84,7 +84,7 @@ export function ProductUpdateAnnouncement(props: {
 
   return (
     <section className="sw-command-surface product-update-announcement" aria-label="Latest product update">
-      <div className="product-update-announcement-copy">
+      <div className="sw-row product-update-announcement-copy">
         <span className="sw-icon-badge sw-icon-badge--info" aria-hidden="true">
           <ShipWrightIcon name="document" />
         </span>
@@ -94,7 +94,7 @@ export function ProductUpdateAnnouncement(props: {
           <p>{update.summary}</p>
         </div>
       </div>
-      <div className="product-update-actions">
+      <div className="sw-action-row product-update-actions">
         {update.ctaHref && update.ctaLabel ? (
           <Link className="sw-button sw-button--secondary button button-secondary" href={update.ctaHref}>
             <ShipWrightIcon name="arrow" />
@@ -134,7 +134,7 @@ export function ProductUpdatesContent(props: {
   return (
     <section className="ops-stack">
       <section className="sw-command-surface product-updates-hero">
-        <div className="product-update-announcement-copy">
+        <div className="sw-row product-update-announcement-copy">
           <span className="sw-icon-badge sw-icon-badge--info" aria-hidden="true">
             <ShipWrightIcon name="document" />
           </span>
