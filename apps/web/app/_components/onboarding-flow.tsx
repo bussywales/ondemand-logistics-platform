@@ -197,7 +197,7 @@ export function OnboardingFlow() {
       const context = await fetchBusinessContext(authSession.accessToken);
       if (context.onboarded) {
         hydrateSession(authSession, context);
-        router.push(postAuthDestination);
+        router.push(context.currentOrg ? postAuthDestination : context.platformAdmin ? "/admin" : postAuthDestination);
         return;
       }
 
@@ -276,7 +276,7 @@ export function OnboardingFlow() {
 
       setBusinessSetupPhase("opening");
       hydrateSession(authenticatedSession, context);
-      router.push(postAuthDestination);
+      router.push(context.currentOrg ? postAuthDestination : context.platformAdmin ? "/admin" : postAuthDestination);
     } catch (issue) {
       setError(getFriendlyBusinessSetupError(issue));
     } finally {

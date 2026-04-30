@@ -8,8 +8,9 @@ describe('route protection helpers', () => {
     expect(isProtectedAppPath('/get-started')).toBe(false);
   });
 
-  it('sanitizes post-auth destinations to app routes only', () => {
+  it('sanitizes post-auth destinations to protected app or admin routes', () => {
     expect(sanitizePostAuthDestination('/app/jobs/123')).toBe('/app/jobs/123');
+    expect(sanitizePostAuthDestination('/admin')).toBe('/admin');
     expect(sanitizePostAuthDestination('/contact')).toBe('/app');
     expect(sanitizePostAuthDestination(null)).toBe('/app');
   });

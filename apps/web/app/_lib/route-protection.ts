@@ -10,7 +10,7 @@ export function sanitizePostAuthDestination(value: string | null | undefined) {
   }
 
   const trimmed = value.trim();
-  if (!trimmed.startsWith('/app')) {
+  if (!trimmed.startsWith('/app') && !trimmed.startsWith('/admin')) {
     return '/app';
   }
 

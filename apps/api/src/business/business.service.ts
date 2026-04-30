@@ -16,6 +16,7 @@ import { createLogger, enrichLogContext, getRequestContext } from "@shipwright/o
 import { randomUUID } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
 import { PgService } from "../database/pg.service.js";
+import { PlatformAdminService } from "../security/platform-admin.service.js";
 import type { AuthenticatedUser } from "../security/types.js";
 
 type UserRow = {
@@ -74,7 +75,10 @@ export class BusinessService {
   private readonly logger = createLogger({ name: "api-business" });
   private orgProfileColumnsAvailable: Promise<boolean> | null = null;
 
-  constructor(private readonly pg: PgService) {}
+  constructor(
+    private readonly pg: PgService,
+    private readonly platformAdmins: PlatformAdminService
+  ) {}
 
   async createBusinessOrg(input: unknown, user: AuthenticatedUser, idempotencyKey: string) {
     const parsed = CreateBusinessOrgSchema.safeParse(input);
@@ -92,6 +96,7 @@ export class BusinessService {
 
     const requestId = getRequestContext()?.requestId ?? randomUUID();
     const log = enrichLogContext(this.logger, { actor_id: user.id });
+    const isPlatformAdmin = await this.platformAdmins.isPlatformAdmin(user.id);
 
     try {
       await this.ensureUserRowExists(user, {
@@ -115,7 +120,7 @@ export class BusinessService {
           if (existingMemberships.length > 0) {
             return {
               responseCode: 200,
-              body: this.mapContext(userRow, existingMemberships)
+              body: this.mapContext(userRow, existingMemberships, isPlatformAdmin)
             };
           }
 
@@ -193,13 +198,21 @@ export class BusinessService {
                 membership: membershipResult.rows[0],
                 org
               }
-            ])
+            ], isPlatformAdmin)
           };
         }
       });
 
+      const normalizedBody = BusinessContextSchema.parse({
+        ...result.body,
+        platformAdmin: isPlatformAdmin
+      });
+
       log.info({ replay: result.replay }, "business_org_created");
-      return result;
+      return {
+        ...result,
+        body: normalizedBody
+      };
     } catch (error) {
       log.error({ err: error }, "business_org_create_failed");
       if (error instanceof ConflictException || error instanceof ForbiddenException || error instanceof UnprocessableEntityException) {
@@ -211,6 +224,7 @@ export class BusinessService {
 
   async getBusinessContext(user: AuthenticatedUser): Promise<BusinessContextDto> {
     const hasOrgProfileColumns = await this.hasOrgProfileColumns(this.pg);
+    const isPlatformAdmin = await this.platformAdmins.isPlatformAdmin(user.id);
     const userResult = await this.pg.query<UserRow>(
       `select id, email, display_name
        from public.users
@@ -230,7 +244,8 @@ export class BusinessService {
 
     return this.mapContext(
       userRow,
-      memberships
+      memberships,
+      isPlatformAdmin
     );
   }
 
@@ -349,7 +364,8 @@ export class BusinessService {
 
   private mapContext(
     user: UserRow,
-    rows: Array<{ membership: MembershipRow; org: OrgRow }>
+    rows: Array<{ membership: MembershipRow; org: OrgRow }>,
+    platformAdmin = false
   ): BusinessContextDto {
     const memberships = rows.map((row) => ({
       membership: OrgMembershipSummarySchema.parse({
@@ -376,7 +392,8 @@ export class BusinessService {
       userId: user.id,
       email: user.email,
       displayName: user.display_name,
-      onboarded: memberships.length > 0,
+      platformAdmin,
+      onboarded: memberships.length > 0 || platformAdmin,
       currentOrg: memberships[0]?.org ?? null,
       memberships
     });

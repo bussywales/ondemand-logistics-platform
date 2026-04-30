@@ -1,4 +1,8 @@
 import type {
+  AdminJobSummary,
+  AdminOrderSummary,
+  AdminOutboxItem,
+  AdminOverview,
   AppJob,
   BusinessNotification,
   BusinessNotificationList,
@@ -127,6 +131,16 @@ type SubmitCustomerOrderResponse = CustomerOrderSubmission;
 type BusinessCustomerOrderListResponse = BusinessCustomerOrderList;
 type BusinessCustomerOrderResponse = BusinessCustomerOrder;
 type BusinessNotificationListResponse = BusinessNotificationList;
+type AdminOverviewResponse = AdminOverview;
+type AdminJobListResponse = {
+  items: AdminJobSummary[];
+};
+type AdminOrderListResponse = {
+  items: AdminOrderSummary[];
+};
+type AdminOutboxListResponse = {
+  items: AdminOutboxItem[];
+};
 type BusinessNotificationReadResponse = {
   ok: true;
   notificationId: string;
@@ -695,4 +709,34 @@ export async function cancelJob(session: BusinessSession, jobId: string, reason:
   const payment = await fetchPayment(session, job.id).catch(() => null);
   const tracking = await fetchTracking(session, job.id).catch(() => null);
   return toAppJob(job, tracking, payment ? { payment } : null);
+}
+
+export async function getAdminOverview(session: BusinessSession): Promise<AdminOverview> {
+  return apiFetch<AdminOverviewResponse>(session, "/v1/admin/overview", {
+    method: "GET"
+  });
+}
+
+export async function listAdminJobs(session: BusinessSession): Promise<AdminJobSummary[]> {
+  const result = await apiFetch<AdminJobListResponse>(session, "/v1/admin/jobs", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function listAdminOrders(session: BusinessSession): Promise<AdminOrderSummary[]> {
+  const result = await apiFetch<AdminOrderListResponse>(session, "/v1/admin/orders", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function listAdminOutbox(session: BusinessSession): Promise<AdminOutboxItem[]> {
+  const result = await apiFetch<AdminOutboxListResponse>(session, "/v1/admin/outbox", {
+    method: "GET"
+  });
+
+  return result.items;
 }

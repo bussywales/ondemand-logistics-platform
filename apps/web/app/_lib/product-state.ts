@@ -46,6 +46,7 @@ export type BusinessContext = {
   userId: string;
   email: string;
   displayName: string;
+  platformAdmin?: boolean;
   onboarded: boolean;
   currentOrg: OrgSummary | null;
   memberships: Array<{
@@ -228,6 +229,107 @@ export type BusinessNotification = {
 
 export type BusinessNotificationList = {
   items: BusinessNotification[];
+};
+
+export type AdminInterventionSeverity = "danger" | "warning" | "info";
+export type AdminInterventionEntityType = "job" | "order" | "payment" | "outbox" | "notification";
+
+export type AdminInterventionItem = {
+  id: string;
+  category: "dispatch_failed" | "stuck_job" | "payment_failure" | "payment_capture_pending" | "notification_issue";
+  severity: AdminInterventionSeverity;
+  title: string;
+  summary: string;
+  orgId: string | null;
+  orgName: string | null;
+  restaurantName: string | null;
+  entityType: AdminInterventionEntityType;
+  entityId: string;
+  jobId: string | null;
+  orderId: string | null;
+  paymentId: string | null;
+  createdAt: string;
+};
+
+export type AdminJobSummary = {
+  id: string;
+  orgId: string | null;
+  orgName: string | null;
+  restaurantName: string | null;
+  restaurantSlug: string | null;
+  status: JobStatus;
+  attentionLevel: JobAttentionLevel;
+  attentionReason: string | null;
+  customerName: string | null;
+  driverName: string | null;
+  vehicleRequired: VehicleType;
+  paymentId: string | null;
+  paymentStatus: PaymentStatus | null;
+  pickupAddress: string;
+  dropoffAddress: string;
+  etaMinutes: number;
+  totalCents: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminOrderSummary = {
+  id: string;
+  orgId: string;
+  orgName: string;
+  restaurantId: string;
+  restaurantName: string;
+  restaurantSlug: string;
+  status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED";
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryAddressSummary: string;
+  totalCents: number;
+  currency: string;
+  paymentId: string;
+  paymentStatus: PaymentStatus;
+  jobId: string;
+  jobStatus: JobStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminOutboxItem = {
+  id: string;
+  aggregateType: string;
+  aggregateId: string;
+  eventType: string;
+  retryCount: number;
+  lastError: string | null;
+  processedAt: string | null;
+  nextAttemptAt: string;
+  createdAt: string;
+};
+
+export type AdminSystemHealth = {
+  liveness: {
+    status: "ok" | "error";
+    service: "api";
+  };
+  readiness: {
+    status: "ok" | "error";
+    service: "api";
+    message: string | null;
+  };
+  outboxBacklogCount: number;
+  outboxRetryingCount: number;
+  outboxFailedCount: number;
+  paymentCapturePendingCount: number;
+  notificationIssueCount: number;
+};
+
+export type AdminOverview = {
+  interventionQueue: AdminInterventionItem[];
+  activeJobs: AdminJobSummary[];
+  recentOrders: AdminOrderSummary[];
+  health: AdminSystemHealth;
 };
 
 export type DriverProfile = {

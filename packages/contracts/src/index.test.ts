@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AdminOverviewSchema,
   BusinessContextSchema,
   BusinessNotificationReadAllSchema,
   BusinessNotificationReadSchema,
@@ -95,6 +96,7 @@ describe("Business onboarding schemas", () => {
       userId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
       email: "ops@example.com",
       displayName: "Busayo Adewale",
+      platformAdmin: true,
       onboarded: true,
       currentOrg: {
         id: "bd535fca-017a-465d-adc1-bc5a42e311bd",
@@ -128,6 +130,58 @@ describe("Business onboarding schemas", () => {
           }
         }
       ]
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.platformAdmin).toBe(true);
+  });
+});
+
+describe("admin schemas", () => {
+  it("defaults missing platform admin flag in business context payloads", () => {
+    const parsed = BusinessContextSchema.parse({
+      userId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      email: "ops@example.com",
+      displayName: "Busayo Adewale",
+      onboarded: false,
+      currentOrg: null,
+      memberships: []
+    });
+
+    expect(parsed.platformAdmin).toBe(false);
+  });
+
+  it("parses admin overview payloads", () => {
+    const parsed = AdminOverviewSchema.safeParse({
+      interventionQueue: [
+        {
+          id: "job:1",
+          category: "dispatch_failed",
+          severity: "danger",
+          title: "Dispatch failed",
+          summary: "No driver accepted the job.",
+          orgId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          orgName: "Pilot Org",
+          restaurantName: "Pilot Kitchen",
+          entityType: "job",
+          entityId: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+          jobId: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+          orderId: null,
+          paymentId: null,
+          createdAt: new Date().toISOString()
+        }
+      ],
+      activeJobs: [],
+      recentOrders: [],
+      health: {
+        liveness: { status: "ok", service: "api" },
+        readiness: { status: "ok", service: "api", message: null },
+        outboxBacklogCount: 0,
+        outboxRetryingCount: 0,
+        outboxFailedCount: 0,
+        paymentCapturePendingCount: 0,
+        notificationIssueCount: 0
+      }
     });
 
     expect(parsed.success).toBe(true);

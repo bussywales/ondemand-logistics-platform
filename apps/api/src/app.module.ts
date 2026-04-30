@@ -27,6 +27,10 @@ import {
 import { RestaurantsService } from "./restaurants/restaurants.service.js";
 import { NotificationsController } from "./notifications/notifications.controller.js";
 import { NotificationsService } from "./notifications/notifications.service.js";
+import { PlatformAdminService } from "./security/platform-admin.service.js";
+import { PlatformAdminGuard } from "./security/platform-admin.guard.js";
+import { AdminController } from "./admin/admin.controller.js";
+import { AdminService } from "./admin/admin.service.js";
 
 @Module({
   imports: [],
@@ -39,6 +43,7 @@ import { NotificationsService } from "./notifications/notifications.service.js";
     PaymentsController,
     BusinessController,
     NotificationsController,
+    AdminController,
     BusinessOrdersController,
     RestaurantsController,
     PublicRestaurantsController
@@ -55,6 +60,9 @@ import { NotificationsService } from "./notifications/notifications.service.js";
     BusinessService,
     NotificationsService,
     RestaurantsService,
+    PlatformAdminService,
+    PlatformAdminGuard,
+    AdminService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard

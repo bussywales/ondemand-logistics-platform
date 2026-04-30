@@ -367,6 +367,7 @@ export const BusinessContextSchema = z.object({
   userId: z.string().uuid(),
   email: z.string().email(),
   displayName: z.string().min(2),
+  platformAdmin: z.boolean().default(false),
   onboarded: z.boolean(),
   currentOrg: OrgSummarySchema.nullable(),
   memberships: z.array(
@@ -686,6 +687,131 @@ export const PaymentStatusSchema = z.enum([
   "CANCELLED"
 ]);
 export type PaymentStatus = z.infer<typeof PaymentStatusSchema>;
+
+export const AdminInterventionSeveritySchema = z.enum(["danger", "warning", "info"]);
+export type AdminInterventionSeverity = z.infer<typeof AdminInterventionSeveritySchema>;
+
+export const AdminInterventionEntityTypeSchema = z.enum(["job", "order", "payment", "outbox", "notification"]);
+export type AdminInterventionEntityType = z.infer<typeof AdminInterventionEntityTypeSchema>;
+
+export const AdminInterventionItemSchema = z.object({
+  id: z.string().min(2),
+  category: z.enum(["dispatch_failed", "stuck_job", "payment_failure", "payment_capture_pending", "notification_issue"]),
+  severity: AdminInterventionSeveritySchema,
+  title: z.string().min(2),
+  summary: z.string().min(2),
+  orgId: z.string().uuid().nullable(),
+  orgName: z.string().nullable(),
+  restaurantName: z.string().nullable(),
+  entityType: AdminInterventionEntityTypeSchema,
+  entityId: z.string().min(2),
+  jobId: z.string().uuid().nullable(),
+  orderId: z.string().uuid().nullable(),
+  paymentId: z.string().uuid().nullable(),
+  createdAt: IsoDateTimeSchema
+});
+export type AdminInterventionItemDto = z.infer<typeof AdminInterventionItemSchema>;
+
+export const AdminJobSummarySchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid().nullable(),
+  orgName: z.string().nullable(),
+  restaurantName: z.string().nullable(),
+  restaurantSlug: z.string().nullable(),
+  status: JobStatusSchema,
+  attentionLevel: JobAttentionLevelSchema,
+  attentionReason: z.string().nullable(),
+  customerName: z.string().nullable(),
+  driverName: z.string().nullable(),
+  vehicleRequired: VehicleTypeSchema,
+  paymentId: z.string().uuid().nullable(),
+  paymentStatus: PaymentStatusSchema.nullable(),
+  pickupAddress: z.string(),
+  dropoffAddress: z.string(),
+  etaMinutes: EtaMinutesSchema,
+  totalCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type AdminJobSummaryDto = z.infer<typeof AdminJobSummarySchema>;
+
+export const AdminJobListSchema = z.object({
+  items: z.array(AdminJobSummarySchema)
+});
+export type AdminJobListDto = z.infer<typeof AdminJobListSchema>;
+
+export const AdminOrderSummarySchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  orgName: z.string().min(2),
+  restaurantId: z.string().uuid(),
+  restaurantName: z.string().min(2),
+  restaurantSlug: RestaurantSlugSchema,
+  status: CustomerOrderStatusSchema,
+  customerName: z.string().min(2),
+  customerEmail: z.string().email(),
+  customerPhone: z.string().min(7),
+  deliveryAddressSummary: z.string().min(2),
+  totalCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  paymentId: z.string().uuid(),
+  paymentStatus: PaymentStatusSchema,
+  jobId: z.string().uuid(),
+  jobStatus: JobStatusSchema,
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type AdminOrderSummaryDto = z.infer<typeof AdminOrderSummarySchema>;
+
+export const AdminOrderListSchema = z.object({
+  items: z.array(AdminOrderSummarySchema)
+});
+export type AdminOrderListDto = z.infer<typeof AdminOrderListSchema>;
+
+export const AdminOutboxItemSchema = z.object({
+  id: z.string().uuid(),
+  aggregateType: z.string().min(2),
+  aggregateId: z.string().uuid(),
+  eventType: z.string().min(2),
+  retryCount: z.number().int().nonnegative(),
+  lastError: z.string().nullable(),
+  processedAt: IsoDateTimeSchema.nullable(),
+  nextAttemptAt: IsoDateTimeSchema,
+  createdAt: IsoDateTimeSchema
+});
+export type AdminOutboxItemDto = z.infer<typeof AdminOutboxItemSchema>;
+
+export const AdminOutboxListSchema = z.object({
+  items: z.array(AdminOutboxItemSchema)
+});
+export type AdminOutboxListDto = z.infer<typeof AdminOutboxListSchema>;
+
+export const AdminSystemHealthSchema = z.object({
+  liveness: z.object({
+    status: z.enum(["ok", "error"]),
+    service: z.literal("api")
+  }),
+  readiness: z.object({
+    status: z.enum(["ok", "error"]),
+    service: z.literal("api"),
+    message: z.string().nullable()
+  }),
+  outboxBacklogCount: z.number().int().nonnegative(),
+  outboxRetryingCount: z.number().int().nonnegative(),
+  outboxFailedCount: z.number().int().nonnegative(),
+  paymentCapturePendingCount: z.number().int().nonnegative(),
+  notificationIssueCount: z.number().int().nonnegative()
+});
+export type AdminSystemHealthDto = z.infer<typeof AdminSystemHealthSchema>;
+
+export const AdminOverviewSchema = z.object({
+  interventionQueue: z.array(AdminInterventionItemSchema),
+  activeJobs: z.array(AdminJobSummarySchema),
+  recentOrders: z.array(AdminOrderSummarySchema),
+  health: AdminSystemHealthSchema
+});
+export type AdminOverviewDto = z.infer<typeof AdminOverviewSchema>;
 
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;

@@ -18,6 +18,12 @@ function createUser() {
   };
 }
 
+function createPlatformAdmins(isPlatformAdmin = false) {
+  return {
+    isPlatformAdmin: vi.fn().mockResolvedValue(isPlatformAdmin)
+  };
+}
+
 describe("BusinessService", () => {
   it("returns a clean non-onboarded context when the auth user has no org yet", async () => {
     const pg = {
@@ -41,13 +47,14 @@ describe("BusinessService", () => {
         })
     };
 
-    const service = new BusinessService(pg as never);
+    const service = new BusinessService(pg as never, createPlatformAdmins() as never);
     const context = await service.getBusinessContext(createUser());
 
     expect(context.onboarded).toBe(false);
     expect(context.currentOrg).toBeNull();
     expect(context.memberships).toHaveLength(0);
     expect(context.email).toBe("ops@example.com");
+    expect(context.platformAdmin).toBe(false);
   });
 
   it("creates an org and operator membership for the authenticated user", async () => {
@@ -111,7 +118,7 @@ describe("BusinessService", () => {
       }))
     };
 
-    const service = new BusinessService(pg as never);
+    const service = new BusinessService(pg as never, createPlatformAdmins() as never);
     const result = await service.createBusinessOrg(
       {
         businessName: "ShipWright Retail Ops",
@@ -177,7 +184,7 @@ describe("BusinessService", () => {
       }))
     };
 
-    const service = new BusinessService(pg as never);
+    const service = new BusinessService(pg as never, createPlatformAdmins() as never);
     const result = await service.createBusinessOrg(
       {
         businessName: "New Name Ignored",
@@ -200,6 +207,7 @@ describe("BusinessService", () => {
       userId: USER_ID,
       email: "ops@example.com",
       displayName: "Busayo Adewale",
+      platformAdmin: false,
       onboarded: true,
       currentOrg: {
         id: ORG_ID,
@@ -245,7 +253,7 @@ describe("BusinessService", () => {
       })
     };
 
-    const service = new BusinessService(pg as never);
+    const service = new BusinessService(pg as never, createPlatformAdmins() as never);
     const result = await service.createBusinessOrg(
       {
         businessName: "ShipWright Retail Ops",
@@ -299,11 +307,12 @@ describe("BusinessService", () => {
         })
     };
 
-    const service = new BusinessService(pg as never);
+    const service = new BusinessService(pg as never, createPlatformAdmins(true) as never);
     const context = await service.getBusinessContext(createUser());
 
     expect(context.onboarded).toBe(true);
     expect(context.currentOrg?.name).toBe("ShipWright Retail Ops");
+    expect(context.platformAdmin).toBe(true);
   });
 
   it("serializes pg timestamp dates to ISO strings in business context responses", async () => {
@@ -344,7 +353,7 @@ describe("BusinessService", () => {
         })
     };
 
-    const service = new BusinessService(pg as never);
+    const service = new BusinessService(pg as never, createPlatformAdmins() as never);
     const context = await service.getBusinessContext(createUser());
 
     expect(context.currentOrg?.createdAt).toBe(createdAt.toISOString());
@@ -368,7 +377,7 @@ describe("BusinessService", () => {
         })
     };
 
-    const service = new BusinessService(pg as never);
+    const service = new BusinessService(pg as never, createPlatformAdmins() as never);
     const context = await service.getBusinessContext(createUser());
 
     expect(context.onboarded).toBe(false);
@@ -377,7 +386,7 @@ describe("BusinessService", () => {
   });
 
   it("rejects business org creation when the payload email differs from the authenticated user", async () => {
-    const service = new BusinessService({ withIdempotency: vi.fn() } as never);
+    const service = new BusinessService({ withIdempotency: vi.fn() } as never, createPlatformAdmins() as never);
 
     await expect(
       service.createBusinessOrg(

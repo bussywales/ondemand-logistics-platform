@@ -175,6 +175,22 @@ The staged driver is reset to a dispatch-eligible pilot state:
 - latest location close to the pilot restaurant pickup area
 - no active job
 
+### Seed a platform admin
+
+`PLATFORM_ADMIN` is a platform-level control-plane role. It is separate from org `ADMIN` and does not grant itself business-org membership.
+
+Seed one in staging after the Supabase auth user exists:
+
+```sql
+insert into public.platform_admins (user_id, is_active)
+values ('<supabase-user-id>', true)
+on conflict (user_id) do update
+set is_active = true,
+    updated_at = now();
+```
+
+Use that account to access `/admin`. Admin Control Plane v1 is intentionally operational and read-only; it does not replace org-scoped `/app` workflows.
+
 For the full paid customer order to delivered-job proof, use `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`.
 
 ### Create a real staging business account manually
