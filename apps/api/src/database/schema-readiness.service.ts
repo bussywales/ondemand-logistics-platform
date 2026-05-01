@@ -194,6 +194,10 @@ function uniqueTableNames() {
   return [...new Set(Object.values(CRITICAL_SCHEMA_REQUIREMENTS).flatMap((group) => Object.keys(group)))];
 }
 
+function allCriticalTableNames() {
+  return [...new Set([...uniqueTableNames(), ...POST_0011_RELEASE_CRITICAL_TABLES])];
+}
+
 function collectMissingSchemaElements(
   tables: Set<string>,
   columnsByTable: Map<string, Set<string>>
@@ -240,7 +244,7 @@ export class SchemaReadinessService {
   constructor(private readonly pg: PgService) {}
 
   async assertCriticalSchemaCompatibility() {
-    const tableNames = uniqueTableNames();
+    const tableNames = allCriticalTableNames();
 
     const [tablesResult, columnsResult] = await Promise.all([
       this.pg.query<SchemaTableRow>(

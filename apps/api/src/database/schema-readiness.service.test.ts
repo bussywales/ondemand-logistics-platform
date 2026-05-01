@@ -205,6 +205,33 @@ describe("SchemaReadinessService", () => {
     } satisfies Partial<SchemaCompatibilityError>);
   });
 
+  it("queries post-0011 release-critical tables during readiness checks", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows()
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows()
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).resolves.toBeUndefined();
+
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("from information_schema.tables"),
+      [
+        expect.arrayContaining([
+          "notification_reads",
+          "platform_admins"
+        ])
+      ]
+    );
+  });
+
   it("fails when platform_admins is missing", async () => {
     const query = vi
       .fn()

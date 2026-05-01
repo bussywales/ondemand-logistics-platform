@@ -221,8 +221,15 @@ async function main() {
     );
 
     console.log("STEP 4 | notifications | checking latest external notification status");
-    const externalNotifications = await checkExternalNotifications(client);
-    if (externalNotifications.status === "provider_unavailable") {
+    const externalNotifications = client
+      ? await checkExternalNotifications(client)
+      : {
+          status: "no_recent_signal" as const,
+          detail: "DATABASE_URL not set; external notification audit signal skipped."
+        };
+    if (!client) {
+      logSkip("external notifications", externalNotifications.detail);
+    } else if (externalNotifications.status === "provider_unavailable") {
       console.log(`SKIP external notifications | ${externalNotifications.detail}`);
     } else if (externalNotifications.status === "sent_recently") {
       console.log(`PASS external notifications | ${externalNotifications.detail}`);
