@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
@@ -10,7 +10,23 @@ import { AdminWorkspaceLink } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
 import { getAdminOverview, listAdminJobs, listAdminOrders, listAdminOutbox } from "../_lib/api";
 import { formatCurrency, formatDateTime, type AdminInterventionItem, type AdminJobSummary, type AdminOrderSummary, type AdminOutboxItem } from "../_lib/product-state";
-import { canOpenOrgConsole, formatAdminShortId, formatInterventionSeverityLabel, formatOutboxEventLabel, getAdminCommandState, getOutboxTone } from "../_lib/admin-state";
+import {
+  canOpenOrgConsole,
+  type AdminInterventionFilter,
+  type AdminOutboxFilter,
+  type AdminProofSummary,
+  filterAdminInterventions,
+  filterAdminOutbox,
+  formatAdminShortId,
+  formatInterventionSeverityLabel,
+  formatOutboxEventLabel,
+  getAdminCommandState,
+  getOutboxBucket,
+  getOutboxTone,
+  summarizeInterventionDetail,
+  summarizeOutboxDetail
+} from "../_lib/admin-state";
+import { formatNotificationTimeAgo } from "../_lib/notification-mapper";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 
 function toneToClass(value: "danger" | "warning" | "info" | "success") {
@@ -115,7 +131,34 @@ function SafeOrgLink(props: { href: string; label: string; canOpen: boolean }) {
   );
 }
 
-export function AdminShell() {
+function FilterChip(props: {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`mode-chip orders-filter-chip admin-filter-chip ${props.active ? "mode-chip-active orders-filter-chip-active admin-filter-chip-active" : ""}`}
+      onClick={props.onClick}
+      type="button"
+    >
+      <strong>{props.label}</strong>
+      <span>{props.count}</span>
+    </button>
+  );
+}
+
+function ToggleButton(props: { expanded: boolean; onClick: () => void }) {
+  return (
+    <button className="sw-button sw-button--ghost button button-secondary admin-row-toggle" onClick={props.onClick} type="button">
+      <ShipWrightIcon name={props.expanded ? "timeline" : "arrow"} />
+      <span>{props.expanded ? "Hide detail" : "Show detail"}</span>
+    </button>
+  );
+}
+
+export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
   const router = useRouter();
   const { status, session, error, refreshBusinessSession, signOut } = useBusinessAuth();
   const [overview, setOverview] = useState<Awaited<ReturnType<typeof getAdminOverview>> | null>(null);
@@ -124,6 +167,12 @@ export function AdminShell() {
   const [outbox, setOutbox] = useState<AdminOutboxItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [interventionFilter, setInterventionFilter] = useState<AdminInterventionFilter>("all");
+  const [outboxFilter, setOutboxFilter] = useState<AdminOutboxFilter>("all");
+  const [expandedInterventions, setExpandedInterventions] = useState<Record<string, boolean>>({});
+  const [expandedJobs, setExpandedJobs] = useState<Record<string, boolean>>({});
+  const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
+  const [expandedOutbox, setExpandedOutbox] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -176,6 +225,25 @@ export function AdminShell() {
   }, [session, status]);
 
   const commandState = useMemo(() => (overview ? getAdminCommandState(overview) : null), [overview]);
+  const filteredInterventions = useMemo(
+    () => filterAdminInterventions(overview?.interventionQueue ?? [], interventionFilter),
+    [interventionFilter, overview]
+  );
+  const filteredOutbox = useMemo(() => filterAdminOutbox(outbox, outboxFilter), [outbox, outboxFilter]);
+  const recentSkippedNotifications = useMemo(
+    () => outbox.filter((item) => getOutboxBucket(item) === "skipped").length,
+    [outbox]
+  );
+  const latestProofLabel = props.latestProof
+    ? `${formatNotificationTimeAgo(props.latestProof.timestamp)} · ${props.latestProof.fileName}`
+    : null;
+
+  function toggleExpanded(
+    setter: Dispatch<SetStateAction<Record<string, boolean>>>,
+    key: string
+  ) {
+    setter((current) => ({ ...current, [key]: !current[key] }));
+  }
 
   if (status === "loading" || loading) {
     return (
@@ -278,7 +346,7 @@ export function AdminShell() {
               <ShipWrightIcon name={toneToIcon(commandState.tone)} />
             </span>
             <div>
-              <p className="eyebrow">Platform posture</p>
+              <p className="eyebrow">Command summary</p>
               <h2>{commandState.title}</h2>
               <p>{commandState.body}</p>
             </div>
@@ -312,10 +380,18 @@ export function AdminShell() {
             </div>
             <span className="status-badge status-negative">{overview?.interventionQueue.length ?? 0} open</span>
           </div>
-          {overview?.interventionQueue.length ? (
+          <div className="admin-filter-bar" role="tablist" aria-label="Intervention filters">
+            <FilterChip active={interventionFilter === "all"} count={overview?.interventionQueue.length ?? 0} label="All" onClick={() => setInterventionFilter("all")} />
+            <FilterChip active={interventionFilter === "dispatch"} count={filterAdminInterventions(overview?.interventionQueue ?? [], "dispatch").length} label="Dispatch" onClick={() => setInterventionFilter("dispatch")} />
+            <FilterChip active={interventionFilter === "payment"} count={filterAdminInterventions(overview?.interventionQueue ?? [], "payment").length} label="Payment" onClick={() => setInterventionFilter("payment")} />
+            <FilterChip active={interventionFilter === "notification"} count={filterAdminInterventions(overview?.interventionQueue ?? [], "notification").length} label="Notification" onClick={() => setInterventionFilter("notification")} />
+            <FilterChip active={interventionFilter === "stuck"} count={filterAdminInterventions(overview?.interventionQueue ?? [], "stuck").length} label="Stuck" onClick={() => setInterventionFilter("stuck")} />
+          </div>
+          {filteredInterventions.length ? (
             <div className="admin-list">
-              {overview.interventionQueue.map((item: AdminInterventionItem) => {
+              {filteredInterventions.map((item: AdminInterventionItem) => {
                 const canOpen = canOpenOrgConsole(session, item.orgId);
+                const expanded = Boolean(expandedInterventions[item.id]);
                 return (
                   <article className={`sw-queue-row sw-admin-row admin-intervention-row admin-intervention-row-${item.severity}`} key={item.id}>
                     <div className="sw-queue-row-main">
@@ -333,9 +409,32 @@ export function AdminShell() {
                           <p>{item.summary}</p>
                         </div>
                       </div>
+                      {expanded ? (
+                        <div className="sw-supporting-surface admin-detail-panel">
+                          <div className="admin-fact-grid admin-detail-grid">
+                            <div>
+                              <span>Diagnosis</span>
+                              <strong>{summarizeInterventionDetail(item)}</strong>
+                            </div>
+                            <div>
+                              <span>Entity</span>
+                              <strong>{item.entityType} {formatAdminShortId(item.entityId)}</strong>
+                            </div>
+                            <div>
+                              <span>Created</span>
+                              <strong>{formatDateTime(item.createdAt)}</strong>
+                            </div>
+                            <div>
+                              <span>IDs</span>
+                              <strong>{item.jobId ? `Job ${formatAdminShortId(item.jobId)}` : item.orderId ? `Order ${formatAdminShortId(item.orderId)}` : "Review admin queue"}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="sw-queue-row-actions admin-row-actions">
                       <span className="admin-inline-note">{formatDateTime(item.createdAt)}</span>
+                      <ToggleButton expanded={expanded} onClick={() => toggleExpanded(setExpandedInterventions, item.id)} />
                       {item.jobId ? <SafeOrgLink canOpen={canOpen} href={`/app/jobs/${item.jobId}`} label="Open job" /> : null}
                       {item.orderId ? <SafeOrgLink canOpen={canOpen} href={`/app/orders/${item.orderId}`} label="Open order" /> : null}
                     </div>
@@ -344,7 +443,21 @@ export function AdminShell() {
               })}
             </div>
           ) : (
-            <EmptyState icon="check" title="No intervention queue items" body="Dispatch failures, stuck jobs, payment blockers, and notification skips will surface here." />
+            <EmptyState
+              icon={interventionFilter === "payment" ? "payment" : interventionFilter === "notification" ? "timeline" : "check"}
+              title={
+                interventionFilter === "all"
+                  ? "No interventions right now"
+                  : interventionFilter === "payment"
+                    ? "No payment issues"
+                    : interventionFilter === "notification"
+                      ? "No notification issues"
+                      : interventionFilter === "dispatch"
+                        ? "No dispatch blockers"
+                        : "No stuck jobs"
+              }
+              body="Platform-level blockers will surface here as soon as dispatch, payment, notification, or timing signals degrade."
+            />
           )}
         </section>
 
@@ -370,14 +483,28 @@ export function AdminShell() {
                 <p className="sw-metric-copy">{overview.health.readiness.message ?? "Critical schema compatibility checks are currently passing."}</p>
               </article>
               <article className="sw-metric-card admin-health-card">
-                <span className="sw-metric-label">Retrying outbox</span>
-                <strong className="sw-metric-value">{overview.health.outboxRetryingCount}</strong>
-                <p className="sw-metric-copy">Messages actively retrying inside the worker loop.</p>
+                <span className="sw-metric-label">Outbox pressure</span>
+                <strong className="sw-metric-value">{overview.health.outboxFailedCount + overview.health.outboxRetryingCount}</strong>
+                <p className="sw-metric-copy">
+                  {overview.health.outboxFailedCount} failed and {overview.health.outboxRetryingCount} retrying worker messages.
+                </p>
               </article>
               <article className="sw-metric-card admin-health-card">
-                <span className="sw-metric-label">Notification issues</span>
+                <span className="sw-metric-label">Skipped notifications</span>
                 <strong className="sw-metric-value">{overview.health.notificationIssueCount}</strong>
                 <p className="sw-metric-copy">External notification skips recorded in the last 24 hours.</p>
+              </article>
+              <article className="sw-metric-card admin-health-card">
+                <span className="sw-metric-label">Latest release proof</span>
+                <strong className="sw-metric-value">
+                  {props.latestProof?.readyzOk ? "Ready" : props.latestProof ? "Recorded" : "Unavailable"}
+                </strong>
+                <p className="sw-metric-copy">
+                  {latestProofLabel ?? "No archived release verification artifact is available in docs/proofs yet."}
+                </p>
+                {props.latestProof?.apiBaseUrl ? (
+                  <span className="admin-inline-note">Target {props.latestProof.apiBaseUrl}</span>
+                ) : null}
               </article>
             </div>
           ) : null}
@@ -396,6 +523,7 @@ export function AdminShell() {
           <div className="admin-list">
             {jobs.map((job) => {
               const canOpen = canOpenOrgConsole(session, job.orgId);
+              const expanded = Boolean(expandedJobs[job.id]);
               return (
                 <article className="sw-queue-row sw-admin-row admin-ops-row" key={job.id}>
                   <div className="sw-queue-row-main">
@@ -431,9 +559,32 @@ export function AdminShell() {
                         <strong>{formatCurrency(job.totalCents, job.currency)}</strong>
                       </div>
                     </div>
+                    {expanded ? (
+                      <div className="sw-supporting-surface admin-detail-panel">
+                        <div className="admin-fact-grid admin-detail-grid">
+                          <div>
+                            <span>Attention</span>
+                            <strong>{job.attentionReason ?? "No current operator warning."}</strong>
+                          </div>
+                          <div>
+                            <span>Vehicle</span>
+                            <strong>{job.vehicleRequired}</strong>
+                          </div>
+                          <div>
+                            <span>Updated</span>
+                            <strong>{formatDateTime(job.updatedAt)}</strong>
+                          </div>
+                          <div>
+                            <span>Payment ID</span>
+                            <strong>{job.paymentId ? formatAdminShortId(job.paymentId) : "Unlinked"}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="sw-queue-row-actions admin-row-actions">
                     <span className="admin-inline-note">ETA {job.etaMinutes} min</span>
+                    <ToggleButton expanded={expanded} onClick={() => toggleExpanded(setExpandedJobs, job.id)} />
                     <SafeOrgLink canOpen={canOpen} href={`/app/jobs/${job.id}`} label="Open job" />
                   </div>
                 </article>
@@ -448,7 +599,7 @@ export function AdminShell() {
       <section className="sw-operational-surface admin-section" id="recent-orders">
         <div className="sw-card-header admin-section-header">
           <div>
-            <p className="eyebrow">Recent orders</p>
+            <p className="eyebrow">Paid orders</p>
             <h2>Paid customer demand</h2>
           </div>
           <span className="status-badge status-neutral">{orders.length} visible</span>
@@ -457,6 +608,7 @@ export function AdminShell() {
           <div className="admin-list">
             {orders.map((order) => {
               const canOpen = canOpenOrgConsole(session, order.orgId);
+              const expanded = Boolean(expandedOrders[order.id]);
               return (
                 <article className="sw-queue-row sw-admin-row admin-order-row" key={order.id}>
                   <div className="sw-queue-row-main">
@@ -492,9 +644,32 @@ export function AdminShell() {
                         <strong>{formatCurrency(order.totalCents, order.currency)}</strong>
                       </div>
                     </div>
+                    {expanded ? (
+                      <div className="sw-supporting-surface admin-detail-panel">
+                        <div className="admin-fact-grid admin-detail-grid">
+                          <div>
+                            <span>Customer</span>
+                            <strong>{order.customerEmail}</strong>
+                          </div>
+                          <div>
+                            <span>Phone</span>
+                            <strong>{order.customerPhone}</strong>
+                          </div>
+                          <div>
+                            <span>Payment ID</span>
+                            <strong>{formatAdminShortId(order.paymentId)}</strong>
+                          </div>
+                          <div>
+                            <span>Updated</span>
+                            <strong>{formatDateTime(order.updatedAt)}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="sw-queue-row-actions admin-row-actions">
                     <span className="admin-inline-note">{formatDateTime(order.createdAt)}</span>
+                    <ToggleButton expanded={expanded} onClick={() => toggleExpanded(setExpandedOrders, order.id)} />
                     <SafeOrgLink canOpen={canOpen} href={`/app/orders/${order.id}`} label="Open order" />
                     <SafeOrgLink canOpen={canOpen} href={`/app/jobs/${order.jobId}`} label="Open job" />
                   </div>
@@ -510,15 +685,23 @@ export function AdminShell() {
       <section className="sw-operational-surface admin-section" id="outbox-monitor">
         <div className="sw-card-header admin-section-header">
           <div>
-            <p className="eyebrow">Outbox monitor</p>
+            <p className="eyebrow">Worker / outbox health</p>
             <h2>Worker pressure and retries</h2>
           </div>
           <span className="status-badge status-neutral">{outbox.length} visible</span>
         </div>
-        {outbox.length ? (
+        <div className="admin-filter-bar" role="tablist" aria-label="Outbox filters">
+          <FilterChip active={outboxFilter === "all"} count={outbox.length} label="All" onClick={() => setOutboxFilter("all")} />
+          <FilterChip active={outboxFilter === "failed"} count={filterAdminOutbox(outbox, "failed").length} label="Failed" onClick={() => setOutboxFilter("failed")} />
+          <FilterChip active={outboxFilter === "retrying"} count={filterAdminOutbox(outbox, "retrying").length} label="Retrying" onClick={() => setOutboxFilter("retrying")} />
+          <FilterChip active={outboxFilter === "skipped"} count={filterAdminOutbox(outbox, "skipped").length} label="Skipped" onClick={() => setOutboxFilter("skipped")} />
+          <FilterChip active={outboxFilter === "processed_recent"} count={filterAdminOutbox(outbox, "processed_recent").length} label="Processed recent" onClick={() => setOutboxFilter("processed_recent")} />
+        </div>
+        {filteredOutbox.length ? (
           <div className="admin-list">
-            {outbox.map((item) => {
+            {filteredOutbox.map((item) => {
               const tone = getOutboxTone(item);
+              const expanded = Boolean(expandedOutbox[item.id]);
               return (
                 <article className={`sw-queue-row sw-admin-row admin-outbox-row admin-outbox-row-${tone}`} key={item.id}>
                   <div className="sw-queue-row-main">
@@ -536,17 +719,62 @@ export function AdminShell() {
                         <p>{item.lastError ?? "Queued or processed without a recorded error."}</p>
                       </div>
                     </div>
+                    {expanded ? (
+                      <div className="sw-supporting-surface admin-detail-panel">
+                        <div className="admin-fact-grid admin-detail-grid">
+                          <div>
+                            <span>Diagnosis</span>
+                            <strong>{summarizeOutboxDetail(item)}</strong>
+                          </div>
+                          <div>
+                            <span>Status</span>
+                            <strong>{getOutboxBucket(item).replace(/_/g, " ")}</strong>
+                          </div>
+                          <div>
+                            <span>Created</span>
+                            <strong>{formatDateTime(item.createdAt)}</strong>
+                          </div>
+                          <div>
+                            <span>Processed</span>
+                            <strong>{item.processedAt ? formatDateTime(item.processedAt) : "Pending"}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="sw-queue-row-actions admin-row-actions">
-                    <span className="admin-inline-note">Next attempt {formatDateTime(item.nextAttemptAt)}</span>
+                    <span className="admin-inline-note">{item.processedAt ? `Processed ${formatDateTime(item.processedAt)}` : `Next attempt ${formatDateTime(item.nextAttemptAt)}`}</span>
+                    <ToggleButton expanded={expanded} onClick={() => toggleExpanded(setExpandedOutbox, item.id)} />
                   </div>
                 </article>
               );
             })}
           </div>
         ) : (
-          <EmptyState icon="check" title="Outbox queue is clear" body="Retrying and failed worker messages will surface here when background delivery processing needs review." />
+          <EmptyState
+            icon={outboxFilter === "failed" ? "alert" : outboxFilter === "retrying" ? "warning" : "check"}
+            title={
+              outboxFilter === "failed"
+                ? "No failed outbox messages"
+                : outboxFilter === "retrying"
+                  ? "No retrying outbox messages"
+                  : outboxFilter === "skipped"
+                    ? "No skipped notification events"
+                    : "Outbox queue is clear"
+            }
+            body="Worker backlog, failed events, and notification processing signals will appear here when background operations need review."
+          />
         )}
+        {overview ? (
+          <div className="admin-inline-summary">
+            <span className="admin-inline-note">
+              Recent skipped external notifications: {recentSkippedNotifications || overview.health.notificationIssueCount}
+            </span>
+            <span className="admin-inline-note">
+              Payment capture pending: {overview.health.paymentCapturePendingCount}
+            </span>
+          </div>
+        ) : null}
       </section>
     </main>
   );

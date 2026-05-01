@@ -7492,9 +7492,12 @@ select:hover,
   gap: 1rem;
 }
 
-.admin-command-metrics,
-.admin-health-grid {
+.admin-command-metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-health-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .admin-grid {
@@ -7510,6 +7513,21 @@ select:hover,
 .admin-section {
   display: grid;
   gap: 1rem;
+}
+
+.admin-filter-bar,
+.admin-inline-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-filter-chip {
+  box-shadow: none;
+}
+
+.admin-filter-chip span {
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-section-header {
@@ -7532,6 +7550,11 @@ select:hover,
 
 .admin-row-title {
   display: flex;
+  gap: 0.9rem;
+}
+
+.admin-detail-panel {
+  display: grid;
   gap: 0.9rem;
 }
 
@@ -7602,6 +7625,18 @@ select:hover,
   align-items: flex-end;
 }
 
+.admin-row-toggle {
+  min-width: 8.5rem;
+}
+
+.admin-detail-grid {
+  margin-top: 0;
+}
+
+.admin-detail-grid strong {
+  line-height: 1.45;
+}
+
 .admin-inline-note {
   color: var(--sw-color-text-muted);
   font-size: 0.85rem;
@@ -7657,6 +7692,15 @@ select:hover,
   .admin-shell-header,
   .admin-section-header {
     flex-direction: column;
+  }
+
+  .admin-row-title,
+  .admin-row-actions {
+    width: 100%;
+  }
+
+  .admin-row-actions {
+    align-items: flex-start;
   }
 
   .admin-command-metrics,
