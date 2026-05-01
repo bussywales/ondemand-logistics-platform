@@ -8267,12 +8267,21 @@ select:hover,
   gap: var(--sw-space-2);
 }
 
-.card-element-shell.sw-input {
+.payment-card-shell {
+  min-height: 56px;
+  padding: 0;
+}
+
+.payment-card-element {
   display: flex;
   align-items: center;
+  width: 100%;
   min-height: 56px;
-  padding-top: 0.95rem;
-  padding-bottom: 0.95rem;
+  padding: 0.95rem 1rem;
+}
+
+.payment-card-element .StripeElement {
+  width: 100%;
 }
 
 .customer-payment-saved {

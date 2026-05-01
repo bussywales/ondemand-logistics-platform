@@ -106,12 +106,14 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
         />
       </label>
 
-      <label className="sw-label payment-method-field">
+      <div className="sw-label payment-method-field" role="group" aria-label="Card details">
         <span>Card details</span>
-        <div className="card-element-shell sw-input">
-          <CardElement options={cardElementOptions} />
+        <div className="card-element-shell payment-card-shell">
+          <div className="payment-card-element">
+            <CardElement options={cardElementOptions} />
+          </div>
         </div>
-      </label>
+      </div>
 
       <label className="sw-label payment-method-field">
         <span>Billing postcode</span>
