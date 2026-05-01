@@ -94,10 +94,11 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
   }
 
   return (
-    <form className="payment-method-form" onSubmit={handleSubmit}>
-      <label className="ops-field">
+    <form className="payment-method-form sw-stack-sm" onSubmit={handleSubmit}>
+      <label className="sw-label payment-method-field">
         <span>Cardholder name</span>
         <input
+          className="sw-input"
           disabled={props.disabled || submitting}
           onChange={(event) => setCardholderName(event.target.value)}
           placeholder="Cardholder name"
@@ -105,17 +106,18 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
         />
       </label>
 
-      <label className="ops-field">
+      <label className="sw-label payment-method-field">
         <span>Card details</span>
-        <div className="card-element-shell">
+        <div className="card-element-shell sw-input">
           <CardElement options={cardElementOptions} />
         </div>
       </label>
 
-      <label className="ops-field">
+      <label className="sw-label payment-method-field">
         <span>Billing postcode</span>
         <input
           autoComplete="postal-code"
+          className="sw-input"
           disabled={props.disabled || submitting}
           inputMode="text"
           onChange={(event) => setBillingPostcode(event.target.value)}
@@ -128,7 +130,11 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
       {error ? <p className="form-error">{error}</p> : null}
 
       <div className="ops-actions ops-actions-inline">
-        <button className="button button-secondary" disabled={props.disabled || submitting || !stripe} type="submit">
+        <button
+          className="sw-button sw-button--secondary button button-secondary"
+          disabled={props.disabled || submitting || !stripe}
+          type="submit"
+        >
           {submitting ? 'Saving payment method...' : 'Save Payment Method'}
         </button>
       </div>
