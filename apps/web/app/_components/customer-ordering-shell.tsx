@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getPublicRestaurantMenu, submitCustomerOrder } from "../_lib/api";
 import {
@@ -45,7 +46,12 @@ function hasOrderableItems(menu: PublicRestaurantMenu) {
   return menu.categories.some((category) => category.items.length > 0);
 }
 
+export function buildRestaurantMenuHref(slug: string) {
+  return `/restaurants/${slug}`;
+}
+
 export function CustomerOrderingShell({ slug }: { slug: string }) {
+  const router = useRouter();
   const [menu, setMenu] = useState<PublicRestaurantMenu | null>(null);
   const [cart, setCart] = useState<CartState>({});
   const [loading, setLoading] = useState(true);
@@ -130,6 +136,15 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
     }
   }
 
+  function handleBackToMenu() {
+    setOrderResult(null);
+    setCheckoutOpen(false);
+    setCheckoutError(null);
+    setSubmittingOrder(false);
+    router.replace(buildRestaurantMenuHref(slug));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <main className="customer-order-page">
       <header className="customer-order-header">
@@ -172,9 +187,9 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
               <strong>{orderResult.payment.status.replace(/_/g, " ")}</strong>
             </div>
           </div>
-          <Link className="button button-secondary" href={`/restaurants/${slug}`}>
+          <button className="button button-secondary" onClick={handleBackToMenu} type="button">
             Back to menu
-          </Link>
+          </button>
         </section>
       ) : loading ? (
         <section className="customer-order-state">

@@ -120,6 +120,12 @@ function mapTypeCopy(type: string) {
         message: "A paid customer order entered operations.",
         icon: "document" as const
       };
+    case "NOTIFY_BUSINESS_NEW_ORDER":
+      return {
+        title: "New paid order",
+        message: null,
+        icon: "document" as const
+      };
     default:
       return {
         title: null,

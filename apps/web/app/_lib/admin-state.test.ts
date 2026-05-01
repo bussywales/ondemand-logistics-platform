@@ -3,6 +3,7 @@ import {
   canOpenOrgConsole,
   filterAdminInterventions,
   filterAdminOutbox,
+  limitAdminInterventions,
   formatAdminShortId,
   formatInterventionSeverityLabel,
   formatOutboxEventLabel,
@@ -157,5 +158,15 @@ describe("admin-state", () => {
         processedAt: "2026-05-01T11:00:00.000Z"
       } as never)
     ).toContain("audit");
+  });
+
+  it("limits top intervention rows until expanded", () => {
+    const items = Array.from({ length: 7 }, (_, index) => ({
+      id: String(index + 1),
+      category: "dispatch_failed"
+    })) as never;
+
+    expect(limitAdminInterventions(items, false).map((item) => item.id)).toEqual(["1", "2", "3", "4", "5"]);
+    expect(limitAdminInterventions(items, true)).toHaveLength(7);
   });
 });

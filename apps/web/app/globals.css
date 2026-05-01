@@ -7493,7 +7493,7 @@ select:hover,
 }
 
 .admin-command-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .admin-health-grid {
@@ -7528,6 +7528,64 @@ select:hover,
 
 .admin-filter-chip span {
   font-variant-numeric: tabular-nums;
+}
+
+.admin-section-tabs {
+  margin-bottom: 0.25rem;
+}
+
+.admin-section-tab,
+.admin-summary-card {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.admin-summary-card {
+  border: 1px solid rgba(10, 33, 66, 0.08);
+  cursor: pointer;
+  display: grid;
+  gap: 0.55rem;
+  text-align: left;
+}
+
+.admin-summary-card:hover,
+.admin-section-tab:hover {
+  transform: translateY(-1px);
+}
+
+.admin-summary-card-active {
+  border-color: rgba(10, 33, 66, 0.18);
+  box-shadow: var(--sw-shadow-lg);
+}
+
+.admin-summary-card-danger {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 246, 247, 0.88));
+}
+
+.admin-summary-card-warning {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 238, 0.88));
+}
+
+.admin-summary-card-info {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 246, 255, 0.88));
+}
+
+.admin-summary-card-success {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 251, 244, 0.88));
+}
+
+.admin-priority-queue {
+  border-color: rgba(10, 33, 66, 0.12);
+}
+
+.admin-primary-panel {
+  min-height: 26rem;
+}
+
+.admin-section-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .admin-section-header {
@@ -7637,6 +7695,14 @@ select:hover,
   line-height: 1.45;
 }
 
+.admin-orders-compact .sw-queue-row {
+  gap: 0.85rem;
+}
+
+.admin-orders-fact-grid {
+  margin-top: 0.75rem;
+}
+
 .admin-inline-note {
   color: var(--sw-color-text-muted);
   font-size: 0.85rem;
@@ -7679,6 +7745,10 @@ select:hover,
   color: var(--sw-color-danger);
 }
 
+.admin-health-card-wide {
+  grid-column: span 2;
+}
+
 @media (max-width: 1080px) {
   .admin-command-metrics,
   .admin-health-grid,
@@ -7708,6 +7778,10 @@ select:hover,
   .admin-grid,
   .admin-fact-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-health-card-wide {
+    grid-column: span 1;
   }
 }
 

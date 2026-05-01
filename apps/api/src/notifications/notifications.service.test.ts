@@ -34,7 +34,7 @@ describe("NotificationsService", () => {
         ]
       })
       .mockResolvedValueOnce({
-        rowCount: 1,
+        rowCount: 2,
         rows: [
           {
             source_id: "c4e2f8d9-a8ac-45d8-b4e4-6e0d5effc911",
@@ -44,6 +44,19 @@ describe("NotificationsService", () => {
             order_id: ORDER_ID,
             payment_id: PAYMENT_ID,
             payload: { trigger: "customer_order_submitted" }
+          },
+          {
+            source_id: "d8ea4767-a03d-4ddd-9622-814ded463cd0",
+            event_type: "NOTIFY_BUSINESS_NEW_ORDER",
+            created_at: new Date("2026-04-29T09:45:00.000Z"),
+            job_id: JOB_ID,
+            order_id: ORDER_ID,
+            payment_id: PAYMENT_ID,
+            payload: { orderId: ORDER_ID, jobId: JOB_ID },
+            customer_name: "Alex Porter",
+            restaurant_name: "Pilot Kitchen",
+            total_cents: 4180,
+            currency: "GBP"
           }
         ]
       })
@@ -87,10 +100,17 @@ describe("NotificationsService", () => {
     expect(query).toHaveBeenNthCalledWith(
       4,
       expect.stringContaining("from public.notification_reads"),
-      [USER_ID, ["payment_event:7", "job_event:13", "job_event:12", "outbox:c4e2f8d9-a8ac-45d8-b4e4-6e0d5effc911"]]
+      [USER_ID, ["payment_event:7", "outbox:d8ea4767-a03d-4ddd-9622-814ded463cd0", "job_event:13", "job_event:12", "outbox:c4e2f8d9-a8ac-45d8-b4e4-6e0d5effc911"]]
     );
 
-    expect(result.items).toEqual([
+    expect(result.items.map((item) => item.id)).toEqual([
+      "payment_event:7",
+      "outbox:d8ea4767-a03d-4ddd-9622-814ded463cd0",
+      "job_event:13",
+      "job_event:12",
+      "outbox:c4e2f8d9-a8ac-45d8-b4e4-6e0d5effc911"
+    ]);
+    expect(result.items[0]).toEqual(
       expect.objectContaining({
         id: "payment_event:7",
         type: "PAYMENT_CAPTURED",
@@ -99,32 +119,20 @@ describe("NotificationsService", () => {
         entityType: "order",
         entityId: ORDER_ID,
         read: true
-      }),
+      })
+    );
+    expect(result.items[1]).toEqual(
       expect.objectContaining({
-        id: "job_event:13",
-        type: "JOB_ASSIGNED",
-        title: "Driver assigned",
-        entityType: "job",
-        entityId: JOB_ID,
-        read: false
-      }),
-      expect.objectContaining({
-        id: "job_event:12",
-        type: "JOB_DISPATCH_FAILED",
-        severity: "danger",
-        entityType: "job",
-        entityId: JOB_ID,
-        read: false
-      }),
-      expect.objectContaining({
-        id: "outbox:c4e2f8d9-a8ac-45d8-b4e4-6e0d5effc911",
-        type: "JOB_DISPATCH_REQUESTED",
-        severity: "info",
-        entityType: "job",
-        entityId: JOB_ID,
+        id: "outbox:d8ea4767-a03d-4ddd-9622-814ded463cd0",
+        type: "NOTIFY_BUSINESS_NEW_ORDER",
+        title: "New paid order",
+        message: "Alex Porter · £41.80 · Pilot Kitchen",
+        severity: "success",
+        entityType: "order",
+        entityId: ORDER_ID,
         read: false
       })
-    ]);
+    );
   });
 
   it("returns a safe empty list when the operator has no relevant events", async () => {

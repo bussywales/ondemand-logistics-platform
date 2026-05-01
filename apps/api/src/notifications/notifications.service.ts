@@ -21,6 +21,10 @@ type NotificationEventRow = {
   order_id: string | null;
   payment_id: string | null;
   payload: Record<string, unknown> | null;
+  customer_name?: string | null;
+  restaurant_name?: string | null;
+  total_cents?: number | null;
+  currency?: string | null;
 };
 
 type NotificationReadRow = {
@@ -49,7 +53,7 @@ const JOB_NOTIFICATION_EVENTS = [
   "JOB_CANCELLED"
 ] as const;
 
-const OUTBOX_NOTIFICATION_EVENTS = ["JOB_DISPATCH_REQUESTED", "PAYMENT_CAPTURE_REQUESTED"] as const;
+const OUTBOX_NOTIFICATION_EVENTS = ["JOB_DISPATCH_REQUESTED", "PAYMENT_CAPTURE_REQUESTED", "NOTIFY_BUSINESS_NEW_ORDER"] as const;
 const PAYMENT_NOTIFICATION_EVENTS = ["PAYMENT_AUTHORIZED", "PAYMENT_AUTHORIZATION_FAILED", "PAYMENT_CAPTURED"] as const;
 
 function humanizeEventType(value: string) {
@@ -160,6 +164,17 @@ function mapNotificationCopy(
         message: "A customer order entered operations and is ready for delivery fulfilment.",
         severity: "info"
       };
+    case "NOTIFY_BUSINESS_NEW_ORDER": {
+      const customerName = payloadString(payload, "customerName");
+      const restaurantName = payloadString(payload, "restaurantName");
+      const formattedTotal = payloadString(payload, "formattedTotal");
+
+      return {
+        title: "New paid order",
+        message: [customerName, formattedTotal, restaurantName].filter(Boolean).join(" · ") || "A paid customer order is ready for fulfilment.",
+        severity: "success"
+      };
+    }
     case "PAYMENT_AUTHORIZED":
       return {
         title: "Payment authorized",
@@ -194,7 +209,12 @@ function mapNotificationCopy(
 }
 
 function resolveEntity(row: NotificationEventRow): { entityId: string; entityType: BusinessNotificationEntityType } {
-  if ((row.event_type.startsWith("PAYMENT_") || row.event_type === "CUSTOMER_ORDER_SUBMITTED") && row.order_id) {
+  if (
+    (row.event_type.startsWith("PAYMENT_") ||
+      row.event_type === "CUSTOMER_ORDER_SUBMITTED" ||
+      row.event_type === "NOTIFY_BUSINESS_NEW_ORDER") &&
+    row.order_id
+  ) {
     return {
       entityType: "order",
       entityId: row.order_id
@@ -356,19 +376,27 @@ export class NotificationsService {
       `select om.id::text as source_id,
               om.event_type,
               om.created_at,
-              j.id as job_id,
+              coalesce(job_from_order.id, direct_job.id) as job_id,
               co.id as order_id,
               co.payment_id,
-              om.payload
+              om.payload,
+              co.customer_name,
+              r.name as restaurant_name,
+              co.total_cents,
+              co.currency
        from public.outbox_messages om
-       join public.jobs j
+       left join public.jobs direct_job
          on om.aggregate_type = 'job'
-        and om.aggregate_id = j.id
-       left join public.customer_orders co on co.job_id = j.id
+        and om.aggregate_id = direct_job.id
+       left join public.customer_orders co
+         on (om.aggregate_type = 'customer_order' and om.aggregate_id = co.id)
+         or co.job_id = direct_job.id
+       left join public.jobs job_from_order on job_from_order.id = co.job_id
+       left join public.restaurants r on r.id = co.restaurant_id
        where exists (
          select 1
          from public.org_memberships m
-         where m.org_id = j.org_id
+         where m.org_id = coalesce(job_from_order.org_id, direct_job.org_id)
            and m.user_id = $1
            and m.is_active = true
            and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
@@ -469,9 +497,13 @@ export class NotificationsService {
       const result = await this.pg.query(
         `select 1
          from public.outbox_messages om
-         join public.jobs j
+         left join public.jobs direct_job
            on om.aggregate_type = 'job'
-          and om.aggregate_id = j.id
+          and om.aggregate_id = direct_job.id
+         left join public.customer_orders co
+           on om.aggregate_type = 'customer_order'
+          and om.aggregate_id = co.id
+         left join public.jobs j on j.id = coalesce(direct_job.id, co.job_id)
          where om.id::text = $2
            and om.event_type = any($3::text[])
            and exists (
@@ -513,7 +545,19 @@ export class NotificationsService {
 
   private mapNotification(source: NotificationSource, row: NotificationEventRow): BusinessNotificationDto {
     const entity = resolveEntity(row);
-    const copy = mapNotificationCopy(row.event_type, row.payload);
+    const copy = mapNotificationCopy(row.event_type, {
+      ...(row.payload ?? {}),
+      ...(row.customer_name ? { customerName: row.customer_name } : {}),
+      ...(row.restaurant_name ? { restaurantName: row.restaurant_name } : {}),
+      ...(typeof row.total_cents === "number"
+        ? {
+            formattedTotal: new Intl.NumberFormat("en-GB", {
+              style: "currency",
+              currency: (row.currency ?? "GBP").toUpperCase()
+            }).format(row.total_cents / 100)
+          }
+        : {})
+    });
 
     return {
       id: `${source}:${row.source_id}`,

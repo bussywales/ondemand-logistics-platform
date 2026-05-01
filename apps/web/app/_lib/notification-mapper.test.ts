@@ -39,6 +39,26 @@ describe("notification mapper", () => {
     ).toBe("/app/orders/3ed1057d-4416-4eee-b05d-8501ce691d59");
   });
 
+  it("maps business new order notifications to order-focused copy", () => {
+    const mapped = mapNotification(
+      {
+        ...baseNotification,
+        id: "outbox:123",
+        type: "NOTIFY_BUSINESS_NEW_ORDER",
+        title: "New paid order",
+        message: "Alex Porter · £41.80 · Pilot Kitchen",
+        severity: "success",
+        entityType: "order",
+        entityId: "3ed1057d-4416-4eee-b05d-8501ce691d59"
+      },
+      new Date("2026-04-29T09:05:00.000Z")
+    );
+
+    expect(mapped.title).toBe("New paid order");
+    expect(mapped.message).toBe("Alex Porter · £41.80 · Pilot Kitchen");
+    expect(mapped.href).toBe("/app/orders/3ed1057d-4416-4eee-b05d-8501ce691d59");
+  });
+
   it("groups notifications into today and earlier buckets", () => {
     const groups = groupNotificationsByDate(
       [

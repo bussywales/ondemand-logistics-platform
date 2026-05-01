@@ -2,6 +2,7 @@ import type { AdminInterventionItem, AdminOverview, AdminOutboxItem, BusinessSes
 
 export type AdminInterventionFilter = "all" | "dispatch" | "payment" | "notification" | "stuck";
 export type AdminOutboxFilter = "all" | "failed" | "retrying" | "skipped" | "processed_recent";
+export type AdminSection = "interventions" | "jobs" | "orders" | "outbox" | "health";
 export type AdminProofSummary = {
   fileName: string;
   timestamp: string;
@@ -134,6 +135,14 @@ export function filterAdminOutbox(items: AdminOutboxItem[], filter: AdminOutboxF
   }
 
   return items.filter((item) => getOutboxBucket(item) === filter);
+}
+
+export function limitAdminInterventions(
+  items: AdminInterventionItem[],
+  expanded: boolean,
+  limit = 5
+) {
+  return expanded ? items : items.slice(0, limit);
 }
 
 export function summarizeInterventionDetail(item: AdminInterventionItem) {
