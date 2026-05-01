@@ -20,12 +20,21 @@ This is the operator path for declaring a staging Shipwright release healthy.
 Use the single operator command below after the deploy is live.
 
 ```bash
-cp .env.smoke.example .env.smoke
-set -a
-source .env.smoke
-set +a
 pnpm release:verify-staging
 ```
+
+`pnpm release:verify-staging` now auto-loads `/Users/olubusayoadewale/Coding Projects/shipwright/.env.smoke` when that file exists.
+
+Required vs optional env:
+- required:
+  - `SMOKE_API_BASE_URL`
+- optional:
+  - `DATABASE_URL` for direct DB schema sanity checks
+  - `SMOKE_BUSINESS_BEARER_TOKEN`
+  - `SMOKE_DRIVER_BEARER_TOKEN`
+  - `SMOKE_ADMIN_BEARER_TOKEN`
+
+If `.env.smoke` is absent or `SMOKE_API_BASE_URL` is still missing, the command fails with an actionable message telling the operator to create `.env.smoke` or export the base URL first.
 
 The command runs the release-critical verification sequence in order:
 1. `GET /healthz`
@@ -49,6 +58,12 @@ The command runs the release-critical verification sequence in order:
 8. proof artifact write to `docs/proofs/release-verify-<timestamp>.json`
 9. release decision
 
+If only `SMOKE_API_BASE_URL` is present:
+- `GET /healthz` runs
+- `GET /readyz` runs
+- direct DB schema sanity is skipped with a clear reason if `DATABASE_URL` is absent
+- authenticated business, driver, and admin checks are skipped if their bearer tokens are absent
+
 For Stage 1 paid-delivery proof, run the deeper loop verification after this command passes:
 
 ```bash
@@ -65,7 +80,8 @@ The proof writes a timestamped artifact to `docs/proofs/paid-delivery-<timestamp
 ## 4) Required Pass Conditions
 - `GET /healthz` returns `200`
 - `GET /readyz` returns `200`
-- authenticated business smoke passes
+- direct DB schema sanity passes when `DATABASE_URL` is set
+- authenticated business smoke passes when `SMOKE_BUSINESS_BEARER_TOKEN` is set
 - if `SMOKE_DRIVER_BEARER_TOKEN` is set, driver offers smoke must also pass
 - release is not healthy if any required check fails
 

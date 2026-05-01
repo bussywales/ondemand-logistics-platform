@@ -10,6 +10,7 @@ import {
   runCheck,
   type CheckResult
 } from "./smoke-staging.ts";
+import { loadEnvFileIfPresent } from "./env-loader.ts";
 import { getGitCommit, writeProofArtifact } from "./proof-artifacts.ts";
 import { runReleaseSchemaCheck } from "./release-schema-check.ts";
 
@@ -35,10 +36,15 @@ type VerificationArtifact = {
     driverOffers: CheckResult | { skipped: true; reason: string };
     adminOverview: CheckResult | { skipped: true; reason: string };
   };
-  schema: {
-    ok: boolean;
-    items: Array<{ name: string; ok: boolean; detail: string }>;
-  };
+  schema:
+    | {
+        ok: boolean;
+        items: Array<{ name: string; ok: boolean; detail: string }>;
+      }
+    | {
+        skipped: true;
+        reason: string;
+      };
   externalNotifications: {
     status: "sent_recently" | "provider_unavailable" | "no_recent_signal";
     detail: string;
@@ -120,12 +126,33 @@ async function runAuthenticatedCheck(
 }
 
 async function main() {
+  const envLoad = loadEnvFileIfPresent("../../.env.smoke");
   const timestamp = new Date().toISOString();
-  const apiBaseUrl = normaliseBaseUrl(getRequiredEnv("SMOKE_API_BASE_URL"));
-  const databaseUrl = getRequiredEnv("DATABASE_URL");
+  let apiBaseUrl: string;
+
+  try {
+    apiBaseUrl = normaliseBaseUrl(getRequiredEnv("SMOKE_API_BASE_URL"));
+  } catch {
+    const hint = envLoad.found
+      ? `Loaded ${envLoad.path}, but SMOKE_API_BASE_URL is still missing.`
+      : `.env.smoke was not found at ${envLoad.path}.`;
+    throw new Error(
+      `SMOKE_API_BASE_URL is missing.\n${hint}\nCreate .env.smoke or export it before running release verification.`
+    );
+  }
+
+  const databaseUrl = getOptionalEnv("DATABASE_URL");
   const businessToken = getOptionalEnv("SMOKE_BUSINESS_BEARER_TOKEN");
   const driverToken = getOptionalEnv("SMOKE_DRIVER_BEARER_TOKEN");
   const adminToken = getOptionalEnv("SMOKE_ADMIN_BEARER_TOKEN");
+
+  if (envLoad.found) {
+    console.log(
+      `INFO verify:staging | loaded ${envLoad.path}${envLoad.loadedKeys.length > 0 ? ` | keys=${envLoad.loadedKeys.join(",")}` : " | env_preloaded"}`
+    );
+  } else {
+    console.log(`INFO verify:staging | .env.smoke not found at ${envLoad.path} | relying on exported env`);
+  }
 
   console.log("STEP 1 | readiness | checking /healthz and /readyz");
   const healthz = await runCheck("GET /healthz", `${apiBaseUrl}/healthz`, { method: "GET" });
@@ -144,16 +171,30 @@ async function main() {
   }
 
   console.log("STEP 2 | schema | checking release-critical tables and customer order status support");
-  const client = new Client(createPgConfig(databaseUrl));
-  await client.connect();
+  const client = databaseUrl ? new Client(createPgConfig(databaseUrl)) : null;
+  if (client) {
+    await client.connect();
+  } else {
+    logSkip("schema", "DATABASE_URL not set; relying on /readyz for schema readiness");
+  }
 
   try {
-    const schema = await runReleaseSchemaCheck(client);
-    for (const item of schema.items) {
-      if (item.ok) {
-        console.log(`PASS schema | ${item.name} | ${item.detail}`);
-      } else {
-        console.error(`FAIL schema | ${item.name} | ${item.detail}`);
+    const schema = client
+      ? await runReleaseSchemaCheck(client)
+      : {
+          skipped: true as const,
+          reason: "database_url_not_set"
+        };
+
+    if ("skipped" in schema) {
+      logSkip("schema", "DATABASE_URL not set; direct schema sanity check skipped");
+    } else {
+      for (const item of schema.items) {
+        if (item.ok) {
+          console.log(`PASS schema | ${item.name} | ${item.detail}`);
+        } else {
+          console.error(`FAIL schema | ${item.name} | ${item.detail}`);
+        }
       }
     }
 
@@ -216,7 +257,7 @@ async function main() {
     const requiredPass =
       healthz.ok &&
       readyz.ok &&
-      schema.ok &&
+      ("skipped" in schema || schema.ok) &&
       (!businessToken || (isRequiredCheckOk(businessRestaurants) && isRequiredCheckOk(businessJobs))) &&
       (!driverToken || isRequiredCheckOk(driverOffers)) &&
       (!adminToken || isRequiredCheckOk(adminOverview));
@@ -229,7 +270,9 @@ async function main() {
     console.log("PASS verify:staging | staging is healthy for release");
     console.log("NEXT paid-delivery proof | pnpm proof:staging-paid-delivery");
   } finally {
-    await client.end();
+    if (client) {
+      await client.end();
+    }
   }
 }
 

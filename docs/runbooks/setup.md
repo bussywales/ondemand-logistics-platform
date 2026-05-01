@@ -213,12 +213,25 @@ This writes a timestamped proof archive file to:
 2.1 Run the release verification command before wider demos or stakeholder walkthroughs:
 
 ```bash
-cp .env.smoke.example .env.smoke
-set -a
-source .env.smoke
-set +a
 pnpm release:verify-staging
 ```
+
+The command auto-loads `/Users/olubusayoadewale/Coding Projects/shipwright/.env.smoke` if the file exists.
+
+Required env:
+- `SMOKE_API_BASE_URL`
+
+Optional env:
+- `DATABASE_URL` for direct DB schema sanity checks
+- `SMOKE_BUSINESS_BEARER_TOKEN`
+- `SMOKE_DRIVER_BEARER_TOKEN`
+- `SMOKE_ADMIN_BEARER_TOKEN`
+
+Behavior:
+- with only `SMOKE_API_BASE_URL`, the command runs `/healthz` and `/readyz`
+- if `DATABASE_URL` is missing, direct DB schema sanity is skipped with a clear reason
+- if bearer tokens are missing, authenticated business, driver, and admin smoke checks are skipped with clear reasons
+- if `SMOKE_API_BASE_URL` is still missing after auto-loading `.env.smoke`, the command fails with an actionable message
 
 This writes:
 - `docs/proofs/release-verify-<timestamp>.json`
