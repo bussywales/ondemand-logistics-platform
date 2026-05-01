@@ -1,4 +1,5 @@
 import { type Client } from "pg";
+import { POST_0011_RELEASE_CRITICAL_TABLES } from "../src/database/schema-readiness.service.js";
 
 export type SchemaCheckItem = {
   name: string;
@@ -47,8 +48,6 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
   const items: SchemaCheckItem[] = [];
 
   for (const [schema, table] of [
-    ["public", "platform_admins"],
-    ["public", "notification_reads"],
     ["public", "payments"],
     ["public", "jobs"],
     ["public", "outbox_messages"],
@@ -57,6 +56,15 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     const exists = await tableExists(client, schema, table);
     items.push({
       name: `${schema}.${table}`,
+      ok: exists,
+      detail: exists ? "table_present" : "table_missing"
+    });
+  }
+
+  for (const table of POST_0011_RELEASE_CRITICAL_TABLES) {
+    const exists = await tableExists(client, "public", table);
+    items.push({
+      name: `public.${table}`,
       ok: exists,
       detail: exists ? "table_present" : "table_missing"
     });

@@ -174,6 +174,12 @@ type SchemaColumnRow = {
   column_name: string;
 };
 
+type ConstraintDefinitionRow = {
+  definition: string;
+};
+
+const POST_0011_RELEASE_CRITICAL_TABLES = ["notification_reads", "platform_admins"] as const;
+
 export class SchemaCompatibilityError extends Error {
   readonly missingElements: string[];
 
@@ -213,6 +219,22 @@ function collectMissingSchemaElements(
   return missing;
 }
 
+async function customerOrdersSupportsFulfilled(pg: Pick<PgService, "query">) {
+  const result = await pg.query<ConstraintDefinitionRow>(
+    `select pg_get_constraintdef(c.oid) as definition
+     from pg_constraint c
+     join pg_class t on t.oid = c.conrelid
+     join pg_namespace n on n.oid = t.relnamespace
+     where n.nspname = 'public'
+       and t.relname = 'customer_orders'
+       and c.conname = 'customer_orders_status_check'
+     limit 1`
+  );
+
+  const definition = result.rows[0]?.definition ?? "";
+  return definition.includes("'FULFILLED'");
+}
+
 @Injectable()
 export class SchemaReadinessService {
   constructor(private readonly pg: PgService) {}
@@ -247,10 +269,24 @@ export class SchemaReadinessService {
     }
 
     const missingElements = collectMissingSchemaElements(tables, columnsByTable);
+
+    for (const tableName of POST_0011_RELEASE_CRITICAL_TABLES) {
+      if (!tables.has(tableName)) {
+        missingElements.push(`public.${tableName} (table missing)`);
+      }
+    }
+
+    if (tables.has("customer_orders")) {
+      const supportsFulfilled = await customerOrdersSupportsFulfilled(this.pg);
+      if (!supportsFulfilled) {
+        missingElements.push("public.customer_orders.status missing FULFILLED");
+      }
+    }
+
     if (missingElements.length > 0) {
       throw new SchemaCompatibilityError(missingElements);
     }
   }
 }
 
-export { CRITICAL_SCHEMA_REQUIREMENTS };
+export { CRITICAL_SCHEMA_REQUIREMENTS, POST_0011_RELEASE_CRITICAL_TABLES };

@@ -4,8 +4,10 @@ This is the operator path for declaring a staging Shipwright release healthy.
 
 ## 1) Apply Migrations First
 - Apply the required staging SQL migrations before deploy.
+- Migration application is part of release gating, not an optional post-deploy cleanup step.
 - Do not start verification against a deploy that points at a stale database schema.
 - If `/readyz` reports `schema_compatibility_not_ready`, treat that as a migration or schema drift issue and stop the release.
+- If `pnpm release:verify-staging` reports any missing release-critical table or status constraint, the release is failed until the missing migrations are applied.
 
 ## 2) Deploy
 - Trigger the staging deploy.
@@ -77,6 +79,11 @@ The proof writes a timestamped artifact to `docs/proofs/paid-delivery-<timestamp
   - jobs and tracking
   - driver offers / dispatch reads
   - payments
+  - customer orders
+  - release-critical support tables added after `0011`:
+    - `public.notification_reads`
+    - `public.platform_admins`
+  - `customer_orders.status` supports `FULFILLED`
 
 If required tables or columns are missing, `/readyz` returns `503` with:
 
