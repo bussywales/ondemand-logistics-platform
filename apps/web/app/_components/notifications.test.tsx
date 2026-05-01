@@ -26,6 +26,17 @@ const notifications: BusinessNotification[] = [
     entityId: "14f99ff2-df87-4f8b-aa10-8aef6d675fd4",
     createdAt: "2026-04-29T10:00:00.000Z",
     read: true
+  },
+  {
+    id: "outbox:business-order-1",
+    type: "NOTIFY_BUSINESS_NEW_ORDER",
+    title: "New paid order",
+    message: "Alex Porter · £41.80 · Pilot Kitchen",
+    severity: "success",
+    entityType: "order",
+    entityId: "3ed1057d-4416-4eee-b05d-8501ce691d59",
+    createdAt: "2026-04-29T10:05:00.000Z",
+    read: false
   }
 ];
 
@@ -42,6 +53,9 @@ describe("NotificationFeed", () => {
     expect(markup).toContain("Dispatch failed");
     expect(markup).toContain("No eligible driver accepted the job. It needs review.");
     expect(markup).toContain("/app/jobs/04f99ff2-df87-4f8b-aa10-8aef6d675fd4");
+    expect(markup).toContain("New paid order");
+    expect(markup).toContain("Alex Porter · £41.80 · Pilot Kitchen");
+    expect(markup).toContain("/app/orders/3ed1057d-4416-4eee-b05d-8501ce691d59");
     expect(markup).toContain("notifications-item-unread");
     expect(markup).toContain("notifications-item-read");
   });
