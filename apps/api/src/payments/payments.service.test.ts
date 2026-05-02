@@ -289,4 +289,86 @@ describe("PaymentsService", () => {
     expect(summary.payoutLedger?.createdAt).toBe(createdAt.toISOString());
     expect(summary.payoutLedger?.updatedAt).toBe(updatedAt.toISOString());
   });
+
+  it("lists business payment visibility rows", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [
+          {
+            id: PAYMENT_ID,
+            order_id: "11111111-1111-4111-8111-111111111111",
+            job_id: JOB_ID,
+            restaurant_id: "22222222-2222-4222-8222-222222222222",
+            restaurant_name: "Pilot Kitchen",
+            restaurant_slug: "pilot-kitchen",
+            customer_name: "Ada Customer",
+            order_status: "COMPLETED",
+            job_status: "DELIVERED",
+            payment_status: "CAPTURED",
+            customer_total_cents: 1886,
+            amount_authorized_cents: 1886,
+            amount_captured_cents: 1886,
+            amount_refunded_cents: 0,
+            currency: "gbp",
+            platform_fee_cents: 500,
+            payout_gross_cents: 1386,
+            payout_status: "READY",
+            payout_hold_reason: null,
+            created_at: new Date("2026-05-02T09:00:00.000Z"),
+            updated_at: new Date("2026-05-02T09:30:00.000Z")
+          }
+        ]
+      })
+    };
+
+    const service = new PaymentsService(pg as never, providerStub() as never);
+    const payments = await service.listBusinessPayments(USER_ID);
+
+    expect(payments[0]?.orderStatus).toBe("FULFILLED");
+    expect(payments[0]?.payoutStatus).toBe("READY");
+    expect(payments[0]?.restaurant.slug).toBe("pilot-kitchen");
+  });
+
+  it("lists admin payment visibility rows across orgs", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [
+          {
+            id: PAYMENT_ID,
+            org_id: "33333333-3333-4333-8333-333333333333",
+            org_name: "Pilot Org",
+            order_id: "44444444-4444-4444-8444-444444444444",
+            job_id: JOB_ID,
+            restaurant_id: "55555555-5555-4555-8555-555555555555",
+            restaurant_name: "Pilot Kitchen",
+            restaurant_slug: "pilot-kitchen",
+            customer_name: "Ada Customer",
+            order_status: "PAYMENT_AUTHORIZED",
+            job_status: "REQUESTED",
+            payment_status: "AUTHORIZED",
+            customer_total_cents: 1886,
+            amount_authorized_cents: 1886,
+            amount_captured_cents: 0,
+            amount_refunded_cents: 0,
+            currency: "gbp",
+            platform_fee_cents: 500,
+            payout_gross_cents: 1386,
+            payout_status: null,
+            payout_hold_reason: "Banking check pending",
+            created_at: new Date("2026-05-02T09:00:00.000Z"),
+            updated_at: new Date("2026-05-02T09:30:00.000Z")
+          }
+        ]
+      })
+    };
+
+    const service = new PaymentsService(pg as never, providerStub() as never);
+    const payments = await service.listAdminPayments();
+
+    expect(payments[0]?.orgName).toBe("Pilot Org");
+    expect(payments[0]?.payoutHoldReason).toBe("Banking check pending");
+    expect(payments[0]?.paymentStatus).toBe("AUTHORIZED");
+  });
 });

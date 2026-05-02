@@ -848,6 +848,70 @@ export type RefundStatus = z.infer<typeof RefundStatusSchema>;
 export const PayoutLedgerStatusSchema = z.enum(["PENDING", "READY", "PAID", "FAILED", "CANCELLED"]);
 export type PayoutLedgerStatus = z.infer<typeof PayoutLedgerStatusSchema>;
 
+export const BusinessPaymentSummarySchema = z.object({
+  id: z.string().uuid(),
+  orderId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  restaurant: z.object({
+    id: z.string().uuid(),
+    name: z.string().min(2),
+    slug: RestaurantSlugSchema
+  }),
+  customerName: z.string().min(2),
+  orderStatus: CustomerOrderStatusSchema,
+  jobStatus: JobStatusSchema,
+  paymentStatus: PaymentStatusSchema,
+  customerTotalCents: CurrencyAmountSchema,
+  amountAuthorizedCents: CurrencyAmountSchema,
+  amountCapturedCents: CurrencyAmountSchema,
+  amountRefundedCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  platformFeeCents: CurrencyAmountSchema,
+  payoutGrossCents: CurrencyAmountSchema,
+  payoutStatus: PayoutLedgerStatusSchema.nullable(),
+  payoutHoldReason: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type BusinessPaymentSummaryDto = z.infer<typeof BusinessPaymentSummarySchema>;
+
+export const BusinessPaymentListSchema = z.object({
+  items: z.array(BusinessPaymentSummarySchema)
+});
+export type BusinessPaymentListDto = z.infer<typeof BusinessPaymentListSchema>;
+
+export const AdminPaymentSummarySchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  orgName: z.string().min(2),
+  restaurantId: z.string().uuid(),
+  restaurantName: z.string().min(2),
+  restaurantSlug: RestaurantSlugSchema,
+  orderId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  customerName: z.string().min(2),
+  orderStatus: CustomerOrderStatusSchema,
+  jobStatus: JobStatusSchema,
+  paymentStatus: PaymentStatusSchema,
+  customerTotalCents: CurrencyAmountSchema,
+  amountAuthorizedCents: CurrencyAmountSchema,
+  amountCapturedCents: CurrencyAmountSchema,
+  amountRefundedCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  platformFeeCents: CurrencyAmountSchema,
+  payoutGrossCents: CurrencyAmountSchema,
+  payoutStatus: PayoutLedgerStatusSchema.nullable(),
+  payoutHoldReason: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type AdminPaymentSummaryDto = z.infer<typeof AdminPaymentSummarySchema>;
+
+export const AdminPaymentListSchema = z.object({
+  items: z.array(AdminPaymentSummarySchema)
+});
+export type AdminPaymentListDto = z.infer<typeof AdminPaymentListSchema>;
+
 export const PaymentSchema = z.object({
   id: z.string().uuid(),
   jobId: z.string().uuid(),

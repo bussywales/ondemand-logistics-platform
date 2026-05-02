@@ -5,11 +5,12 @@ import { AdminWorkspaceLink, WorkspaceNav } from "./workspace-nav";
 
 describe("WorkspaceNav", () => {
   it("shows the admin control plane link for platform admins", () => {
-    const markup = renderToStaticMarkup(<WorkspaceNav active="operations" platformAdmin />);
+    const markup = renderToStaticMarkup(<WorkspaceNav active="payments" platformAdmin />);
 
     expect(markup).toContain("Admin Control Plane");
     expect(markup).toContain("href=\"/admin\"");
-    expect(markup).toContain("Operations");
+    expect(markup).toContain("Payments");
+    expect(markup).toContain("href=\"/app/payments\"");
   });
 
   it("hides the admin control plane link for non-admin users", () => {

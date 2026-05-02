@@ -11,11 +11,15 @@ import {
 import { randomUUID } from "node:crypto";
 import {
   AuthorizeJobPaymentSchema,
+  BusinessPaymentListSchema,
+  AdminPaymentListSchema,
   JobPaymentSummarySchema,
   PaymentSchema,
   RefundSchema,
   PayoutLedgerSchema,
   StripeWebhookAckSchema,
+  type BusinessPaymentSummaryDto,
+  type AdminPaymentSummaryDto,
   type JobPaymentSummaryDto,
   type PaymentDto,
   type StripeWebhookAck
@@ -100,6 +104,35 @@ type PayoutLedgerRow = {
   released_at: string | Date | null;
   created_at: string | Date;
   updated_at: string | Date;
+};
+
+type BusinessPaymentSummaryRow = {
+  id: string;
+  order_id: string;
+  job_id: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  restaurant_slug: string;
+  customer_name: string;
+  order_status: string;
+  job_status: string;
+  payment_status: InternalPaymentStatus;
+  customer_total_cents: number;
+  amount_authorized_cents: number;
+  amount_captured_cents: number;
+  amount_refunded_cents: number;
+  currency: string;
+  platform_fee_cents: number;
+  payout_gross_cents: number;
+  payout_status: PayoutLedgerRow["status"] | null;
+  payout_hold_reason: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
+type AdminPaymentSummaryRow = BusinessPaymentSummaryRow & {
+  org_id: string;
+  org_name: string;
 };
 
 const PAYMENT_COLUMNS = `p.id, p.job_id, p.provider, p.provider_payment_intent_id, p.status,
@@ -339,6 +372,94 @@ export class PaymentsService {
       refunds: refunds.rows.map((row) => this.mapRefund(row)),
       payoutLedger: payout.rows[0] ? this.mapPayoutLedger(payout.rows[0]) : null
     });
+  }
+
+  async listBusinessPayments(userId: string) {
+    const result = await this.pg.query<BusinessPaymentSummaryRow>(
+      `select
+          p.id,
+          o.id as order_id,
+          j.id as job_id,
+          r.id as restaurant_id,
+          r.name as restaurant_name,
+          r.slug as restaurant_slug,
+          o.customer_name,
+          o.status::text as order_status,
+          j.status::text as job_status,
+          p.status as payment_status,
+          p.customer_total_cents,
+          p.amount_authorized_cents,
+          p.amount_captured_cents,
+          p.amount_refunded_cents,
+          p.currency,
+          p.platform_fee_cents,
+          p.payout_gross_cents,
+          pl.status as payout_status,
+          pl.hold_reason as payout_hold_reason,
+          p.created_at,
+          p.updated_at
+       from public.customer_orders o
+       join public.restaurants r on r.id = o.restaurant_id
+       join public.jobs j on j.id = o.job_id
+       join public.payments p on p.id = o.payment_id
+       left join public.payout_ledger pl on pl.job_id = j.id
+       where exists (
+         select 1
+         from public.org_memberships m
+         where m.org_id = o.org_id
+           and m.user_id = $1
+           and m.is_active = true
+           and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+       )
+       order by p.updated_at desc
+       limit 50`,
+      [userId]
+    );
+
+    return BusinessPaymentListSchema.parse({
+      items: result.rows.map((row) => this.mapBusinessPaymentSummary(row))
+    }).items;
+  }
+
+  async listAdminPayments() {
+    const result = await this.pg.query<AdminPaymentSummaryRow>(
+      `select
+          p.id,
+          o.org_id,
+          org.name as org_name,
+          o.id as order_id,
+          j.id as job_id,
+          r.id as restaurant_id,
+          r.name as restaurant_name,
+          r.slug as restaurant_slug,
+          o.customer_name,
+          o.status::text as order_status,
+          j.status::text as job_status,
+          p.status as payment_status,
+          p.customer_total_cents,
+          p.amount_authorized_cents,
+          p.amount_captured_cents,
+          p.amount_refunded_cents,
+          p.currency,
+          p.platform_fee_cents,
+          p.payout_gross_cents,
+          pl.status as payout_status,
+          pl.hold_reason as payout_hold_reason,
+          p.created_at,
+          p.updated_at
+       from public.customer_orders o
+       join public.orgs org on org.id = o.org_id
+       join public.restaurants r on r.id = o.restaurant_id
+       join public.jobs j on j.id = o.job_id
+       join public.payments p on p.id = o.payment_id
+       left join public.payout_ledger pl on pl.job_id = j.id
+       order by p.updated_at desc
+       limit 50`
+    );
+
+    return AdminPaymentListSchema.parse({
+      items: result.rows.map((row) => this.mapAdminPaymentSummary(row))
+    }).items;
   }
 
   async authorizeJobPayment(jobId: string, input: unknown, userId: string, idempotencyKey: string) {
@@ -943,5 +1064,65 @@ export class PaymentsService {
         input.nextAttemptAt ?? null
       ]
     );
+  }
+
+  private normalizeOrderStatus(status: string) {
+    return status === "COMPLETED" ? "FULFILLED" : status;
+  }
+
+  private mapBusinessPaymentSummary(row: BusinessPaymentSummaryRow): BusinessPaymentSummaryDto {
+    return {
+      id: row.id,
+      orderId: row.order_id,
+      jobId: row.job_id,
+      restaurant: {
+        id: row.restaurant_id,
+        name: row.restaurant_name,
+        slug: row.restaurant_slug
+      },
+      customerName: row.customer_name,
+      orderStatus: this.normalizeOrderStatus(row.order_status) as BusinessPaymentSummaryDto["orderStatus"],
+      jobStatus: row.job_status as BusinessPaymentSummaryDto["jobStatus"],
+      paymentStatus: row.payment_status as BusinessPaymentSummaryDto["paymentStatus"],
+      customerTotalCents: row.customer_total_cents,
+      amountAuthorizedCents: row.amount_authorized_cents,
+      amountCapturedCents: row.amount_captured_cents,
+      amountRefundedCents: row.amount_refunded_cents,
+      currency: row.currency.toUpperCase(),
+      platformFeeCents: row.platform_fee_cents,
+      payoutGrossCents: row.payout_gross_cents,
+      payoutStatus: row.payout_status,
+      payoutHoldReason: row.payout_hold_reason,
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
+    };
+  }
+
+  private mapAdminPaymentSummary(row: AdminPaymentSummaryRow): AdminPaymentSummaryDto {
+    return {
+      id: row.id,
+      orgId: row.org_id,
+      orgName: row.org_name,
+      restaurantId: row.restaurant_id,
+      restaurantName: row.restaurant_name,
+      restaurantSlug: row.restaurant_slug,
+      orderId: row.order_id,
+      jobId: row.job_id,
+      customerName: row.customer_name,
+      orderStatus: this.normalizeOrderStatus(row.order_status) as AdminPaymentSummaryDto["orderStatus"],
+      jobStatus: row.job_status as AdminPaymentSummaryDto["jobStatus"],
+      paymentStatus: row.payment_status as AdminPaymentSummaryDto["paymentStatus"],
+      customerTotalCents: row.customer_total_cents,
+      amountAuthorizedCents: row.amount_authorized_cents,
+      amountCapturedCents: row.amount_captured_cents,
+      amountRefundedCents: row.amount_refunded_cents,
+      currency: row.currency.toUpperCase(),
+      platformFeeCents: row.platform_fee_cents,
+      payoutGrossCents: row.payout_gross_cents,
+      payoutStatus: row.payout_status,
+      payoutHoldReason: row.payout_hold_reason,
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
+    };
   }
 }

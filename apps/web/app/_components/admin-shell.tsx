@@ -8,8 +8,8 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { AdminWorkspaceLink } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminOverview, listAdminJobs, listAdminOrders, listAdminOutbox } from "../_lib/api";
-import { formatCurrency, formatDateTime, type AdminInterventionItem, type AdminJobSummary, type AdminOrderSummary, type AdminOutboxItem } from "../_lib/product-state";
+import { getAdminOverview, listAdminJobs, listAdminOrders, listAdminOutbox, listAdminPayments } from "../_lib/api";
+import { formatCurrency, formatDateTime, type AdminInterventionItem, type AdminJobSummary, type AdminOrderSummary, type AdminOutboxItem, type AdminPaymentSummary } from "../_lib/product-state";
 import {
   canOpenOrgConsole,
   type AdminInterventionFilter,
@@ -29,6 +29,7 @@ import {
   summarizeOutboxDetail
 } from "../_lib/admin-state";
 import { formatNotificationTimeAgo } from "../_lib/notification-mapper";
+import { getPaymentRiskReasons, getPaymentRiskState, getPaymentShortId, getPayoutStatusLabel } from "../_lib/payments-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 
 function toneToClass(value: "danger" | "warning" | "info" | "success") {
@@ -99,11 +100,11 @@ function statusIcon(value: string): ShipWrightIconName {
   return "queue";
 }
 
-function StatusBadge(props: { value: string }) {
+function StatusBadge(props: { value: string; label?: string }) {
   return (
     <span className={`status-badge status-with-icon ${statusTone(props.value)}`}>
       <ShipWrightIcon name={statusIcon(props.value)} />
-      <span>{props.value.replace(/_/g, " ")}</span>
+      <span>{props.label ?? props.value.replace(/_/g, " ")}</span>
     </span>
   );
 }
@@ -205,6 +206,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
   const [overview, setOverview] = useState<Awaited<ReturnType<typeof getAdminOverview>> | null>(null);
   const [jobs, setJobs] = useState<AdminJobSummary[]>([]);
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
+  const [payments, setPayments] = useState<AdminPaymentSummary[]>([]);
   const [outbox, setOutbox] = useState<AdminOutboxItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,6 +217,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
   const [expandedInterventions, setExpandedInterventions] = useState<Record<string, boolean>>({});
   const [expandedJobs, setExpandedJobs] = useState<Record<string, boolean>>({});
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
+  const [expandedPayments, setExpandedPayments] = useState<Record<string, boolean>>({});
   const [expandedOutbox, setExpandedOutbox] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -237,9 +240,10 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
       getAdminOverview(session),
       listAdminJobs(session),
       listAdminOrders(session),
+      listAdminPayments(session),
       listAdminOutbox(session)
     ])
-      .then(([nextOverview, nextJobs, nextOrders, nextOutbox]) => {
+      .then(([nextOverview, nextJobs, nextOrders, nextPayments, nextOutbox]) => {
         if (!active) {
           return;
         }
@@ -247,6 +251,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
         setOverview(nextOverview);
         setJobs(nextJobs);
         setOrders(nextOrders);
+        setPayments(nextPayments);
         setOutbox(nextOutbox);
       })
       .catch((issue) => {
@@ -286,10 +291,11 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
       interventions: filteredInterventions.length,
       jobs: jobs.length,
       orders: orders.length,
+      payments: payments.length,
       outbox: filteredOutbox.length,
       health: 4
     }),
-    [filteredInterventions.length, filteredOutbox.length, jobs.length, orders.length]
+    [filteredInterventions.length, filteredOutbox.length, jobs.length, orders.length, payments.length]
   );
   const latestProofLabel = props.latestProof
     ? `${formatNotificationTimeAgo(props.latestProof.timestamp)} · ${props.latestProof.fileName}`
@@ -565,13 +571,14 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             <div className="sw-card-header admin-section-header">
               <div>
                 <p className="eyebrow">Control surfaces</p>
-                <h2>{activeSection === "interventions" ? "Interventions" : activeSection === "jobs" ? "Jobs" : activeSection === "orders" ? "Orders" : activeSection === "outbox" ? "Outbox" : "Health"}</h2>
+                <h2>{activeSection === "interventions" ? "Interventions" : activeSection === "jobs" ? "Jobs" : activeSection === "orders" ? "Orders" : activeSection === "payments" ? "Payments" : activeSection === "outbox" ? "Outbox" : "Health"}</h2>
               </div>
             </div>
             <div className="admin-filter-bar admin-section-tabs" role="tablist" aria-label="Admin sections">
               <SectionTab active={activeSection === "interventions"} count={sectionCounts.interventions} label="Interventions" onClick={() => setActiveSection("interventions")} />
               <SectionTab active={activeSection === "jobs"} count={sectionCounts.jobs} label="Jobs" onClick={() => setActiveSection("jobs")} />
               <SectionTab active={activeSection === "orders"} count={sectionCounts.orders} label="Orders" onClick={() => setActiveSection("orders")} />
+              <SectionTab active={activeSection === "payments"} count={sectionCounts.payments} label="Payments" onClick={() => setActiveSection("payments")} />
               <SectionTab active={activeSection === "outbox"} count={sectionCounts.outbox} label="Outbox" onClick={() => setActiveSection("outbox")} />
               <SectionTab active={activeSection === "health"} count={sectionCounts.health} label="Health" onClick={() => setActiveSection("health")} />
             </div>
@@ -746,6 +753,70 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
                 </div>
               ) : (
                 <EmptyState icon="document" title="No recent orders" body="Public checkout demand will appear here after orders enter the delivery lifecycle." />
+              )
+            ) : null}
+
+            {activeSection === "payments" ? (
+              payments.length ? (
+                <div className="admin-list admin-orders-compact">
+                  {payments.map((payment) => {
+                    const canOpen = canOpenOrgConsole(session, payment.orgId);
+                    const expanded = Boolean(expandedPayments[payment.id]);
+                    const riskState = getPaymentRiskState(payment);
+                    const payoutLabel = getPayoutStatusLabel(payment.payoutStatus);
+                    const riskReasons = getPaymentRiskReasons(payment);
+
+                    return (
+                      <article className={`sw-queue-row sw-admin-row admin-payment-row admin-intervention-row-${riskState.tone === "danger" ? "danger" : riskState.tone === "warning" ? "warning" : "info"}`} key={payment.id}>
+                        <div className="sw-queue-row-main">
+                          <div className="admin-row-title">
+                            <span className={`sw-icon-badge admin-row-icon admin-row-icon-${riskState.tone === "danger" ? "danger" : riskState.tone === "warning" ? "warning" : "success"}`} aria-hidden="true">
+                              <ShipWrightIcon name={riskState.tone === "danger" ? "alert" : riskState.tone === "warning" ? "payment" : "check"} />
+                            </span>
+                            <div>
+                              <div className="admin-row-meta">
+                                <span>Payment {getPaymentShortId(payment.id)}</span>
+                                <span>{payment.orgName}</span>
+                                <span>{payment.restaurant.name}</span>
+                              </div>
+                              <h3>{payment.customerName}</h3>
+                              <p>{riskState.summary}</p>
+                            </div>
+                          </div>
+                          <div className="admin-fact-grid admin-orders-fact-grid">
+                            <div><span>Payment</span><StatusBadge value={payment.paymentStatus} /></div>
+                            <div><span>Order</span><StatusBadge value={payment.orderStatus} /></div>
+                            <div><span>Delivery</span><StatusBadge value={payment.jobStatus} /></div>
+                            <div><span>Payout</span><StatusBadge label={payoutLabel} value={payment.payoutStatus ?? "PENDING"} /></div>
+                            <div><span>Total</span><strong>{formatCurrency(payment.customerTotalCents, payment.currency)}</strong></div>
+                            <div><span>Platform fee</span><strong>{formatCurrency(payment.platformFeeCents, payment.currency)}</strong></div>
+                          </div>
+                          {expanded ? (
+                            <div className="sw-supporting-surface admin-detail-panel">
+                              <div className="admin-fact-grid admin-detail-grid">
+                                <div><span>Authorized</span><strong>{formatCurrency(payment.amountAuthorizedCents, payment.currency)}</strong></div>
+                                <div><span>Captured</span><strong>{formatCurrency(payment.amountCapturedCents, payment.currency)}</strong></div>
+                                <div><span>Refunded</span><strong>{formatCurrency(payment.amountRefundedCents, payment.currency)}</strong></div>
+                                <div><span>Driver payout</span><strong>{formatCurrency(payment.payoutGrossCents, payment.currency)}</strong></div>
+                                <div><span>Updated</span><strong>{formatDateTime(payment.updatedAt)}</strong></div>
+                                <div><span>Risk summary</span><strong>{riskReasons.length ? riskReasons.join(" · ") : "No current settlement blocker."}</strong></div>
+                              </div>
+                              {!canOpen ? <span className="admin-inline-note">Cross-org order and job detail remain informational in this session.</span> : null}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="sw-queue-row-actions admin-row-actions">
+                          <span className="admin-inline-note">{formatDateTime(payment.createdAt)}</span>
+                          <ToggleButton expanded={expanded} onClick={() => toggleExpanded(setExpandedPayments, payment.id)} />
+                          <SafeOrgLink canOpen={canOpen} href={`/app/orders/${payment.orderId}`} label="Open order" />
+                          <SafeOrgLink canOpen={canOpen} href={`/app/jobs/${payment.jobId}`} label="Open job" />
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyState icon="payment" title="No reconciliation rows" body="Authorized, captured, refunded, and payout-ready payment rows will appear here once staged orders enter the delivery loop." />
               )
             ) : null}
 

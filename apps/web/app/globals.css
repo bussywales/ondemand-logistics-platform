@@ -8517,3 +8517,143 @@ select:hover,
     width: 100%;
   }
 }
+
+.payments-shell-page {
+  display: grid;
+  gap: var(--sw-space-6);
+}
+
+.payments-command-surface,
+.payments-section {
+  display: grid;
+  gap: var(--sw-space-4);
+}
+
+.payments-command-copy {
+  align-items: flex-start;
+  gap: var(--sw-space-4);
+}
+
+.payments-command-icon {
+  flex-shrink: 0;
+}
+
+.payments-metric-grid {
+  display: grid;
+  gap: var(--sw-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.payments-metric-card {
+  min-height: 100%;
+}
+
+.payments-section-header {
+  align-items: flex-start;
+  gap: var(--sw-space-3);
+}
+
+.payments-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-2);
+}
+
+.payments-list {
+  display: grid;
+  gap: var(--sw-space-3);
+}
+
+.payments-queue-row {
+  align-items: flex-start;
+}
+
+.payments-queue-main {
+  display: grid;
+  gap: var(--sw-space-4);
+}
+
+.payments-queue-identity {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--sw-space-3);
+}
+
+.payments-queue-identity h3 {
+  margin: 0;
+}
+
+.payments-queue-identity p {
+  color: var(--sw-color-ink-subtle);
+  margin: var(--sw-space-1) 0 0;
+}
+
+.payments-queue-facts,
+.payments-status-cluster {
+  display: grid;
+  gap: var(--sw-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.payments-queue-facts div,
+.payments-status-cluster .orders-status-block,
+.payments-risk-strip {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(13, 32, 61, 0.08);
+  border-radius: 16px;
+  display: grid;
+  gap: var(--sw-space-1);
+  padding: var(--sw-space-3);
+}
+
+.payments-queue-facts span,
+.payments-status-cluster span,
+.payments-risk-strip strong,
+.payments-risk-strip p {
+  margin: 0;
+}
+
+.payments-queue-facts span,
+.payments-status-cluster .orders-status-block > span {
+  color: var(--sw-color-ink-subtle);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.payments-risk-strip p {
+  color: var(--sw-color-ink-subtle);
+}
+
+.payments-queue-row-danger .payments-risk-strip {
+  background: rgba(255, 244, 244, 0.95);
+  border-color: rgba(181, 43, 55, 0.18);
+}
+
+.payments-queue-row-warning .payments-risk-strip {
+  background: rgba(255, 250, 238, 0.95);
+  border-color: rgba(181, 131, 43, 0.18);
+}
+
+.payments-queue-row-success .payments-risk-strip {
+  background: rgba(241, 251, 243, 0.95);
+  border-color: rgba(48, 117, 63, 0.16);
+}
+
+.payments-empty-state-danger {
+  border-color: rgba(181, 43, 55, 0.18);
+}
+
+.admin-payment-row .admin-detail-grid strong {
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .payments-queue-actions {
+    width: 100%;
+  }
+
+  .payments-queue-actions .sw-button {
+    width: 100%;
+  }
+}

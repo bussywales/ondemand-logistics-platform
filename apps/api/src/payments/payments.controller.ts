@@ -27,6 +27,13 @@ export class PaymentsController {
     return this.paymentsService.getJobPayment(jobId, user.id);
   }
 
+  @Get("business/payments")
+  async listBusinessPayments(@RequestUser() user: AuthenticatedUser) {
+    return {
+      items: await this.paymentsService.listBusinessPayments(user.id)
+    };
+  }
+
   @Post("jobs/:jobId/payment/authorize")
   @HttpCode(200)
   async authorizeJobPayment(

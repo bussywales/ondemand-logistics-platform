@@ -324,6 +324,39 @@ export type AdminOrderSummary = {
   updatedAt: string;
 };
 
+export type PayoutLedgerStatus = "PENDING" | "READY" | "PAID" | "FAILED" | "CANCELLED";
+
+export type BusinessPaymentSummary = {
+  id: string;
+  orderId: string;
+  jobId: string;
+  restaurant: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  customerName: string;
+  orderStatus: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED";
+  jobStatus: JobStatus;
+  paymentStatus: PaymentStatus;
+  customerTotalCents: number;
+  amountAuthorizedCents: number;
+  amountCapturedCents: number;
+  amountRefundedCents: number;
+  currency: string;
+  platformFeeCents: number;
+  payoutGrossCents: number;
+  payoutStatus: PayoutLedgerStatus | null;
+  payoutHoldReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminPaymentSummary = BusinessPaymentSummary & {
+  orgId: string;
+  orgName: string;
+};
+
 export type AdminOutboxItem = {
   id: string;
   aggregateType: string;

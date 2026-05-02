@@ -2,7 +2,7 @@ import type { AdminInterventionItem, AdminOverview, AdminOutboxItem, BusinessSes
 
 export type AdminInterventionFilter = "all" | "dispatch" | "payment" | "notification" | "stuck";
 export type AdminOutboxFilter = "all" | "failed" | "retrying" | "skipped" | "processed_recent";
-export type AdminSection = "interventions" | "jobs" | "orders" | "outbox" | "health";
+export type AdminSection = "interventions" | "jobs" | "orders" | "payments" | "outbox" | "health";
 export type AdminProofSummary = {
   fileName: string;
   timestamp: string;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  AdminPaymentListSchema,
   AdminOverviewSchema,
+  BusinessPaymentListSchema,
   BusinessContextSchema,
   BusinessNotificationReadAllSchema,
   BusinessNotificationReadSchema,
@@ -185,6 +187,41 @@ describe("admin schemas", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+
+  it("parses business and admin payment visibility payloads", () => {
+    const baseItem = {
+      id: "1cc3382c-f799-4856-b537-dbd61c851075",
+      orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+      restaurant: {
+        id: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+        name: "Pilot Kitchen",
+        slug: "pilot-kitchen"
+      },
+      customerName: "Ada Customer",
+      orderStatus: "FULFILLED",
+      jobStatus: "DELIVERED",
+      paymentStatus: "CAPTURED",
+      customerTotalCents: 4180,
+      amountAuthorizedCents: 4180,
+      amountCapturedCents: 4180,
+      amountRefundedCents: 0,
+      currency: "GBP",
+      platformFeeCents: 700,
+      payoutGrossCents: 3480,
+      payoutStatus: "READY",
+      payoutHoldReason: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    expect(BusinessPaymentListSchema.safeParse({ items: [baseItem] }).success).toBe(true);
+    expect(
+      AdminPaymentListSchema.safeParse({
+        items: [{ ...baseItem, orgId: "org-1", orgName: "Pilot Org" }]
+      }).success
+    ).toBe(true);
   });
 });
 

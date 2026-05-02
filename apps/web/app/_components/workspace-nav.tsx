@@ -2,12 +2,21 @@ import React from "react";
 import Link from "next/link";
 import { ShipWrightIcon } from "./shipwright-icon";
 
-type WorkspaceNavView = "operations" | "jobs" | "orders" | "notifications" | "restaurant" | "updates" | "help";
+type WorkspaceNavView =
+  | "operations"
+  | "jobs"
+  | "orders"
+  | "payments"
+  | "notifications"
+  | "restaurant"
+  | "updates"
+  | "help";
 
 const items = [
   { href: "/app", label: "Operations", view: "operations" },
   { href: "/app/jobs", label: "Jobs", view: "jobs" },
   { href: "/app/orders", label: "Orders", view: "orders" },
+  { href: "/app/payments", label: "Payments", view: "payments" },
   { href: "/app/notifications", label: "Notifications", view: "notifications" },
   { href: "/app/restaurant", label: "Restaurant", view: "restaurant" },
   { href: "/app/updates", label: "What’s new", view: "updates" },

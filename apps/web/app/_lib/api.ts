@@ -1,4 +1,5 @@
 import type {
+  AdminPaymentSummary,
   AdminJobSummary,
   AdminOrderSummary,
   AdminOutboxItem,
@@ -8,6 +9,7 @@ import type {
   BusinessNotificationList,
   BusinessCustomerOrder,
   BusinessCustomerOrderList,
+  BusinessPaymentSummary,
   BusinessSession,
   CustomerOrderSubmission,
   PublicOrderTracking,
@@ -133,12 +135,18 @@ type BusinessCustomerOrderListResponse = BusinessCustomerOrderList;
 type BusinessCustomerOrderResponse = BusinessCustomerOrder;
 type PublicOrderTrackingResponse = PublicOrderTracking;
 type BusinessNotificationListResponse = BusinessNotificationList;
+type BusinessPaymentListResponse = {
+  items: BusinessPaymentSummary[];
+};
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
 };
 type AdminOrderListResponse = {
   items: AdminOrderSummary[];
+};
+type AdminPaymentListResponse = {
+  items: AdminPaymentSummary[];
 };
 type AdminOutboxListResponse = {
   items: AdminOutboxItem[];
@@ -464,6 +472,14 @@ export async function listBusinessOrders(session: BusinessSession): Promise<Busi
   return payload.items;
 }
 
+export async function listBusinessPayments(session: BusinessSession): Promise<BusinessPaymentSummary[]> {
+  const payload = await apiFetch<BusinessPaymentListResponse>(session, "/v1/business/payments", {
+    method: "GET"
+  });
+
+  return payload.items;
+}
+
 export async function getBusinessOrder(session: BusinessSession, orderId: string): Promise<BusinessCustomerOrder> {
   return apiFetch<BusinessCustomerOrderResponse>(session, `/v1/business/orders/${orderId}`, {
     method: "GET"
@@ -739,6 +755,14 @@ export async function listAdminJobs(session: BusinessSession): Promise<AdminJobS
 
 export async function listAdminOrders(session: BusinessSession): Promise<AdminOrderSummary[]> {
   const result = await apiFetch<AdminOrderListResponse>(session, "/v1/admin/orders", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function listAdminPayments(session: BusinessSession): Promise<AdminPaymentSummary[]> {
+  const result = await apiFetch<AdminPaymentListResponse>(session, "/v1/admin/payments", {
     method: "GET"
   });
 

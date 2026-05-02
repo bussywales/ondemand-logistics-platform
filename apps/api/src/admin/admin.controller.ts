@@ -1,11 +1,15 @@
 import { Controller, Get, UseGuards } from "@nestjs/common";
 import { AdminService } from "./admin.service.js";
 import { PlatformAdminGuard } from "../security/platform-admin.guard.js";
+import { PaymentsService } from "../payments/payments.service.js";
 
 @UseGuards(PlatformAdminGuard)
 @Controller("v1/admin")
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly paymentsService: PaymentsService
+  ) {}
 
   @Get("overview")
   getOverview() {
@@ -23,6 +27,13 @@ export class AdminController {
   async getOrders() {
     return {
       items: await this.adminService.listOrders()
+    };
+  }
+
+  @Get("payments")
+  async getPayments() {
+    return {
+      items: await this.paymentsService.listAdminPayments()
     };
   }
 

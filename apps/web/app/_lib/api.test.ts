@@ -12,9 +12,11 @@ import {
   getPublicRestaurantMenu,
   getRestaurantMenu,
   isUnauthorizedApiError,
+  listAdminPayments,
   listEligibleDrivers,
   listBusinessNotifications,
   listBusinessOrders,
+  listBusinessPayments,
   listDriverOffers,
   markAllBusinessNotificationsRead,
   markBusinessNotificationRead,
@@ -218,6 +220,46 @@ describe('authorizePayment', () => {
     expect(orders[0]?.payment.status).toBe('AUTHORIZED');
   });
 
+  it('reads business payment visibility rows with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: 'payment-1',
+              orderId: 'order-1',
+              jobId: 'job-1',
+              restaurant: { id: 'restaurant-1', name: 'Pilot Kitchen', slug: 'pilot-kitchen' },
+              customerName: 'Ada',
+              orderStatus: 'PAYMENT_AUTHORIZED',
+              jobStatus: 'REQUESTED',
+              paymentStatus: 'AUTHORIZED',
+              customerTotalCents: 1600,
+              amountAuthorizedCents: 1600,
+              amountCapturedCents: 0,
+              amountRefundedCents: 0,
+              currency: 'GBP',
+              platformFeeCents: 400,
+              payoutGrossCents: 1200,
+              payoutStatus: null,
+              payoutHoldReason: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const payments = await listBusinessPayments(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/payments');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(payments[0]?.paymentStatus).toBe('AUTHORIZED');
+  });
+
   it('parses structured driver assignment ineligibility errors', () => {
     const error = new ApiRequestError('driver_not_eligible_for_reassign', 422, {
       message: 'driver_not_eligible_for_reassign',
@@ -284,6 +326,48 @@ describe('authorizePayment', () => {
 
     expect(order.id).toBe('order-1');
     expect(order.timeline[0]?.eventType).toBe('CUSTOMER_ORDER_SUBMITTED');
+  });
+
+  it('reads admin payment visibility rows with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: 'payment-1',
+              orgId: 'org-1',
+              orgName: 'Pilot Org',
+              orderId: 'order-1',
+              jobId: 'job-1',
+              restaurant: { id: 'restaurant-1', name: 'Pilot Kitchen', slug: 'pilot-kitchen' },
+              customerName: 'Ada',
+              orderStatus: 'FULFILLED',
+              jobStatus: 'DELIVERED',
+              paymentStatus: 'CAPTURED',
+              customerTotalCents: 1600,
+              amountAuthorizedCents: 1600,
+              amountCapturedCents: 1600,
+              amountRefundedCents: 0,
+              currency: 'GBP',
+              platformFeeCents: 400,
+              payoutGrossCents: 1200,
+              payoutStatus: 'READY',
+              payoutHoldReason: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const payments = await listAdminPayments(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/admin/payments');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(payments[0]?.orgName).toBe('Pilot Org');
   });
 
   it('reads business notifications with bearer auth', async () => {
