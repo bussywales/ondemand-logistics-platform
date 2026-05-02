@@ -10,11 +10,12 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getBusinessOrder, listBusinessOrders } from "../_lib/api";
+import { getBusinessOrder, listBusinessOrders, listBusinessPayments } from "../_lib/api";
 import {
   formatCurrency,
   formatDateTime,
   type BusinessCustomerOrder,
+  type BusinessPaymentSummary,
   type BusinessSession
 } from "../_lib/product-state";
 import {
@@ -22,14 +23,20 @@ import {
   formatOrderTimeAgo,
   getDeliveryCopy,
   getOrderDecisionState,
+  getOrderFinancialRiskReasons,
+  getOrderNextAction,
+  getOrderRiskState,
   getOrderShortId,
   getPaymentCopy,
+  hasOrderPaymentRisk,
   isOrderBlocked,
   isOrderFulfilled,
   isOrderInDelivery,
   matchesOrderFilter,
   ORDER_FILTERS,
-  type OrderFilterKey
+  type OrderFilterKey,
+  type OrderFinancialView,
+  withOrderFinancials
 } from "../_lib/orders-state";
 
 export type OrdersShellProps = {
@@ -143,11 +150,21 @@ function FilterChip(props: {
   );
 }
 
-function OrderQueueRow({ order }: { order: BusinessCustomerOrder }) {
+function OrderQueueRow({ order }: { order: OrderFinancialView }) {
   const blocked = isOrderBlocked(order);
   const inDelivery = isOrderInDelivery(order);
   const fulfilled = isOrderFulfilled(order);
-  const toneClass = blocked ? "orders-queue-row-danger" : inDelivery ? "orders-queue-row-info" : fulfilled ? "orders-queue-row-success" : "";
+  const riskState = getOrderRiskState(order);
+  const nextAction = getOrderNextAction(order);
+  const riskReasons = getOrderFinancialRiskReasons(order);
+  const toneClass =
+    riskState.tone === "danger"
+      ? "orders-queue-row-danger"
+      : inDelivery
+        ? "orders-queue-row-info"
+        : fulfilled
+          ? "orders-queue-row-success"
+          : "";
 
   return (
     <article className={`sw-queue-row sw-list-row orders-queue-row ${toneClass}`}>
@@ -176,16 +193,20 @@ function OrderQueueRow({ order }: { order: BusinessCustomerOrder }) {
             <strong>{order.customer.email}</strong>
           </div>
           <div>
-            <span>Restaurant</span>
-            <strong>{order.restaurant.name}</strong>
-          </div>
-          <div>
-            <span>Received</span>
-            <strong>{formatDateTime(order.createdAt)}</strong>
-          </div>
-          <div>
             <span>Total</span>
             <strong>{formatCurrency(order.totalCents, order.currency)}</strong>
+          </div>
+          <div>
+            <span>Platform fee</span>
+            <strong>{order.financials?.platformFeeCents != null ? formatCurrency(order.financials.platformFeeCents, order.currency) : "Not available"}</strong>
+          </div>
+          <div>
+            <span>Driver payout</span>
+            <strong>{order.financials?.driverPayoutCents != null ? formatCurrency(order.financials.driverPayoutCents, order.currency) : "Not available"}</strong>
+          </div>
+          <div>
+            <span>Next action</span>
+            <strong>{nextAction.label}</strong>
           </div>
         </div>
 
@@ -202,6 +223,15 @@ function OrderQueueRow({ order }: { order: BusinessCustomerOrder }) {
             <span>Delivery</span>
             <StatusBadge status={order.job.status} />
           </div>
+          <div className="orders-status-block">
+            <span>Risk</span>
+            <strong>{riskState.title}</strong>
+          </div>
+        </div>
+
+        <div className="payments-risk-strip orders-risk-strip">
+          <strong>{riskState.title}</strong>
+          <p>{riskReasons.length ? riskReasons.join(" · ") : riskState.summary}</p>
         </div>
       </div>
 
@@ -214,6 +244,12 @@ function OrderQueueRow({ order }: { order: BusinessCustomerOrder }) {
           <ShipWrightIcon name="route" />
           <span>View delivery job</span>
         </Link>
+        {hasOrderPaymentRisk(order) ? (
+          <Link className="sw-button sw-button--secondary button button-secondary" href={`/app/orders/${order.id}`}>
+            <ShipWrightIcon name="payment" />
+            <span>Review payment risk</span>
+          </Link>
+        ) : null}
       </div>
     </article>
   );
@@ -238,7 +274,7 @@ function DetailInsight(props: {
   );
 }
 
-function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
+function OrderDetail({ order }: { order: OrderFinancialView }) {
   const decision = getOrderDecisionState(order);
   const fulfilled = isOrderFulfilled(order);
 
@@ -439,6 +475,18 @@ function OrderDetail({ order }: { order: BusinessCustomerOrder }) {
               <span>Captured</span>
               <strong>{formatCurrency(order.payment.amountCapturedCents, order.payment.currency)}</strong>
             </div>
+            <div>
+              <span>Platform fee</span>
+              <strong>{order.financials?.platformFeeCents != null ? formatCurrency(order.financials.platformFeeCents, order.currency) : "Not available"}</strong>
+            </div>
+            <div>
+              <span>Driver payout</span>
+              <strong>{order.financials?.driverPayoutCents != null ? formatCurrency(order.financials.driverPayoutCents, order.currency) : "Not available"}</strong>
+            </div>
+            <div>
+              <span>Payout status</span>
+              <strong>{order.financials?.payoutStatus ?? "Awaiting ledger"}</strong>
+            </div>
           </div>
         </section>
       </div>
@@ -519,6 +567,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   const router = useRouter();
   const { status, session, signOut, refreshBusinessSession } = useBusinessAuth();
   const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
+  const [payments, setPayments] = useState<BusinessPaymentSummary[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<BusinessCustomerOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(Boolean(orderId));
@@ -543,34 +592,49 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   }, [orderId, session?.accessToken]);
 
   const workspaceName = session?.context.currentOrg?.name ?? "No org";
+  const orderViews = useMemo(() => {
+    const paymentByOrderId = new Map(payments.map((item) => [item.orderId, item]));
+    return orders.map((order) => withOrderFinancials(order, paymentByOrderId.get(order.id) ?? null));
+  }, [orders, payments]);
+  const selectedOrderView = useMemo(() => {
+    if (!selectedOrder) {
+      return null;
+    }
+    return withOrderFinancials(
+      selectedOrder,
+      payments.find((item) => item.orderId === selectedOrder.id) ?? null
+    );
+  }, [payments, selectedOrder]);
 
   const orderSummary = useMemo(() => {
-    const paymentAuthorized = orders.filter((order) => order.payment.status === "AUTHORIZED").length;
-    const dispatchFailed = orders.filter((order) => order.job.status === "DISPATCH_FAILED").length;
-    const inDelivery = orders.filter((order) => isOrderInDelivery(order)).length;
-    const fulfilled = orders.filter((order) => isOrderFulfilled(order)).length;
+    const paymentAuthorized = orderViews.filter((order) => order.payment.status === "AUTHORIZED").length;
+    const dispatchFailed = orderViews.filter((order) => order.job.status === "DISPATCH_FAILED").length;
+    const inDelivery = orderViews.filter((order) => isOrderInDelivery(order)).length;
+    const fulfilled = orderViews.filter((order) => isOrderFulfilled(order)).length;
+    const paymentRisk = orderViews.filter((order) => hasOrderPaymentRisk(order)).length;
 
     return {
-      total: orders.length,
+      total: orderViews.length,
       paymentAuthorized,
       dispatchFailed,
       inDelivery,
-      fulfilled
+      fulfilled,
+      paymentRisk
     };
-  }, [orders]);
+  }, [orderViews]);
 
   const filterCounts = useMemo(
     () =>
       ORDER_FILTERS.reduce<Record<OrderFilterKey, number>>((accumulator, filter) => {
-        accumulator[filter.key] = orders.filter((order) => matchesOrderFilter(order, filter.key)).length;
+        accumulator[filter.key] = orderViews.filter((order) => matchesOrderFilter(order, filter.key)).length;
         return accumulator;
-      }, { all: 0, "new-authorized": 0, "in-delivery": 0, fulfilled: 0, "payment-failed": 0 }),
-    [orders]
+      }, { all: 0, "needs-action": 0, "in-delivery": 0, "payment-risk": 0, fulfilled: 0 }),
+    [orderViews]
   );
 
   const filteredOrders = useMemo(
-    () => orders.filter((order) => matchesOrderFilter(order, activeFilter)),
-    [activeFilter, orders]
+    () => orderViews.filter((order) => matchesOrderFilter(order, activeFilter)),
+    [activeFilter, orderViews]
   );
 
   async function refreshOrders(currentSession: BusinessSession) {
@@ -578,8 +642,12 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setError(null);
 
     try {
-      const items = await listBusinessOrders(currentSession);
-      setOrders(items);
+      const [orderItems, paymentItems] = await Promise.all([
+        listBusinessOrders(currentSession),
+        listBusinessPayments(currentSession)
+      ]);
+      setOrders(orderItems);
+      setPayments(paymentItems);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load customer orders.");
     } finally {
@@ -593,7 +661,9 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
 
     try {
       const order = await getBusinessOrder(currentSession, id);
+      const paymentItems = await listBusinessPayments(currentSession);
       setSelectedOrder(order);
+      setPayments(paymentItems);
       setOrders((current) => [order, ...current.filter((item) => item.id !== order.id)]);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load customer order.");
@@ -605,6 +675,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   async function handleSignOut() {
     await signOut();
     setOrders([]);
+    setPayments([]);
     setSelectedOrder(null);
     router.push("/get-started");
   }
@@ -715,22 +786,32 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
                 <strong>{orderSummary.fulfilled}</strong>
                 <span>Fulfilled</span>
               </div>
+              <div>
+                <strong>{orderSummary.paymentRisk}</strong>
+                <span>Payment risk</span>
+              </div>
             </div>
           </section>
 
           <section className="ops-sidebar-section ops-sidebar-live">
             <span className="sidebar-live-icon" aria-hidden="true">
-              <ShipWrightIcon name={orderSummary.dispatchFailed > 0 ? "warning" : "check"} />
+              <ShipWrightIcon name={orderSummary.paymentRisk > 0 || orderSummary.dispatchFailed > 0 ? "warning" : "check"} />
             </span>
             <span className="ops-section-label">Order posture</span>
-            <strong>{orderSummary.dispatchFailed > 0 ? "Delivery review" : "Orders clear"}</strong>
+            <strong>{orderSummary.paymentRisk > 0 ? "Payment review" : orderSummary.dispatchFailed > 0 ? "Delivery review" : "Orders clear"}</strong>
             <p>
-              {orderSummary.dispatchFailed > 0
-                ? `${orderSummary.dispatchFailed} order${orderSummary.dispatchFailed === 1 ? "" : "s"} have blocked delivery jobs.`
-                : "No customer orders need delivery review."}
+              {orderSummary.paymentRisk > 0
+                ? `${orderSummary.paymentRisk} order${orderSummary.paymentRisk === 1 ? "" : "s"} have payment or payout risk signals.`
+                : orderSummary.dispatchFailed > 0
+                  ? `${orderSummary.dispatchFailed} order${orderSummary.dispatchFailed === 1 ? "" : "s"} have blocked delivery jobs.`
+                  : "No customer orders need payment or delivery review."}
             </p>
             <span className="sidebar-live-action">
-              {orderSummary.dispatchFailed > 0 ? "Open blocked orders and resolve the linked delivery jobs." : "Monitor new paid orders."}
+              {orderSummary.paymentRisk > 0
+                ? "Open risk-bearing orders and verify capture, refunds, or payout posture."
+                : orderSummary.dispatchFailed > 0
+                  ? "Open blocked orders and resolve the linked delivery jobs."
+                  : "Monitor new paid orders."}
             </span>
           </section>
         </aside>
@@ -738,24 +819,25 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
         <div className="ops-main">
           {!detailMode ? (
             <section className="ops-stack orders-stack">
-              <section className={`sw-command-surface orders-command-surface ${orderSummary.dispatchFailed > 0 ? "orders-command-surface-alert" : ""}`}>
+              <section className={`sw-command-surface orders-command-surface ${orderSummary.dispatchFailed > 0 || orderSummary.paymentRisk > 0 ? "orders-command-surface-alert" : ""}`}>
                 <div className="ops-command-copy">
                   <span className="ops-command-icon" aria-hidden="true">
-                    <ShipWrightIcon name={orderSummary.dispatchFailed > 0 ? "warning" : "document"} />
+                    <ShipWrightIcon name={orderSummary.paymentRisk > 0 || orderSummary.dispatchFailed > 0 ? "warning" : "document"} />
                   </span>
                   <div>
                     <p className="eyebrow">Customer orders</p>
-                    <h2>Customer order → payment → delivery → fulfilment</h2>
+                    <h2>Orders stay in control even when payment risk appears</h2>
                     <p>
-                      Track each paid order through payment authorisation, dispatch, driver execution, and final fulfilment from one operator queue.
+                      Review payment state, delivery progress, fulfilment, and next action from one order-first queue.
                     </p>
                   </div>
                 </div>
                 <div className="orders-command-actions">
                   <span className="ops-count-pill">{orderSummary.total} total</span>
-                  <span className={`ops-count-pill ${orderSummary.dispatchFailed > 0 ? "ops-count-pill-alert" : ""}`}>
-                    {orderSummary.dispatchFailed} blocked
+                  <span className={`ops-count-pill ${orderSummary.paymentRisk > 0 ? "ops-count-pill-alert" : ""}`}>
+                    {orderSummary.paymentRisk} payment risk
                   </span>
+                  <span className={`ops-count-pill ${orderSummary.dispatchFailed > 0 ? "ops-count-pill-alert" : ""}`}>{orderSummary.dispatchFailed} blocked</span>
                 </div>
               </section>
 
@@ -768,7 +850,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
                     <div>
                       <p className="eyebrow">Orders</p>
                       <h2>Operational order queue</h2>
-                      <p className="ops-detail-note">Filter by payment and fulfilment state, then jump into the order or its linked delivery job.</p>
+                      <p className="ops-detail-note">Order, payment, delivery, fulfilment, financial risk, and next action stay connected in one operator queue.</p>
                     </div>
                   </div>
                   <Link className="sw-button sw-button--secondary button button-secondary" href="/app/restaurant">
@@ -822,8 +904,8 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
               <strong className="sw-empty-title">Loading order</strong>
               <p className="sw-empty-copy">Fetching customer order detail and linked delivery state.</p>
             </section>
-          ) : selectedOrder ? (
-            <OrderDetail order={selectedOrder} />
+          ) : selectedOrderView ? (
+            <OrderDetail order={selectedOrderView} />
           ) : (
             <section className="sw-empty-state orders-empty-state">
               <strong className="sw-empty-title">Order not found</strong>

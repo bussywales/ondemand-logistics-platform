@@ -9,7 +9,7 @@ describe("WorkspaceNav", () => {
 
     expect(markup).toContain("Admin Control Plane");
     expect(markup).toContain("href=\"/admin\"");
-    expect(markup).toContain("Payments");
+    expect(markup).toContain("Payment risk");
     expect(markup).toContain("href=\"/app/payments\"");
   });
 

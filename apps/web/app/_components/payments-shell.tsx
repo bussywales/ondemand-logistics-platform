@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -10,45 +11,54 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { listBusinessPayments } from "../_lib/api";
+import { listBusinessOrders, listBusinessPayments } from "../_lib/api";
 import {
   formatCurrency,
   formatDateTime,
-  type BusinessPaymentSummary
+  type BusinessCustomerOrder,
+  type BusinessPaymentSummary,
+  type BusinessSession
 } from "../_lib/product-state";
 import {
-  getPaymentRiskState,
-  getPaymentShortId,
-  getPayoutStatusLabel,
-  matchesPaymentFilter,
-  PAYMENT_FILTERS,
-  summarizePaymentPortfolio,
-  type PaymentFilterKey
-} from "../_lib/payments-state";
+  formatOrderStatusLabel,
+  formatOrderTimeAgo,
+  getOrderFinancialRiskReasons,
+  getOrderNextAction,
+  getOrderRiskState,
+  getOrderShortId,
+  getPaymentCopy,
+  isOrderFulfilled,
+  isOrderInDelivery,
+  matchesPaymentRiskFilter,
+  PAYMENT_RISK_FILTERS,
+  type OrderFinancialView,
+  type PaymentRiskFilterKey,
+  withOrderFinancials
+} from "../_lib/orders-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 
 function statusTone(status: string) {
-  if (["FAILED", "PAYMENT_FAILED", "CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED"].includes(status)) {
+  if (["PAYMENT_FAILED", "FAILED", "CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED", "DISPATCH_FAILED"].includes(status)) {
     return "status-negative";
   }
 
-  if (["FULFILLED", "DELIVERED", "CAPTURED", "PAID"].includes(status)) {
+  if (["DELIVERED", "FULFILLED", "CAPTURED", "PAID"].includes(status)) {
     return "status-positive";
   }
 
-  if (["AUTHORIZED", "PAYMENT_AUTHORIZED", "READY", "PENDING", "REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(status)) {
+  if (["AUTHORIZED", "PAYMENT_AUTHORIZED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP", "READY", "PENDING"].includes(status)) {
     return "status-live";
   }
 
   return "status-neutral";
 }
 
-function statusIcon(status: string): ShipWrightIconName {
-  if (["FAILED", "PAYMENT_FAILED", "CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED"].includes(status)) {
+function statusIconName(status: string): ShipWrightIconName {
+  if (["PAYMENT_FAILED", "FAILED", "CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED", "DISPATCH_FAILED"].includes(status)) {
     return "alert";
   }
 
-  if (["CAPTURED", "FULFILLED", "DELIVERED", "PAID"].includes(status)) {
+  if (["DELIVERED", "FULFILLED", "CAPTURED", "PAID"].includes(status)) {
     return "check";
   }
 
@@ -56,18 +66,18 @@ function statusIcon(status: string): ShipWrightIconName {
     return "payment";
   }
 
-  if (["READY", "PENDING"].includes(status)) {
-    return "queue";
+  if (["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(status)) {
+    return "route";
   }
 
-  return "route";
+  return "queue";
 }
 
-function StatusBadge(props: { value: string; label?: string }) {
+function StatusBadge(props: { status: string; label?: string }) {
   return (
-    <span className={`status-badge status-with-icon ${statusTone(props.value)}`}>
-      <ShipWrightIcon name={statusIcon(props.value)} />
-      <span>{props.label ?? props.value.replace(/_/g, " ")}</span>
+    <span className={`status-badge status-with-icon ${statusTone(props.status)}`}>
+      <ShipWrightIcon name={statusIconName(props.status)} />
+      <span>{props.label ?? formatOrderStatusLabel(props.status)}</span>
     </span>
   );
 }
@@ -75,8 +85,8 @@ function StatusBadge(props: { value: string; label?: string }) {
 function FilterChip(props: {
   active: boolean;
   count: number;
-  filter: { key: PaymentFilterKey; label: string };
-  onClick: (key: PaymentFilterKey) => void;
+  filter: { key: PaymentRiskFilterKey; label: string };
+  onClick: (key: PaymentRiskFilterKey) => void;
 }) {
   return (
     <button
@@ -90,135 +100,125 @@ function FilterChip(props: {
   );
 }
 
-function SummaryCard(props: {
-  body: string;
-  label: string;
-  tone: "danger" | "warning" | "info" | "success";
-  value: number;
-}) {
-  return (
-    <div className={`sw-metric-card payments-metric-card payments-metric-card-${props.tone}`}>
-      <span className="sw-metric-label">{props.label}</span>
-      <strong className="sw-metric-value">{props.value}</strong>
-      <p className="sw-metric-copy">{props.body}</p>
-    </div>
-  );
-}
-
-function EmptyState() {
+export function PaymentRiskEmptyState() {
   return (
     <div className="sw-empty-state payments-empty-state">
       <span className="empty-state-icon" aria-hidden="true">
-        <ShipWrightIcon name="payment" />
+        <ShipWrightIcon name="check" />
       </span>
-      <strong className="sw-empty-title">No payment records yet</strong>
-      <p className="sw-empty-copy">Authorized and captured customer orders will appear here once the public checkout starts creating paid orders.</p>
+      <strong className="sw-empty-title">No payment risks right now</strong>
+      <p className="sw-empty-copy">Payment state is still visible on each order.</p>
+      <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
+        <ShipWrightIcon name="arrow" />
+        <span>Open orders</span>
+      </Link>
     </div>
   );
 }
 
-function PaymentQueueRow({ payment }: { payment: BusinessPaymentSummary }) {
-  const riskState = getPaymentRiskState(payment);
-  const payoutLabel = getPayoutStatusLabel(payment.payoutStatus);
+export function PaymentRiskQueueRow(props: { order: OrderFinancialView }) {
+  const { order } = props;
+  const riskState = getOrderRiskState(order);
+  const nextAction = getOrderNextAction(order);
+  const riskReasons = getOrderFinancialRiskReasons(order);
 
   return (
     <article className={`sw-queue-row sw-list-row payments-queue-row payments-queue-row-${riskState.tone}`}>
       <div className="sw-queue-row-main payments-queue-main">
         <div className="payments-queue-identity">
           <span
-            className={`icon-chip ${riskState.tone === "danger" ? "icon-chip-blocker" : riskState.tone === "warning" ? "icon-chip-risk" : "icon-chip-success"}`}
+            className={`icon-chip ${riskState.tone === "danger" ? "icon-chip-blocker" : riskState.tone === "warning" ? "icon-chip-risk" : riskState.tone === "info" ? "icon-chip-info" : "icon-chip-success"}`}
             aria-hidden="true"
           >
-            <ShipWrightIcon name={riskState.tone === "danger" ? "alert" : riskState.tone === "warning" ? "payment" : "check"} />
+            <ShipWrightIcon name={riskState.tone === "danger" ? "alert" : riskState.tone === "warning" ? "payment" : riskState.tone === "info" ? "route" : "check"} />
           </span>
           <div>
-            <span className="ops-section-label">Payment {getPaymentShortId(payment.id)}</span>
-            <h3>{payment.customerName}</h3>
+            <span className="ops-section-label">Order {getOrderShortId(order.id)}</span>
+            <h3>{order.customer.name}</h3>
             <p>
-              {payment.restaurant.name} · Updated {formatDateTime(payment.updatedAt)}
+              {order.restaurant.name} · {formatOrderTimeAgo(order.createdAt)}
             </p>
           </div>
         </div>
 
-        <div className="payments-queue-facts" aria-label="Payment facts">
+        <div className="payments-queue-facts" aria-label="Payment risk order facts">
           <div>
-            <span>Total</span>
-            <strong>{formatCurrency(payment.customerTotalCents, payment.currency)}</strong>
+            <span>Order</span>
+            <strong>{getOrderShortId(order.id)}</strong>
           </div>
           <div>
-            <span>Authorized</span>
-            <strong>{formatCurrency(payment.amountAuthorizedCents, payment.currency)}</strong>
-          </div>
-          <div>
-            <span>Captured</span>
-            <strong>{formatCurrency(payment.amountCapturedCents, payment.currency)}</strong>
+            <span>Customer total</span>
+            <strong>{formatCurrency(order.totalCents, order.currency)}</strong>
           </div>
           <div>
             <span>Platform fee</span>
-            <strong>{formatCurrency(payment.platformFeeCents, payment.currency)}</strong>
+            <strong>{order.financials?.platformFeeCents != null ? formatCurrency(order.financials.platformFeeCents, order.currency) : "Not available"}</strong>
           </div>
           <div>
             <span>Driver payout</span>
-            <strong>{formatCurrency(payment.payoutGrossCents, payment.currency)}</strong>
+            <strong>{order.financials?.driverPayoutCents != null ? formatCurrency(order.financials.driverPayoutCents, order.currency) : "Not available"}</strong>
           </div>
         </div>
 
-        <div className="payments-status-cluster" aria-label="Payment status summary">
+        <div className="payments-status-cluster" aria-label="Order risk state summary">
           <div className="orders-status-block">
             <span>Payment</span>
-            <StatusBadge value={payment.paymentStatus} />
-          </div>
-          <div className="orders-status-block">
-            <span>Order</span>
-            <StatusBadge value={payment.orderStatus} />
+            <StatusBadge status={order.payment.status} />
           </div>
           <div className="orders-status-block">
             <span>Delivery</span>
-            <StatusBadge value={payment.jobStatus} />
+            <StatusBadge status={order.job.status} />
           </div>
           <div className="orders-status-block">
-            <span>Payout</span>
-            <StatusBadge value={payment.payoutStatus ?? "PENDING"} label={payoutLabel} />
+            <span>Fulfilment</span>
+            <StatusBadge status={order.status} />
+          </div>
+          <div className="orders-status-block">
+            <span>Next action</span>
+            <strong>{nextAction.label}</strong>
           </div>
         </div>
 
         <div className="payments-risk-strip">
           <strong>{riskState.title}</strong>
-          <p>{riskState.summary}</p>
+          <p>{riskReasons.length ? riskReasons.join(" · ") : getPaymentCopy(order)}</p>
         </div>
       </div>
 
       <div className="sw-queue-row-actions payments-queue-actions">
-        <Link className="sw-button sw-button--primary button button-primary" href={`/app/orders/${payment.orderId}`}>
+        <Link className="sw-button sw-button--primary button button-primary" href={`/app/orders/${order.id}`}>
           <ShipWrightIcon name="arrow" />
           <span>View order</span>
         </Link>
-        <Link className="sw-button sw-button--secondary button button-secondary" href={`/app/jobs/${payment.jobId}`}>
+        <Link className="sw-button sw-button--secondary button button-secondary" href={`/app/jobs/${order.job.id}`}>
           <ShipWrightIcon name="route" />
-          <span>View job</span>
+          <span>View delivery job</span>
         </Link>
+        {riskReasons.length ? (
+          <Link className="sw-button sw-button--secondary button button-secondary" href={nextAction.href}>
+            <ShipWrightIcon name="payment" />
+            <span>Review payment risk</span>
+          </Link>
+        ) : null}
       </div>
     </article>
   );
 }
 
-function riskMessage(summary: ReturnType<typeof summarizePaymentPortfolio>) {
-  if (summary.risks > 0) {
-    return `${summary.risks} payment risks need review before settlement can be considered clear.`;
-  }
-
-  if (summary.authorized > 0) {
-    return `${summary.authorized} authorised orders are waiting on capture or delivery completion.`;
-  }
-
-  return "Payment authorisation, capture, and payout readiness look clear in the current pilot window.";
+function buildOrderViews(
+  orders: BusinessCustomerOrder[],
+  payments: BusinessPaymentSummary[]
+) {
+  const paymentByOrderId = new Map(payments.map((item) => [item.orderId, item]));
+  return orders.map((order) => withOrderFinancials(order, paymentByOrderId.get(order.id) ?? null));
 }
 
 export function PaymentsShell() {
   const router = useRouter();
   const { status, session, error, refreshBusinessSession, signOut } = useBusinessAuth();
+  const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [payments, setPayments] = useState<BusinessPaymentSummary[]>([]);
-  const [filter, setFilter] = useState<PaymentFilterKey>("all");
+  const [filter, setFilter] = useState<PaymentRiskFilterKey>("needs-action");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -238,15 +238,18 @@ export function PaymentsShell() {
     setLoading(true);
     setLoadError(null);
 
-    void listBusinessPayments(session)
-      .then((items) => {
-        if (active) {
-          setPayments(items);
+    void Promise.all([listBusinessOrders(session), listBusinessPayments(session)])
+      .then(([nextOrders, nextPayments]) => {
+        if (!active) {
+          return;
         }
+
+        setOrders(nextOrders);
+        setPayments(nextPayments);
       })
       .catch((issue) => {
         if (active) {
-          setLoadError(issue instanceof Error ? issue.message : "Unable to load payment visibility.");
+          setLoadError(issue instanceof Error ? issue.message : "Unable to load payment risk.");
         }
       })
       .finally(() => {
@@ -260,20 +263,30 @@ export function PaymentsShell() {
     };
   }, [session, status]);
 
-  const filteredPayments = useMemo(() => payments.filter((payment) => matchesPaymentFilter(payment, filter)), [filter, payments]);
-  const summary = useMemo(() => summarizePaymentPortfolio(payments), [payments]);
+  const orderViews = useMemo(() => buildOrderViews(orders, payments), [orders, payments]);
+  const riskOrders = useMemo(() => orderViews.filter((order) => getOrderFinancialRiskReasons(order).length > 0), [orderViews]);
+  const filteredOrders = useMemo(() => orderViews.filter((order) => matchesPaymentRiskFilter(order, filter)), [filter, orderViews]);
   const counts = useMemo(
     () =>
-      Object.fromEntries(PAYMENT_FILTERS.map((item) => [item.key, payments.filter((payment) => matchesPaymentFilter(payment, item.key)).length])) as Record<PaymentFilterKey, number>,
-    [payments]
+      Object.fromEntries(PAYMENT_RISK_FILTERS.map((item) => [item.key, orderViews.filter((order) => matchesPaymentRiskFilter(order, item.key)).length])) as Record<PaymentRiskFilterKey, number>,
+    [orderViews]
   );
+  const inDeliveryCount = useMemo(() => orderViews.filter((order) => isOrderInDelivery(order)).length, [orderViews]);
+  const fulfilledCount = useMemo(() => orderViews.filter((order) => isOrderFulfilled(order)).length, [orderViews]);
+
+  async function handleSignOut() {
+    await signOut();
+    setOrders([]);
+    setPayments([]);
+    router.push("/get-started");
+  }
 
   if (status === "loading" || loading) {
     return (
       <main className="app-shell loading-shell">
         <section className="ops-empty-state">
-          <strong>Loading payment visibility</strong>
-          <p>Pulling the latest authorization, capture, and payout readiness signals.</p>
+          <strong>Loading payment risk</strong>
+          <p>Checking orders where payment, capture, refund, or payout state could affect fulfilment.</p>
         </section>
       </main>
     );
@@ -290,13 +303,7 @@ export function PaymentsShell() {
             <button className="button button-primary" onClick={() => void refreshBusinessSession()} type="button">
               Retry session
             </button>
-            <button
-              className="button button-secondary"
-              onClick={() => {
-                void signOut().then(() => router.replace("/get-started"));
-              }}
-              type="button"
-            >
+            <button className="button button-secondary" onClick={() => void handleSignOut()} type="button">
               Sign out
             </button>
           </div>
@@ -305,7 +312,7 @@ export function PaymentsShell() {
     );
   }
 
-  if (status !== "authenticated" || !session) {
+  if (!session) {
     return null;
   }
 
@@ -314,9 +321,9 @@ export function PaymentsShell() {
       <header className="app-header">
         <div>
           <BrandLogo />
-          <p className="eyebrow">Payments and settlement</p>
-          <h1>Reconciliation</h1>
-          <p>Track authorisation, capture, refund posture, payout readiness, and unresolved settlement risks.</p>
+          <p className="eyebrow">Operational finance lens</p>
+          <h1>Payment risk</h1>
+          <p>Review orders where payment, capture, refund, or payout state may affect fulfilment.</p>
         </div>
         <div className="hero-actions">
           <NotificationsBell session={session} />
@@ -332,42 +339,47 @@ export function PaymentsShell() {
           <span className="empty-state-icon" aria-hidden="true">
             <ShipWrightIcon name="alert" />
           </span>
-          <strong className="sw-empty-title">Unable to load payment visibility</strong>
+          <strong className="sw-empty-title">Unable to load payment risk</strong>
           <p className="sw-empty-copy">{loadError}</p>
         </section>
       ) : null}
 
-      <section className={`sw-command-surface payments-command-surface ${summary.risks > 0 ? "sw-command-surface--warning" : ""}`}>
+      <section className={`sw-${riskOrders.length ? "decision" : "command"}-surface payments-command-surface ${riskOrders.length ? "" : "payments-healthy-surface"}`}>
         <div className="sw-row payments-command-copy">
-          <span className={`sw-icon-badge payments-command-icon ${summary.risks > 0 ? "admin-command-icon-warning" : "admin-command-icon-success"}`} aria-hidden="true">
-            <ShipWrightIcon name={summary.risks > 0 ? "alert" : "payment"} />
+          <span className={`sw-icon-badge payments-command-icon ${riskOrders.length ? "admin-command-icon-warning" : "admin-command-icon-success"}`} aria-hidden="true">
+            <ShipWrightIcon name={riskOrders.length ? "alert" : "check"} />
           </span>
           <div>
-            <p className="eyebrow">Decision summary</p>
-            <h2>{summary.risks > 0 ? `${summary.risks} items need payment review` : "Settlement view clear"}</h2>
-            <p>{riskMessage(summary)}</p>
+            <p className="eyebrow">Payment risk</p>
+            <h2>{riskOrders.length ? `${riskOrders.length} orders need payment review` : "No payment risks"}</h2>
+            <p>
+              {riskOrders.length
+                ? "Orders below have payment, capture, refund, or payout signals that may block fulfilment or support closeout."
+                : "Payment state is still visible on each order. Use the orders queue as the primary operational surface."}
+            </p>
           </div>
         </div>
-        <div className="payments-metric-grid">
-          <SummaryCard body="Authorized but not yet settled or refunded." label="Authorised" tone="warning" value={summary.authorized} />
-          <SummaryCard body="Captured customer funds now visible in settlement." label="Captured" tone="success" value={summary.captured} />
-          <SummaryCard body="Failed or refunded payment paths requiring closure checks." label="Refunded / failed" tone={summary.failed > 0 ? "danger" : "info"} value={summary.failed + summary.refundedOrCancelled} />
-          <SummaryCard body="Captured deliveries ready for payout release or already paid." label="Payout ready" tone="info" value={summary.payoutReady} />
+        <div className="payments-filter-summary">
+          <span className="ops-count-pill">{orderViews.length} orders checked</span>
+          <span className={`ops-count-pill ${riskOrders.length ? "ops-count-pill-alert" : ""}`}>{riskOrders.length} risks</span>
+          <span className="ops-count-pill">{inDeliveryCount} in delivery</span>
+          <span className="ops-count-pill">{fulfilledCount} fulfilled</span>
         </div>
       </section>
 
       <section className="sw-operational-surface payments-section">
         <div className="sw-card-header payments-section-header">
           <div>
-            <p className="eyebrow">Payment queue</p>
-            <h2>Operational settlement visibility</h2>
+            <p className="eyebrow">Order risk queue</p>
+            <h2>Orders first, finance visible</h2>
+            <p className="ops-detail-note">Payment state stays connected to dispatch, delivery, and fulfilment rather than sitting in a separate ledger view.</p>
           </div>
-          <span className={`status-badge ${summary.risks > 0 ? "status-negative" : "status-positive"}`}>
-            {summary.risks > 0 ? `${summary.risks} risks open` : "No current blockers"}
+          <span className={`status-badge ${riskOrders.length ? "status-negative" : "status-positive"}`}>
+            {riskOrders.length ? "Payment action required" : "No payment blockers"}
           </span>
         </div>
-        <div className="payments-filter-bar" role="tablist" aria-label="Payment filters">
-          {PAYMENT_FILTERS.map((item) => (
+        <div className="payments-filter-bar" aria-label="Payment risk filters">
+          {PAYMENT_RISK_FILTERS.map((item) => (
             <FilterChip
               active={filter === item.key}
               count={counts[item.key]}
@@ -377,22 +389,22 @@ export function PaymentsShell() {
             />
           ))}
         </div>
-        {filteredPayments.length ? (
+        {riskOrders.length === 0 ? (
+          <PaymentRiskEmptyState />
+        ) : filteredOrders.length ? (
           <div className="payments-list">
-            {filteredPayments.map((payment) => (
-              <PaymentQueueRow key={payment.id} payment={payment} />
+            {filteredOrders.map((order) => (
+              <PaymentRiskQueueRow key={order.id} order={order} />
             ))}
           </div>
-        ) : payments.length ? (
+        ) : (
           <div className="sw-empty-state payments-empty-state">
             <span className="empty-state-icon" aria-hidden="true">
               <ShipWrightIcon name="queue" />
             </span>
-            <strong className="sw-empty-title">No items in this filter</strong>
-            <p className="sw-empty-copy">Try another payment view to inspect authorised, captured, refunded, or payout-ready activity.</p>
+            <strong className="sw-empty-title">No orders in this filter</strong>
+            <p className="sw-empty-copy">Try another risk lens to inspect authorised, captured, failed, refunded, or payout-review orders.</p>
           </div>
-        ) : (
-          <EmptyState />
         )}
       </section>
     </main>

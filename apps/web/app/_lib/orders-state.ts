@@ -1,14 +1,31 @@
-import type { BusinessCustomerOrder } from "./product-state";
+import type { BusinessCustomerOrder, BusinessPaymentSummary } from "./product-state";
 
 export const ORDER_FILTERS = [
   { key: "all", label: "All" },
-  { key: "new-authorized", label: "New / Authorised" },
+  { key: "needs-action", label: "Needs action" },
   { key: "in-delivery", label: "In delivery" },
+  { key: "payment-risk", label: "Payment risk" },
   { key: "fulfilled", label: "Fulfilled" },
-  { key: "payment-failed", label: "Payment failed" }
 ] as const;
 
 export type OrderFilterKey = (typeof ORDER_FILTERS)[number]["key"];
+export type PaymentRiskFilterKey = "needs-action" | "authorized" | "captured" | "failed-refunded" | "payout-review";
+export const PAYMENT_RISK_FILTERS: Array<{ key: PaymentRiskFilterKey; label: string }> = [
+  { key: "needs-action", label: "Needs action" },
+  { key: "authorized", label: "Authorised" },
+  { key: "captured", label: "Captured" },
+  { key: "failed-refunded", label: "Failed / refunded" },
+  { key: "payout-review", label: "Payout review" }
+];
+
+export type OrderFinancialView = BusinessCustomerOrder & {
+  financials: {
+    platformFeeCents: number | null;
+    driverPayoutCents: number | null;
+    payoutStatus: BusinessPaymentSummary["payoutStatus"];
+    payoutHoldReason: string | null;
+  } | null;
+};
 
 export type OrderDecisionState = {
   headline: string;
@@ -27,6 +44,23 @@ export function getOrderShortId(id: string) {
   return id.slice(0, 8).toUpperCase();
 }
 
+export function withOrderFinancials(
+  order: BusinessCustomerOrder,
+  paymentSummary?: BusinessPaymentSummary | null
+): OrderFinancialView {
+  return {
+    ...order,
+    financials: paymentSummary
+      ? {
+          platformFeeCents: paymentSummary.platformFeeCents,
+          driverPayoutCents: paymentSummary.payoutGrossCents,
+          payoutStatus: paymentSummary.payoutStatus,
+          payoutHoldReason: paymentSummary.payoutHoldReason
+        }
+      : null
+  };
+}
+
 export function isOrderFulfilled(order: Pick<BusinessCustomerOrder, "status" | "job" | "payment">) {
   return order.status === "FULFILLED" || (order.job.status === "DELIVERED" && order.payment.status === "CAPTURED");
 }
@@ -43,24 +77,145 @@ export function isOrderInDelivery(order: Pick<BusinessCustomerOrder, "job">) {
   return ["ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(order.job.status);
 }
 
-export function matchesOrderFilter(order: BusinessCustomerOrder, filter: OrderFilterKey) {
+export function getOrderFinancialRiskReasons(order: OrderFinancialView) {
+  const reasons: string[] = [];
+
+  if (order.payment.status === "FAILED") {
+    reasons.push("Payment failed");
+  }
+
+  if (order.status === "PAYMENT_FAILED") {
+    reasons.push("Order marked as payment failed");
+  }
+
+  if (order.job.status === "DELIVERED" && order.payment.status !== "CAPTURED") {
+    reasons.push("Delivered but payment not captured");
+  }
+
+  if (order.financials?.payoutStatus === "FAILED") {
+    reasons.push("Driver payout failed");
+  }
+
+  if (order.financials?.payoutHoldReason) {
+    reasons.push(order.financials.payoutHoldReason);
+  }
+
+  if (
+    order.payment.status === "CAPTURED" &&
+    order.job.status === "DELIVERED" &&
+    order.financials &&
+    !order.financials.payoutStatus
+  ) {
+    reasons.push("Captured but payout ledger missing");
+  }
+
+  return reasons;
+}
+
+export function hasOrderPaymentRisk(order: OrderFinancialView) {
+  return getOrderFinancialRiskReasons(order).length > 0;
+}
+
+export function getOrderRiskState(order: OrderFinancialView) {
+  const reasons = getOrderFinancialRiskReasons(order);
+
+  if (reasons.length > 0) {
+    return {
+      tone: "danger" as const,
+      title: "Payment action required",
+      summary: reasons.join(" · ")
+    };
+  }
+
+  if (isOrderFulfilled(order)) {
+    return {
+      tone: "success" as const,
+      title: "Clear",
+      summary: "Customer charged successfully and fulfilment is complete."
+    };
+  }
+
+  if (isOrderInDelivery(order)) {
+    return {
+      tone: "info" as const,
+      title: "Monitor",
+      summary: "Delivery is active and payment is not currently blocking fulfilment."
+    };
+  }
+
+  return {
+    tone: "warning" as const,
+    title: "Needs fulfilment",
+    summary: "Payment is authorised and the order still needs delivery progress."
+  };
+}
+
+export function getOrderNextAction(order: OrderFinancialView) {
+  if (hasOrderPaymentRisk(order)) {
+    return {
+      label: "Review payment risk",
+      href: `/app/orders/${order.id}`
+    };
+  }
+
+  if (order.job.status === "DISPATCH_FAILED") {
+    return {
+      label: "Resolve dispatch",
+      href: `/app/jobs/${order.job.id}`
+    };
+  }
+
+  if (isOrderInDelivery(order)) {
+    return {
+      label: "Monitor delivery",
+      href: `/app/jobs/${order.job.id}`
+    };
+  }
+
+  if (isOrderFulfilled(order)) {
+    return {
+      label: "View order",
+      href: `/app/orders/${order.id}`
+    };
+  }
+
+  return {
+    label: "Open delivery job",
+    href: `/app/jobs/${order.job.id}`
+  };
+}
+
+export function matchesOrderFilter(order: OrderFinancialView, filter: OrderFilterKey) {
   switch (filter) {
     case "all":
       return true;
-    case "new-authorized":
-      return (
-        !isOrderFulfilled(order) &&
-        !isOrderPaymentFailed(order) &&
-        (order.payment.status === "AUTHORIZED" || ["REQUESTED", "DISPATCH_FAILED"].includes(order.job.status))
-      );
+    case "needs-action":
+      return hasOrderPaymentRisk(order) || order.job.status === "DISPATCH_FAILED" || (order.payment.status === "AUTHORIZED" && !isOrderInDelivery(order) && !isOrderFulfilled(order));
     case "in-delivery":
       return isOrderInDelivery(order);
+    case "payment-risk":
+      return hasOrderPaymentRisk(order);
     case "fulfilled":
       return isOrderFulfilled(order);
-    case "payment-failed":
-      return isOrderPaymentFailed(order);
     default:
       return true;
+  }
+}
+
+export function matchesPaymentRiskFilter(order: OrderFinancialView, filter: PaymentRiskFilterKey) {
+  switch (filter) {
+    case "needs-action":
+      return hasOrderPaymentRisk(order);
+    case "authorized":
+      return order.payment.status === "AUTHORIZED";
+    case "captured":
+      return order.payment.status === "CAPTURED";
+    case "failed-refunded":
+      return ["FAILED", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELLED"].includes(order.payment.status);
+    case "payout-review":
+      return Boolean(order.financials?.payoutHoldReason) || order.financials?.payoutStatus === "FAILED" || (order.payment.status === "CAPTURED" && order.job.status === "DELIVERED" && order.financials?.payoutStatus !== "PAID" && order.financials?.payoutStatus !== "READY");
+    default:
+      return false;
   }
 }
 

@@ -16,7 +16,7 @@ const items = [
   { href: "/app", label: "Operations", view: "operations" },
   { href: "/app/jobs", label: "Jobs", view: "jobs" },
   { href: "/app/orders", label: "Orders", view: "orders" },
-  { href: "/app/payments", label: "Payments", view: "payments" },
+  { href: "/app/payments", label: "Payment risk", view: "payments" },
   { href: "/app/notifications", label: "Notifications", view: "notifications" },
   { href: "/app/restaurant", label: "Restaurant", view: "restaurant" },
   { href: "/app/updates", label: "What’s new", view: "updates" },

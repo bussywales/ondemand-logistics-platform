@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   formatOrderTimeAgo,
   getOrderDecisionState,
+  getOrderFinancialRiskReasons,
+  getOrderNextAction,
+  hasOrderPaymentRisk,
   matchesOrderFilter,
+  matchesPaymentRiskFilter,
+  withOrderFinancials,
   type OrderFilterKey
 } from "./orders-state";
 import type { BusinessCustomerOrder } from "./product-state";
@@ -52,12 +57,12 @@ const baseOrder: BusinessCustomerOrder = {
 };
 
 function filtered(order: BusinessCustomerOrder, filter: OrderFilterKey) {
-  return matchesOrderFilter(order, filter);
+  return matchesOrderFilter(withOrderFinancials(order), filter);
 }
 
 describe("orders-state", () => {
-  it("groups an authorized requested order into the new/authorized filter", () => {
-    expect(filtered(baseOrder, "new-authorized")).toBe(true);
+  it("groups an authorized requested order into the needs-action filter", () => {
+    expect(filtered(baseOrder, "needs-action")).toBe(true);
     expect(filtered(baseOrder, "fulfilled")).toBe(false);
   });
 
@@ -93,7 +98,7 @@ describe("orders-state", () => {
     expect(getOrderDecisionState(order).severity).toBe("success");
   });
 
-  it("treats failed payment as a payment-failed queue item", () => {
+  it("treats failed payment as a payment-risk queue item", () => {
     const order: BusinessCustomerOrder = {
       ...baseOrder,
       status: "PAYMENT_FAILED",
@@ -104,8 +109,53 @@ describe("orders-state", () => {
       }
     };
 
-    expect(filtered(order, "payment-failed")).toBe(true);
+    expect(filtered(order, "payment-risk")).toBe(true);
     expect(getOrderDecisionState(order).headline).toBe("Payment failed");
+  });
+
+  it("derives payment risk reasons from delivered uncaptured and payout hold states", () => {
+    const order = withOrderFinancials(
+      {
+        ...baseOrder,
+        payment: {
+          ...baseOrder.payment,
+          status: "AUTHORIZED"
+        },
+        job: {
+          ...baseOrder.job,
+          status: "DELIVERED"
+        }
+      },
+      {
+        id: "payment-1",
+        orderId: baseOrder.id,
+        jobId: baseOrder.job.id,
+        restaurant: baseOrder.restaurant,
+        customerName: baseOrder.customer.name,
+        orderStatus: "PAYMENT_AUTHORIZED",
+        jobStatus: "DELIVERED",
+        paymentStatus: "AUTHORIZED",
+        customerTotalCents: baseOrder.totalCents,
+        amountAuthorizedCents: baseOrder.totalCents,
+        amountCapturedCents: 0,
+        amountRefundedCents: 0,
+        currency: baseOrder.currency,
+        platformFeeCents: 320,
+        payoutGrossCents: 1130,
+        payoutStatus: null,
+        payoutHoldReason: "Driver banking check pending",
+        createdAt: baseOrder.createdAt,
+        updatedAt: baseOrder.updatedAt
+      }
+    );
+
+    expect(hasOrderPaymentRisk(order)).toBe(true);
+    expect(getOrderFinancialRiskReasons(order)).toEqual([
+      "Delivered but payment not captured",
+      "Driver banking check pending"
+    ]);
+    expect(matchesPaymentRiskFilter(order, "needs-action")).toBe(true);
+    expect(getOrderNextAction(order).label).toBe("Review payment risk");
   });
 
   it("formats compact received times for recent orders", () => {
