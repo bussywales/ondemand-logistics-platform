@@ -34,7 +34,7 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
         </button>
       </div>
 
-      <label className="ops-field assignment-picker-search sw-field">
+      <label className="assignment-picker-search sw-field">
         <span className="sw-label">Search drivers</span>
         <input
           className="sw-input"
@@ -64,7 +64,7 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
             ))}
           </div>
           <div className="assignment-next-steps">
-            <p className="ops-section-label">What to do next</p>
+            <p className="sw-label">What to do next</p>
             <ul>
               {props.driverAssignmentError.nextSteps.map((step) => (
                 <li key={step}>{step}</li>
@@ -76,12 +76,12 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
       ) : null}
 
       {props.eligibleDriversLoading ? (
-        <div className="ops-empty-state assignment-empty-state sw-empty-state">
+        <div className="assignment-empty-state sw-empty-state">
           <strong className="sw-empty-title">Loading driver pool</strong>
           <p className="sw-empty-copy">Checking availability, verification, location, and vehicle match.</p>
         </div>
       ) : props.filteredEligibleDrivers.length === 0 && props.driverPickerQuery.trim() ? (
-        <div className="ops-empty-state assignment-empty-state sw-empty-state">
+        <div className="assignment-empty-state sw-empty-state">
           <strong className="sw-empty-title">No matching drivers</strong>
           <p className="sw-empty-copy">Try another name, vehicle, or verification filter.</p>
         </div>

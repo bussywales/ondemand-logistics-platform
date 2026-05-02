@@ -9,8 +9,8 @@ type JobsListViewProps = {
 
 export function JobsListView(props: JobsListViewProps) {
   return (
-    <section className="sw-operational-surface ops-section ops-queue-section">
-      <div className="ops-section-header">
+    <section className="sw-operational-surface ops-queue-section">
+      <div className="sw-card-header">
         <SectionTitle eyebrow="Jobs" icon="queue" note="Full operational record for this workspace." title="All jobs" />
         <span className="ops-count-pill">{props.jobs.length} shown</span>
       </div>

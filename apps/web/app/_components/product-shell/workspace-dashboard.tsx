@@ -125,8 +125,8 @@ export function MetricSignalGrid(props: { attentionCount: number; workspaceSumma
 
 function RecentOrdersSurface(props: { recentOrders: BusinessCustomerOrder[] }) {
   return (
-    <section className="sw-operational-surface ops-section recent-orders-section">
-      <div className="ops-section-header">
+    <section className="sw-operational-surface recent-orders-section">
+      <div className="sw-card-header">
         <SectionTitle
           eyebrow="Orders"
           icon="document"
@@ -140,7 +140,7 @@ function RecentOrdersSurface(props: { recentOrders: BusinessCustomerOrder[] }) {
       </div>
 
       {props.recentOrders.length === 0 ? (
-        <div className="sw-empty-state ops-empty-state recent-orders-empty">
+        <div className="sw-empty-state recent-orders-empty">
           <span className="empty-state-icon" aria-hidden="true">
             <ShipWrightIcon name="document" />
           </span>
@@ -152,7 +152,7 @@ function RecentOrdersSurface(props: { recentOrders: BusinessCustomerOrder[] }) {
           {props.recentOrders.map((order) => (
             <Link className="sw-list-row recent-order-row" href={`/app/orders/${order.id}`} key={order.id}>
               <div>
-                <span className="ops-section-label">Order {order.id.slice(0, 8).toUpperCase()}</span>
+                <span className="sw-label">Order {order.id.slice(0, 8).toUpperCase()}</span>
                 <strong>{order.customer.name}</strong>
                 <span>{order.restaurant.name}</span>
               </div>
@@ -171,8 +171,8 @@ function RecentOrdersSurface(props: { recentOrders: BusinessCustomerOrder[] }) {
 
 export function ActiveJobsQueue(props: { activeJobs: AppJob[] }) {
   return (
-    <section className="sw-operational-surface ops-section ops-queue-section">
-      <div className="ops-section-header">
+    <section className="sw-operational-surface ops-queue-section">
+      <div className="sw-card-header">
         <SectionTitle
           eyebrow="Operations"
           icon="queue"
@@ -189,7 +189,7 @@ export function ActiveJobsQueue(props: { activeJobs: AppJob[] }) {
       </div>
 
       {props.activeJobs.length === 0 ? (
-        <div className="sw-empty-state ops-empty-state ops-queue-empty ops-queue-empty-premium">
+        <div className="sw-empty-state ops-queue-empty ops-queue-empty-premium">
           <span className="empty-state-icon" aria-hidden="true">
             <ShipWrightIcon name="queue" />
           </span>
@@ -250,8 +250,8 @@ export function NeedsReviewQueue(props: {
   onRetryDispatch: (job: AppJob) => void;
 }) {
   return (
-    <section className="sw-operational-surface ops-section ops-queue-section ops-review-section">
-      <div className="ops-section-header">
+    <section className="sw-operational-surface ops-queue-section ops-review-section">
+      <div className="sw-card-header">
         <SectionTitle
           eyebrow="Attention"
           icon="warning"
@@ -332,7 +332,7 @@ export function NeedsReviewQueue(props: {
 
 export function WorkspaceDashboard(props: WorkspaceDashboardProps) {
   return (
-    <section className="ops-stack">
+    <section className="sw-stack">
       <WorkspaceCommandSummary
         activeJobsCount={props.activeJobs.length}
         attentionCount={props.attentionJobs.length}

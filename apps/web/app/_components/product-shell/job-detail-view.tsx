@@ -39,7 +39,7 @@ export function JobDetailView(props: JobDetailViewProps) {
   const jobDecision = getDispatchIntelligence(props.job);
 
   return (
-    <section className="ops-stack">
+    <section className="sw-stack">
       <JobDecisionSurface
         actionSubmitting={props.actionSubmitting}
         job={props.job}

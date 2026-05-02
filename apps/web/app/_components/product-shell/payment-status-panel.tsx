@@ -25,12 +25,12 @@ export function PaymentStatusPanel(props: PaymentStatusPanelProps) {
   return (
     <div className="ops-detail-grid">
       <section
-        className={`sw-operational-surface ops-section ops-zone ops-payment-zone ${
+        className={`sw-operational-surface ops-zone ops-payment-zone ${
           !paymentPanel.isFinal ? "ops-payment-zone-blocking" : ""
         }`}
         id="payment"
       >
-        <div className="ops-section-header">
+        <div className="sw-card-header">
           <SectionTitle eyebrow="Payment" icon="payment" title="Status" />
         </div>
         <div className="ops-definition-list">
@@ -88,7 +88,7 @@ export function PaymentStatusPanel(props: PaymentStatusPanelProps) {
             />
           ) : null}
 
-          <div className="ops-actions">
+          <div className="sw-action-row">
             <button
               className="sw-button sw-button--primary button button-primary"
               disabled={props.paymentSubmitting || !paymentPanel.canAuthorize}

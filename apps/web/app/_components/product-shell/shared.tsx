@@ -135,7 +135,7 @@ export function queueStateCopy(kind: "active" | "attention" | "all") {
 
 export function QueueEmptyState(props: { copy: { title: string; body: string }; icon?: ShipWrightIconName }) {
   return (
-    <div className="ops-empty-state ops-queue-empty sw-empty-state">
+    <div className="ops-queue-empty sw-empty-state">
       <span className="empty-state-icon" aria-hidden="true">
         <ShipWrightIcon name={props.icon ?? "queue"} />
       </span>
@@ -147,7 +147,7 @@ export function QueueEmptyState(props: { copy: { title: string; body: string }; 
 
 export function DriverPickerEmptyState(props: { drivers: EligibleDriver[] }) {
   return (
-    <div className="ops-empty-state ops-queue-empty assignment-empty-state sw-empty-state">
+    <div className="ops-queue-empty assignment-empty-state sw-empty-state">
       <span className="empty-state-icon" aria-hidden="true">
         <ShipWrightIcon name="driver" />
       </span>

@@ -12,12 +12,12 @@ export function DispatchTimelinePanel(props: DispatchTimelinePanelProps) {
 
   return (
     <div className="ops-detail-grid">
-      <section className="sw-supporting-surface ops-section ops-zone ops-dispatch-zone">
-        <div className="ops-section-header">
+      <section className="sw-supporting-surface ops-zone ops-dispatch-zone">
+        <div className="sw-card-header">
           <SectionTitle eyebrow="Dispatch" icon="retry" title="Attempts" />
         </div>
         {job.tracking.dispatchAttempts.length === 0 ? (
-          <div className="ops-empty-state sw-empty-state">
+          <div className="sw-empty-state">
             <span className="empty-state-icon" aria-hidden="true">
               <ShipWrightIcon name="retry" />
             </span>
@@ -43,12 +43,12 @@ export function DispatchTimelinePanel(props: DispatchTimelinePanelProps) {
         )}
       </section>
 
-      <section className="sw-supporting-surface ops-section ops-zone ops-timeline-zone">
-        <div className="ops-section-header">
+      <section className="sw-supporting-surface ops-zone ops-timeline-zone">
+        <div className="sw-card-header">
           <SectionTitle eyebrow="Timeline" icon="timeline" title="Events" />
         </div>
         {job.tracking.timeline.length === 0 ? (
-          <div className="ops-empty-state sw-empty-state">
+          <div className="sw-empty-state">
             <span className="empty-state-icon" aria-hidden="true">
               <ShipWrightIcon name="timeline" />
             </span>

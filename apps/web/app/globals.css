@@ -2479,7 +2479,8 @@ h3 {
 }
 
 .ops-section-header h2,
-.ops-job-header h2 {
+.ops-job-header h2,
+.sw-card-header h2 {
   margin: 0.22rem 0 0.35rem;
   color: #0a1714;
   font-size: clamp(1.35rem, 2vw, 1.9rem);
@@ -3599,6 +3600,7 @@ select:focus,
 
 .ops-section-header h2,
 .ops-job-header h2,
+.sw-card-header h2,
 .merchant-panel-heading h2,
 .customer-cart-heading h2,
 .customer-restaurant-heading h1 {
@@ -3686,7 +3688,8 @@ select:focus,
 
 .ops-decision-banner .eyebrow,
 .ops-decision-banner .ops-detail-note,
-.ops-decision-grid .ops-section-label {
+.ops-decision-grid .ops-section-label,
+.ops-decision-grid .sw-label {
   color: rgba(255, 255, 255, 0.72);
 }
 
@@ -4306,6 +4309,7 @@ h3,
 .section-heading h2,
 .ops-section-header h2,
 .ops-job-header h2,
+.sw-card-header h2,
 .merchant-panel-heading h2,
 .customer-restaurant-heading h1,
 .customer-order-state h1 {
@@ -4332,7 +4336,8 @@ h3,
 .merchant-panel-heading p,
 .customer-menu-item p,
 .customer-order-empty p,
-.ops-empty-state p {
+.ops-empty-state p,
+.sw-empty-state p {
   color: #627085;
   font-weight: 450;
 }
@@ -4916,6 +4921,7 @@ select:hover,
 }
 
 .ops-decision-banner .ops-job-header h2,
+.ops-decision-banner .sw-card-header h2,
 .ops-decision-banner h2 {
   max-width: 920px;
   color: #ffffff;
@@ -4978,7 +4984,8 @@ select:hover,
   color: #85e3a0;
 }
 
-.ops-decision-tile .ops-section-label {
+.ops-decision-tile .ops-section-label,
+.ops-decision-tile .sw-label {
   color: rgba(255, 255, 255, 0.66);
 }
 
@@ -5092,7 +5099,8 @@ select:hover,
 }
 
 /* Premium command-centre pass for the job decision surface. */
-.ops-stack:has(.ops-decision-banner) {
+.ops-stack:has(.ops-decision-banner),
+.sw-stack:has(.ops-decision-banner) {
   gap: 1.65rem;
 }
 
@@ -5142,6 +5150,7 @@ select:hover,
 }
 
 .ops-decision-banner .ops-job-header h2,
+.ops-decision-banner .sw-card-header h2,
 .ops-decision-banner h2 {
   color: #fffefe;
   font-size: clamp(2.35rem, 4.4vw, 4.1rem);
@@ -5229,7 +5238,8 @@ select:hover,
     0 18px 40px rgba(0, 0, 0, 0.12);
 }
 
-.ops-decision-tile .ops-section-label {
+.ops-decision-tile .ops-section-label,
+.ops-decision-tile .sw-label {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.76rem;
   letter-spacing: 0.12em;
@@ -5351,6 +5361,7 @@ select:hover,
   }
 
   .ops-decision-banner .ops-job-header h2,
+  .ops-decision-banner .sw-card-header h2,
   .ops-decision-banner h2 {
     font-size: clamp(2rem, 12vw, 3rem);
   }
@@ -5361,7 +5372,8 @@ select:hover,
 }
 
 /* Hierarchy and depth tuning for the job detail command centre. */
-.ops-stack:has(.ops-decision-banner) {
+.ops-stack:has(.ops-decision-banner),
+.sw-stack:has(.ops-decision-banner) {
   gap: 1.9rem;
 }
 
@@ -5399,6 +5411,7 @@ select:hover,
 }
 
 .ops-decision-banner .ops-job-header h2,
+.ops-decision-banner .sw-card-header h2,
 .ops-decision-banner h2 {
   max-width: 980px;
   color: #ffffff;

@@ -16,7 +16,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
 
   return (
     <section
-      className={`sw-decision-surface ops-section ops-job-hero ops-decision-banner ${
+      className={`sw-decision-surface ops-job-hero ops-decision-banner ${
         jobDecision?.severity === "BLOCKER" ? "ops-job-hero-blocker" : ""
       }`}
     >
@@ -55,7 +55,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
             <span className="decision-tile-icon decision-tile-icon-danger" aria-hidden="true">
               <ShipWrightIcon name="document" />
             </span>
-            <span className="ops-section-label">Current state</span>
+            <span className="sw-label">Current state</span>
             <strong>{jobDecision.currentIssue}</strong>
             <p>{formatStatusLabel(job.status)}</p>
           </div>
@@ -63,7 +63,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
             <span className="decision-tile-icon decision-tile-icon-teal" aria-hidden="true">
               <ShipWrightIcon name="driver" />
             </span>
-            <span className="ops-section-label">Operational meaning</span>
+            <span className="sw-label">Operational meaning</span>
             <strong>{jobDecision.diagnosis}</strong>
             <p>{jobDecision.explanation}</p>
           </div>
@@ -71,7 +71,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
             <span className="decision-tile-icon decision-tile-icon-warning" aria-hidden="true">
               <ShipWrightIcon name="timeline" />
             </span>
-            <span className="ops-section-label">Impact</span>
+            <span className="sw-label">Impact</span>
             <strong>{jobDecision.impact}</strong>
             <p>Customer experience and SLA may be at risk.</p>
           </div>
@@ -79,7 +79,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
             <span className="decision-tile-icon decision-tile-icon-success" aria-hidden="true">
               <ShipWrightIcon name="arrow" />
             </span>
-            <span className="ops-section-label">Next action</span>
+            <span className="sw-label">Next action</span>
             <strong>{jobDecision.recommendedActionLabel}</strong>
             <p>{jobDecision.explanation}</p>
           </div>

@@ -349,7 +349,7 @@ export function ProductShell(props: ProductShellProps) {
   if (status === "loading") {
     return (
       <main className="app-shell loading-shell">
-        <section className="ops-empty-state sw-empty-state">
+        <section className="sw-empty-state">
           <strong className="sw-empty-title">Loading operations console</strong>
         </section>
       </main>
@@ -359,7 +359,7 @@ export function ProductShell(props: ProductShellProps) {
   if (!session) {
     return (
       <main className="app-shell loading-shell">
-        <section className="ops-empty-state sw-empty-state">
+        <section className="sw-empty-state">
           <p className="eyebrow">Business onboarding required</p>
           <h1>Sign in before using operations.</h1>
           <p>Open onboarding, create or resume the operator account, then return here.</p>
@@ -376,7 +376,7 @@ export function ProductShell(props: ProductShellProps) {
   if (!session.context.currentOrg) {
     return (
       <main className="app-shell loading-shell">
-        <section className="ops-empty-state sw-empty-state">
+        <section className="sw-empty-state">
           <p className="eyebrow">Business org missing</p>
           <h1>Finish org setup before using operations.</h1>
           <p>The account is authenticated but not attached to a business operator membership yet.</p>
@@ -424,13 +424,13 @@ export function ProductShell(props: ProductShellProps) {
           <WorkspaceNav active={props.view === "home" ? "operations" : "jobs"} platformAdmin={session.context.platformAdmin} />
 
           <section className="ops-sidebar-section">
-            <span className="ops-section-label">Operator</span>
+            <span className="sw-label">Operator</span>
             <strong>{session.context.displayName}</strong>
             <p>{session.context.email}</p>
           </section>
 
           <section className="ops-sidebar-section">
-            <span className="ops-section-label">Workspace</span>
+            <span className="sw-label">Workspace</span>
             <div className="ops-summary-list">
               <div>
                 <strong>{workspaceSummary.activeJobs}</strong>
@@ -451,7 +451,7 @@ export function ProductShell(props: ProductShellProps) {
             <span className="sidebar-live-icon" aria-hidden="true">
               <ShipWrightIcon name={attentionJobs.length > 0 ? "warning" : "check"} />
             </span>
-            <span className="ops-section-label">Live posture</span>
+            <span className="sw-label">Live posture</span>
             <strong>{attentionJobs.length > 0 ? "Review required" : "System clear"}</strong>
             <p>
               {attentionJobs.length > 0
@@ -480,7 +480,7 @@ export function ProductShell(props: ProductShellProps) {
           ) : null}
 
           {props.view === "jobs" ? (
-            <section className="ops-stack">
+            <section className="sw-stack">
               <JobCreatePanel
                 deliveryForm={deliveryForm}
                 onSubmit={handleCreateDelivery}
@@ -525,7 +525,7 @@ export function ProductShell(props: ProductShellProps) {
                 session={session}
               />
             ) : (
-              <div className="ops-empty-state sw-empty-state">
+              <div className="sw-empty-state">
                 <strong className="sw-empty-title">Job not found</strong>
                 <p className="sw-empty-copy">Return to the jobs list and open another delivery.</p>
               </div>

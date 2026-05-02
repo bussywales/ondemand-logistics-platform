@@ -10,8 +10,8 @@ export function JobRouteAndDriverPanel(props: JobRouteAndDriverPanelProps) {
 
   return (
     <div className="ops-detail-grid">
-      <section className="sw-operational-surface ops-section ops-zone ops-route-zone">
-        <div className="ops-section-header">
+      <section className="sw-operational-surface ops-zone ops-route-zone">
+        <div className="sw-card-header">
           <SectionTitle eyebrow="Route" icon="route" title="Pickup and drop" />
         </div>
         <div className="ops-definition-list">
@@ -34,8 +34,8 @@ export function JobRouteAndDriverPanel(props: JobRouteAndDriverPanelProps) {
         </div>
       </section>
 
-      <section className="sw-operational-surface ops-section ops-zone ops-driver-zone">
-        <div className="ops-section-header">
+      <section className="sw-operational-surface ops-zone ops-driver-zone">
+        <div className="sw-card-header">
           <SectionTitle eyebrow="Driver" icon="driver" title="Assignment" />
         </div>
         <div className="ops-definition-list">

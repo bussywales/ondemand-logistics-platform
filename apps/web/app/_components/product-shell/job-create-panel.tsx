@@ -14,8 +14,8 @@ export function JobCreatePanel(props: JobCreatePanelProps) {
   const { deliveryForm, setDeliveryForm, submitting } = props;
 
   return (
-    <section className="sw-operational-surface ops-section ops-creation-panel">
-      <div className="ops-section-header">
+    <section className="sw-operational-surface ops-creation-panel">
+      <div className="sw-card-header">
         <SectionTitle
           eyebrow="Jobs"
           icon="route"
@@ -137,7 +137,7 @@ export function JobCreatePanel(props: JobCreatePanelProps) {
           </div>
         </details>
 
-        <div className="ops-actions">
+        <div className="sw-action-row">
           <button className="sw-button sw-button--primary button button-primary" disabled={submitting} type="submit">
             <ShipWrightIcon name="route" />
             <span>{submitting ? "Creating delivery..." : "Create delivery"}</span>

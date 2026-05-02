@@ -26,8 +26,8 @@ type OperatorControlsPanelProps = {
 
 export function OperatorControlsPanel(props: OperatorControlsPanelProps) {
   return (
-    <section className="sw-utility-surface ops-section ops-zone ops-actions-zone" id="operator-controls">
-      <div className="ops-section-header">
+    <section className="sw-utility-surface ops-zone ops-actions-zone" id="operator-controls">
+      <div className="sw-card-header">
         <SectionTitle
           eyebrow="Advanced"
           icon="warning"
@@ -41,7 +41,7 @@ export function OperatorControlsPanel(props: OperatorControlsPanelProps) {
           <dd>Re-open the job for dispatch when it is blocked or needs another attempt.</dd>
         </div>
       </div>
-      <div className="ops-actions ops-actions-inline">
+      <div className="sw-action-row">
         <button
           className="sw-button sw-button--secondary button button-secondary"
           disabled={props.actionSubmitting}
@@ -53,7 +53,7 @@ export function OperatorControlsPanel(props: OperatorControlsPanelProps) {
         </button>
       </div>
 
-      <div className="ops-actions ops-actions-inline" id="assign-driver">
+      <div className="sw-action-row" id="assign-driver">
         <button
           className="sw-button sw-button--secondary button button-secondary"
           disabled={props.actionSubmitting}
@@ -80,12 +80,12 @@ export function OperatorControlsPanel(props: OperatorControlsPanelProps) {
         />
       ) : null}
 
-      <label className="ops-field sw-field">
+      <label className="sw-field">
         <span className="sw-label">Cancel reason</span>
         <input className="sw-input" onChange={(event) => props.onCancelReasonChange(event.target.value)} value={props.cancelReason} />
       </label>
 
-      <div className="ops-actions ops-actions-inline">
+      <div className="sw-action-row">
         <button
           className="sw-button sw-button--secondary button button-secondary"
           disabled={props.actionSubmitting || !props.cancelReason.trim()}
