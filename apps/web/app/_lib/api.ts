@@ -188,6 +188,10 @@ export class ApiRequestError extends Error {
   }
 }
 
+export function isUnauthorizedApiError(error: unknown): error is ApiRequestError {
+  return error instanceof ApiRequestError && error.status === 401;
+}
+
 export function getDriverAssignmentIneligibility(
   error: unknown
 ): DriverAssignmentIneligibilityPayload | null {

@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { listBusinessNotifications, markAllBusinessNotificationsRead, markBusinessNotificationRead } from "../_lib/api";
+import {
+  resolveNotificationsLoadFailure,
+  resolveNotificationsLoadSuccess
+} from "../_lib/notifications-state";
 import type { BusinessNotification, BusinessSession } from "../_lib/product-state";
 import { useBusinessAuth } from "./business-auth-provider";
 import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
-import { GroupedNotificationFeed, NotificationsBell } from "./notifications";
+import { GroupedNotificationFeed, NotificationsAuthExpiredState, NotificationsBell } from "./notifications";
 import { ShipWrightIcon } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 
@@ -22,6 +26,7 @@ export function NotificationsShell() {
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authExpired, setAuthExpired] = useState(false);
 
   useEffect(() => {
     if (!session) {
@@ -33,13 +38,21 @@ export function NotificationsShell() {
 
   async function refreshNotifications(currentSession: BusinessSession) {
     setLoading(true);
-    setError(null);
+    if (!authExpired) {
+      setError(null);
+    }
 
     try {
       const next = await listBusinessNotifications(currentSession);
-      setItems(next);
+      const result = resolveNotificationsLoadSuccess(next);
+      setItems(result.items);
+      setAuthExpired(result.authExpired);
+      setError(result.error);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to load notifications.");
+      const result = resolveNotificationsLoadFailure(issue);
+      setItems(result.items);
+      setAuthExpired(result.authExpired);
+      setError(result.error);
     } finally {
       setLoading(false);
     }
@@ -51,7 +64,7 @@ export function NotificationsShell() {
   }
 
   async function handleOpenNotification(item: BusinessNotification) {
-    if (!session || item.read) {
+    if (!session || authExpired || item.read) {
       return;
     }
 
@@ -66,7 +79,7 @@ export function NotificationsShell() {
   }
 
   async function handleMarkAllRead() {
-    if (!session || markingAll || items.every((item) => item.read)) {
+    if (!session || authExpired || markingAll || items.every((item) => item.read)) {
       return;
     }
 
@@ -220,7 +233,7 @@ export function NotificationsShell() {
               <div className="orders-command-actions">
                 <span className={`ops-count-pill ${dangerCount > 0 ? "ops-count-pill-alert" : ""}`}>{unreadCount} unread</span>
                 <span className="ops-count-pill">{items.length} total</span>
-                {unreadCount > 0 ? (
+                {!authExpired && unreadCount > 0 ? (
                   <button className="button button-secondary" onClick={() => void handleMarkAllRead()} type="button">
                     {markingAll ? "Marking..." : "Mark all read"}
                   </button>
@@ -247,6 +260,8 @@ export function NotificationsShell() {
                   <strong className="sw-empty-title">Loading notifications</strong>
                   <p className="sw-empty-copy">Checking the latest dispatch, payment, and delivery events.</p>
                 </div>
+              ) : authExpired ? (
+                <NotificationsAuthExpiredState />
               ) : (
                 <GroupedNotificationFeed items={items} onOpenNotification={(item) => void handleOpenNotification(item)} />
               )}

@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { listBusinessNotifications, markAllBusinessNotificationsRead, markBusinessNotificationRead } from "../_lib/api";
 import {
+  NOTIFICATIONS_AUTH_EXPIRED_MESSAGE,
+  resolveNotificationsLoadFailure,
+  resolveNotificationsLoadSuccess
+} from "../_lib/notifications-state";
+import {
   groupNotificationsByDate,
   mapNotification,
   type NotificationPresentation
@@ -77,6 +82,18 @@ function NotificationListItem(props: {
   );
 }
 
+export function NotificationsAuthExpiredState(props: { compact?: boolean }) {
+  return (
+    <div className={`sw-empty-state notifications-empty-state ${props.compact ? "notifications-empty-state-compact" : ""}`}>
+      <strong className="sw-empty-title">Session expired</strong>
+      <p className="sw-empty-copy">{NOTIFICATIONS_AUTH_EXPIRED_MESSAGE}</p>
+      <Link className="sw-button sw-button--secondary button button-secondary" href="/get-started">
+        Sign in again
+      </Link>
+    </div>
+  );
+}
+
 export function NotificationFeed(props: {
   compact?: boolean;
   emptyCopy: string;
@@ -117,6 +134,7 @@ export function NotificationsBell(props: { session: BusinessSession }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const [authExpired, setAuthExpired] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -126,11 +144,15 @@ export function NotificationsBell(props: { session: BusinessSession }) {
       try {
         const next = await listBusinessNotifications(props.session);
         if (active) {
-          setItems(next);
+          const result = resolveNotificationsLoadSuccess(next);
+          setItems(result.items);
+          setAuthExpired(result.authExpired);
         }
-      } catch {
+      } catch (issue) {
         if (active) {
-          setItems([]);
+          const result = resolveNotificationsLoadFailure(issue);
+          setItems(result.items);
+          setAuthExpired(result.authExpired);
         }
       } finally {
         if (active) {
@@ -140,15 +162,19 @@ export function NotificationsBell(props: { session: BusinessSession }) {
     }
 
     void load();
-    const interval = window.setInterval(() => {
-      void load();
-    }, 20000);
+    const interval = authExpired
+      ? null
+      : window.setInterval(() => {
+          void load();
+        }, 20000);
 
     return () => {
       active = false;
-      window.clearInterval(interval);
+      if (interval !== null) {
+        window.clearInterval(interval);
+      }
     };
-  }, [props.session.accessToken, props.session.context.currentOrg?.id]);
+  }, [authExpired, props.session.accessToken, props.session.context.currentOrg?.id]);
 
   useEffect(() => {
     if (!open) {
@@ -173,7 +199,7 @@ export function NotificationsBell(props: { session: BusinessSession }) {
   }
 
   async function handleOpenNotification(item: BusinessNotification) {
-    if (item.read) {
+    if (authExpired || item.read) {
       return;
     }
 
@@ -186,7 +212,7 @@ export function NotificationsBell(props: { session: BusinessSession }) {
   }
 
   async function handleMarkAllRead() {
-    if (markingAll || unreadCount === 0) {
+    if (authExpired || markingAll || unreadCount === 0) {
       return;
     }
 
@@ -242,6 +268,8 @@ export function NotificationsBell(props: { session: BusinessSession }) {
               <strong className="sw-empty-title">Loading notifications</strong>
               <p className="sw-empty-copy">Checking the latest system events for this workspace.</p>
             </div>
+          ) : authExpired ? (
+            <NotificationsAuthExpiredState compact />
           ) : (
             <NotificationFeed
               compact

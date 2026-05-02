@@ -11,6 +11,7 @@ import {
   getDriverState,
   getPublicRestaurantMenu,
   getRestaurantMenu,
+  isUnauthorizedApiError,
   listEligibleDrivers,
   listBusinessNotifications,
   listBusinessOrders,
@@ -355,6 +356,12 @@ describe('authorizePayment', () => {
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(init.method).toBe('POST');
     expect(result.updatedCount).toBe(3);
+  });
+
+  it('detects unauthorized API errors cleanly', () => {
+    expect(isUnauthorizedApiError(new ApiRequestError('unauthorized', 401, { message: 'unauthorized' }))).toBe(true);
+    expect(isUnauthorizedApiError(new ApiRequestError('forbidden', 403, { message: 'forbidden' }))).toBe(false);
+    expect(isUnauthorizedApiError(new Error('boom'))).toBe(false);
   });
 
   it('reads and updates driver execution state with bearer auth', async () => {

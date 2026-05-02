@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { NotificationFeed } from "./notifications";
+import { NotificationFeed, NotificationsAuthExpiredState } from "./notifications";
 import type { BusinessNotification } from "../_lib/product-state";
 
 const notifications: BusinessNotification[] = [
@@ -71,5 +71,13 @@ describe("NotificationFeed", () => {
 
     expect(markup).toContain("No notifications");
     expect(markup).toContain("Dispatch events will appear here.");
+  });
+
+  it("renders the auth-expired state safely", () => {
+    const markup = renderToStaticMarkup(<NotificationsAuthExpiredState />);
+
+    expect(markup).toContain("Session expired");
+    expect(markup).toContain("Sign in again to view notifications.");
+    expect(markup).toContain("/get-started");
   });
 });
