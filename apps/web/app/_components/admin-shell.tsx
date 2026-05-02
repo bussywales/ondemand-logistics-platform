@@ -386,6 +386,21 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
 
       <ProductUpdateAnnouncement routePath="/admin" viewer="platform_admin" viewerKey={session.userId} />
 
+      <section className="sw-supporting-surface admin-section admin-playbooks-link">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Pilot playbooks</p>
+            <h2>Manual recovery guidance</h2>
+          </div>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/help/pilot-operations">
+            Open playbooks
+          </Link>
+        </div>
+        <p className="ops-detail-note">
+          Use the documented fallback playbooks for failed dispatch, blocked deliveries, cancellations, reassignment, and support escalation.
+        </p>
+      </section>
+
       {loadError ? (
         <section className="sw-empty-state admin-empty-state admin-empty-state-danger">
           <span className="empty-state-icon" aria-hidden="true">

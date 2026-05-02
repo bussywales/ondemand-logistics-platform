@@ -125,6 +125,17 @@ export function HelpArticle({ article }: { article: HelpArticleModel }) {
         </section>
       ) : null}
 
+      {article.relatedLinks && article.relatedLinks.length > 0 ? (
+        <section className="sw-supporting-surface help-section help-section-wide">
+          <h2>Related guidance</h2>
+          <div className="help-card-grid">
+            {article.relatedLinks.map((link) => (
+              <HelpCard description="Open the related ShipWright guidance." href={link.href} key={link.href} title={link.label} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <div className="help-article-grid">
         <section className="sw-supporting-surface help-section">
           <h2>Operator actions</h2>

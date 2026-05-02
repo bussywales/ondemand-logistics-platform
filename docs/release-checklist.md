@@ -113,6 +113,11 @@ What this means:
 - missing provider env should degrade safely, not crash the worker
 - a parked email provider is not by itself a failed staging release unless the explicit release goal is outbound-email verification
 
+## 8.5) Pilot fallback playbooks
+- confirm `docs/playbooks/README.md` and the individual pilot recovery playbooks are present before any wider pilot or investor-demo release
+- confirm `/help/pilot-operations` is accessible from the deployed web app
+- treat missing fallback playbooks as a release-review gap for live pilot operations
+
 ## 9) Evidence to record
 - deployed commit sha
 - deploy id or staging deploy URL

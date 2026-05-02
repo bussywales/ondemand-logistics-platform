@@ -22,4 +22,9 @@ describe("help content", () => {
   it("returns null for unknown help slugs", () => {
     expect(getHelpArticle("unknown-topic")).toBeNull();
   });
+
+  it("includes the pilot operations playbook guide", () => {
+    expect(helpNavigation.some((item) => item.slug === "pilot-operations")).toBe(true);
+    expect(getHelpArticle("pilot-operations")?.title).toBe("Pilot operations");
+  });
 });

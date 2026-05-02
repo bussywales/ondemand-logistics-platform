@@ -4,6 +4,7 @@ export type HelpArticleSlug =
   | "deliveries"
   | "driver"
   | "payments"
+  | "pilot-operations"
   | "troubleshooting";
 
 export type HelpStatusRow = {
@@ -23,6 +24,7 @@ export type HelpArticle = {
   commonProblems: string[];
   description: string;
   operatorActions: string[];
+  relatedLinks?: Array<{ href: string; label: string }>;
   slug: HelpArticleSlug;
   statusMeanings?: HelpStatusRow[];
   title: string;
@@ -60,6 +62,12 @@ export const helpNavigation: Array<{ description: string; href: string; slug: He
     href: "/help/payments",
     slug: "payments",
     title: "Payments"
+  },
+  {
+    description: "Use the fallback and escalation playbooks for dispatch failures, blocked deliveries, cancellations, and support handoff.",
+    href: "/help/pilot-operations",
+    slug: "pilot-operations",
+    title: "Pilot operations"
   },
   {
     description: "Resolve common staging, auth, dispatch, payment, and setup issues.",
@@ -130,6 +138,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
       "Open the linked delivery job when dispatch or delivery state needs action.",
       "Treat dispatch failures as operational blockers even if payment is authorized."
     ],
+    relatedLinks: [{ href: "/help/pilot-operations", label: "Pilot fallback playbooks" }],
     slug: "orders",
     statusMeanings: [
       { status: "PAYMENT_AUTHORIZED", meaning: "Stripe authorization succeeded and the delivery can proceed.", nextAction: "Monitor the linked job." },
@@ -170,6 +179,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
       "Use /app/jobs to create controlled pilot deliveries and inspect all jobs.",
       "Use the job detail decision banner for retry dispatch, payment, cancellation, or manual assignment decisions."
     ],
+    relatedLinks: [{ href: "/help/pilot-operations", label: "Pilot fallback playbooks" }],
     slug: "deliveries",
     statusMeanings: [
       { status: "REQUESTED", meaning: "A job exists and is waiting for dispatch or assignment.", nextAction: "Watch dispatch attempts." },
@@ -252,6 +262,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
       "Verify PAYMENT_AUTHORIZED after checkout and CAPTURED after delivered/capture flow.",
       "Check linked order, job, payment, job events, audit log, and outbox records when proving a flow."
     ],
+    relatedLinks: [{ href: "/help/pilot-operations", label: "Pilot fallback playbooks" }],
     slug: "payments",
     statusMeanings: [
       { status: "REQUIRES_PAYMENT_METHOD", meaning: "No valid card has been collected.", nextAction: "Collect card details in checkout or the payment panel." },
@@ -269,6 +280,53 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
       "Authorize payment during customer checkout.",
       "Progress the linked delivery to delivered.",
       "Verify capture and final customer order completion."
+    ]
+  },
+  "pilot-operations": {
+    callouts: [
+      {
+        body: "These are manual recovery steps for live-pilot support. ShipWright does not automate them yet.",
+        title: "Manual recovery only",
+        tone: "warning"
+      }
+    ],
+    commonProblems: [
+      "Dispatch failed or no eligible driver: verify driver pool, vehicle match, and manual reassignment path before repeated retries.",
+      "Payment authorized but delivery blocked: the order can remain financially live while operations are stalled.",
+      "Driver no-show: the job is assigned but progress does not move, so intervention and evidence capture are required.",
+      "Customer cancellation or refund request: document approval, downstream state, and refund decision clearly.",
+      "Escalation owner unclear: use the support-escalation playbook and attach evidence before handoff."
+    ],
+    description: "Manual fallback and escalation guidance for the most common live-pilot failures across dispatch, delivery execution, cancellations, and support recovery.",
+    operatorActions: [
+      "Open the relevant markdown file under docs/playbooks and follow the trigger, checks, and evidence steps in order.",
+      "Start with identification inside Orders, Jobs, Notifications, and Admin before contacting the customer or restaurant.",
+      "Retry, reassign, cancel, or refund only when the matching playbook says the threshold has been met.",
+      "Record order id, job id, payment id, timeline facts, and who approved the operator decision."
+    ],
+    relatedLinks: [
+      { href: "/help/deliveries", label: "Deliveries and Needs Review" },
+      { href: "/help/orders", label: "Customer orders" },
+      { href: "/help/payments", label: "Payments" },
+      { href: "/help/troubleshooting", label: "Troubleshooting" }
+    ],
+    slug: "pilot-operations",
+    statusMeanings: [
+      { status: "DISPATCH_FAILED", meaning: "Dispatch did not secure a driver.", nextAction: "Use failed-dispatch or no-eligible-driver playbook." },
+      { status: "PAYMENT_AUTHORIZED", meaning: "Funds are authorized but not captured.", nextAction: "Resolve delivery blocker or cancellation quickly." },
+      { status: "ASSIGNED but stalled", meaning: "A driver is attached but execution is not progressing.", nextAction: "Use driver-no-show or manual-reassignment playbook." },
+      { status: "Support escalation", meaning: "The current operator cannot safely resolve the incident alone.", nextAction: "Escalate with evidence and owner handoff." }
+    ],
+    title: "Pilot operations",
+    whatThisScreenDoes: [
+      "Explains which fallback playbook to use for the most common live-pilot failures.",
+      "Keeps operator recovery grounded in the evidence already visible in ShipWright.",
+      "Separates manual recovery guidance from product automation that does not exist yet."
+    ],
+    whatToDoNext: [
+      "Read docs/playbooks/README.md in the repo for the full set of playbooks.",
+      "Choose the playbook that matches the current blocker.",
+      "Record the decision and supporting evidence before closing the incident."
     ]
   },
   troubleshooting: {
@@ -293,6 +351,7 @@ export const helpArticles: Record<HelpArticleSlug, HelpArticle> = {
       "Run the staging smoke/proof commands when credentials are available.",
       "Use Render logs for API exceptions and Supabase for record integrity proof."
     ],
+    relatedLinks: [{ href: "/help/pilot-operations", label: "Pilot fallback playbooks" }],
     slug: "troubleshooting",
     statusMeanings: [
       { status: "healthz 200", meaning: "The API process is alive.", nextAction: "Check readiness next." },
