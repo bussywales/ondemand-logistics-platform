@@ -213,6 +213,10 @@ function buildOrderViews(
   return orders.map((order) => withOrderFinancials(order, paymentByOrderId.get(order.id) ?? null));
 }
 
+async function loadPaymentRiskData(currentSession: BusinessSession) {
+  return Promise.all([listBusinessOrders(currentSession), listBusinessPayments(currentSession)]);
+}
+
 export function PaymentsShell() {
   const router = useRouter();
   const { status, session, error, refreshBusinessSession, signOut } = useBusinessAuth();
@@ -238,7 +242,7 @@ export function PaymentsShell() {
     setLoading(true);
     setLoadError(null);
 
-    void Promise.all([listBusinessOrders(session), listBusinessPayments(session)])
+    void loadPaymentRiskData(session)
       .then(([nextOrders, nextPayments]) => {
         if (!active) {
           return;
@@ -273,6 +277,7 @@ export function PaymentsShell() {
   );
   const inDeliveryCount = useMemo(() => orderViews.filter((order) => isOrderInDelivery(order)).length, [orderViews]);
   const fulfilledCount = useMemo(() => orderViews.filter((order) => isOrderFulfilled(order)).length, [orderViews]);
+  const workspaceName = session?.context.currentOrg?.name ?? "ShipWright workspace";
 
   async function handleSignOut() {
     await signOut();
@@ -317,95 +322,177 @@ export function PaymentsShell() {
   }
 
   return (
-    <main className="app-shell payments-shell-page">
-      <header className="app-header">
-        <div>
-          <BrandLogo />
-          <p className="eyebrow">Operational finance lens</p>
-          <h1>Payment risk</h1>
-          <p>Review orders where payment, capture, refund, or payout state may affect fulfilment.</p>
+    <main className="app-shell ops-shell payments-shell-page">
+      <header className="ops-topbar">
+        <div className="ops-branding">
+          <BrandLogo href="/" mode="responsive" />
+          <p className="eyebrow">Operations console</p>
+          <h1>{workspaceName}</h1>
         </div>
-        <div className="hero-actions">
+        <div className="ops-topbar-actions">
           <NotificationsBell session={session} />
           <ContextualHelpLink href="/help/pilot-operations" label="Help" />
+          <button
+            className="button button-secondary"
+            onClick={() =>
+              void refreshBusinessSession().then((nextSession) => {
+                if (nextSession) {
+                  setLoading(true);
+                  setLoadError(null);
+                  return loadPaymentRiskData(nextSession)
+                    .then(([nextOrders, nextPayments]) => {
+                      setOrders(nextOrders);
+                      setPayments(nextPayments);
+                    })
+                    .catch((issue) => {
+                      setLoadError(issue instanceof Error ? issue.message : "Unable to load payment risk.");
+                    })
+                    .finally(() => {
+                      setLoading(false);
+                    });
+                }
+              })
+            }
+            type="button"
+          >
+            Refresh
+          </button>
+          <button className="button button-secondary" onClick={() => void handleSignOut()} type="button">
+            Sign Out
+          </button>
         </div>
       </header>
 
-      <WorkspaceNav active="payments" platformAdmin={Boolean(session.context.platformAdmin)} />
       <ProductUpdateAnnouncement routePath="/app/payments" viewer="business" viewerKey={session.userId} />
 
-      {loadError ? (
-        <section className="sw-empty-state payments-empty-state payments-empty-state-danger">
-          <span className="empty-state-icon" aria-hidden="true">
-            <ShipWrightIcon name="alert" />
-          </span>
-          <strong className="sw-empty-title">Unable to load payment risk</strong>
-          <p className="sw-empty-copy">{loadError}</p>
-        </section>
-      ) : null}
+      <section className="ops-layout">
+        <aside className="ops-sidebar">
+          <WorkspaceNav active="payments" platformAdmin={Boolean(session.context.platformAdmin)} />
 
-      <section className={`sw-${riskOrders.length ? "decision" : "command"}-surface payments-command-surface ${riskOrders.length ? "" : "payments-healthy-surface"}`}>
-        <div className="sw-row payments-command-copy">
-          <span className={`sw-icon-badge payments-command-icon ${riskOrders.length ? "admin-command-icon-warning" : "admin-command-icon-success"}`} aria-hidden="true">
-            <ShipWrightIcon name={riskOrders.length ? "alert" : "check"} />
-          </span>
-          <div>
-            <p className="eyebrow">Payment risk</p>
-            <h2>{riskOrders.length ? `${riskOrders.length} orders need payment review` : "No payment risks"}</h2>
+          <section className="ops-sidebar-section">
+            <span className="ops-section-label">Operator</span>
+            <strong>{session.context.displayName}</strong>
+            <p>{session.context.email}</p>
+          </section>
+
+          <section className="ops-sidebar-section">
+            <span className="ops-section-label">Payment posture</span>
+            <div className="ops-summary-list">
+              <div>
+                <strong>{orderViews.length}</strong>
+                <span>Orders checked</span>
+              </div>
+              <div>
+                <strong>{riskOrders.length}</strong>
+                <span>Risks</span>
+              </div>
+              <div>
+                <strong>{inDeliveryCount}</strong>
+                <span>In delivery</span>
+              </div>
+              <div>
+                <strong>{fulfilledCount}</strong>
+                <span>Fulfilled</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="ops-sidebar-section ops-sidebar-live">
+            <span className="sidebar-live-icon" aria-hidden="true">
+              <ShipWrightIcon name={riskOrders.length ? "warning" : "check"} />
+            </span>
+            <span className="ops-section-label">Risk posture</span>
+            <strong>{riskOrders.length ? "Payment review" : "No payment blockers"}</strong>
             <p>
               {riskOrders.length
-                ? "Orders below have payment, capture, refund, or payout signals that may block fulfilment or support closeout."
-                : "Payment state is still visible on each order. Use the orders queue as the primary operational surface."}
+                ? `${riskOrders.length} order${riskOrders.length === 1 ? "" : "s"} need capture, refund, or payout review.`
+                : "No payment, capture, refund, or payout signals are blocking fulfilment right now."}
             </p>
-          </div>
-        </div>
-        <div className="payments-filter-summary">
-          <span className="ops-count-pill">{orderViews.length} orders checked</span>
-          <span className={`ops-count-pill ${riskOrders.length ? "ops-count-pill-alert" : ""}`}>{riskOrders.length} risks</span>
-          <span className="ops-count-pill">{inDeliveryCount} in delivery</span>
-          <span className="ops-count-pill">{fulfilledCount} fulfilled</span>
-        </div>
-      </section>
-
-      <section className="sw-operational-surface payments-section">
-        <div className="sw-card-header payments-section-header">
-          <div>
-            <p className="eyebrow">Order risk queue</p>
-            <h2>Orders first, finance visible</h2>
-            <p className="ops-detail-note">Payment state stays connected to dispatch, delivery, and fulfilment rather than sitting in a separate ledger view.</p>
-          </div>
-          <span className={`status-badge ${riskOrders.length ? "status-negative" : "status-positive"}`}>
-            {riskOrders.length ? "Payment action required" : "No payment blockers"}
-          </span>
-        </div>
-        <div className="payments-filter-bar" aria-label="Payment risk filters">
-          {PAYMENT_RISK_FILTERS.map((item) => (
-            <FilterChip
-              active={filter === item.key}
-              count={counts[item.key]}
-              filter={item}
-              key={item.key}
-              onClick={setFilter}
-            />
-          ))}
-        </div>
-        {riskOrders.length === 0 ? (
-          <PaymentRiskEmptyState />
-        ) : filteredOrders.length ? (
-          <div className="payments-list">
-            {filteredOrders.map((order) => (
-              <PaymentRiskQueueRow key={order.id} order={order} />
-            ))}
-          </div>
-        ) : (
-          <div className="sw-empty-state payments-empty-state">
-            <span className="empty-state-icon" aria-hidden="true">
-              <ShipWrightIcon name="queue" />
+            <span className="sidebar-live-action">
+              {riskOrders.length
+                ? "Open the affected order and resolve capture, refund, or payout posture."
+                : "Keep using the orders queue as the primary fulfilment surface."}
             </span>
-            <strong className="sw-empty-title">No orders in this filter</strong>
-            <p className="sw-empty-copy">Try another risk lens to inspect authorised, captured, failed, refunded, or payout-review orders.</p>
-          </div>
-        )}
+          </section>
+        </aside>
+
+        <div className="ops-main">
+          {loadError ? (
+            <section className="sw-empty-state payments-empty-state payments-empty-state-danger">
+              <span className="empty-state-icon" aria-hidden="true">
+                <ShipWrightIcon name="alert" />
+              </span>
+              <strong className="sw-empty-title">Unable to load payment risk</strong>
+              <p className="sw-empty-copy">{loadError}</p>
+            </section>
+          ) : null}
+
+          <section className="ops-stack payments-stack">
+            <section className={`sw-${riskOrders.length ? "decision" : "command"}-surface payments-command-surface ${riskOrders.length ? "" : "payments-healthy-surface"}`}>
+              <div className="sw-row payments-command-copy">
+                <span className={`sw-icon-badge payments-command-icon ${riskOrders.length ? "admin-command-icon-warning" : "admin-command-icon-success"}`} aria-hidden="true">
+                  <ShipWrightIcon name={riskOrders.length ? "alert" : "check"} />
+                </span>
+                <div>
+                  <p className="eyebrow">Payment risk</p>
+                  <h2>{riskOrders.length ? `${riskOrders.length} orders need payment review` : "No payment risks"}</h2>
+                  <p>
+                    {riskOrders.length
+                      ? "Orders below have payment, capture, refund, or payout signals that may block fulfilment or support closeout."
+                      : "Payment state is still visible on each order. Use the orders queue as the primary operational surface."}
+                  </p>
+                </div>
+              </div>
+              <div className="payments-filter-summary">
+                <span className="ops-count-pill">{orderViews.length} orders checked</span>
+                <span className={`ops-count-pill ${riskOrders.length ? "ops-count-pill-alert" : ""}`}>{riskOrders.length} risks</span>
+                <span className="ops-count-pill">{inDeliveryCount} in delivery</span>
+                <span className="ops-count-pill">{fulfilledCount} fulfilled</span>
+              </div>
+            </section>
+
+            <section className="sw-operational-surface payments-section">
+              <div className="sw-card-header payments-section-header">
+                <div>
+                  <p className="eyebrow">Order risk queue</p>
+                  <h2>Orders first, finance visible</h2>
+                  <p className="ops-detail-note">Payment state stays connected to dispatch, delivery, and fulfilment rather than sitting in a separate ledger view.</p>
+                </div>
+                <span className={`status-badge ${riskOrders.length ? "status-negative" : "status-positive"}`}>
+                  {riskOrders.length ? "Payment action required" : "No payment blockers"}
+                </span>
+              </div>
+              <div className="payments-filter-bar" aria-label="Payment risk filters">
+                {PAYMENT_RISK_FILTERS.map((item) => (
+                  <FilterChip
+                    active={filter === item.key}
+                    count={counts[item.key]}
+                    filter={item}
+                    key={item.key}
+                    onClick={setFilter}
+                  />
+                ))}
+              </div>
+              {riskOrders.length === 0 ? (
+                <PaymentRiskEmptyState />
+              ) : filteredOrders.length ? (
+                <div className="payments-list">
+                  {filteredOrders.map((order) => (
+                    <PaymentRiskQueueRow key={order.id} order={order} />
+                  ))}
+                </div>
+              ) : (
+                <div className="sw-empty-state payments-empty-state">
+                  <span className="empty-state-icon" aria-hidden="true">
+                    <ShipWrightIcon name="queue" />
+                  </span>
+                  <strong className="sw-empty-title">No orders in this filter</strong>
+                  <p className="sw-empty-copy">Try another risk lens to inspect authorised, captured, failed, refunded, or payout-review orders.</p>
+                </div>
+              )}
+            </section>
+          </section>
+        </div>
       </section>
     </main>
   );
