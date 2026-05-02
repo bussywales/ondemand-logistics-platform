@@ -20,7 +20,6 @@ type PaymentMethodFormProps = {
 };
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 const cardElementOptions = {
   hidePostalCode: true,
@@ -145,7 +144,8 @@ function InnerPaymentMethodForm(props: PaymentMethodFormProps) {
 }
 
 export function PaymentMethodForm(props: PaymentMethodFormProps) {
-  const stripeUnavailable = useMemo(() => !stripePromise, []);
+  const stripePromise = useMemo(() => (publishableKey ? loadStripe(publishableKey) : null), []);
+  const stripeUnavailable = useMemo(() => !stripePromise, [stripePromise]);
 
   if (stripeUnavailable) {
     return (
