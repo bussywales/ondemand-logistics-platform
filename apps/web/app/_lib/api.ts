@@ -10,6 +10,7 @@ import type {
   BusinessCustomerOrderList,
   BusinessSession,
   CustomerOrderSubmission,
+  PublicOrderTracking,
   DriverAvailabilityStatus,
   EligibleDriver,
   EligibleDriverSuitabilityFlag,
@@ -130,6 +131,7 @@ type SubmitCustomerOrderResponse = CustomerOrderSubmission;
 
 type BusinessCustomerOrderListResponse = BusinessCustomerOrderList;
 type BusinessCustomerOrderResponse = BusinessCustomerOrder;
+type PublicOrderTrackingResponse = PublicOrderTracking;
 type BusinessNotificationListResponse = BusinessNotificationList;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
@@ -460,6 +462,12 @@ export async function listBusinessOrders(session: BusinessSession): Promise<Busi
 
 export async function getBusinessOrder(session: BusinessSession, orderId: string): Promise<BusinessCustomerOrder> {
   return apiFetch<BusinessCustomerOrderResponse>(session, `/v1/business/orders/${orderId}`, {
+    method: "GET"
+  });
+}
+
+export async function getPublicOrderTracking(orderId: string): Promise<PublicOrderTracking> {
+  return publicApiFetch<PublicOrderTrackingResponse>(`/v1/orders/${encodeURIComponent(orderId)}/tracking`, {
     method: "GET"
   });
 }

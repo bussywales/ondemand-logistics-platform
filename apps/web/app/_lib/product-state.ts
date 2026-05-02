@@ -212,6 +212,34 @@ export type BusinessCustomerOrderList = {
   items: BusinessCustomerOrder[];
 };
 
+export type PublicOrderTracking = {
+  order: {
+    id: string;
+    status: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED";
+    totalCents: number;
+    currency: string;
+    createdAt: string;
+  };
+  restaurant: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  delivery: {
+    address: string;
+    addressSummary: string;
+    notes: string | null;
+  };
+  job: CustomerOrderSubmission["job"];
+  payment: CustomerOrderSubmission["payment"];
+  tracking: {
+    driverAssigned: boolean;
+    latestLocationAt: string | null;
+    dispatchAttemptsCount: number;
+    timeline: TimelineEvent[];
+  };
+};
+
 export type NotificationSeverity = "info" | "success" | "warning" | "danger";
 export type NotificationEntityType = "job" | "order" | "payment";
 

@@ -207,6 +207,75 @@ describe("RestaurantsService", () => {
     ]);
   });
 
+  it("loads public order tracking with a customer-safe payload", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          businessOrderRow({
+            customer_name: "Ada Customer",
+            customer_email: "ada@example.com",
+            customer_phone: "07500000000",
+            delivery_address: "10 Pilot Street, Stoke",
+            delivery_notes: "Leave at reception",
+            total_cents: 4180,
+            created_at: new Date("2026-05-02T10:15:00.000Z").toISOString(),
+            assigned_driver_id: "driver_123",
+            driver_last_location_at: new Date("2026-05-02T10:20:00.000Z").toISOString()
+          })
+        ]
+      })
+      .mockResolvedValueOnce({
+        rowCount: 2,
+        rows: [
+          { id: 12, event_type: "JOB_ASSIGNED", created_at: new Date("2026-05-02T10:16:00.000Z") },
+          { id: 13, event_type: "JOB_PICKED_UP", created_at: new Date("2026-05-02T10:26:00.000Z") }
+        ]
+      });
+
+    const service = new RestaurantsService({ query } as never, {} as never);
+    const result = await service.getPublicOrderTracking(ORDER_ID);
+
+    expect(result).toEqual({
+      order: expect.objectContaining({
+        id: ORDER_ID,
+        status: "PAYMENT_AUTHORIZED",
+        totalCents: 4180,
+        currency: "GBP"
+      }),
+      restaurant: expect.objectContaining({
+        id: RESTAURANT_ID,
+        name: "Pilot Kitchen",
+        slug: "pilot-kitchen"
+      }),
+      delivery: expect.objectContaining({
+        address: "10 Pilot Street, Stoke",
+        addressSummary: "10 Pilot Street",
+        notes: "Leave at reception"
+      }),
+      job: expect.objectContaining({
+        id: JOB_ID,
+        status: "REQUESTED"
+      }),
+      payment: expect.objectContaining({
+        id: PAYMENT_ID,
+        status: "AUTHORIZED"
+      }),
+      tracking: expect.objectContaining({
+        driverAssigned: true,
+        latestLocationAt: "2026-05-02T10:20:00.000Z",
+        dispatchAttemptsCount: 0,
+        timeline: [
+          expect.objectContaining({ eventType: "JOB_ASSIGNED" }),
+          expect.objectContaining({ eventType: "JOB_PICKED_UP" })
+        ]
+      })
+    });
+    expect(JSON.stringify(result)).not.toContain("ada@example.com");
+    expect(JSON.stringify(result)).not.toContain("07500000000");
+  });
+
   it("normalizes legacy completed customer order rows to fulfilled in list and detail reads", async () => {
     const listQuery = vi
       .fn()

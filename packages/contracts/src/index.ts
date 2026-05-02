@@ -635,6 +635,35 @@ export const BusinessCustomerOrderListSchema = z.object({
 });
 export type BusinessCustomerOrderListDto = z.infer<typeof BusinessCustomerOrderListSchema>;
 
+export const PublicOrderTrackingSchema = z.object({
+  order: z.object({
+    id: z.string().uuid(),
+    status: CustomerOrderStatusSchema,
+    totalCents: CurrencyAmountSchema,
+    currency: z.string().length(3),
+    createdAt: IsoDateTimeSchema
+  }),
+  restaurant: z.object({
+    id: z.string().uuid(),
+    name: z.string().min(2),
+    slug: RestaurantSlugSchema
+  }),
+  delivery: z.object({
+    address: z.string().min(5),
+    addressSummary: z.string().min(2),
+    notes: z.string().nullable()
+  }),
+  job: PublicCustomerOrderJobSchema,
+  payment: PublicCustomerOrderPaymentSchema,
+  tracking: z.object({
+    driverAssigned: z.boolean(),
+    latestLocationAt: IsoDateTimeSchema.nullable(),
+    dispatchAttemptsCount: z.number().int().nonnegative(),
+    timeline: z.array(BusinessCustomerOrderTimelineEventSchema)
+  })
+});
+export type PublicOrderTrackingDto = z.infer<typeof PublicOrderTrackingSchema>;
+
 export const BusinessNotificationSeveritySchema = z.enum(["info", "success", "warning", "danger"]);
 export type BusinessNotificationSeverity = z.infer<typeof BusinessNotificationSeveritySchema>;
 

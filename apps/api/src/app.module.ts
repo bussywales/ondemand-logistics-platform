@@ -21,6 +21,7 @@ import { BusinessController } from "./business/business.controller.js";
 import { BusinessService } from "./business/business.service.js";
 import {
   BusinessOrdersController,
+  PublicOrderTrackingController,
   PublicRestaurantsController,
   RestaurantsController
 } from "./restaurants/restaurants.controller.js";
@@ -46,7 +47,8 @@ import { AdminService } from "./admin/admin.service.js";
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
-    PublicRestaurantsController
+    PublicRestaurantsController,
+    PublicOrderTrackingController
   ],
   providers: [
     PgService,

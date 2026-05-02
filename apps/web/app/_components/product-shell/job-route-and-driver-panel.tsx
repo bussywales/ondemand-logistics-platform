@@ -1,4 +1,5 @@
 import type { AppJob } from "../../_lib/product-state";
+import { getOperatorTrackingStage } from "../../_lib/tracking-state";
 import { SectionTitle, summarizeDriver } from "./shared";
 
 type JobRouteAndDriverPanelProps = {
@@ -7,6 +8,10 @@ type JobRouteAndDriverPanelProps = {
 
 export function JobRouteAndDriverPanel(props: JobRouteAndDriverPanelProps) {
   const { job } = props;
+  const operatorTrackingStage = getOperatorTrackingStage(job);
+  const latestCoordinates = job.tracking.latestLocation
+    ? `${job.tracking.latestLocation.latitude.toFixed(4)}, ${job.tracking.latestLocation.longitude.toFixed(4)}`
+    : "No live coordinates";
 
   return (
     <div className="ops-detail-grid">
@@ -44,16 +49,20 @@ export function JobRouteAndDriverPanel(props: JobRouteAndDriverPanelProps) {
             <dd>{summarizeDriver(job)}</dd>
           </div>
           <div>
+            <dt>Current stage</dt>
+            <dd>{operatorTrackingStage}</dd>
+          </div>
+          <div>
             <dt>Vehicle</dt>
             <dd>{job.vehicleRequired}</dd>
           </div>
           <div>
             <dt>Latest coordinates</dt>
-            <dd>
-              {job.tracking.latestLocation
-                ? `${job.tracking.latestLocation.latitude.toFixed(4)}, ${job.tracking.latestLocation.longitude.toFixed(4)}`
-                : "No live coordinates"}
-            </dd>
+            <dd>{latestCoordinates}</dd>
+          </div>
+          <div>
+            <dt>Tracking freshness</dt>
+            <dd>{job.tracking.latestLocation ? "Live coordinates available" : "No live update yet"}</dd>
           </div>
           <div>
             <dt>Pricing version</dt>

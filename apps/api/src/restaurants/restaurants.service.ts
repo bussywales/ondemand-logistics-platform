@@ -27,9 +27,11 @@ import {
   type PaymentDto,
   BusinessCustomerOrderListSchema,
   BusinessCustomerOrderSchema,
+  PublicOrderTrackingSchema,
   type PublicCustomerOrderDto,
   type PublicCustomerOrderItemDto,
   type PublicMenuItemDto,
+  type PublicOrderTrackingDto,
   type PublicRestaurantMenuDto,
   type RestaurantDto,
   type RestaurantMenuDto,
@@ -131,6 +133,23 @@ type BusinessCustomerOrderRow = CustomerOrderRow & {
   job_eta_minutes: number;
   job_pickup_address: string;
   job_dropoff_address: string;
+};
+
+type PublicOrderTrackingRow = CustomerOrderRow & {
+  restaurant_name: string;
+  restaurant_slug: string;
+  payment_status: string;
+  payment_amount_authorized_cents: number;
+  payment_amount_captured_cents: number;
+  payment_customer_total_cents: number;
+  payment_currency: string;
+  payment_last_error: string | null;
+  job_status: string;
+  job_eta_minutes: number;
+  job_pickup_address: string;
+  job_dropoff_address: string;
+  assigned_driver_id: string | null;
+  driver_last_location_at: string | Date | null;
 };
 
 type CustomerOrderTimelineRow = {
@@ -344,6 +363,39 @@ export class RestaurantsService {
     ]);
 
     return this.mapBusinessCustomerOrder(order, itemsByOrderId.get(order.id) ?? [], timeline);
+  }
+
+  async getPublicOrderTracking(orderId: string): Promise<PublicOrderTrackingDto> {
+    const orders = await this.pg.query<PublicOrderTrackingRow>(
+      `select o.id, o.restaurant_id, o.org_id, o.job_id, o.payment_id, o.customer_user_id,
+              o.customer_name, o.customer_email, o.customer_phone, o.delivery_address, o.delivery_notes,
+              o.status, o.subtotal_cents, o.delivery_fee_cents, o.total_cents, o.currency,
+              o.created_at, o.updated_at,
+              r.name as restaurant_name, r.slug as restaurant_slug,
+              p.status as payment_status, p.amount_authorized_cents as payment_amount_authorized_cents,
+              p.amount_captured_cents as payment_amount_captured_cents,
+              p.customer_total_cents as payment_customer_total_cents, p.currency as payment_currency,
+              p.last_error as payment_last_error,
+              j.status as job_status, j.eta_minutes as job_eta_minutes,
+              j.pickup_address as job_pickup_address, j.dropoff_address as job_dropoff_address,
+              j.assigned_driver_id, d.last_location_at as driver_last_location_at
+       from public.customer_orders o
+       join public.restaurants r on r.id = o.restaurant_id
+       join public.jobs j on j.id = o.job_id
+       join public.payments p on p.id = o.payment_id
+       left join public.drivers d on d.id = j.assigned_driver_id
+       where o.id = $1
+       limit 1`,
+      [orderId]
+    );
+
+    if (orders.rowCount !== 1) {
+      throw new NotFoundException("customer_order_not_found");
+    }
+
+    const order = orders.rows[0];
+    const timeline = await this.loadBusinessOrderTimeline(order.job_id);
+    return this.mapPublicOrderTracking(order, timeline);
   }
 
   async createMenuCategory(restaurantId: string, input: unknown, userId: string, idempotencyKey: string) {
@@ -1275,6 +1327,59 @@ export class RestaurantsService {
         totalCents: payment.customerTotalCents,
         currency: payment.currency.toUpperCase(),
         lastError: payment.lastError
+      }
+    });
+  }
+
+  private mapPublicOrderTracking(
+    row: PublicOrderTrackingRow,
+    timeline: CustomerOrderTimelineRow[]
+  ): PublicOrderTrackingDto {
+    const deliveryAddress = row.delivery_address;
+    return PublicOrderTrackingSchema.parse({
+      order: {
+        id: row.id,
+        status: normalizeCustomerOrderStatus(row.status),
+        totalCents: toInteger(row.total_cents, "customer_order.total_cents"),
+        currency: row.currency.toUpperCase(),
+        createdAt: toIsoDateTime(row.created_at)
+      },
+      restaurant: {
+        id: row.restaurant_id,
+        name: row.restaurant_name,
+        slug: row.restaurant_slug
+      },
+      delivery: {
+        address: deliveryAddress,
+        addressSummary: deliveryAddress.split(",")[0]?.trim() || deliveryAddress,
+        notes: row.delivery_notes
+      },
+      job: {
+        id: row.job_id,
+        status: row.job_status,
+        etaMinutes: toInteger(row.job_eta_minutes, "job.eta_minutes"),
+        pickupAddress: row.job_pickup_address,
+        dropoffAddress: row.job_dropoff_address
+      },
+      payment: {
+        id: row.payment_id,
+        status: row.payment_status,
+        amountAuthorizedCents: toInteger(row.payment_amount_authorized_cents, "payment.amount_authorized_cents"),
+        amountCapturedCents: toInteger(row.payment_amount_captured_cents, "payment.amount_captured_cents"),
+        totalCents: toInteger(row.payment_customer_total_cents, "payment.customer_total_cents"),
+        currency: row.payment_currency.toUpperCase(),
+        lastError: row.payment_last_error
+      },
+      tracking: {
+        driverAssigned: row.assigned_driver_id !== null,
+        latestLocationAt: row.driver_last_location_at ? toIsoDateTime(row.driver_last_location_at) : null,
+        dispatchAttemptsCount: timeline.filter((event) => event.event_type === "JOB_DISPATCH_REQUESTED").length,
+        timeline: timeline.map((event) => ({
+          id: String(event.id),
+          eventType: event.event_type,
+          createdAt: toIsoDateTime(event.created_at),
+          summary: event.event_type.replace(/_/g, " ").toLowerCase()
+        }))
       }
     });
   }

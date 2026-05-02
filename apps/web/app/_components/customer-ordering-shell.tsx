@@ -55,6 +55,10 @@ export function buildRestaurantMenuHref(slug: string) {
   return `/restaurants/${slug}`;
 }
 
+export function buildPublicTrackingHref(orderId: string) {
+  return `/track/${orderId}`;
+}
+
 export function getAddItemButtonLabel(itemName: string) {
   return `Add ${itemName}`;
 }
@@ -154,6 +158,9 @@ export function CustomerOrderSuccessState(props: {
       </div>
 
       <div className="customer-success-actions">
+        <Link className="sw-button sw-button--primary button button-primary" href={buildPublicTrackingHref(props.orderResult.order.id)}>
+          Track order
+        </Link>
         <button className="sw-button sw-button--secondary button button-secondary" onClick={props.onBackToMenu} type="button">
           Back to menu
         </button>

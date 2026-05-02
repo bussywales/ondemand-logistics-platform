@@ -117,3 +117,14 @@ export class PublicRestaurantsController {
     return result.body;
   }
 }
+
+@Controller("v1/orders")
+export class PublicOrderTrackingController {
+  constructor(private readonly restaurantsService: RestaurantsService) {}
+
+  @Public()
+  @Get(":orderId/tracking")
+  async getPublicOrderTracking(@Param("orderId") orderId: string) {
+    return this.restaurantsService.getPublicOrderTracking(orderId);
+  }
+}
