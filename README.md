@@ -1,54 +1,93 @@
-# ondemand-logistics-platform (Phase 0 Foundations)
+# ShipWright (Stage 1 Pilot MVP)
 
-Foundational monorepo for a logistics platform with strict guarantees:
+ShipWright is a Stage 1 pilot logistics platform for branded local delivery operations.
+
+Current repo state is beyond foundations-only work. The platform now includes a real staged spine for:
+- public restaurant ordering
+- Stripe-backed customer payment authorization
+- business order visibility
+- dispatch and job lifecycle handling
+- driver offer and execution flow
+- proof of delivery and delivered completion
+- payment capture after delivery
+- terminal customer order state as `FULFILLED`
+- admin control plane, business notifications, help, product updates, and staging proof tooling
+
+This is still a controlled pilot system, not a production-scale marketplace.
+
+## Core guarantees
 - server-side RBAC
 - Postgres RLS
 - strict database constraints
 - idempotent writes
 - transactional outbox
-- append-only audit/event logs
+- append-only audit and event logs
 - structured logging with `request_id`
 - no silent failures
 
 ## Monorepo layout
-
-- `apps/api` - NestJS API foundations
-- `apps/worker` - Outbox worker with `FOR UPDATE SKIP LOCKED`
-- `apps/web` - Next.js shell
-- `packages/db` - SQL migrations and DB tests
+- `apps/api` - NestJS API
+- `apps/worker` - outbox worker with `FOR UPDATE SKIP LOCKED`
+- `apps/web` - Next.js product surfaces
+- `packages/db` - SQL migrations and DB checks
 - `packages/contracts` - shared Zod contracts
-- `packages/observability` - logger + request context helpers
+- `packages/observability` - logging and request context helpers
+- `packages/payments` - payment helpers and shared payment logic
 
-## Quick start
+## Current Stage 1 product surfaces
+- Public customer ordering route: `/restaurants/[slug]`
+- Business workspace: `/app`
+- Business orders: `/app/orders`
+- Driver execution route: `/driver`
+- Admin control plane: `/admin`
+- Help centre: `/help`
+- Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
 
+## Key commands
 ```bash
-pnpm install
-pnpm migration:validate
-pnpm lint
+pnpm release:verify-staging
+pnpm proof:staging-paid-delivery
+pnpm --filter @shipwright/web test
+pnpm --filter api test
 pnpm typecheck
-pnpm test
-pnpm build
 ```
 
 ## Migrations
+The schema has moved well beyond the original foundations migrations.
 
-- `packages/db/migrations/0001_foundations_schema.sql`
-- `packages/db/migrations/0002_rls_policies.sql`
+See the full migration history in:
+- `packages/db/migrations`
 
-## Runbook
+Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, and platform admin support.
 
-See `docs/runbooks/setup.md` for staging setup (Supabase, Render, Vercel, Upstash) and env vars.
+## Current Stage 1 evidence
+- Proof archive: `docs/proofs/`
+- Paid delivery proof runbook: `docs/staging-paid-delivery-proof.md`
+- Release verification runbook: `docs/release-checklist.md`
+- Working execution plan: `docs/roadmaps/fleet-pilot-working-plan.md`
+- Design system authority: `docs/design-system.md`
+
+## Runbooks
+- `docs/runbooks/setup.md` - staging setup, env, fixture, and verification flow
+- `docs/staging-paid-delivery-proof.md` - full paid order to delivered proof runbook
+- `docs/release-checklist.md` - staging release verification and readiness gate
 
 ## Roadmaps
-
 - `docs/roadmaps/fleet-roadmap.md` - primary Fleet delivery roadmap
-- `docs/roadmaps/fleet-scope-cut-matrix.md` - explicit build, buy, manual, and defer decisions by stage
-- `docs/roadmaps/fleet-pilot-readiness-checklist.md` - pilot gate for controlled launch readiness
-- `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution plan and weekly working reference
-- `docs/roadmaps/fleet-pilot-gap-review.md` - repo-to-plan alignment review for Stage 1 execution control
-- `docs/roadmaps/fleet-stage1-execution-tranche-01.md` - next build-ready Stage 1 tranche for merchant activation, menu, and customer ordering
+- `docs/roadmaps/fleet-scope-cut-matrix.md` - build, buy, manual, and defer decisions by stage
+- `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution status and priorities
+- `docs/roadmaps/fleet-pilot-readiness-checklist.md` - pilot gate split into staging-proof and live-pilot readiness
+- `docs/roadmaps/fleet-pilot-gap-review.md` - current repo-to-plan gap review
+- `docs/roadmaps/fleet-stage1-execution-tranche-01.md` - earlier Stage 1 tranche reference
 
-## Design Authority
+## Design authority
+- `docs/design/fleet-ux-authority-brief.md` - Fleet UX posture and rules
+- `docs/design-system.md` - ShipWright Design System v1 and migration guidance
 
-- `docs/design/fleet-ux-authority-brief.md` - Fleet UX posture, principles, redesign priorities, and rules for future UI work
-- `docs/design-system.md` - ShipWright Design System v1 tokens, hierarchy classes, component rules, and UI QA checklist
+## Current remaining gaps
+- customer and operator tracking v1 remains incomplete
+- pilot fallback, escalation, and reconciliation playbooks remain incomplete
+- payout and reconciliation visibility remain incomplete
+- Resend-backed external email delivery is intentionally parked until a verified sender/domain is available
+- design-system migration is ongoing; customer ordering migrated first, larger shell decomposition still remains
+- legacy `globals.css` reduction is incremental, not finished

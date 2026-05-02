@@ -1,21 +1,25 @@
 # Staging Paid Delivery Proof
 
 ## Purpose
-This runbook proves the Stage 1 spine in staging:
+This runbook proves the Stage 1 staging spine:
 
-`public restaurant checkout -> paid order -> dispatch offer -> driver completion -> payment capture`
+`public restaurant checkout -> paid order -> dispatch offer -> driver completion -> payment capture -> fulfilled customer order`
 
-Use it after migrations, `/healthz`, `/readyz`, and the standard staging smoke pass. Code existing in the repo is not enough; this proof checks the live staging API, staging database, driver fixture, outbox side effects, and downstream records.
+Use it after migrations, `/healthz`, `/readyz`, and the standard staging release verification pass. Code existing in the repo is not enough; this proof checks the live staging API, staging database state, driver fixture, outbox side effects, and downstream records.
 
 ## Prerequisites
-- Staging API is deployed and reachable at `https://api-staging-qvmv.onrender.com`.
-- Web is deployed at `https://ondemand-logistics-platform-web.vercel.app` for browser checks.
-- Migration `0011_stage1_customer_orders.sql` is applied to staging.
-- `/healthz` and `/readyz` return `200`.
-- Render API staging has Stripe test mode env configured.
-- A pilot restaurant exists with an active menu at `pilot-kitchen-1777370757`.
-- Local shell has Supabase and database env values from `.env.proof.example`.
-- `SUPABASE_SERVICE_ROLE_KEY` is recommended for repeatable fixture creation and required if Supabase email signup is rate-limited.
+- staging API is deployed and reachable at `https://api-staging-qvmv.onrender.com`
+- web is deployed at `https://ondemand-logistics-platform-web.vercel.app` for browser checks
+- release-critical migrations are applied, including:
+  - customer orders
+  - fulfilled order status support
+  - notification reads
+  - platform admins
+- `/healthz` and `/readyz` return `200`
+- Render staging has Stripe test-mode env configured
+- a pilot restaurant exists with an active menu at `pilot-kitchen-1777370757`
+- local shell has values from `.env.proof.example`
+- `SUPABASE_SERVICE_ROLE_KEY` is recommended for repeatable fixture creation and required if Supabase signup is rate-limited
 
 ## Fixture
 The proof harness creates or refreshes these staging users:
@@ -35,9 +39,8 @@ The driver fixture is reset to the minimum dispatch-eligible state:
 - primary `BIKE` vehicle row
 
 This fixture is for staging proof only. Do not use it as production data.
-The public customer path does not require a Supabase customer login; the proof submits a public guest checkout order.
 
-## How To Run
+## How to run
 ```bash
 cp .env.proof.example .env.proof
 set -a
@@ -46,41 +49,38 @@ set +a
 pnpm proof:staging-paid-delivery
 ```
 
-The command defaults to:
+Defaults:
 - `STAGING_PROOF_API_BASE_URL=https://api-staging-qvmv.onrender.com`
 - `STAGING_PROOF_RESTAURANT_SLUG=pilot-kitchen-1777370757`
 - `STAGING_PROOF_PAYMENT_METHOD_ID=pm_card_visa`
 
-When the proof passes it also writes a timestamped archive artifact:
-
+When the proof passes it writes:
 - `docs/proofs/paid-delivery-<timestamp>.json`
 
-## Outbox Processing Mode
-Default mode leaves outbox processing to the deployed staging worker:
+## Recommended order of operations
+1. Run release verification first:
 
 ```bash
-STAGING_PROOF_PROCESS_OUTBOX=false
+pnpm release:verify-staging
 ```
 
-If the deployed worker is unavailable and the operator has the required secure provider env locally, the harness can process only the scoped proof job/payment outbox messages:
+2. If that passes, run the deeper paid-delivery proof:
 
 ```bash
-STAGING_PROOF_PROCESS_OUTBOX=true
-STRIPE_SECRET_KEY=sk_test_...
 pnpm proof:staging-paid-delivery
 ```
 
-Do not commit provider secrets.
+Release verification auto-loads `.env.smoke` when present. Paid-delivery proof still uses `.env.proof`.
 
-## What The Proof Does
-1. Creates or reuses fixture Supabase auth users.
-2. Seeds domain rows for business operator, org membership, approved BIKE driver, and driver location.
-3. Reads the public restaurant menu.
-4. Submits a public paid customer order using a Stripe test payment method.
-5. Waits for a dispatch offer for the staged driver.
-6. Accepts the offer through `/v1/driver/me/offers/:offerId/accept`.
-7. Progresses the driver job through pickup, drop-off, POD, and delivered.
-8. Verifies downstream records:
+## What the proof does
+1. creates or reuses fixture Supabase auth users
+2. seeds domain rows for business operator, approved BIKE driver, and driver location
+3. reads the public restaurant menu
+4. submits a public paid customer order using a Stripe test payment method
+5. waits for a dispatch offer for the staged driver
+6. accepts the offer through `/v1/driver/me/offers/:offerId/accept`
+7. progresses the driver job through pickup, drop-off, POD, and delivered
+8. verifies downstream records:
    - `customer_orders`
    - `customer_order_items`
    - `jobs`
@@ -89,19 +89,16 @@ Do not commit provider secrets.
    - `job_events`
    - `audit_log`
    - `outbox_messages`
-9. Reports the final order, job, payment, POD, outbox, and capture state.
+9. confirms:
+   - final job status is `DELIVERED`
+   - payment status is `CAPTURED`
+   - final customer order status is `FULFILLED`
 
-## Expected Passing Output
+## Expected passing output
 The command prints concise `PASS` lines and ends with JSON similar to:
 
 ```json
 {
-  "fixture": {
-    "orgId": "70d56b02-f2b8-487a-8c97-8e30fd9e631f",
-    "driverId": "8a5d2d96-4f0a-4711-b8b0-7ed9478d41a7",
-    "vehicleType": "BIKE",
-    "availability": "ONLINE"
-  },
   "orderId": "...",
   "jobId": "...",
   "offerId": "...",
@@ -117,24 +114,23 @@ The command prints concise `PASS` lines and ends with JSON similar to:
 }
 ```
 
-The proof artifact stores the same result payload plus:
+The proof artifact stores the same payload plus:
 - `timestamp`
 - `apiBaseUrl`
 - `gitCommit` when available locally
 
-If `paymentStatus` remains `AUTHORIZED`, inspect worker logs and `PAYMENT_CAPTURE_REQUESTED` outbox rows. Delivery should enqueue capture through the existing payment architecture; worker processing is what moves the payment to captured. If `finalOrderStatus` is not `FULFILLED`, the customer-order completion hook did not run after the delivered job and captured payment state converged.
+## Failure handling
+- `restaurant_menu_empty`: load an active menu for the pilot restaurant before rerunning
+- `poll_timeout:driver_offer`: confirm the staged driver is `ONLINE`, approved, `BIKE`, close to pickup, and not on another active job
+- `signup_rate_limited`: add `SUPABASE_SERVICE_ROLE_KEY` to `.env.proof` or wait for Supabase auth rate limits to reset
+- `request_failed:503` from checkout: confirm Render staging Stripe env
+- payment remains `AUTHORIZED`: confirm worker processing and `PAYMENT_CAPTURE_REQUESTED` handling
+- final order is not `FULFILLED`: inspect delivered/captured convergence and completion trigger/worker path
 
-## Failure Handling
-- `restaurant_menu_empty`: load an active menu for the pilot restaurant before rerunning.
-- `poll_timeout:driver_offer`: confirm the staged driver is ONLINE, BIKE, approved, not on another active job, and close to pickup.
-- `signup_rate_limited`: add `SUPABASE_SERVICE_ROLE_KEY` to `.env.proof` or wait for the Supabase auth email rate limit to reset.
-- `request_failed:503` from checkout: confirm Render API Stripe test env.
-- payment remains `AUTHORIZED`: confirm the worker is running and has Stripe env.
-- outbox rows with `last_error`: inspect the exact event type and worker log.
+## External notification caveat
+External operational email delivery is intentionally parked until a verified sender/domain exists for Resend. Do not treat a missing email send as a paid-delivery proof failure unless the explicit goal is external-notification verification.
 
-Do not mark Stage 1 paid delivery proven unless both user-visible completion and downstream record integrity are verified.
-
-## Proof Archive
-- Store generated artifacts under `docs/proofs/`.
-- Do not edit the JSON manually.
-- Generate a fresh proof when you need updated evidence.
+## Proof archive
+- store generated artifacts under `docs/proofs/`
+- do not edit JSON artifacts manually
+- generate a fresh proof when you need updated evidence

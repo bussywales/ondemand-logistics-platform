@@ -1,4 +1,4 @@
-# Setup Runbook (Phase 3 Payments Foundation MVP)
+# Setup Runbook (Stage 1 Pilot MVP)
 
 ## 1) Provision staging infrastructure
 
@@ -7,33 +7,33 @@
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `DATABASE_URL` (Session Pooler, Render-safe)
-2. Apply SQL migrations in order:
-   - `packages/db/migrations/0001_foundations_schema.sql`
-   - `packages/db/migrations/0002_rls_policies.sql`
-   - `packages/db/migrations/0003_rls_recursion_fix.sql`
-   - `packages/db/migrations/0004_phase1_dispatch.sql`
-   - `packages/db/migrations/0005_phase2a_reads_and_progression.sql`
-   - `packages/db/migrations/0006_phase2b_pod_cancellation_notifications.sql`
-   - `packages/db/migrations/0007_phase3_payments_foundation.sql`
+   - `DATABASE_URL` (session pooler, Render-safe)
+2. Apply repo migrations from:
+   - `packages/db/migrations`
+3. Current release-critical migrations include:
+   - restaurant/menu support
+   - customer orders
+   - fulfilled order status support
+   - notification read state
+   - platform admin support
 
 ### Upstash Redis (staging)
-1. Create Redis database: `ondemand-logistics-staging`.
+1. Create Redis database: `ondemand-logistics-staging`
 2. Capture:
    - `REDIS_URL`
 
 ## 2) Configure staging deploy target
 
-### Render: `api-staging` service
-- Runtime: Node
-- Region: Frankfurt
-- Build command: `pnpm install --frozen-lockfile --prod=false && pnpm --filter api build`
-- Start command: `pnpm --filter api start:prod`
-- Health check path: `/healthz`
-- Notes:
-  - The outbox worker runs in-process inside the API container on free tier.
-  - The API must bind `0.0.0.0:${PORT}` before worker startup.
-- Required environment variables:
+### Render: `api-staging`
+- runtime: Node
+- region: Frankfurt
+- build command: `pnpm install --frozen-lockfile --prod=false && pnpm --filter api build`
+- start command: `pnpm --filter api start:prod`
+- health check path: `/healthz`
+- notes:
+  - the outbox worker runs in-process inside the API container on free tier
+  - the API must bind `0.0.0.0:${PORT}` before worker startup
+- required environment variables:
   - `NODE_ENV=production`
   - `APP_ENV=staging`
   - `PORT=10000`
@@ -54,104 +54,69 @@
   - `PAYMENT_CURRENCY=gbp`
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
-  - `STRIPE_PUBLISHABLE_KEY` only needed later for browser flows
-  - Optional external notification email delivery:
-    - `RESEND_API_KEY`
-    - `NOTIFICATION_FROM_EMAIL`
-    - `NOTIFICATION_REPLY_TO_EMAIL` optional
+- optional provider env:
+  - `RESEND_API_KEY`
+  - `NOTIFICATION_FROM_EMAIL`
+  - `NOTIFICATION_REPLY_TO_EMAIL`
 
 ### Vercel: `ondemand-logistics-platform-web`
-- Root directory: repo root (`.`)
-- Install command: `pnpm install --no-frozen-lockfile`
-- Build command: `pnpm --filter @shipwright/web build`
-- Output directory: `apps/web/.next`
-- Required environment variables:
+- root directory: repo root (`.`)
+- install command: `pnpm install --no-frozen-lockfile`
+- build command: `pnpm --filter @shipwright/web build`
+- output directory: `apps/web/.next`
+- required environment variables:
   - `NEXT_PUBLIC_API_BASE_URL`
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 
-## 2.1) API CORS policy
+## 3) Business onboarding prerequisites
+- browser onboarding uses Supabase email/password auth from the web app
+- the frontend then calls the API with the issued bearer token to create the business org and operator membership
+- protected routes under `/app` require an authenticated session
+- `/admin` additionally requires `PLATFORM_ADMIN`
 
-- The API uses a server-side origin allowlist, not wildcard CORS.
-- Built-in allowed browser origins:
-  - `http://localhost:3000`
-  - `http://127.0.0.1:3000`
-  - `https://ondemand-logistics-platform-web.vercel.app`
-  - `https://ondemand-logistics-platform-web-xthetic-studios-projects.vercel.app`
-- Vercel preview deployments are allowed when their hostname matches one of the configured project slugs.
-- Supported configuration:
-  - `CORS_ALLOWED_ORIGINS`
-  - `CORS_ALLOWED_VERCEL_PROJECTS`
-- Allowed request headers include:
-  - `Authorization`
-  - `Content-Type`
-  - `Idempotency-Key`
-  - `X-Idempotency-Key`
-
-## 2.2) Business onboarding prerequisites
-
-- Browser onboarding uses Supabase email/password auth from the web app.
-- The frontend then calls the API with the issued bearer token to create the business org and operator membership.
-- The web app now relies on Supabase browser session persistence and token refresh, not a local-only bearer token field.
-- Protected routes under `/app` require an authenticated session and redirect to `/get-started` when it is missing.
-- For staging, ensure the Supabase project allows email/password signups for test users.
-- If you want repeatable seeded staging access instead of ad hoc signups, run the fixture script below.
-
-## 3) Auth and service-role boundaries
-
-- API verifies Supabase JWTs against `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
-- All write endpoints require `Idempotency-Key` or `X-Idempotency-Key`.
-- Direct DB writes happen only in server-side code paths:
-  - quote creation
-  - job request creation
-  - driver availability and location updates
-  - offer accept / reject
-  - driver status progression transitions
-  - proof of delivery upload reservation and record
-  - job cancellation
-  - payment creation, authorization, webhook reconciliation, refunds, payout readiness
-  - outbox worker dispatch / expiry processing
-- Read APIs enforce actor visibility in server-side query filters without weakening SQL policies.
-- Row-level policies remain defined only in SQL migrations.
-
-## 4) Required staging verification
-
-Run after each deploy:
+## 4) Staging verification basics
+Expected commands:
 
 ```bash
-curl -fsS https://<api-staging-domain>/healthz
-curl -fsS https://<api-staging-domain>/readyz
+pnpm release:verify-staging
+pnpm proof:staging-paid-delivery
 ```
 
-Expected shape:
+### Running release verification
+`pnpm release:verify-staging` auto-loads `.env.smoke` when present.
 
-```json
-{"status":"ok","service":"api","requestId":"<uuid>"}
+Minimum `.env.smoke`:
+```bash
+SMOKE_API_BASE_URL=https://api-staging-qvmv.onrender.com
 ```
 
-`/healthz` remains liveness-only.
+Optional `.env.smoke` values:
+- `DATABASE_URL`
+- `SMOKE_BUSINESS_BEARER_TOKEN`
+- `SMOKE_DRIVER_BEARER_TOKEN`
+- `SMOKE_ADMIN_BEARER_TOKEN`
 
-`/readyz` now includes a targeted schema compatibility check for the current release-critical flows:
-- quotes
-- jobs and tracking
-- payments
+Behavior:
+- with only `SMOKE_API_BASE_URL`, the command runs `/healthz` and `/readyz`
+- with `DATABASE_URL`, it also runs direct schema sanity
+- authenticated checks are skipped when the relevant bearer token is absent
+- proof artifacts are written to `docs/proofs/`
 
-If the database is reachable but required tables or columns are missing, `/readyz` returns `503` with:
-
-```json
-{
-  "status": "error",
-  "service": "api",
-  "message": "schema_compatibility_not_ready",
-  "missingElements": ["public.jobs.quote_id", "public.payments.created_at"]
-}
+### Running paid delivery proof
+```bash
+cp .env.proof.example .env.proof
+set -a
+source .env.proof
+set +a
+pnpm proof:staging-paid-delivery
 ```
 
-Treat any `schema_compatibility_not_ready` response as a failed release verification and apply the missing migrations before serving traffic.
+Reference:
+- `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`
 
 ## 5) Protected endpoint fixtures
-
 Seed or refresh staging auth fixtures locally:
 
 ```bash
@@ -166,8 +131,6 @@ The fixture script creates or reuses:
 - `staging-driver@shipwright.example.com`
 - `staging-consumer@shipwright.example.com`
 
-It prints current user ids, the seeded driver id, the seeded org id, and current bearer tokens for sample curls.
-
 The staged driver is reset to a dispatch-eligible pilot state:
 - `ONLINE`
 - approved verification row
@@ -176,8 +139,7 @@ The staged driver is reset to a dispatch-eligible pilot state:
 - no active job
 
 ### Seed a platform admin
-
-`PLATFORM_ADMIN` is a platform-level control-plane role. It is separate from org `ADMIN` and does not grant itself business-org membership.
+`PLATFORM_ADMIN` is a platform-level control-plane role. It is separate from org `ADMIN` and does not grant business-org membership.
 
 Seed one in staging after the Supabase auth user exists:
 
@@ -189,154 +151,20 @@ set is_active = true,
     updated_at = now();
 ```
 
-Use that account to access `/admin`. Admin Control Plane v1 is intentionally operational and read-only; it does not replace org-scoped `/app` workflows.
+Use that account to access `/admin`.
 
-## 5.2) Investor demo reset guidance
+## 6) Proof archive
+Generated evidence is written under:
+- `docs/proofs/`
 
-Prepare the demo environment without rewriting historical evidence:
+Current artifact types:
+- `release-verify-<timestamp>.json`
+- `paid-delivery-<timestamp>.json`
 
-1. Refresh the staging auth fixtures:
+Do not edit proof JSON manually. Generate a fresh proof instead.
 
-```bash
-pnpm fixtures:staging-auth
-```
-
-2. Rerun the paid-delivery proof when you need a fresh reference record set:
-
-```bash
-pnpm proof:staging-paid-delivery
-```
-
-This writes a timestamped proof archive file to:
-- `docs/proofs/paid-delivery-<timestamp>.json`
-
-2.1 Run the release verification command before wider demos or stakeholder walkthroughs:
-
-```bash
-pnpm release:verify-staging
-```
-
-The command auto-loads `/Users/olubusayoadewale/Coding Projects/shipwright/.env.smoke` if the file exists.
-
-Required env:
-- `SMOKE_API_BASE_URL`
-
-Optional env:
-- `DATABASE_URL` for direct DB schema sanity checks
-- `SMOKE_BUSINESS_BEARER_TOKEN`
-- `SMOKE_DRIVER_BEARER_TOKEN`
-- `SMOKE_ADMIN_BEARER_TOKEN`
-
-Behavior:
-- with only `SMOKE_API_BASE_URL`, the command runs `/healthz` and `/readyz`
-- if `DATABASE_URL` is missing, direct DB schema sanity is skipped with a clear reason
-- if bearer tokens are missing, authenticated business, driver, and admin smoke checks are skipped with clear reasons
-- if `SMOKE_API_BASE_URL` is still missing after auto-loading `.env.smoke`, the command fails with an actionable message
-
-This writes:
-- `docs/proofs/release-verify-<timestamp>.json`
-
-`SKIP` output means the check was intentionally not run because a token or recent signal was unavailable. Treat skipped checks as missing evidence, not as a pass.
-
-3. Prefer additive fresh proof records over mutating or deleting prior staging orders/jobs during rehearsal.
-4. If the demo needs a clean narrative, start from the newest proof order rather than trying to repair stale blocked records live.
-5. If Stripe or external notification provider env is unavailable, switch to the documented fallback talk track instead of improvising fake success.
-
-For the full paid customer order to delivered-job proof, use `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`.
-
-### Create a real staging business account manually
-
-1. Open `/get-started` in the deployed web app.
-2. Choose `Business`.
-3. Use `Create account` with:
-   - email
-   - password
-4. Continue to the second step and enter:
-   - business name
-   - contact name
-   - phone
-   - city
-5. The web app will:
-   - create or sign in the Supabase auth user
-   - call `POST /v1/business/orgs`
-   - persist the Supabase session in the browser
-   - refresh business context from the API for protected pages
-   - route into `/app`
-
-If the account already exists, switch to `Sign in`. If the account is authenticated but not yet onboarded, the same form will create the org on the next submit.
-
-## 5.1) Payment method collection and authorization
-
-- The job detail payment panel collects card details in the browser with Stripe Elements.
-- The frontend creates a real Stripe `payment_method` and sends its `pm_*` id to:
-
-```bash
-POST /v1/jobs/:jobId/payment/authorize
-```
-
-- The backend remains the source of truth for authorization success, failure, and final payment state.
-- If `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is missing, the payment panel renders a configuration warning instead of faking a payment step.
-- Staging authorize flow prerequisites:
-  - API `STRIPE_SECRET_KEY`
-  - API `STRIPE_WEBHOOK_SECRET`
-  - Web `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-
-### Test the authorize flow in staging
-
-1. Sign in through `/get-started`.
-2. Open a job under `/app/jobs/:jobId`.
-3. In the payment panel:
-   - enter cardholder details
-   - enter a Stripe test card in the embedded card field
-   - save the payment method
-
-## 5.2) External operational notifications
-
-- External notifications v1 are email-only.
-- Supported outbound operational events:
-  - customer order confirmation
-  - business new order alert
-  - driver offer alert
-  - delivery completed
-  - payment captured
-- The worker reuses the existing outbox pipeline.
-- Provider behavior:
-  - when `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL` are set, the worker sends email through Resend
-  - when either env var is missing, the worker does not crash
-  - instead, it records `external_notification_skipped` in `audit_log` and continues processing the rest of the outbox batch
-- This means staging/dev can run safely without an email provider while still exercising event mapping and auditability.
-   - authorize the payment
-4. Confirm the payment status moves from `REQUIRES_PAYMENT_METHOD` or `FAILED` to `AUTHORIZED`.
-
-## 6) Stripe webhook workflow
-
-Local or staging webhook forwarding:
-
-```bash
-stripe listen --forward-to https://<api-staging-domain>/v1/webhooks/stripe
-```
-
-Use the signing secret emitted by Stripe CLI or dashboard as `STRIPE_WEBHOOK_SECRET`.
-
-## 7) CI/CD checks
-
-Required GitHub Actions checks:
-- `lint`
-- `typecheck`
-- `test`
-- `migration validation`
-- `build`
-
-## 8) Constraints enforced in this phase
-
-- Versioned deterministic pricing with quote persistence.
-- Single pickup to single drop jobs only.
-- Hard distance cap at 12 miles, premium flag for 8-12 miles.
-- Driver availability, location, sequential offers, reject-driven redispatch, and guarded status progression.
-- Proof of delivery is required before `DELIVERED`.
-- Cancellation is restricted to consumer/business actors and pre-drop states only.
-- Notification hooks are durable outbox messages with optional Resend email fan-out; missing provider env degrades to audited skip behavior.
-- Payment provider calls are centralized behind a Stripe abstraction and webhook verification path.
-- Payment capture happens only after delivered jobs with POD; payout ledger readiness depends on successful capture.
-- Idempotent writes, append-only audit trails, transactional outbox side effects.
-- Structured logs with `request_id`; worker failures are non-fatal to HTTP serving.
+## 7) Current open setup caveats
+- Resend-backed external email delivery is intentionally parked until a verified sender/domain exists
+- payout and reconciliation visibility is still incomplete
+- customer and operator tracking v1 is still incomplete
+- design-system migration is ongoing; customer ordering migrated first, broader shell decomposition remains

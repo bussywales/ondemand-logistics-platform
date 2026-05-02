@@ -5,6 +5,22 @@ ShipWright Design System v1 turns the current premium logistics command-centre d
 
 The system is implemented in `apps/web/app/design-system.css` and should be used before creating new one-off visual classes.
 
+## Current migration status
+Design-system migration is ongoing, not complete.
+
+Current known migration status:
+- customer ordering shell on `/restaurants/[slug]` has completed the first migration pass
+- operational shells still contain a mix of `sw-*` primitives and legacy route-specific classes
+- `globals.css` reduction is incremental and intentionally not a one-shot rewrite
+
+Next migration targets:
+- `apps/web/app/_components/product-shell.tsx`
+- `apps/web/app/_components/restaurant-setup-shell.tsx`
+- `apps/web/app/_components/driver-shell.tsx`
+- `apps/web/app/_components/admin-shell.tsx`
+
+Larger shell/component decomposition still remains after the first migration pass.
+
 ## Design Posture
 ShipWright should feel like a premium logistics operating product: calm, high-contrast, structured, live, and decision-oriented. Screens should help an operator understand what is happening, why it matters, and what action to take next.
 
@@ -133,7 +149,6 @@ Use for operational rows requiring scan and action:
 
 ### Badge
 Use semantic badges only:
-
 - `.sw-badge--danger`
 - `.sw-badge--warning`
 - `.sw-badge--success`
@@ -142,7 +157,6 @@ Use semantic badges only:
 
 ### Button
 Use one primary action per surface where possible:
-
 - `.sw-button--primary`
 - `.sw-button--secondary`
 - `.sw-button--danger`
@@ -150,7 +164,6 @@ Use one primary action per surface where possible:
 
 ### Icon Badge
 Icons must be paired with text unless the control has an accessible label:
-
 - `.sw-icon-badge--danger`
 - `.sw-icon-badge--warning`
 - `.sw-icon-badge--success`
@@ -159,7 +172,6 @@ Icons must be paired with text unless the control has an accessible label:
 
 ### Forms
 Use these for future form refactors:
-
 - `.sw-field`
 - `.sw-input`
 - `.sw-label`
@@ -168,7 +180,6 @@ Use these for future form refactors:
 
 ### Empty State
 Use empty states to instruct the operator/customer:
-
 - `.sw-empty-state`
 - `.sw-empty-title`
 - `.sw-empty-copy`
@@ -186,13 +197,13 @@ Use empty states to instruct the operator/customer:
 - Avoid raw backend labels/messages in user-facing UI.
 
 ## Anti-Patterns
-- A dashboard grid where every card has equal weight.
-- Red used for decoration or branding.
-- Icon-only status without readable text.
-- Dense operational tables without diagnosis/action.
-- Multiple primary buttons in one section.
-- Decorative gradients that do not express hierarchy or state.
-- Exposed technical state when an operator-facing explanation is available.
+- a dashboard grid where every card has equal weight
+- red used for decoration or branding
+- icon-only status without readable text
+- dense operational tables without diagnosis/action
+- multiple primary buttons in one section
+- decorative gradients that do not express hierarchy or state
+- exposed technical state when an operator-facing explanation is available
 
 ## Correct Usage Examples
 ### Blocked Job
@@ -209,7 +220,6 @@ Use `.sw-utility-surface`; keep advanced controls visibly available but lower pr
 
 ## Design QA Checklist
 Before accepting UI:
-
 1. Can the operator tell what is happening in 3 seconds?
 2. Is there a clear next action?
 3. Are colours semantic, not decorative?
@@ -217,8 +227,8 @@ Before accepting UI:
 5. Does this feel like an operations system, not an admin dashboard?
 
 ## Implementation Guidance
-- Start with hierarchy: choose decision, command, operational, supporting, or utility surface before styling details.
-- Use the `sw-*` classes first; add route-specific classes only when layout or data shape requires it.
-- Prefer existing `ShipWrightIcon` icons and semantic icon badge classes.
-- If a new class is needed, it should compose with the system rather than bypass it.
-- Future UI work should reference this document and `apps/web/app/design-system.css` before implementation.
+- start with hierarchy: choose decision, command, operational, supporting, or utility surface before styling details
+- use the `sw-*` classes first; add route-specific classes only when layout or data shape requires it
+- prefer existing `ShipWrightIcon` icons and semantic icon badge classes
+- if a new class is needed, it should compose with the system rather than bypass it
+- reduce legacy `globals.css` incrementally while keeping existing routes stable

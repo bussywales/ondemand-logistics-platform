@@ -1,59 +1,86 @@
 # Fleet Pilot Readiness Checklist
 
-This checklist defines the minimum credible gate for starting a controlled pilot. It is not a scale wishlist.
+This checklist defines the minimum credible gate for a controlled ShipWright pilot. It separates what is staging-proven today from what is still required for live pilot confidence.
 
-## Product
-- [ ] at least one pilot restaurant can be onboarded fully
-- [ ] menu data is loaded and orderable
-- [ ] branded ordering page is live for the pilot restaurant
-- [ ] checkout and payment complete successfully for a pilot order
-- [ ] an order can be created and routed into dispatch
-- [ ] a courier can receive, accept, and complete a delivery
-- [ ] restaurant staff can see live order state clearly enough to operate
-- [ ] customers can see basic order status clearly enough to avoid unnecessary support contact
+## 1) Staging-proven baseline
+These are already evidenced in the current repo and staging proof flow.
 
-## Compliance
-- [ ] minimum courier onboarding and identity checks are defined and applied
-- [ ] terms, liability, and operating responsibilities are clear enough for pilot use
-- [ ] payment handling and payout handling are understood operationally, even if partially manual
+### Product and flow
+- [x] at least one pilot restaurant route exists and serves a live active menu
+- [x] branded ordering page is live for the pilot restaurant
+- [x] customer checkout completes against Stripe test mode
+- [x] payment is authorized for a paid customer order
+- [x] order creation routes into the real downstream job and payment path
+- [x] business operators can see customer orders in `/app/orders`
+- [x] a staged driver can receive, accept, and execute a delivery
+- [x] proof of delivery can be recorded
+- [x] delivered job state is proven
+- [x] payment capture after delivery is proven
+- [x] customer order terminal state reaches `FULFILLED`
+- [x] admin control plane is available to `PLATFORM_ADMIN`
+- [x] business notifications exist with persistent read state
+- [x] release verification and proof archive exist
+
+### Technical readiness
+- [x] staging verification sequence is documented and repeatable
+- [x] `/healthz` passes
+- [x] `/readyz` passes
+- [x] readiness checks cover critical schema compatibility, including:
+  - `public.notification_reads`
+  - `public.platform_admins`
+  - `customer_orders.status` supports `FULFILLED`
+- [x] proof artifacts are written under `docs/proofs/`
+- [x] direct schema sanity can run when `DATABASE_URL` is present
+- [x] authenticated smoke checks can run when bearer tokens are present
+
+## 2) Still required before controlled live pilot use
+These are not closed just because staging proof is green.
+
+### Operations and support
+- [ ] fallback manual dispatch procedure exists and is owned
+- [ ] support escalation path exists for failed, delayed, or disputed orders
+- [ ] payout and reconciliation visibility is clear enough for pilot ops
 - [ ] there is a named owner for incident, support, and escalation decisions during pilot
 
-## Operations
-- [ ] dispatch path works in the pilot geography
-- [ ] fallback manual dispatch procedure exists if automation fails
-- [ ] support escalation path exists for failed, delayed, or disputed orders
-- [ ] proof of delivery standard is defined for pilot operations
-- [ ] operators can see enough order state to intervene when needed
-- [ ] basic readiness and smoke verification are part of every staging release before pilot traffic relies on it
+### Visibility and actor experience
+- [ ] customer/operator tracking v1 is sufficient for pilot support needs
+- [ ] restaurant staff can see live order state clearly enough to operate without internal admin help
+- [ ] business new-order notification remains visibly verified in the live browser flow after notification UI changes
 
-## Commercial
-- [ ] at least one restaurant has agreed to pilot on the defined operating terms
+### Compliance and pilot operations
+- [ ] minimum courier onboarding and identity checks are defined and applied operationally, not just via staging fixtures
+- [ ] terms, liability, and operating responsibilities are clear enough for pilot use
 - [ ] pilot geography and service window are explicitly constrained
-- [ ] pricing approach is agreed for the pilot period
-- [ ] the business knows what counts as pilot success, extension, or shutdown
+- [ ] at least one restaurant has agreed to pilot on the defined operating terms
 
-## Technical readiness
-- [ ] staging verification sequence is documented and repeatable
-- [ ] required migrations can be applied consistently before release
-- [ ] `/healthz` passes
-- [ ] `/readyz` passes
-- [ ] authenticated critical-path smoke passes
-- [ ] operator team knows where to look when auth restore, dispatch, or payment flows fail
+## 3) Payment and external notification caveats
+- [x] Stripe authorization and capture are staging-proven
+- [ ] payout and reconciliation visibility is still incomplete
+- [ ] Resend-backed external delivery email is intentionally parked until a verified sender/domain exists
+- [ ] external notification delivery should not be treated as proven until provider env and sender verification are complete
 
-## Not required for pilot
+## 4) Browser and release gates
+Before wider demos or pilot traffic:
+- [x] `pnpm release:verify-staging` passes
+- [x] `pnpm proof:staging-paid-delivery` passes
+- [ ] repeat browser checkout proof after customer ordering UI changes
+- [ ] repeat notification visibility proof after notifications UI changes
+
+## 5) Not required for pilot
 The following are useful, but not pilot gates:
 - subscription billing automation
 - advanced analytics and reporting
 - referral tooling
-- polished admin surfaces
+- polished self-serve admin beyond operational need
 - full payout automation
 - full dispute automation
 - rich courier earnings tooling
+- complete design-system migration of every shell
 
-## Pilot success criteria
+## 6) Pilot success criteria
 Use these measures to judge whether the pilot is working, not just whether the software shipped.
 
-- [ ] first successful end-to-end live order completed
+- [ ] first successful live order completed outside the proof harness
 - [ ] successful completion rate is at least 90% across the first 25 pilot orders
 - [ ] median dispatch acceptance time is 5 minutes or less during the controlled pilot window
 - [ ] failed order rate remains below 10% across the first 25 pilot orders
