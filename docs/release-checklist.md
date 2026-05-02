@@ -93,9 +93,6 @@ After release verification passes, run the deeper proof loop:
 
 ```bash
 cp .env.proof.example .env.proof
-set -a
-source .env.proof
-set +a
 pnpm proof:staging-paid-delivery
 ```
 
@@ -104,6 +101,11 @@ Reference:
 
 This writes:
 - `docs/proofs/paid-delivery-<timestamp>.json`
+
+Proof env behavior:
+- the command auto-loads `/Users/olubusayoadewale/Coding Projects/shipwright/.env.proof` when present
+- already-exported env values are preserved
+- if required proof env is still missing after auto-load, the command fails with an actionable message instead of requiring manual shell sourcing
 
 ## 8) External notification caveat
 Resend-backed external email delivery is intentionally parked until a verified sender/domain exists.

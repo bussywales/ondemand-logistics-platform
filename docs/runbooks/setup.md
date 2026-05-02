@@ -107,11 +107,19 @@ Behavior:
 ### Running paid delivery proof
 ```bash
 cp .env.proof.example .env.proof
-set -a
-source .env.proof
-set +a
 pnpm proof:staging-paid-delivery
 ```
+
+Behavior:
+- `pnpm proof:staging-paid-delivery` auto-loads `.env.proof` when present
+- already-exported env values are preserved
+- required baseline env:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+  - `DATABASE_URL`
+- conditionally required:
+  - `STRIPE_SECRET_KEY` only when `STAGING_PROOF_PROCESS_OUTBOX=true`
+- `SUPABASE_SERVICE_ROLE_KEY` is recommended for repeatable fixture creation and required when Supabase signup is rate-limited
 
 Reference:
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`

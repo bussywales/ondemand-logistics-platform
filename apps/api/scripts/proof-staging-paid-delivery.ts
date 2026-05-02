@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { Client, type ClientConfig, type PoolClient } from "pg";
 import { createLogger } from "@shipwright/observability";
 import { dispatchSideEffect } from "../../worker/src/index.ts";
+import { loadEnvFileIfPresent } from "./env-loader.ts";
 import { getGitCommit, writeProofArtifact } from "./proof-artifacts.ts";
 
 type FixtureSlug = "business" | "driver";
@@ -130,6 +131,35 @@ function requiredEnv(name: string) {
 
 function optionalEnv(name: string, fallback: string) {
   return process.env[name]?.trim() || fallback;
+}
+
+function validateProofEnv(options: { envFileFound: boolean; envFilePath: string }) {
+  const missing: string[] = [];
+  for (const name of ["SUPABASE_URL", "SUPABASE_ANON_KEY", "DATABASE_URL"]) {
+    if (!process.env[name]?.trim()) {
+      missing.push(name);
+    }
+  }
+
+  if (process.env.STAGING_PROOF_PROCESS_OUTBOX === "true" && !process.env.STRIPE_SECRET_KEY?.trim()) {
+    missing.push("STRIPE_SECRET_KEY");
+  }
+
+  if (missing.length === 0) {
+    return;
+  }
+
+  const hint = options.envFileFound
+    ? `Loaded ${options.envFilePath}, but required env is still missing.`
+    : `.env.proof was not found at ${options.envFilePath}.`;
+
+  const serviceRoleNote = !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+    ? "\nSUPABASE_SERVICE_ROLE_KEY is optional for the default proof path, but recommended for repeatable fixture creation and required when Supabase signup is rate-limited."
+    : "";
+
+  throw new Error(
+    `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required.\n${hint}\nCreate .env.proof or export the missing values before running the paid-delivery proof.${serviceRoleNote}`
+  );
 }
 
 function createPgConfig(connectionString: string): ClientConfig {
@@ -765,6 +795,17 @@ export async function runPaidDeliveryProof() {
 }
 
 async function main() {
+  const envLoad = loadEnvFileIfPresent("../../.env.proof");
+  validateProofEnv({ envFileFound: envLoad.found, envFilePath: envLoad.path });
+
+  if (envLoad.found) {
+    console.log(
+      `INFO proof:staging-paid-delivery | loaded ${envLoad.path}${envLoad.loadedKeys.length > 0 ? ` | keys=${envLoad.loadedKeys.join(",")}` : " | env_preloaded"}`
+    );
+  } else {
+    console.log(`INFO proof:staging-paid-delivery | .env.proof not found at ${envLoad.path} | relying on exported env`);
+  }
+
   await runPaidDeliveryProof();
 }
 

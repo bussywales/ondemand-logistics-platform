@@ -18,7 +18,7 @@ Use it after migrations, `/healthz`, `/readyz`, and the standard staging release
 - `/healthz` and `/readyz` return `200`
 - Render staging has Stripe test-mode env configured
 - a pilot restaurant exists with an active menu at `pilot-kitchen-1777370757`
-- local shell has values from `.env.proof.example`
+- local proof env exists at `.env.proof` or the required values are already exported
 - `SUPABASE_SERVICE_ROLE_KEY` is recommended for repeatable fixture creation and required if Supabase signup is rate-limited
 
 ## Fixture
@@ -43,9 +43,6 @@ This fixture is for staging proof only. Do not use it as production data.
 ## How to run
 ```bash
 cp .env.proof.example .env.proof
-set -a
-source .env.proof
-set +a
 pnpm proof:staging-paid-delivery
 ```
 
@@ -70,7 +67,16 @@ pnpm release:verify-staging
 pnpm proof:staging-paid-delivery
 ```
 
-Release verification auto-loads `.env.smoke` when present. Paid-delivery proof still uses `.env.proof`.
+Release verification auto-loads `.env.smoke` when present. Paid-delivery proof now auto-loads `.env.proof` when present and preserves any env already exported in the shell.
+
+Required proof env:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `DATABASE_URL`
+
+Conditionally required:
+- `STRIPE_SECRET_KEY` only when `STAGING_PROOF_PROCESS_OUTBOX=true`
+- `SUPABASE_SERVICE_ROLE_KEY` when Supabase signup is rate-limited or you need repeatable fixture refresh without email confirmation flow
 
 ## What the proof does
 1. creates or reuses fixture Supabase auth users
