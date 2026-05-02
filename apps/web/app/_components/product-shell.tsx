@@ -2,30 +2,39 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { BrandLogo } from "./brand-logo";
+import { useBusinessAuth } from "./business-auth-provider";
 import { ContextualHelpLink } from "./help";
 import { NotificationsBell } from "./notifications";
-import { PaymentMethodForm, isStripeFrontendConfigured, type CollectedPaymentMethod } from "./payment-method-form";
+import { type CollectedPaymentMethod } from "./payment-method-form";
+import { WorkspaceDashboard } from "./product-shell/workspace-dashboard";
+import { JobCreatePanel } from "./product-shell/job-create-panel";
+import { JobDetailView } from "./product-shell/job-detail-view";
+import { JobsListView } from "./product-shell/jobs-list-view";
+import { isCompletedToday } from "./product-shell/shared";
 import { ProductUpdateAnnouncement } from "./product-updates";
-import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
+import { ShipWrightIcon } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
-import { useBusinessAuth } from "./business-auth-provider";
 import {
-  getDriverAssignmentIneligibility,
   authorizePayment,
   cancelJob,
   createLiveJob,
+  getDriverAssignmentIneligibility,
   getLiveJob,
-  listEligibleDrivers,
   listBusinessOrders,
+  listEligibleDrivers,
   listLiveJobs,
   reassignDriver,
   retryDispatch
 } from "../_lib/api";
 import {
-  formatCurrency,
-  formatDateTime,
+  filterEligibleDrivers,
+  toDriverAssignmentFailureModel,
+  type DriverAssignmentFailureModel
+} from "../_lib/driver-assignment";
+import { getDispatchIntelligence, shouldShowInReviewQueue, sortReviewQueue } from "../_lib/dispatch-intelligence";
+import {
   type AppJob,
   type BusinessCustomerOrder,
   type BusinessSession,
@@ -33,22 +42,6 @@ import {
   type EligibleDriver,
   type VehicleType
 } from "../_lib/product-state";
-import {
-  filterEligibleDrivers,
-  getBlockedDriverLabel,
-  getEligibleDriverEmptyState,
-  getEligibleDriverFlagLabel,
-  getEligibleDriverTone,
-  toDriverAssignmentFailureModel,
-  type DriverAssignmentFailureModel
-} from "../_lib/driver-assignment";
-import {
-  getDispatchIntelligence,
-  getJobShortId,
-  shouldShowInReviewQueue,
-  sortReviewQueue
-} from "../_lib/dispatch-intelligence";
-import { getPaymentPanelModel } from "../_lib/payment-ui";
 
 type ProductShellProps = {
   view: "home" | "jobs" | "job-detail";
@@ -66,187 +59,6 @@ const defaultForm: DeliveryFormInput = {
   dropoffLatitude: 51.5396,
   dropoffLongitude: -0.1026
 };
-
-function formatStatusLabel(status: string) {
-  return status.replace(/_/g, " ");
-}
-
-function statusTone(status: AppJob["status"] | AppJob["payment"]["status"]) {
-  if (
-    status === "ASSIGNED" ||
-    status === "EN_ROUTE_PICKUP" ||
-    status === "PICKED_UP" ||
-    status === "EN_ROUTE_DROP" ||
-    status === "AUTHORIZED"
-  ) {
-    return "status-live";
-  }
-
-  if (status === "DELIVERED" || status === "CAPTURED") {
-    return "status-positive";
-  }
-
-  if (status === "FAILED" || status === "CANCELLED" || status === "DISPATCH_FAILED") {
-    return "status-negative";
-  }
-
-  return "status-neutral";
-}
-
-function orderStatusTone(status: BusinessCustomerOrder["status"]) {
-  if (status === "FULFILLED") {
-    return "status-positive";
-  }
-
-  if (status === "PAYMENT_AUTHORIZED") {
-    return "status-live";
-  }
-
-  if (status === "PAYMENT_FAILED") {
-    return "status-negative";
-  }
-
-  return "status-neutral";
-}
-
-function summarizeDriver(job: AppJob) {
-  if (!job.tracking.assignedDriverName) {
-    return "No driver assigned";
-  }
-
-  return `${job.tracking.assignedDriverName} · ${job.vehicleRequired}`;
-}
-
-function attentionTone(level: AppJob["attentionLevel"]) {
-  if (level === "BLOCKER") {
-    return "status-negative";
-  }
-
-  if (level === "RISK") {
-    return "status-live";
-  }
-
-  return "status-neutral";
-}
-
-function severityTone(level: "BLOCKER" | "RISK" | "NORMAL" | "INFO") {
-  if (level === "BLOCKER") {
-    return "status-negative";
-  }
-
-  if (level === "RISK") {
-    return "status-live";
-  }
-
-  if (level === "INFO") {
-    return "status-neutral";
-  }
-
-  return "status-positive";
-}
-
-function statusIconName(status: AppJob["status"] | AppJob["payment"]["status"]): ShipWrightIconName {
-  if (status === "DELIVERED" || status === "CAPTURED") {
-    return "check";
-  }
-
-  if (status === "FAILED" || status === "CANCELLED" || status === "DISPATCH_FAILED") {
-    return "alert";
-  }
-
-  if (status === "REQUIRES_PAYMENT_METHOD" || status === "REQUIRES_CONFIRMATION") {
-    return "payment";
-  }
-
-  return "queue";
-}
-
-function severityIconName(level: "BLOCKER" | "RISK" | "NORMAL" | "INFO"): ShipWrightIconName {
-  if (level === "BLOCKER") {
-    return "alert";
-  }
-
-  if (level === "RISK") {
-    return "warning";
-  }
-
-  if (level === "NORMAL") {
-    return "check";
-  }
-
-  return "queue";
-}
-
-function queueStateCopy(kind: "active" | "attention" | "all") {
-  if (kind === "active") {
-    return {
-      title: "No active jobs",
-      body: "The live queue is clear. New delivery requests will appear here as soon as they are created."
-    };
-  }
-
-  if (kind === "attention") {
-    return {
-      title: "No jobs need review",
-      body: "Failed dispatches, no-driver states, and delays will appear here."
-    };
-  }
-
-  return {
-    title: "No jobs yet",
-    body: "Create the first delivery request to populate this workspace."
-  };
-}
-
-function QueueEmptyState(props: { copy: { title: string; body: string }; icon?: ShipWrightIconName }) {
-  return (
-    <div className="ops-empty-state ops-queue-empty">
-      <span className="empty-state-icon" aria-hidden="true">
-        <ShipWrightIcon name={props.icon ?? "queue"} />
-      </span>
-      <strong>{props.copy.title}</strong>
-      <p>{props.copy.body}</p>
-    </div>
-  );
-}
-
-function DriverPickerEmptyState(props: { drivers: EligibleDriver[] }) {
-  return (
-    <div className="ops-empty-state ops-queue-empty assignment-empty-state">
-      <span className="empty-state-icon" aria-hidden="true">
-        <ShipWrightIcon name="driver" />
-      </span>
-      <strong>No eligible drivers available</strong>
-      <p>{getEligibleDriverEmptyState(props.drivers)}</p>
-      <p className="support-note">
-        Likely causes: no online drivers, vehicle mismatch, driver already active, or verification not approved.
-      </p>
-    </div>
-  );
-}
-
-function SectionTitle(props: { eyebrow: string; icon: ShipWrightIconName; note?: string; title: string }) {
-  return (
-    <div className="section-title-row">
-      <span className="section-title-icon" aria-hidden="true">
-        <ShipWrightIcon name={props.icon} />
-      </span>
-      <div>
-        <p className="eyebrow">{props.eyebrow}</p>
-        <h2>{props.title}</h2>
-        {props.note ? <p className="ops-detail-note">{props.note}</p> : null}
-      </div>
-    </div>
-  );
-}
-
-function isCompletedToday(job: AppJob) {
-  if (job.status !== "DELIVERED" && job.status !== "COMPLETED") {
-    return false;
-  }
-
-  return new Date(job.createdAt).toDateString() === new Date().toDateString();
-}
 
 export function ProductShell(props: ProductShellProps) {
   const router = useRouter();
@@ -313,9 +125,7 @@ export function ProductShell(props: ProductShellProps) {
   const activeJobs = useMemo(
     () =>
       jobs
-        .filter((job) =>
-          ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(job.status)
-        )
+        .filter((job) => ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(job.status))
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
     [jobs]
   );
@@ -327,6 +137,11 @@ export function ProductShell(props: ProductShellProps) {
         .filter((item) => shouldShowInReviewQueue(item.intelligence))
         .sort(sortReviewQueue),
     [jobs]
+  );
+
+  const filteredEligibleDrivers = useMemo(
+    () => filterEligibleDrivers(eligibleDrivers, driverPickerQuery),
+    [eligibleDrivers, driverPickerQuery]
   );
 
   function syncJob(nextJob: AppJob) {
@@ -350,16 +165,14 @@ export function ProductShell(props: ProductShellProps) {
       const job = await getLiveJob(currentSession, jobId);
       setSelectedJob(job);
       setJobs((current) =>
-        [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) =>
-          right.createdAt.localeCompare(left.createdAt)
-        )
+        [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       );
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load job.");
     }
   }
 
-  async function handleCreateDelivery(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateDelivery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) {
       return;
@@ -519,6 +332,13 @@ export function ProductShell(props: ProductShellProps) {
     }
   }
 
+  async function handleRefresh() {
+    const nextSession = await refreshBusinessSession();
+    if (nextSession) {
+      await refreshJobs(nextSession);
+    }
+  }
+
   async function handleSignOut() {
     await signOut();
     setJobs([]);
@@ -529,8 +349,8 @@ export function ProductShell(props: ProductShellProps) {
   if (status === "loading") {
     return (
       <main className="app-shell loading-shell">
-        <section className="ops-empty-state">
-          <strong>Loading operations console</strong>
+        <section className="ops-empty-state sw-empty-state">
+          <strong className="sw-empty-title">Loading operations console</strong>
         </section>
       </main>
     );
@@ -539,7 +359,7 @@ export function ProductShell(props: ProductShellProps) {
   if (!session) {
     return (
       <main className="app-shell loading-shell">
-        <section className="ops-empty-state">
+        <section className="ops-empty-state sw-empty-state">
           <p className="eyebrow">Business onboarding required</p>
           <h1>Sign in before using operations.</h1>
           <p>Open onboarding, create or resume the operator account, then return here.</p>
@@ -556,7 +376,7 @@ export function ProductShell(props: ProductShellProps) {
   if (!session.context.currentOrg) {
     return (
       <main className="app-shell loading-shell">
-        <section className="ops-empty-state">
+        <section className="ops-empty-state sw-empty-state">
           <p className="eyebrow">Business org missing</p>
           <h1>Finish org setup before using operations.</h1>
           <p>The account is authenticated but not attached to a business operator membership yet.</p>
@@ -574,19 +394,6 @@ export function ProductShell(props: ProductShellProps) {
   }
 
   const job = props.view === "job-detail" ? selectedJob : null;
-  const jobDecision = job ? getDispatchIntelligence(job) : null;
-  const filteredEligibleDrivers = useMemo(
-    () => filterEligibleDrivers(eligibleDrivers, driverPickerQuery),
-    [eligibleDrivers, driverPickerQuery]
-  );
-  const paymentPanel =
-    job && session
-      ? getPaymentPanelModel({
-          payment: job.payment,
-          stripeEnabled: isStripeFrontendConfigured(),
-          hasCollectedPaymentMethod: Boolean(collectedPaymentMethod)
-        })
-      : null;
   const jobsToRender = jobs.slice(0, 20);
   const recentOrders = orders.slice(0, 3);
 
@@ -601,17 +408,7 @@ export function ProductShell(props: ProductShellProps) {
         <div className="ops-topbar-actions">
           <NotificationsBell session={session} />
           <ContextualHelpLink href="/help/deliveries" />
-          <button
-            className="button button-secondary"
-            onClick={() =>
-              void refreshBusinessSession().then((nextSession) => {
-                if (nextSession) {
-                  return refreshJobs(nextSession);
-                }
-              })
-            }
-            type="button"
-          >
+          <button className="button button-secondary" onClick={() => void handleRefresh()} type="button">
             Refresh
           </button>
           <button className="button button-secondary" onClick={() => void handleSignOut()} type="button">
@@ -620,18 +417,11 @@ export function ProductShell(props: ProductShellProps) {
         </div>
       </header>
 
-      <ProductUpdateAnnouncement
-        routePath={props.view === "home" ? "/app" : "/app/jobs"}
-        viewer="business"
-        viewerKey={session.userId}
-      />
+      <ProductUpdateAnnouncement routePath={props.view === "home" ? "/app" : "/app/jobs"} viewer="business" viewerKey={session.userId} />
 
       <section className="ops-layout">
         <aside className="ops-sidebar">
-          <WorkspaceNav
-            active={props.view === "home" ? "operations" : "jobs"}
-            platformAdmin={session.context.platformAdmin}
-          />
+          <WorkspaceNav active={props.view === "home" ? "operations" : "jobs"} platformAdmin={session.context.platformAdmin} />
 
           <section className="ops-sidebar-section">
             <span className="ops-section-label">Operator</span>
@@ -678,1002 +468,66 @@ export function ProductShell(props: ProductShellProps) {
           {error ? <div className="form-error-banner">{error}</div> : null}
 
           {props.view === "home" ? (
-            <section className="ops-stack">
-              <section
-                className={`sw-command-surface ${
-                  attentionJobs.length > 0 ? "sw-command-surface--warning" : ""
-                } ops-command-strip ${attentionJobs.length > 0 ? "ops-command-strip-alert" : ""}`}
-                aria-label="Workspace command state"
-              >
-                <div className="ops-command-copy">
-                  <span className="ops-command-icon" aria-hidden="true">
-                    <ShipWrightIcon name={attentionJobs.length > 0 ? "warning" : "check"} />
-                  </span>
-                  <div>
-                    <p className="eyebrow">Workspace state</p>
-                    <h2>{attentionJobs.length > 0 ? "Review required" : "System clear"}</h2>
-                    <p>
-                      {attentionJobs.length > 0
-                        ? `${attentionJobs.length} job${attentionJobs.length === 1 ? "" : "s"} need operator action. ${
-                            activeJobs.length > 0
-                              ? `${activeJobs.length} active ${activeJobs.length === 1 ? "delivery is" : "deliveries are"} moving.`
-                              : "No active deliveries are moving right now."
-                          }`
-                        : activeJobs.length > 0
-                          ? `${activeJobs.length} active ${activeJobs.length === 1 ? "delivery is" : "deliveries are"} moving without blocker signals.`
-                          : "No active deliveries are moving right now."}
-                    </p>
-                  </div>
-                </div>
-                <div className="ops-command-actions">
-                  <Link className="sw-button sw-button--primary button button-primary" href="/app/jobs">
-                    <ShipWrightIcon name="queue" />
-                    <span>Open jobs</span>
-                  </Link>
-                  <button
-                    className="sw-button sw-button--secondary button button-secondary"
-                    onClick={() =>
-                      void refreshBusinessSession().then((nextSession) => {
-                        if (nextSession) {
-                          return refreshJobs(nextSession);
-                        }
-                      })
-                    }
-                    type="button"
-                  >
-                    <ShipWrightIcon name="retry" />
-                    <span>Refresh</span>
-                  </button>
-                </div>
-              </section>
-
-              <section className="ops-metric-grid" aria-label="Operations metrics">
-                <div className="sw-metric-card sw-operational-surface ops-metric-card ops-metric-card-active">
-                  <span className="sw-metric-icon sw-icon-badge sw-icon-badge--info metric-icon metric-icon-teal" aria-hidden="true">
-                    <ShipWrightIcon name="queue" />
-                  </span>
-                  <span className="sw-metric-label metric-label">Active jobs</span>
-                  <strong className="sw-metric-value">{workspaceSummary.activeJobs}</strong>
-                  <p className="sw-metric-copy">Requested, assigned, or moving.</p>
-                </div>
-                <div
-                  className={`sw-metric-card sw-operational-surface ops-metric-card ops-metric-card-attention ${
-                    attentionJobs.length > 0 ? "ops-metric-card-alert" : ""
-                  }`}
-                >
-                  <span className="sw-metric-icon sw-icon-badge sw-icon-badge--warning metric-icon metric-icon-warning" aria-hidden="true">
-                    <ShipWrightIcon name="warning" />
-                  </span>
-                  <span className="sw-metric-label metric-label">Attention needed</span>
-                  <strong className="sw-metric-value">{attentionJobs.length}</strong>
-                  <p className="sw-metric-copy">Blockers and risks requiring review.</p>
-                </div>
-                <div className="sw-metric-card sw-operational-surface ops-metric-card ops-metric-card-complete">
-                  <span className="sw-metric-icon sw-icon-badge sw-icon-badge--success metric-icon metric-icon-success" aria-hidden="true">
-                    <ShipWrightIcon name="check" />
-                  </span>
-                  <span className="sw-metric-label metric-label">Completed today</span>
-                  <strong className="sw-metric-value">{workspaceSummary.completedToday}</strong>
-                  <p className="sw-metric-copy">Closed delivery records for this workspace.</p>
-                </div>
-              </section>
-
-              <section className="sw-operational-surface ops-section recent-orders-section">
-                <div className="ops-section-header">
-                  <SectionTitle
-                    eyebrow="Orders"
-                    icon="document"
-                    note="Latest paid customer orders entering fulfilment."
-                    title="Recent customer orders"
-                  />
-                  <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
-                    <ShipWrightIcon name="arrow" />
-                    <span>Open orders</span>
-                  </Link>
-                </div>
-
-                {recentOrders.length === 0 ? (
-                  <div className="sw-empty-state ops-empty-state recent-orders-empty">
-                    <span className="empty-state-icon" aria-hidden="true">
-                      <ShipWrightIcon name="document" />
-                    </span>
-                    <strong className="sw-empty-title">No customer orders yet</strong>
-                    <p className="sw-empty-copy">
-                      Paid orders from the public restaurant checkout will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="recent-orders-list">
-                    {recentOrders.map((order) => (
-                      <Link className="sw-list-row recent-order-row" href={`/app/orders/${order.id}`} key={order.id}>
-                        <div>
-                          <span className="ops-section-label">Order {order.id.slice(0, 8).toUpperCase()}</span>
-                          <strong>{order.customer.name}</strong>
-                          <span>{order.restaurant.name}</span>
-                        </div>
-                        <span className={`status-badge status-with-icon ${orderStatusTone(order.status)}`}>
-                          <ShipWrightIcon name={order.status === "PAYMENT_FAILED" ? "alert" : "payment"} />
-                          <span>{formatStatusLabel(order.status)}</span>
-                        </span>
-                        <strong>{formatCurrency(order.totalCents, order.currency)}</strong>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="sw-operational-surface ops-section ops-queue-section">
-                <div className="ops-section-header">
-                  <SectionTitle
-                    eyebrow="Operations"
-                    icon="queue"
-                    note="Live work that is requested, assigned, or moving."
-                    title="Active queue"
-                  />
-                  <div className="ops-header-actions">
-                    <span className="ops-count-pill">{activeJobs.length} active</span>
-                    <Link className="sw-button sw-button--secondary button button-secondary" href="/app/jobs">
-                      <ShipWrightIcon name="arrow" />
-                      <span>Open Jobs</span>
-                    </Link>
-                  </div>
-                </div>
-
-                {activeJobs.length === 0 ? (
-                  <div className="sw-empty-state ops-empty-state ops-queue-empty ops-queue-empty-premium">
-                    <span className="empty-state-icon" aria-hidden="true">
-                      <ShipWrightIcon name="queue" />
-                    </span>
-                    <strong className="sw-empty-title">{queueStateCopy("active").title}</strong>
-                    <p className="sw-empty-copy">{queueStateCopy("active").body}</p>
-                    <Link className="sw-button sw-button--secondary button button-secondary" href="/app/jobs">
-                      <ShipWrightIcon name="route" />
-                      <span>Create delivery</span>
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="jobs-table" role="table" aria-label="Active jobs">
-                    <div className="jobs-table-head" role="row">
-                      <span>Job</span>
-                      <span>Status</span>
-                      <span>Route</span>
-                      <span>Driver</span>
-                      <span>ETA</span>
-                      <span>Action</span>
-                    </div>
-                    {activeJobs.map((item) => (
-                      <Link className="sw-list-row jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
-                        <div className="jobs-cell jobs-cell-id">
-                          <strong>{item.id}</strong>
-                          <span>{formatDateTime(item.createdAt)}</span>
-                        </div>
-                        <div className="jobs-cell">
-                          <span className={`status-badge status-with-icon ${statusTone(item.status)}`}>
-                            <ShipWrightIcon name={statusIconName(item.status)} />
-                            <span>{formatStatusLabel(item.status)}</span>
-                          </span>
-                        </div>
-                        <div className="jobs-cell jobs-cell-route">
-                          <strong>{item.pickupAddress}</strong>
-                          <span>to {item.dropoffAddress}</span>
-                        </div>
-                        <div className="jobs-cell">
-                          <strong>{summarizeDriver(item)}</strong>
-                        </div>
-                        <div className="jobs-cell">
-                          <strong>{item.etaMinutes} min</strong>
-                          <span>{item.distanceMiles.toFixed(1)} mi</span>
-                        </div>
-                        <div className="jobs-cell jobs-cell-action">
-                          <span>Track</span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="sw-operational-surface ops-section ops-queue-section ops-review-section">
-                <div className="ops-section-header">
-                  <SectionTitle
-                    eyebrow="Attention"
-                    icon="warning"
-                    note="Failed dispatches, no-driver states, and delay signals."
-                    title="Needs review"
-                  />
-                  <span className={`ops-count-pill ${attentionJobs.length > 0 ? "ops-count-pill-alert" : ""}`}>
-                    {attentionJobs.length} open
-                  </span>
-                </div>
-
-                {attentionJobs.length === 0 ? (
-                  <QueueEmptyState copy={queueStateCopy("attention")} icon="warning" />
-                ) : (
-                  <div className="attention-list">
-                    {attentionJobs.map(({ job: item, intelligence }) => (
-                      <article
-                        className={`sw-queue-row sw-list-row ${
-                          intelligence.severity === "BLOCKER" ? "sw-queue-row--danger" : "sw-queue-row--warning"
-                        } attention-row attention-queue-row attention-severity-${intelligence.severity.toLowerCase()}`}
-                        key={item.id}
-                      >
-                        <div className="sw-queue-row-main attention-copy">
-                          <div className="attention-title-row">
-                            <span
-                              className={`icon-chip icon-chip-${intelligence.severity.toLowerCase()}`}
-                              aria-hidden="true"
-                            >
-                              <ShipWrightIcon name={severityIconName(intelligence.severity)} />
-                            </span>
-                            <span
-                              className={`sw-badge ${
-                                intelligence.severity === "BLOCKER" ? "sw-badge--danger" : "sw-badge--warning"
-                              } status-badge ${severityTone(intelligence.severity)}`}
-                            >
-                              {intelligence.severity}
-                            </span>
-                            <strong>{getJobShortId(item.id)}</strong>
-                            <span>{formatStatusLabel(item.status)}</span>
-                          </div>
-                          <h3>{intelligence.currentIssue}</h3>
-                          <dl className="attention-facts">
-                            <div>
-                              <dt>Diagnosis</dt>
-                              <dd>{intelligence.diagnosis}</dd>
-                            </div>
-                            <div>
-                              <dt>Impact</dt>
-                              <dd>{intelligence.impact}</dd>
-                            </div>
-                            <div>
-                              <dt>Suggested action</dt>
-                              <dd>{intelligence.explanation}</dd>
-                            </div>
-                          </dl>
-                        </div>
-                        <div className="sw-queue-row-actions attention-actions">
-                          {intelligence.recommendedActionType === "RETRY_DISPATCH" ? (
-                            <button
-                              className="sw-button sw-button--danger button button-primary"
-                              disabled={actionSubmitting}
-                              onClick={() => void handleRetryDispatch(item)}
-                              type="button"
-                            >
-                              <ShipWrightIcon name="retry" />
-                              <span>{actionSubmitting ? "Retrying..." : intelligence.recommendedActionLabel}</span>
-                            </button>
-                          ) : null}
-                          <Link className="sw-button sw-button--secondary button button-secondary" href={`/app/jobs/${item.id}`}>
-                            <ShipWrightIcon name="arrow" />
-                            <span>View job</span>
-                          </Link>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </section>
+            <WorkspaceDashboard
+              actionSubmitting={actionSubmitting}
+              activeJobs={activeJobs}
+              attentionJobs={attentionJobs}
+              onRefresh={() => void handleRefresh()}
+              onRetryDispatch={(nextJob) => void handleRetryDispatch(nextJob)}
+              recentOrders={recentOrders}
+              workspaceSummary={workspaceSummary}
+            />
           ) : null}
 
           {props.view === "jobs" ? (
             <section className="ops-stack">
-              <section className="ops-section ops-creation-panel">
-                <div className="ops-section-header">
-                  <SectionTitle
-                    eyebrow="Jobs"
-                    icon="route"
-                    note="Enter the operational facts first. Coordinates stay available for controlled pilot overrides."
-                    title="Create delivery"
-                  />
-                </div>
-
-                <form className="ops-form" onSubmit={handleCreateDelivery}>
-                  <div className="form-grid-two">
-                    <label>
-                      <span>Pickup</span>
-                      <input
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({ ...current, pickupAddress: event.target.value }))
-                        }
-                        value={deliveryForm.pickupAddress}
-                      />
-                    </label>
-                    <label>
-                      <span>Drop</span>
-                      <input
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({ ...current, dropoffAddress: event.target.value }))
-                        }
-                        value={deliveryForm.dropoffAddress}
-                      />
-                    </label>
-                  </div>
-
-                  <div className="form-grid-three">
-                    <label>
-                      <span>Estimated distance</span>
-                      <input
-                        max="12"
-                        min="0.1"
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({ ...current, distanceMiles: Number(event.target.value) }))
-                        }
-                        step="0.1"
-                        type="number"
-                        value={deliveryForm.distanceMiles}
-                      />
-                    </label>
-                    <label>
-                      <span>Estimated ETA</span>
-                      <input
-                        min="1"
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({ ...current, etaMinutes: Number(event.target.value) }))
-                        }
-                        step="1"
-                        type="number"
-                        value={deliveryForm.etaMinutes}
-                      />
-                    </label>
-                    <label>
-                      <span>Vehicle</span>
-                      <select
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            vehicleType: event.target.value as VehicleType
-                          }))
-                        }
-                        value={deliveryForm.vehicleType}
-                      >
-                        <option value="BIKE">Bike</option>
-                        <option value="CAR">Car</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <details className="ops-advanced-section">
-                    <summary>
-                      <span>Advanced location controls</span>
-                      <small>Coordinate overrides for pilot testing</small>
-                    </summary>
-                    <div className="form-grid-two">
-                      <label>
-                        <span>Pickup coordinates</span>
-                        <div className="coordinate-grid">
-                          <input
-                            aria-label="Pickup latitude"
-                            onChange={(event) =>
-                              setDeliveryForm((current) => ({ ...current, pickupLatitude: Number(event.target.value) }))
-                            }
-                            step="0.0001"
-                            type="number"
-                            value={deliveryForm.pickupLatitude}
-                          />
-                          <input
-                            aria-label="Pickup longitude"
-                            onChange={(event) =>
-                              setDeliveryForm((current) => ({
-                                ...current,
-                                pickupLongitude: Number(event.target.value)
-                              }))
-                            }
-                            step="0.0001"
-                            type="number"
-                            value={deliveryForm.pickupLongitude}
-                          />
-                        </div>
-                      </label>
-                      <label>
-                        <span>Drop coordinates</span>
-                        <div className="coordinate-grid">
-                          <input
-                            aria-label="Drop latitude"
-                            onChange={(event) =>
-                              setDeliveryForm((current) => ({ ...current, dropoffLatitude: Number(event.target.value) }))
-                            }
-                            step="0.0001"
-                            type="number"
-                            value={deliveryForm.dropoffLatitude}
-                          />
-                          <input
-                            aria-label="Drop longitude"
-                            onChange={(event) =>
-                              setDeliveryForm((current) => ({
-                                ...current,
-                                dropoffLongitude: Number(event.target.value)
-                              }))
-                            }
-                            step="0.0001"
-                            type="number"
-                            value={deliveryForm.dropoffLongitude}
-                          />
-                        </div>
-                      </label>
-                    </div>
-                  </details>
-
-                  <div className="ops-actions">
-                    <button className="button button-primary" disabled={submitting} type="submit">
-                      <ShipWrightIcon name="route" />
-                      <span>{submitting ? "Creating delivery..." : "Create delivery"}</span>
-                    </button>
-                  </div>
-                </form>
-              </section>
-
-              <section className="ops-section ops-queue-section">
-                <div className="ops-section-header">
-                  <SectionTitle
-                    eyebrow="Jobs"
-                    icon="queue"
-                    note="Full operational record for this workspace."
-                    title="All jobs"
-                  />
-                  <span className="ops-count-pill">{jobsToRender.length} shown</span>
-                </div>
-
-                {jobsToRender.length === 0 ? (
-                  <QueueEmptyState copy={queueStateCopy("all")} icon="queue" />
-                ) : (
-                  <div className="jobs-table" role="table" aria-label="All jobs">
-                    <div className="jobs-table-head" role="row">
-                      <span>Job</span>
-                      <span>Status</span>
-                      <span>Pickup</span>
-                      <span>Drop</span>
-                      <span>ETA</span>
-                      <span>Action</span>
-                    </div>
-                    {jobsToRender.map((item) => (
-                      <Link className="sw-list-row jobs-table-row" href={`/app/jobs/${item.id}`} key={item.id} role="row">
-                        <div className="jobs-cell jobs-cell-id">
-                          <strong>{item.id}</strong>
-                          <span>{formatDateTime(item.createdAt)}</span>
-                        </div>
-                        <div className="jobs-cell">
-                          <span className={`status-badge status-with-icon ${statusTone(item.status)}`}>
-                            <ShipWrightIcon name={statusIconName(item.status)} />
-                            <span>{formatStatusLabel(item.status)}</span>
-                          </span>
-                        </div>
-                        <div className="jobs-cell jobs-cell-route">
-                          <strong>{item.pickupAddress}</strong>
-                        </div>
-                        <div className="jobs-cell jobs-cell-route">
-                          <strong>{item.dropoffAddress}</strong>
-                        </div>
-                        <div className="jobs-cell">
-                          <strong>{item.etaMinutes} min</strong>
-                          <span>{item.distanceMiles.toFixed(1)} mi</span>
-                        </div>
-                        <div className="jobs-cell jobs-cell-action">
-                          <span>View</span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </section>
+              <JobCreatePanel
+                deliveryForm={deliveryForm}
+                onSubmit={handleCreateDelivery}
+                setDeliveryForm={setDeliveryForm}
+                submitting={submitting}
+              />
+              <JobsListView jobs={jobsToRender} />
             </section>
           ) : null}
 
           {props.view === "job-detail" ? (
             job ? (
-              <section className="ops-stack">
-                <section
-                  className={`sw-decision-surface ops-section ops-job-hero ops-decision-banner ${
-                    jobDecision?.severity === "BLOCKER" ? "ops-job-hero-blocker" : ""
-                  }`}
-                >
-                  <div className="sw-decision-header ops-job-header ops-decision-header">
-                    <div className="ops-decision-lead">
-                      <span
-                        className={`decision-hero-icon decision-hero-icon-${(jobDecision?.severity ?? "INFO").toLowerCase()}`}
-                        aria-hidden="true"
-                      >
-                        <ShipWrightIcon name={severityIconName(jobDecision?.severity ?? "INFO")} />
-                      </span>
-                      <div className="sw-decision-copy ops-decision-copy">
-                        <p className="eyebrow">Decision surface</p>
-                        <h2 className="sw-decision-title">{jobDecision?.headline ?? "Job detail"}</h2>
-                        <p className="ops-detail-note">
-                          {jobDecision?.explanation ?? "Review job state and next action."}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="ops-job-statuses">
-                      <span className={`status-badge status-with-icon ${statusTone(job.status)}`}>
-                        <ShipWrightIcon name={statusIconName(job.status)} />
-                        <span>{formatStatusLabel(job.status)}</span>
-                      </span>
-                      <span className={`status-badge status-with-icon ${attentionTone(job.attentionLevel)}`}>
-                        <ShipWrightIcon name={severityIconName(job.attentionLevel)} />
-                        <span>{job.attentionLevel}</span>
-                      </span>
-                      <span className={`status-badge status-with-icon ${statusTone(job.payment.status)}`}>
-                        <ShipWrightIcon name={statusIconName(job.payment.status)} />
-                        <span>{formatStatusLabel(job.payment.status)}</span>
-                      </span>
-                    </div>
-                  </div>
-                  {jobDecision ? (
-                    <div className="sw-decision-insight-grid ops-decision-grid">
-                      <div className="sw-decision-insight ops-decision-tile ops-decision-tile-state">
-                        <span className="decision-tile-icon decision-tile-icon-danger" aria-hidden="true">
-                          <ShipWrightIcon name="document" />
-                        </span>
-                        <span className="ops-section-label">Current state</span>
-                        <strong>{jobDecision.currentIssue}</strong>
-                        <p>{formatStatusLabel(job.status)}</p>
-                      </div>
-                      <div className="sw-decision-insight ops-decision-tile ops-decision-tile-meaning">
-                        <span className="decision-tile-icon decision-tile-icon-teal" aria-hidden="true">
-                          <ShipWrightIcon name="driver" />
-                        </span>
-                        <span className="ops-section-label">Operational meaning</span>
-                        <strong>{jobDecision.diagnosis}</strong>
-                        <p>{jobDecision.explanation}</p>
-                      </div>
-                      <div className="sw-decision-insight ops-decision-tile ops-decision-tile-impact">
-                        <span className="decision-tile-icon decision-tile-icon-warning" aria-hidden="true">
-                          <ShipWrightIcon name="timeline" />
-                        </span>
-                        <span className="ops-section-label">Impact</span>
-                        <strong>{jobDecision.impact}</strong>
-                        <p>Customer experience and SLA may be at risk.</p>
-                      </div>
-                      <div className="sw-decision-insight ops-decision-tile ops-decision-tile-action">
-                        <span className="decision-tile-icon decision-tile-icon-success" aria-hidden="true">
-                          <ShipWrightIcon name="arrow" />
-                        </span>
-                        <span className="ops-section-label">Next action</span>
-                        <strong>{jobDecision.recommendedActionLabel}</strong>
-                        <p>{jobDecision.explanation}</p>
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="sw-decision-actions ops-decision-actions">
-                    {jobDecision?.recommendedActionType === "RETRY_DISPATCH" ? (
-                      <button
-                        className="sw-button sw-button--danger button button-primary"
-                        disabled={actionSubmitting}
-                        onClick={() => void handleRetryDispatch(job)}
-                        type="button"
-                      >
-                        <ShipWrightIcon name="retry" />
-                        <span>{actionSubmitting ? "Retrying dispatch..." : "Retry dispatch"}</span>
-                      </button>
-                    ) : null}
-                    {jobDecision?.recommendedActionType === "AUTHORIZE_PAYMENT" ||
-                    jobDecision?.recommendedActionType === "COLLECT_PAYMENT_METHOD" ? (
-                      <a className="sw-button sw-button--primary button button-primary" href="#payment">
-                        <ShipWrightIcon name="payment" />
-                        <span>Open payment</span>
-                      </a>
-                    ) : null}
-                    {jobDecision?.severity === "BLOCKER" ? (
-                      <>
-                        <button
-                          className="sw-button sw-button--secondary button button-secondary"
-                          onClick={() => void openDriverPicker(job)}
-                          type="button"
-                        >
-                          <ShipWrightIcon name="assign" />
-                          <span>Assign driver</span>
-                        </button>
-                        <a className="sw-button sw-button--secondary button button-secondary" href="#operator-controls">
-                          <ShipWrightIcon name="cancel" />
-                          <span>Cancel job</span>
-                        </a>
-                      </>
-                    ) : (
-                      <a className="sw-button sw-button--secondary button button-secondary" href="#operator-controls">
-                        <ShipWrightIcon name="warning" />
-                        <span>Operator controls</span>
-                      </a>
-                    )}
-                  </div>
-                </section>
-
-                <div className="ops-detail-grid">
-                  <section className="sw-operational-surface ops-section ops-zone ops-route-zone">
-                    <div className="ops-section-header">
-                      <SectionTitle eyebrow="Route" icon="route" title="Pickup and drop" />
-                    </div>
-                    <div className="ops-definition-list">
-                      <div>
-                        <dt>Pickup</dt>
-                        <dd>{job.pickupAddress}</dd>
-                      </div>
-                      <div>
-                        <dt>Drop</dt>
-                        <dd>{job.dropoffAddress}</dd>
-                      </div>
-                      <div>
-                        <dt>ETA</dt>
-                        <dd>{job.etaMinutes} minutes</dd>
-                      </div>
-                      <div>
-                        <dt>Distance</dt>
-                        <dd>{job.distanceMiles.toFixed(1)} miles</dd>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="sw-operational-surface ops-section ops-zone ops-driver-zone">
-                    <div className="ops-section-header">
-                      <SectionTitle eyebrow="Driver" icon="driver" title="Assignment" />
-                    </div>
-                    <div className="ops-definition-list">
-                      <div>
-                        <dt>Driver</dt>
-                        <dd>{summarizeDriver(job)}</dd>
-                      </div>
-                      <div>
-                        <dt>Vehicle</dt>
-                        <dd>{job.vehicleRequired}</dd>
-                      </div>
-                      <div>
-                        <dt>Latest coordinates</dt>
-                        <dd>
-                          {job.tracking.latestLocation
-                            ? `${job.tracking.latestLocation.latitude.toFixed(4)}, ${job.tracking.latestLocation.longitude.toFixed(4)}`
-                            : "No live coordinates"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Pricing version</dt>
-                        <dd>{job.pricingVersion}</dd>
-                      </div>
-                    </div>
-                  </section>
-                </div>
-
-                <div className="ops-detail-grid">
-                  <section className="sw-supporting-surface ops-section ops-zone ops-dispatch-zone">
-                    <div className="ops-section-header">
-                      <SectionTitle eyebrow="Dispatch" icon="retry" title="Attempts" />
-                    </div>
-                    {job.tracking.dispatchAttempts.length === 0 ? (
-                      <div className="ops-empty-state">
-                        <span className="empty-state-icon" aria-hidden="true">
-                          <ShipWrightIcon name="retry" />
-                        </span>
-                        <strong>No attempts recorded</strong>
-                        <p>Dispatch attempts will appear here as the job is offered or retried.</p>
-                      </div>
-                    ) : (
-                      <div className="timeline-table" role="table" aria-label="Dispatch attempts">
-                        {job.tracking.dispatchAttempts.map((attempt) => (
-                          <div className="timeline-table-row" key={attempt.id} role="row">
-                            <div>
-                              <strong>
-                                Attempt {attempt.attemptNumber} · {attempt.outcome}
-                              </strong>
-                              <span>
-                                {attempt.driverDisplayName ?? attempt.driverId ?? "No driver"} · {attempt.triggerSource}
-                              </span>
-                            </div>
-                            <span>{formatDateTime(attempt.createdAt)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-
-                  <section className="sw-supporting-surface ops-section ops-zone ops-timeline-zone">
-                    <div className="ops-section-header">
-                      <SectionTitle eyebrow="Timeline" icon="timeline" title="Events" />
-                    </div>
-                    {job.tracking.timeline.length === 0 ? (
-                      <div className="ops-empty-state">
-                        <span className="empty-state-icon" aria-hidden="true">
-                          <ShipWrightIcon name="timeline" />
-                        </span>
-                        <strong>No events yet</strong>
-                        <p>Dispatch and delivery events will appear here as the job progresses.</p>
-                      </div>
-                    ) : (
-                      <div className="timeline-table" role="table" aria-label="Timeline">
-                        {job.tracking.timeline.map((item) => (
-                          <div className="timeline-table-row" key={item.id} role="row">
-                            <div>
-                              <strong>{formatStatusLabel(item.eventType)}</strong>
-                              <span>{item.summary}</span>
-                            </div>
-                            <span>{formatDateTime(item.createdAt)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-
-                </div>
-
-                <div className="ops-detail-grid">
-                  <section
-                    className={`sw-operational-surface ops-section ops-zone ops-payment-zone ${
-                      paymentPanel && !paymentPanel.isFinal ? "ops-payment-zone-blocking" : ""
-                    }`}
-                    id="payment"
-                  >
-                    <div className="ops-section-header">
-                      <SectionTitle eyebrow="Payment" icon="payment" title="Status" />
-                    </div>
-                    <div className="ops-definition-list">
-                      <div>
-                        <dt>Customer total</dt>
-                        <dd>{formatCurrency(job.customerTotalCents, job.payment.currency)}</dd>
-                      </div>
-                      <div>
-                        <dt>Platform fee</dt>
-                        <dd>{formatCurrency(job.platformFeeCents, job.payment.currency)}</dd>
-                      </div>
-                      <div>
-                        <dt>Driver payout</dt>
-                        <dd>{formatCurrency(job.driverPayoutGrossCents, job.payment.currency)}</dd>
-                      </div>
-                      <div>
-                        <dt>Authorized</dt>
-                        <dd>{formatCurrency(job.payment.amountAuthorizedCents, job.payment.currency)}</dd>
-                      </div>
-                    </div>
-
-                    {paymentPanel ? (
-                      <div className="payment-panel">
-                        <div className="payment-panel-copy">
-                          <strong>{paymentPanel.headline}</strong>
-                          <p>{paymentPanel.detail}</p>
-                        </div>
-
-                        {collectedPaymentMethod ? (
-                          <div className="inline-details payment-method-summary">
-                            <span className="support-note">Collected payment method</span>
-                            <strong>
-                              {collectedPaymentMethod.brand?.toUpperCase() ?? "Card"}{" "}
-                              {collectedPaymentMethod.last4 ? `•••• ${collectedPaymentMethod.last4}` : collectedPaymentMethod.id}
-                            </strong>
-                            <span>
-                              {collectedPaymentMethod.expMonth && collectedPaymentMethod.expYear
-                                ? `Expires ${String(collectedPaymentMethod.expMonth).padStart(2, "0")}/${String(collectedPaymentMethod.expYear).slice(-2)}`
-                                : "Ready for authorization"}
-                            </span>
-                            {!paymentPanel.isFinal ? (
-                              <button
-                                className="text-action"
-                                onClick={() => setCollectedPaymentMethod(null)}
-                                type="button"
-                              >
-                                Replace payment method
-                              </button>
-                            ) : null}
-                          </div>
-                        ) : null}
-
-                        {paymentPanel.requiresMethodCollection ? (
-                          <PaymentMethodForm
-                            disabled={paymentSubmitting}
-                            email={session.email}
-                            onCollected={(paymentMethod) => {
-                              setCollectedPaymentMethod(paymentMethod);
-                              setError(null);
-                            }}
-                          />
-                        ) : null}
-
-                        <div className="ops-actions">
-                          <button
-                            className="button button-primary"
-                            disabled={paymentSubmitting || !paymentPanel.canAuthorize}
-                            onClick={() => void handleAuthorizePayment(job)}
-                            type="button"
-                          >
-                            <ShipWrightIcon name="payment" />
-                            <span>{paymentSubmitting ? "Authorizing payment..." : "Authorize Payment"}</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {job.payment.lastError ? <p className="form-error form-error-surface">{job.payment.lastError}</p> : null}
-                  </section>
-                </div>
-
-                <section className="sw-utility-surface ops-section ops-zone ops-actions-zone" id="operator-controls">
-                  <div className="ops-section-header">
-                    <SectionTitle
-                      eyebrow="Advanced"
-                      icon="warning"
-                      note="Use these controls when the decision banner calls for direct intervention."
-                      title="Operator controls"
-                    />
-                  </div>
-                  <div className="ops-definition-list">
-                    <div>
-                      <dt>Retry dispatch</dt>
-                      <dd>Re-open the job for dispatch when it is blocked or needs another attempt.</dd>
-                    </div>
-                  </div>
-                  <div className="ops-actions ops-actions-inline">
-                    <button
-                      className="button button-secondary"
-                      disabled={actionSubmitting}
-                      onClick={() => void handleRetryDispatch(job)}
-                      type="button"
-                    >
-                      <ShipWrightIcon name="retry" />
-                      <span>Retry Dispatch</span>
-                    </button>
-                  </div>
-
-                  <div className="ops-actions ops-actions-inline" id="assign-driver">
-                    <button
-                      className="button button-secondary"
-                      disabled={actionSubmitting}
-                      onClick={() => void (driverPickerOpen ? loadEligibleDriversForJob(job) : openDriverPicker(job))}
-                      type="button"
-                    >
-                      <ShipWrightIcon name="assign" />
-                      <span>{driverPickerOpen ? "Refresh eligible drivers" : "Assign driver"}</span>
-                    </button>
-                  </div>
-
-                  {driverPickerOpen ? (
-                    <div className="sw-supporting-surface sw-stack assignment-picker">
-                      <div className="assignment-picker-header">
-                        <div>
-                          <p className="eyebrow">Eligible drivers</p>
-                          <strong>Assign the best staged driver for this job.</strong>
-                        </div>
-                        <button
-                          className="text-action"
-                          onClick={() => setDriverPickerOpen(false)}
-                          type="button"
-                        >
-                          Close
-                        </button>
-                      </div>
-
-                      <label className="ops-field assignment-picker-search">
-                        <span>Search drivers</span>
-                        <input
-                          onChange={(event) => setDriverPickerQuery(event.target.value)}
-                          placeholder="Search by name, vehicle, or verification"
-                          value={driverPickerQuery}
-                        />
-                      </label>
-
-                      {driverAssignmentError ? (
-                        <div className="sw-decision-surface assignment-error-panel" role="alert">
-                          <div className="assignment-error-header">
-                            <span className="sw-icon-badge sw-icon-badge--danger" aria-hidden="true">
-                              <ShipWrightIcon name="alert" />
-                            </span>
-                            <div>
-                              <p className="eyebrow">Assignment blocked</p>
-                              <strong>{driverAssignmentError.title}</strong>
-                            </div>
-                          </div>
-                          <p className="assignment-error-copy">{driverAssignmentError.suitabilityReason}</p>
-                          <div className="assignment-flag-list">
-                            {driverAssignmentError.suitabilityFlags.map((flag) => (
-                              <span className={`status-badge ${getEligibleDriverTone(flag)}`} key={`assignment-error-${flag}`}>
-                                {getEligibleDriverFlagLabel(flag)}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="assignment-next-steps">
-                            <p className="ops-section-label">What to do next</p>
-                            <ul>
-                              {driverAssignmentError.nextSteps.map((step) => (
-                                <li key={step}>{step}</li>
-                              ))}
-                              <li>Choose another driver from the eligible pool below.</li>
-                            </ul>
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {eligibleDriversLoading ? (
-                        <div className="ops-empty-state assignment-empty-state">
-                          <strong>Loading driver pool</strong>
-                          <p>Checking availability, verification, location, and vehicle match.</p>
-                        </div>
-                      ) : filteredEligibleDrivers.length === 0 && driverPickerQuery.trim() ? (
-                        <div className="ops-empty-state assignment-empty-state">
-                          <strong>No matching drivers</strong>
-                          <p>Try another name, vehicle, or verification filter.</p>
-                        </div>
-                      ) : filteredEligibleDrivers.length === 0 ? (
-                        <DriverPickerEmptyState drivers={eligibleDrivers} />
-                      ) : (
-                        <div className="assignment-list">
-                          {filteredEligibleDrivers.map((driver) => (
-                            <div
-                              className={`sw-queue-row sw-list-row assignment-row ${driver.eligible ? "assignment-row-ready" : "assignment-row-blocked"}`}
-                              key={driver.id}
-                            >
-                              <div className="sw-queue-row-main assignment-row-main">
-                                <div className="assignment-row-head">
-                                  <div>
-                                    <strong>{driver.displayName}</strong>
-                                    <p>
-                                      {driver.vehicleType ?? "No vehicle set"} · {driver.availabilityStatus} ·{" "}
-                                      {driver.distanceMiles === null ? "Distance unavailable" : `${driver.distanceMiles.toFixed(1)} mi from pickup`}
-                                    </p>
-                                  </div>
-                                  <span className={`status-badge ${driver.eligible ? "status-positive" : "status-negative"}`}>
-                                    {getBlockedDriverLabel(driver)}
-                                  </span>
-                                </div>
-
-                                <p className="assignment-row-reason">{driver.suitabilityReason}</p>
-
-                                <div className="assignment-row-meta">
-                                  <span>
-                                    Verification: <strong>{driver.verificationStatus}</strong>
-                                  </span>
-                                  <span>
-                                    Latest location: <strong>{driver.lastLocationAt ? formatDateTime(driver.lastLocationAt) : "No update"}</strong>
-                                  </span>
-                                  <span>
-                                    Active job: <strong>{driver.activeJobStatus ?? "None"}</strong>
-                                  </span>
-                                </div>
-
-                                <div className="assignment-flag-list">
-                                  {driver.suitabilityFlags.map((flag) => (
-                                    <span className={`status-badge ${getEligibleDriverTone(flag)}`} key={`${driver.id}-${flag}`}>
-                                      {getEligibleDriverFlagLabel(flag)}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="sw-queue-row-actions assignment-row-actions">
-                                <button
-                                  className="sw-button sw-button--primary button button-primary"
-                                  disabled={actionSubmitting || !driver.eligible}
-                                  onClick={() => void handleAssignEligibleDriver(job, driver.id)}
-                                  type="button"
-                                >
-                                  <ShipWrightIcon name="assign" />
-                                  <span>
-                                    {actionSubmitting && selectedDriverId === driver.id ? "Assigning..." : "Assign driver"}
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
-                  <label className="ops-field">
-                    <span>Cancel reason</span>
-                    <input onChange={(event) => setCancelReason(event.target.value)} value={cancelReason} />
-                  </label>
-
-                  <div className="ops-actions ops-actions-inline">
-                    <button
-                      className="button button-secondary"
-                      disabled={actionSubmitting || !cancelReason.trim()}
-                      onClick={() => void handleCancelJob(job)}
-                      type="button"
-                    >
-                      <ShipWrightIcon name="cancel" />
-                      <span>Cancel Job</span>
-                    </button>
-                  </div>
-                </section>
-              </section>
+              <JobDetailView
+                actionSubmitting={actionSubmitting}
+                cancelReason={cancelReason}
+                collectedPaymentMethod={collectedPaymentMethod}
+                driverAssignmentError={driverAssignmentError}
+                driverPickerOpen={driverPickerOpen}
+                driverPickerQuery={driverPickerQuery}
+                eligibleDrivers={eligibleDrivers}
+                eligibleDriversLoading={eligibleDriversLoading}
+                filteredEligibleDrivers={filteredEligibleDrivers}
+                job={job}
+                onAssignDriver={(driverId) => void handleAssignEligibleDriver(job, driverId)}
+                onAuthorizePayment={(nextJob) => void handleAuthorizePayment(nextJob)}
+                onCancelJob={(nextJob) => void handleCancelJob(nextJob)}
+                onCancelReasonChange={setCancelReason}
+                onCloseDriverPicker={() => setDriverPickerOpen(false)}
+                onCollectedPaymentMethod={(paymentMethod) => {
+                  setCollectedPaymentMethod(paymentMethod);
+                  setError(null);
+                }}
+                onDriverPickerQueryChange={setDriverPickerQuery}
+                onOpenDriverPicker={() => void openDriverPicker(job)}
+                onOpenOrRefreshDriverPicker={() =>
+                  void (driverPickerOpen ? loadEligibleDriversForJob(job) : openDriverPicker(job))
+                }
+                onResetCollectedPaymentMethod={() => setCollectedPaymentMethod(null)}
+                onRetryDispatch={(nextJob) => void handleRetryDispatch(nextJob)}
+                paymentSubmitting={paymentSubmitting}
+                selectedDriverId={selectedDriverId}
+                session={session}
+              />
             ) : (
-              <div className="ops-empty-state">
-                <strong>Job not found</strong>
-                <p>Return to the jobs list and open another delivery.</p>
+              <div className="ops-empty-state sw-empty-state">
+                <strong className="sw-empty-title">Job not found</strong>
+                <p className="sw-empty-copy">Return to the jobs list and open another delivery.</p>
               </div>
             )
           ) : null}
