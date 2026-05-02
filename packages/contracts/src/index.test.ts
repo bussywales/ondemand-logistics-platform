@@ -190,7 +190,7 @@ describe("admin schemas", () => {
   });
 
   it("parses business and admin payment visibility payloads", () => {
-    const baseItem = {
+    const businessItem = {
       id: "1cc3382c-f799-4856-b537-dbd61c851075",
       orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
       jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
@@ -216,10 +216,36 @@ describe("admin schemas", () => {
       updatedAt: new Date().toISOString()
     };
 
-    expect(BusinessPaymentListSchema.safeParse({ items: [baseItem] }).success).toBe(true);
+    expect(BusinessPaymentListSchema.safeParse({ items: [businessItem] }).success).toBe(true);
     expect(
       AdminPaymentListSchema.safeParse({
-        items: [{ ...baseItem, orgId: "org-1", orgName: "Pilot Org" }]
+        items: [
+          {
+            id: businessItem.id,
+            orgId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+            orgName: "Pilot Org",
+            restaurantId: businessItem.restaurant.id,
+            restaurantName: businessItem.restaurant.name,
+            restaurantSlug: businessItem.restaurant.slug,
+            orderId: businessItem.orderId,
+            jobId: businessItem.jobId,
+            customerName: businessItem.customerName,
+            orderStatus: businessItem.orderStatus,
+            jobStatus: businessItem.jobStatus,
+            paymentStatus: businessItem.paymentStatus,
+            customerTotalCents: businessItem.customerTotalCents,
+            amountAuthorizedCents: businessItem.amountAuthorizedCents,
+            amountCapturedCents: businessItem.amountCapturedCents,
+            amountRefundedCents: businessItem.amountRefundedCents,
+            currency: businessItem.currency,
+            platformFeeCents: businessItem.platformFeeCents,
+            payoutGrossCents: businessItem.payoutGrossCents,
+            payoutStatus: businessItem.payoutStatus,
+            payoutHoldReason: businessItem.payoutHoldReason,
+            createdAt: businessItem.createdAt,
+            updatedAt: businessItem.updatedAt
+          }
+        ]
       }).success
     ).toBe(true);
   });
