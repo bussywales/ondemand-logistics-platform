@@ -8368,14 +8368,40 @@ select:hover,
 
 .customer-route-visual {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--sw-space-4);
   align-items: center;
 }
 
-.customer-route-visual div {
+.customer-route-node {
   display: grid;
   gap: var(--sw-space-2);
+  position: relative;
+  padding: var(--sw-space-3);
+  border: 1px solid rgba(18, 58, 110, 0.08);
+  border-radius: var(--sw-radius-md);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.customer-route-node-status {
+  color: var(--sw-color-text-muted);
+  font-size: 0.92rem;
+}
+
+.customer-route-node-complete {
+  background: rgba(28, 142, 95, 0.08);
+}
+
+.customer-route-node-current {
+  background: rgba(69, 137, 255, 0.08);
+}
+
+.customer-route-node-problem {
+  background: rgba(218, 71, 64, 0.08);
+}
+
+.customer-route-node-upcoming {
+  background: rgba(18, 58, 110, 0.04);
 }
 
 .customer-route-arrow {
@@ -8387,6 +8413,7 @@ select:hover,
   border-radius: 999px;
   background: rgba(18, 58, 110, 0.08);
   color: var(--sw-color-navy-700);
+  justify-self: center;
 }
 
 .customer-tracking-stepper {
@@ -8452,6 +8479,7 @@ select:hover,
   gap: var(--sw-space-2);
 }
 
+.customer-tracking-note,
 .customer-tracking-support p:last-child {
   margin: 0;
   color: var(--sw-color-text-muted);

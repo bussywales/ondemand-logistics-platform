@@ -26,6 +26,7 @@ import {
   type PublicMenuItemSummary,
   type PublicRestaurantMenu
 } from "../_lib/product-state";
+import { buildPublicTrackingHref } from "../_lib/tracking-state";
 import { BrandLogo } from "./brand-logo";
 import {
   PaymentMethodForm,
@@ -55,9 +56,7 @@ export function buildRestaurantMenuHref(slug: string) {
   return `/restaurants/${slug}`;
 }
 
-export function buildPublicTrackingHref(orderId: string) {
-  return `/track/${orderId}`;
-}
+export { buildPublicTrackingHref };
 
 export function getAddItemButtonLabel(itemName: string) {
   return `Add ${itemName}`;

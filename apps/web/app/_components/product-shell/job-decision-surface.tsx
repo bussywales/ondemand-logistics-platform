@@ -2,6 +2,7 @@ import React from "react";
 import { ShipWrightIcon } from "../shipwright-icon";
 import type { AppJob } from "../../_lib/product-state";
 import { getDispatchIntelligence } from "../../_lib/dispatch-intelligence";
+import { buildPublicTrackingHref } from "../../_lib/tracking-state";
 import { attentionTone, formatStatusLabel, severityIconName, statusIconName, statusTone } from "./shared";
 
 type JobDecisionSurfaceProps = {
@@ -23,6 +24,7 @@ function formatRecoveryLabel(value: NonNullable<AppJob["recoverySuggestion"]>["r
 export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
   const { job, jobDecision } = props;
   const recoverySuggestion = job.recoverySuggestion;
+  const publicTrackingOrderId = job.incidentSummary?.orderId ?? recoverySuggestion?.orderId ?? null;
 
   return (
     <section
@@ -130,6 +132,12 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
         </div>
       ) : null}
       <div className="sw-decision-actions ops-decision-actions">
+        {publicTrackingOrderId ? (
+          <a className="sw-button sw-button--secondary button button-secondary" href={buildPublicTrackingHref(publicTrackingOrderId)}>
+            <ShipWrightIcon name="route" />
+            <span>Open customer tracking</span>
+          </a>
+        ) : null}
         {jobDecision?.recommendedActionType === "RETRY_DISPATCH" ? (
           <button
             className="sw-button sw-button--danger button button-primary"

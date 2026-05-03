@@ -1,7 +1,11 @@
-# Fleet Pilot MVP Working Plan
+# ShipWright Pilot MVP Working Plan
 
 ## Purpose
-This is the Stage 1 execution document for Fleet / ShipWright.
+This is the Stage 1 execution document for ShipWright.
+
+Filename note:
+- this document still lives under a legacy `fleet-*` path for continuity
+- the external product name is ShipWright
 
 Use it to:
 - prioritise weekly work

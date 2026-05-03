@@ -4,7 +4,17 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getPublicOrderTracking } from "../_lib/api";
 import { formatCurrency, formatDateTime, type PublicOrderTracking } from "../_lib/product-state";
-import { getCustomerTrackingSummary, getCustomerTrackingSupportCopy, getTrackingSteps } from "../_lib/tracking-state";
+import {
+  getCustomerJobStatusLabel,
+  getCustomerOrderStatusLabel,
+  getCustomerPaymentStatusLabel,
+  getCustomerRouteNodes,
+  getCustomerTrackingTimelineEntry,
+  getCustomerTrackingNextStep,
+  getCustomerTrackingSummary,
+  getCustomerTrackingSupportCopy,
+  getTrackingSteps
+} from "../_lib/tracking-state";
 import { buildRestaurantMenuHref } from "./customer-ordering-shell";
 import { BrandLogo } from "./brand-logo";
 import { ShipWrightIcon } from "./shipwright-icon";
@@ -15,10 +25,6 @@ function mapTrackingError(error: unknown) {
   }
 
   return "Tracking could not be loaded right now. Refresh and try again.";
-}
-
-function formatStatusLabel(status: string) {
-  return status.replace(/_/g, " ");
 }
 
 function getStatusTone(status: string) {
@@ -67,6 +73,22 @@ function getStepIcon(state: ReturnType<typeof getTrackingSteps>[number]["state"]
   }
 
   return "document" as const;
+}
+
+function getRouteNodeTone(state: "complete" | "current" | "upcoming" | "problem") {
+  if (state === "complete") {
+    return "customer-route-node-complete";
+  }
+
+  if (state === "current") {
+    return "customer-route-node-current";
+  }
+
+  if (state === "problem") {
+    return "customer-route-node-problem";
+  }
+
+  return "customer-route-node-upcoming";
 }
 
 function TrackingEmptyState(props: { title: string; body: string }) {
@@ -118,7 +140,9 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
   }, [orderId]);
 
   const trackingSteps = useMemo(() => (tracking ? getTrackingSteps(tracking) : []), [tracking]);
+  const routeNodes = useMemo(() => (tracking ? getCustomerRouteNodes(tracking) : []), [tracking]);
   const summary = tracking ? getCustomerTrackingSummary(tracking) : null;
+  const nextStep = tracking ? getCustomerTrackingNextStep(tracking) : null;
 
   return (
     <main className="customer-order-page customer-tracking-page">
@@ -150,15 +174,15 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
             <div className="customer-confirmation-grid customer-tracking-status-grid">
               <div className="sw-supporting-surface customer-confirmation-tile">
                 <span>Order</span>
-                <strong>{formatStatusLabel(tracking.order.status)}</strong>
+                <strong>{getCustomerOrderStatusLabel(tracking.order.status)}</strong>
               </div>
               <div className="sw-supporting-surface customer-confirmation-tile">
                 <span>Delivery job</span>
-                <strong>{formatStatusLabel(tracking.job.status)}</strong>
+                <strong>{getCustomerJobStatusLabel(tracking.job.status)}</strong>
               </div>
               <div className="sw-supporting-surface customer-confirmation-tile">
                 <span>Payment</span>
-                <strong>{formatStatusLabel(tracking.payment.status)}</strong>
+                <strong>{getCustomerPaymentStatusLabel(tracking.payment.status)}</strong>
               </div>
               <div className="sw-supporting-surface customer-confirmation-tile">
                 <span>Driver</span>
@@ -173,22 +197,24 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
                 <div>
                   <p className="eyebrow">Progress</p>
                   <h2>Delivery progress</h2>
+                  <p className="customer-tracking-note">Status and progress only. This is not a live map.</p>
                 </div>
-                <span className={`status-badge ${getStatusTone(tracking.job.status)}`}>{formatStatusLabel(tracking.job.status)}</span>
+                <span className={`status-badge ${getStatusTone(tracking.job.status)}`}>{getCustomerJobStatusLabel(tracking.job.status)}</span>
               </div>
 
               <div className="customer-route-visual sw-supporting-surface">
-                <div>
-                  <span className="sw-label">Pickup</span>
-                  <strong>{tracking.job.pickupAddress}</strong>
-                </div>
-                <span className="customer-route-arrow" aria-hidden="true">
-                  <ShipWrightIcon name="route" />
-                </span>
-                <div>
-                  <span className="sw-label">Drop-off</span>
-                  <strong>{tracking.delivery.addressSummary}</strong>
-                </div>
+                {routeNodes.map((node, index) => (
+                  <div className={`customer-route-node ${getRouteNodeTone(node.state)}`} key={node.key}>
+                    <span className="sw-label">{node.label}</span>
+                    <strong>{node.summary}</strong>
+                    <span className="customer-route-node-status">{node.state === "problem" ? "Under review" : node.state === "current" ? "Current stage" : node.state === "complete" ? "Complete" : "Waiting"}</span>
+                    {index < routeNodes.length - 1 ? (
+                      <span className="customer-route-arrow" aria-hidden="true">
+                        <ShipWrightIcon name="route" />
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
               </div>
 
               <div className="customer-tracking-stepper">
@@ -209,15 +235,26 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
             <section className="sw-operational-surface customer-tracking-panel">
               <div className="sw-card-header">
                 <div>
-                  <p className="eyebrow">Order facts</p>
-                  <h2>What this link shows</h2>
+                  <p className="eyebrow">What happens next</p>
+                  <h2>{nextStep?.title}</h2>
+                  <p className="customer-tracking-note">{nextStep?.copy}</p>
                 </div>
-                <span className={`status-badge ${getStatusTone(tracking.payment.status)}`}>{formatStatusLabel(tracking.payment.status)}</span>
+                <span className={`status-badge ${getStatusTone(tracking.payment.status)}`}>{getCustomerPaymentStatusLabel(tracking.payment.status)}</span>
+              </div>
+
+              <div className="sw-supporting-surface customer-tracking-support">
+                <p className="eyebrow">Need help?</p>
+                <p>{getCustomerTrackingSupportCopy(tracking)}</p>
+                <div className="sw-action-row">
+                  <Link className="sw-button sw-button--secondary button button-secondary" href="/help/pilot-operations">
+                    Open help
+                  </Link>
+                </div>
               </div>
 
               <dl className="customer-tracking-facts">
                 <div>
-                  <dt>Order id</dt>
+                  <dt>Order reference</dt>
                   <dd>{tracking.order.id}</dd>
                 </div>
                 <div>
@@ -229,8 +266,8 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
                   <dd>{formatCurrency(tracking.order.totalCents, tracking.order.currency)}</dd>
                 </div>
                 <div>
-                  <dt>ETA</dt>
-                  <dd>{tracking.job.etaMinutes} minutes</dd>
+                  <dt>Tracking view</dt>
+                  <dd>Status and progress</dd>
                 </div>
                 <div>
                   <dt>Latest tracking update</dt>
@@ -241,11 +278,6 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
                   <dd>{tracking.tracking.dispatchAttemptsCount}</dd>
                 </div>
               </dl>
-
-              <div className="sw-supporting-surface customer-tracking-support">
-                <p className="eyebrow">Support note</p>
-                <p>{getCustomerTrackingSupportCopy(tracking)}</p>
-              </div>
 
               <div className="customer-success-actions">
                 <Link className="sw-button sw-button--secondary button button-secondary" href={buildRestaurantMenuHref(tracking.restaurant.slug)}>
@@ -259,7 +291,7 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
             <div className="sw-card-header">
               <div>
                 <p className="eyebrow">Timeline</p>
-                <h2>Operational updates</h2>
+                <h2>Order updates</h2>
               </div>
             </div>
 
@@ -273,8 +305,8 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
                 {tracking.tracking.timeline.map((item) => (
                   <div className="timeline-table-row" key={item.id} role="row">
                     <div>
-                      <strong>{formatStatusLabel(item.eventType)}</strong>
-                      <span>{item.summary}</span>
+                      <strong>{getCustomerTrackingTimelineEntry(item.eventType).title}</strong>
+                      <span>{getCustomerTrackingTimelineEntry(item.eventType).summary}</span>
                     </div>
                     <span>{formatDateTime(item.createdAt)}</span>
                   </div>

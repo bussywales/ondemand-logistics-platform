@@ -2,6 +2,11 @@
 
 ShipWright is evolving from a Stage 1 pilot logistics platform into an AI-assisted logistics command centre for local commerce.
 
+Technical note:
+- the repository and some package or workspace identifiers still retain older technical names such as `ondemand-logistics-platform`
+- the external product name is **ShipWright**
+- this pass does not rename repo, package, or deploy identifiers where that could break tooling
+
 Current repo state is beyond foundations-only work. The platform now includes a real staged spine for:
 - public restaurant ordering
 - Stripe-backed customer payment authorization
@@ -86,7 +91,7 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 - `docs/demo/known-limitations.md` - claims boundary and current limitations
 
 ## Roadmaps
-- `docs/roadmaps/fleet-roadmap.md` - primary Fleet delivery roadmap
+- `docs/roadmaps/fleet-roadmap.md` - legacy roadmap filename for the core ShipWright delivery plan
 - `docs/roadmaps/fleet-scope-cut-matrix.md` - build, buy, manual, and defer decisions by stage
 - `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution status and priorities
 - `docs/roadmaps/fleet-pilot-readiness-checklist.md` - pilot gate split into staging-proof and live-pilot readiness
@@ -95,7 +100,7 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 - `docs/roadmaps/fleet-stage1-execution-tranche-01.md` - earlier Stage 1 tranche reference
 
 ## Design authority
-- `docs/design/fleet-ux-authority-brief.md` - Fleet UX posture and rules
+- `docs/design/fleet-ux-authority-brief.md` - legacy filename for ShipWright UX posture and rules
 - `docs/design-system.md` - ShipWright Design System v1 and migration guidance
 
 ## Current remaining gaps

@@ -57,15 +57,16 @@ Open the tracking route from the success screen, or use:
 - `/track/<latestOrderId>`
 
 Show:
-- order status
-- job status
-- payment status
-- progress stepper
-- timeline
+- customer-ready tracking headline
+- what-happens-next panel
+- pickup -> courier -> drop-off progress view
+- customer-friendly timeline
+- calm support/help guidance
 
 Say:
 - tracking is progress/status based
 - this is not a live map product yet
+- the page does not expose driver private details or precise coordinates
 
 ### 5. Business orders queue
 Open:

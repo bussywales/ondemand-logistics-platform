@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { type AppJob, type PublicOrderTracking } from "./product-state";
 import {
+  buildPublicTrackingHref,
+  getCustomerJobStatusLabel,
+  getCustomerTrackingTimelineEntry,
+  getCustomerTrackingNextStep,
   getCustomerTrackingSummary,
   getCustomerTrackingSupportCopy,
   getOperatorTrackingStage,
@@ -93,6 +97,10 @@ function appJobFixture(overrides: Partial<AppJob> = {}): AppJob {
 }
 
 describe("tracking-state", () => {
+  it("builds the public tracking href from the order id", () => {
+    expect(buildPublicTrackingHref("order_123")).toBe("/track/order_123");
+  });
+
   it("marks the delivered flow as complete and fulfilled", () => {
     const tracking = trackingFixture({
       order: { ...trackingFixture().order, status: "FULFILLED" },
@@ -108,7 +116,8 @@ describe("tracking-state", () => {
 
     const steps = getTrackingSteps(tracking);
     expect(steps.at(-1)).toEqual(expect.objectContaining({ key: "delivered", state: "complete" }));
-    expect(getCustomerTrackingSummary(tracking).headline.toLowerCase()).toContain("delivered");
+    expect(getCustomerTrackingSummary(tracking).headline).toBe("Your order has been delivered");
+    expect(getCustomerTrackingNextStep(tracking).title).toBe("Delivery complete");
   });
 
   it("surfaces dispatch failure and no-driver support copy", () => {
@@ -126,7 +135,37 @@ describe("tracking-state", () => {
     expect(steps.find((step) => step.key === "driver_assigned")).toEqual(
       expect.objectContaining({ state: "problem" })
     );
-    expect(getCustomerTrackingSupportCopy(tracking)).toContain("support");
+    expect(getCustomerTrackingSummary(tracking).headline).toBe("We're checking your delivery");
+    expect(getCustomerTrackingNextStep(tracking).title).toBe("Our operator is reviewing this delivery");
+    expect(getCustomerTrackingSupportCopy(tracking)).toContain("contact the restaurant");
+  });
+
+  it("describes the next step for authorised orders awaiting dispatch", () => {
+    const tracking = trackingFixture();
+
+    expect(getCustomerTrackingSummary(tracking).headline).toBe("We're tracking your order");
+    expect(getCustomerTrackingNextStep(tracking)).toEqual(
+      expect.objectContaining({
+        title: "We're preparing dispatch"
+      })
+    );
+  });
+
+  it("maps customer timeline entries without leaking raw backend labels", () => {
+    expect(getCustomerTrackingTimelineEntry("JOB_DISPATCH_FAILED")).toEqual({
+      title: "Dispatch under review",
+      summary: "We are checking this delivery and reviewing the next recovery step."
+    });
+    expect(getCustomerTrackingTimelineEntry("JOB_DISPATCH_FAILED").title).not.toContain("DISPATCH_FAILED");
+    expect(getCustomerTrackingTimelineEntry("UNKNOWN_EVENT")).toEqual({
+      title: "Order update",
+      summary: "We recorded a new update for this order."
+    });
+  });
+
+  it("uses customer-friendly job labels instead of raw backend statuses", () => {
+    expect(getCustomerJobStatusLabel("DISPATCH_FAILED")).toBe("Under review");
+    expect(getCustomerJobStatusLabel("EN_ROUTE_DROP")).toBe("On the way");
   });
 
   it("maps operator tracking stage from the current job state", () => {

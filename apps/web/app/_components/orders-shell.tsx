@@ -38,6 +38,7 @@ import {
   type OrderFinancialView,
   withOrderFinancials
 } from "../_lib/orders-state";
+import { buildPublicTrackingHref } from "../_lib/tracking-state";
 
 export type OrdersShellProps = {
   orderId?: string;
@@ -333,6 +334,10 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
             <ShipWrightIcon name={fulfilled ? "timeline" : "route"} />
             <span>{fulfilled ? "Review delivery timeline" : "Open linked delivery job"}</span>
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href={buildPublicTrackingHref(order.id)}>
+            <ShipWrightIcon name="route" />
+            <span>Open customer tracking</span>
+          </Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
             <ShipWrightIcon name="queue" />
             <span>Back to orders queue</span>
@@ -528,6 +533,10 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
           <Link className="sw-button sw-button--primary button button-primary" href={`/app/jobs/${order.job.id}`}>
             <ShipWrightIcon name="arrow" />
             <span>Open delivery job</span>
+          </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href={buildPublicTrackingHref(order.id)}>
+            <ShipWrightIcon name="route" />
+            <span>Open customer tracking</span>
           </Link>
         </section>
 

@@ -3,6 +3,10 @@
 ## Purpose
 This roadmap defines how ShipWright should evolve from a delivery and job management product into an AI-assisted logistics command centre for local commerce.
 
+Naming note:
+- ShipWright is the external product name
+- some legacy roadmap filenames still retain `fleet-*` for continuity
+
 The direction is deliberate:
 - AI should strengthen operator judgment
 - AI should improve visibility, triage, recovery, and communication
