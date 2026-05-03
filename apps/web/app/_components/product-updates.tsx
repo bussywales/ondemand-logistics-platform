@@ -121,14 +121,16 @@ export function ProductUpdatesContent(props: {
   routePath?: string;
   title: string;
   description: string;
+  updates?: ProductUpdate[];
 }) {
   const updates = useMemo(
     () =>
+      props.updates ??
       getRelevantProductUpdates({
         viewer: props.viewer,
         routePath: props.routePath
       }),
-    [props.routePath, props.viewer]
+    [props.routePath, props.updates, props.viewer]
   );
 
   return (
