@@ -320,6 +320,16 @@ Current tranche status:
 - v1C delay detection and incident summary drafts: implemented as deterministic rules
 - v1D end-of-day operations report: implemented as deterministic closeout reporting
 
+Packaging rule for Command Intelligence v1:
+- position these surfaces as one assistive operations layer
+- use consistent wording such as:
+  - `Based on current operational signals`
+  - `Recommended next step`
+  - `Review before acting`
+  - `Draft only — review before sending`
+  - `Human approval required`
+- avoid implying that recovery, refund, cancellation, messaging, or assignment decisions are automated
+
 ### Tranche 2B: Dispatch Intelligence v1
 After Tranche 2A and sufficient instrumentation:
 - courier assignment recommendations

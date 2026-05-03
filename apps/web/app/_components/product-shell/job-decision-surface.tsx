@@ -3,7 +3,7 @@ import { ShipWrightIcon } from "../shipwright-icon";
 import type { AppJob } from "../../_lib/product-state";
 import { getDispatchIntelligence } from "../../_lib/dispatch-intelligence";
 import { buildPublicTrackingHref } from "../../_lib/tracking-state";
-import { attentionTone, formatStatusLabel, severityIconName, statusIconName, statusTone } from "./shared";
+import { COMMAND_INTELLIGENCE_SIGNAL_COPY, attentionTone, formatStatusLabel, severityIconName, statusIconName, statusTone } from "./shared";
 
 type JobDecisionSurfaceProps = {
   actionSubmitting: boolean;
@@ -41,6 +41,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
             <ShipWrightIcon name={severityIconName(jobDecision?.severity ?? "INFO")} />
           </span>
           <div className="sw-decision-copy ops-decision-copy">
+            <span className="sw-badge sw-badge--info job-command-badge">Command Intelligence</span>
             <p className="eyebrow">Decision surface</p>
             <h2 className="sw-decision-title">{jobDecision?.headline ?? "Job detail"}</h2>
             <p className="ops-detail-note">{jobDecision?.explanation ?? "Review job state and next action."}</p>
@@ -101,7 +102,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
         <div className="sw-decision-insight dispatch-recovery-surface">
           <div className="dispatch-recovery-topline">
             <span className="sw-badge sw-badge--warning">Recovery suggestion</span>
-            <strong>{formatRecoveryLabel(recoverySuggestion.recommendedAction)}</strong>
+            <strong>Recommended next step: {formatRecoveryLabel(recoverySuggestion.recommendedAction)}</strong>
           </div>
           <p className="dispatch-recovery-copy">{recoverySuggestion.explanation}</p>
           <div className="briefing-evidence-row dispatch-recovery-evidence">
@@ -110,7 +111,7 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
             <span>Eligible drivers {recoverySuggestion.evidence.eligibleDriverCount ?? "--"}</span>
             <span>Payment {formatStatusLabel(recoverySuggestion.evidence.paymentStatus)}</span>
           </div>
-          <p className="dispatch-recovery-note">{recoverySuggestion.advisory}</p>
+          <p className="dispatch-recovery-note">{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>
           <div className="sw-action-row">
             <a className="sw-button sw-button--secondary button button-secondary" href={recoverySuggestion.links.jobHref}>
               <ShipWrightIcon name="arrow" />

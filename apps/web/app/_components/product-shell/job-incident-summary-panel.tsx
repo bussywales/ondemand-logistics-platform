@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import type { OperationalIncidentSummary } from "../../_lib/product-state";
 import { ShipWrightIcon } from "../shipwright-icon";
-import { formatStatusLabel } from "./shared";
+import { COMMAND_INTELLIGENCE_SIGNAL_COPY, formatStatusLabel } from "./shared";
 
 function formatElapsed(value: number) {
   if (value < 60) {
@@ -35,6 +35,7 @@ export function JobIncidentSummaryPanel(props: { incidentSummary: OperationalInc
     <section className={`${toneClass} incident-summary-panel`}>
       <div className="sw-card-header">
         <div>
+          <span className="sw-badge sw-badge--info incident-command-badge">Command Intelligence</span>
           <p className="eyebrow">Incident summary</p>
           <h2>{incident.title}</h2>
           <p>{incident.summary}</p>
@@ -56,9 +57,9 @@ export function JobIncidentSummaryPanel(props: { incidentSummary: OperationalInc
           <p>Service timing and customer confidence may slip if this state is not reviewed.</p>
         </div>
         <div className="sw-supporting-surface incident-summary-card">
-          <p className="eyebrow">Suggested next step</p>
+          <p className="eyebrow">Recommended next step</p>
           <strong>{incident.recommendedNextAction}</strong>
-          <p>Suggestions are advisory only. Human approval is required for all recovery actions.</p>
+          <p>{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>
         </div>
       </div>
 
@@ -75,6 +76,7 @@ export function JobIncidentSummaryPanel(props: { incidentSummary: OperationalInc
           <div>
             <p className="eyebrow">Communication drafts</p>
             <h3>Draft only — review before sending</h3>
+            <p className="ops-detail-note">Based on current operational signals. Drafts are suggestions and are never sent automatically.</p>
           </div>
         </div>
         <div className="incident-drafts-grid">

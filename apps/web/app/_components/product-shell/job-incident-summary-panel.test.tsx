@@ -40,8 +40,11 @@ describe("JobIncidentSummaryPanel", () => {
   it("renders incident summary and draft sections with review warning", () => {
     const markup = renderToStaticMarkup(<JobIncidentSummaryPanel incidentSummary={incident} />);
 
+    expect(markup).toContain("Command Intelligence");
     expect(markup).toContain("Dispatch failed and remains unresolved");
     expect(markup).toContain("Draft only — review before sending");
+    expect(markup).toContain("Recommended next step");
+    expect(markup).toContain("Based on current operational signals. Review before acting. Human approval required.");
     expect(markup).toContain("Customer draft");
     expect(markup).toContain("Restaurant draft");
   });

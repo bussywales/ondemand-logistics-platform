@@ -93,10 +93,12 @@ describe("ReportsShell", () => {
     const markup = renderToStaticMarkup(<EndOfDayReportView report={reportWithFollowUp} />);
 
     expect(markup).toContain("12 orders completed, 2 items need follow-up");
+    expect(markup).toContain("Command Intelligence");
     expect(markup).toContain("Retry dispatch");
     expect(markup).toContain("Review payment risk");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
     expect(markup).toContain("href=\"/app/payments\"");
+    expect(markup).toContain("Based on current operational signals. Review before acting. Human approval required.");
     expect(markup).toContain("Operators remain responsible for recovery, refunds, cancellations, and customer communications.");
   });
 

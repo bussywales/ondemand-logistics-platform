@@ -1,6 +1,13 @@
+import React from "react";
 import { ShipWrightIcon, type ShipWrightIconName } from "../shipwright-icon";
 import type { AppJob, BusinessCustomerOrder, EligibleDriver } from "../../_lib/product-state";
 import { getEligibleDriverEmptyState } from "../../_lib/driver-assignment";
+
+export const COMMAND_INTELLIGENCE_EXPLAINER =
+  "Command Intelligence helps operators spot risk, review recommendations, and close the day. It does not take recovery actions automatically.";
+
+export const COMMAND_INTELLIGENCE_SIGNAL_COPY =
+  "Based on current operational signals. Review before acting. Human approval required.";
 
 export function formatStatusLabel(status: string) {
   return status.replace(/_/g, " ");
@@ -171,6 +178,18 @@ export function SectionTitle(props: { eyebrow: string; icon: ShipWrightIconName;
         <h2>{props.title}</h2>
         {props.note ? <p className="ops-detail-note">{props.note}</p> : null}
       </div>
+    </div>
+  );
+}
+
+export function CommandIntelligenceNote(props: { compact?: boolean; copy?: string }) {
+  return (
+    <div className={`sw-supporting-surface command-intelligence-note ${props.compact ? "command-intelligence-note-compact" : ""}`}>
+      <div className="command-intelligence-note-head">
+        <span className="sw-badge sw-badge--info">Command Intelligence</span>
+        <strong>{props.compact ? "Human-in-the-loop" : "Assistive operations layer"}</strong>
+      </div>
+      <p>{props.copy ?? COMMAND_INTELLIGENCE_EXPLAINER}</p>
     </div>
   );
 }

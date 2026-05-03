@@ -125,13 +125,17 @@ describe("DailyBriefingSurface", () => {
     const markup = renderToStaticMarkup(<DailyBriefingSurface briefing={attentionBriefing} />);
 
     expect(markup).toContain("2 items need attention before service");
+    expect(markup).toContain("Command Intelligence");
     expect(markup).toContain("Dispatch failed");
     expect(markup).toContain("Retry or reassign dispatch");
     expect(markup).toContain('href="/app/jobs/job-1"');
     expect(markup).toContain('href="/app/reports/end-of-day"');
+    expect(markup).toContain('href="/app/payments"');
+    expect(markup).toContain('href="/app/jobs"');
     expect(markup).toContain("Human approval is required for all recovery actions.");
     expect(markup).toContain("Recovery suggestion");
-    expect(markup).toContain("Retry Dispatch");
+    expect(markup).toContain("Recommended next step: Retry Dispatch");
+    expect(markup).toContain("Based on current operational signals. Review before acting. Human approval required.");
     expect(markup).toContain("Dispatch failed and remains unresolved");
   });
 
@@ -141,7 +145,7 @@ describe("DailyBriefingSurface", () => {
     expect(markup).toContain("Operations look clear");
     expect(markup).toContain("No immediate recovery actions are queued.");
     expect(markup).toContain("Human approval is required for all recovery actions.");
+    expect(markup).toContain("It does not take recovery actions automatically.");
     expect(markup).not.toContain("AI-generated");
-    expect(markup).not.toContain("automatically");
   });
 });

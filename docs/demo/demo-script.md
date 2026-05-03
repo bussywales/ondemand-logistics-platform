@@ -83,6 +83,7 @@ Show:
 
 Say:
 - operators manage fulfilment and financial risk from one order surface
+- Command Intelligence highlights risk and recommended next steps, but operators remain responsible for acting
 
 ### 6. Payment risk page
 Open:
@@ -109,6 +110,19 @@ Show:
 Say:
 - this is a rules-based closeout report, not an AI autopilot
 - operators still decide recovery, refunds, cancellations, and customer communication
+
+### 6B. Daily briefing and command layer
+Open:
+- `/app`
+
+Show:
+- daily briefing
+- recovery suggestions
+- links to orders, jobs, payment risk, and end-of-day report
+
+Say:
+- Command Intelligence v1 is deterministic and based on current operational signals
+- it helps operators review recommendations, but does not take recovery actions automatically
 
 ### 7. Notifications
 Open:

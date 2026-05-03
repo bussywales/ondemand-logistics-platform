@@ -14,6 +14,7 @@ import { useBusinessAuth } from "./business-auth-provider";
 import { getBusinessEndOfDayReport } from "../_lib/api";
 import { formatDateTime, type BusinessSession, type EndOfDayActionItem, type EndOfDayEvidenceLink, type EndOfDayReport } from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
+import { COMMAND_INTELLIGENCE_EXPLAINER, COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
 
 function toneToClass(value: EndOfDayActionItem["severity"]) {
   if (value === "danger") {
@@ -94,6 +95,7 @@ function ActionRow(props: { item: EndOfDayActionItem }) {
             </div>
             <h3>{item.label}</h3>
             <p>{item.summary}</p>
+            <p className="reports-action-note">{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>
           </div>
         </div>
       </div>
@@ -138,6 +140,7 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
             <ShipWrightIcon name={hasUnresolved ? "warning" : "check"} />
           </span>
           <div>
+            <span className="sw-badge sw-badge--info reports-command-badge">Command Intelligence</span>
             <p className="eyebrow">End-of-day report</p>
             <h2>{props.report.headline}</h2>
             <p>{props.report.summary}</p>
@@ -149,6 +152,8 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
           <span className="ops-count-pill">Date {props.report.date}</span>
         </div>
       </section>
+
+      <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_EXPLAINER} />
 
       <section className="sw-operational-surface reports-section">
         <div className="sw-card-header reports-section-header">
@@ -208,7 +213,7 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
           <div>
             <p className="eyebrow">Unresolved actions</p>
             <h2>Operator review queue</h2>
-            <p className="ops-detail-note">Advisory only. Human approval is required for recovery, refunds, cancellations, and customer communications.</p>
+            <p className="ops-detail-note">{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>
           </div>
         </div>
         {props.report.unresolvedActions.length ? (

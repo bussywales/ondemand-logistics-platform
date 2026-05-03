@@ -95,11 +95,12 @@ Recommended order:
 6. show the business orders queue
 7. show the payment risk surface
 8. show the end-of-day report
-9. show notifications
-10. show the driver execution route
-11. show the admin control plane
-12. show help and pilot playbooks
-13. close by referencing the proof artifacts and current known limitations
+9. show the daily briefing / command-intelligence layer on `/app`
+10. show notifications
+11. show the driver execution route
+12. show the admin control plane
+13. show help and pilot playbooks
+14. close by referencing the proof artifacts and current known limitations
 
 ## Session Discipline
 Keep the session controlled:
@@ -118,6 +119,17 @@ Do not claim:
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - broad compliance completeness for live courier operations
 - settlement or reconciliation automation beyond the current visibility surfaces
+
+When Command Intelligence is shown, describe it as:
+- deterministic
+- rules-based
+- based on current operational signals
+- human-in-the-loop
+
+Do not describe it as:
+- self-driving operations
+- automatic decisioning
+- autonomous recovery
 
 ## Escalation During Demo
 If something fails during the session:

@@ -196,6 +196,21 @@ Use empty states to instruct the operator/customer:
 - Decision-first hierarchy must be preserved.
 - Avoid raw backend labels/messages in user-facing UI.
 
+## Command Intelligence Copy Rules
+When building or updating command-intelligence surfaces:
+- position them as assistive, not autonomous
+- use language such as:
+  - `Based on current operational signals`
+  - `Recommended next step`
+  - `Review before acting`
+  - `Draft only — review before sending`
+  - `Human approval required`
+- do not use copy that implies:
+  - AI silently executed a decision
+  - recovery is fully automated
+  - customer communication was sent automatically
+  - the system closed an incident without operator review
+
 ## Anti-Patterns
 - a dashboard grid where every card has equal weight
 - red used for decoration or branding

@@ -412,6 +412,29 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
         </p>
       </section>
 
+      <section className="sw-supporting-surface admin-section admin-command-intelligence-link">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Command Intelligence</p>
+            <h2>Deterministic assistive operations</h2>
+          </div>
+          <div className="admin-section-actions">
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/app">
+              Daily briefing
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/app/reports/end-of-day">
+              End-of-day report
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="#intervention-queue">
+              Intervention queue
+            </Link>
+          </div>
+        </div>
+        <p className="ops-detail-note">
+          Command Intelligence v1 is rules-based and human-in-the-loop. It helps operators spot risk, review recommendations, and close the day. It does not take recovery actions automatically.
+        </p>
+      </section>
+
       {loadError ? (
         <section className="sw-empty-state admin-empty-state admin-empty-state-danger">
           <span className="empty-state-icon" aria-hidden="true">

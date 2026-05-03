@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { type DailyBriefing, type DispatchRecoverySuggestion, type OperationalIncidentSummary } from "../../_lib/product-state";
 import { ShipWrightIcon } from "../shipwright-icon";
-import { formatStatusLabel } from "./shared";
+import { COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote, formatStatusLabel } from "./shared";
 
 function formatAgeMinutes(value: number) {
   if (value < 1) {
@@ -45,7 +45,7 @@ function RecoverySuggestionBlock(props: { suggestion: DispatchRecoverySuggestion
     <div className="briefing-recovery-block">
       <div className="briefing-recovery-header">
         <span className="sw-badge sw-badge--warning">Recovery suggestion</span>
-        <strong>{formatRecoveryActionLabel(suggestion.recommendedAction)}</strong>
+        <strong>Recommended next step: {formatRecoveryActionLabel(suggestion.recommendedAction)}</strong>
       </div>
       <p>{suggestion.explanation}</p>
       <div className="briefing-evidence-row">
@@ -54,7 +54,7 @@ function RecoverySuggestionBlock(props: { suggestion: DispatchRecoverySuggestion
         <span>Payment {formatStatusLabel(suggestion.evidence.paymentStatus)}</span>
         {suggestion.evidence.latestOfferStatus ? <span>Latest offer {formatStatusLabel(suggestion.evidence.latestOfferStatus)}</span> : null}
       </div>
-      <p className="briefing-recovery-note">{suggestion.advisory}</p>
+      <p className="briefing-recovery-note">{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>
     </div>
   );
 }
@@ -64,7 +64,7 @@ function IncidentSummaryBlock(props: { incident: OperationalIncidentSummary }) {
     <div className="briefing-incident-block">
       <div className="briefing-recovery-header">
         <span className={`sw-badge ${props.incident.severity === "critical" ? "sw-badge--danger" : "sw-badge--warning"}`}>
-          Incident
+          Incident summary
         </span>
         <strong>{props.incident.title}</strong>
       </div>
@@ -103,6 +103,7 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
             <ShipWrightIcon name={hasAttention ? "warning" : "check"} />
           </span>
           <div>
+            <span className="sw-badge sw-badge--info briefing-command-badge">Command Intelligence</span>
             <p className="eyebrow">Daily briefing</p>
             <h2>{props.briefing.headline}</h2>
             <p>{props.briefing.summary}</p>
@@ -113,6 +114,14 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
             <ShipWrightIcon name="document" />
             <span>Open end-of-day report</span>
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/app/payments">
+            <ShipWrightIcon name="payment" />
+            <span>Open payment risk</span>
+          </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/app/jobs">
+            <ShipWrightIcon name="queue" />
+            <span>Open jobs</span>
+          </Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
             <ShipWrightIcon name="arrow" />
             <span>Open orders</span>
@@ -121,6 +130,7 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
       </div>
 
       <p className="briefing-guidance">{props.briefing.guidance}</p>
+      <CommandIntelligenceNote compact />
 
       <div className="briefing-metrics-grid">
         <MetricCard copy="Customer orders opened today." icon="document" label="Orders today" value={props.briefing.operatingState.ordersToday} />

@@ -8785,6 +8785,34 @@ select:hover,
   gap: var(--sw-space-2);
 }
 
+.briefing-command-badge,
+.job-command-badge,
+.incident-command-badge,
+.reports-command-badge {
+  margin-bottom: var(--sw-space-2);
+}
+
+.command-intelligence-note {
+  display: grid;
+  gap: var(--sw-space-2);
+}
+
+.command-intelligence-note-compact {
+  padding: var(--sw-space-3) var(--sw-space-4);
+}
+
+.command-intelligence-note-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-2);
+}
+
+.command-intelligence-note p {
+  color: var(--sw-color-ink-muted);
+  margin: 0;
+}
+
 .reports-shell-page {
   display: grid;
   gap: var(--sw-space-6);
@@ -8913,6 +8941,11 @@ select:hover,
 .reports-evidence-row p {
   color: var(--sw-color-ink-muted);
   margin: var(--sw-space-1) 0 0;
+}
+
+.reports-action-note {
+  color: var(--sw-color-ink-soft);
+  font-size: 0.9rem;
 }
 
 .reports-evidence-row {

@@ -77,7 +77,9 @@ describe("JobDecisionSurface", () => {
 
     expect(markup).toContain("Recovery suggestion");
     expect(markup).toContain("Retry dispatch first: no open driver offer is active.");
-    expect(markup).toContain("Human approval is required before recovery action.");
+    expect(markup).toContain("Command Intelligence");
+    expect(markup).toContain("Recommended next step: Retry Dispatch");
+    expect(markup).toContain("Based on current operational signals. Review before acting. Human approval required.");
     expect(markup).toContain("/track/order-1");
     expect(markup).toContain("Open customer tracking");
     expect(markup).not.toContain("automatically");
