@@ -1029,6 +1029,98 @@ export const DailyBriefingSchema = z.object({
 });
 export type DailyBriefingDto = z.infer<typeof DailyBriefingSchema>;
 
+export const EndOfDayReportScopeSchema = z.enum(["business", "admin"]);
+export type EndOfDayReportScope = z.infer<typeof EndOfDayReportScopeSchema>;
+
+export const EndOfDayReportDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export type EndOfDayReportDate = z.infer<typeof EndOfDayReportDateSchema>;
+
+export const EndOfDayActionTypeSchema = z.enum([
+  "REVIEW_PAYMENT_RISK",
+  "RETRY_DISPATCH",
+  "ASSIGN_DRIVER",
+  "CHECK_DELAYED_ORDER",
+  "REVIEW_CUSTOMER_COMMUNICATION_DRAFT"
+]);
+export type EndOfDayActionType = z.infer<typeof EndOfDayActionTypeSchema>;
+
+export const EndOfDayActionSeveritySchema = z.enum(["danger", "warning", "info"]);
+export type EndOfDayActionSeverity = z.infer<typeof EndOfDayActionSeveritySchema>;
+
+export const EndOfDayOperatingSummarySchema = z.object({
+  ordersReceived: z.number().int().nonnegative(),
+  fulfilledOrders: z.number().int().nonnegative(),
+  activeOrUnresolvedOrders: z.number().int().nonnegative(),
+  cancelledOrPaymentFailedOrders: z.number().int().nonnegative(),
+  activeJobs: z.number().int().nonnegative(),
+  deliveredJobs: z.number().int().nonnegative(),
+  dispatchFailures: z.number().int().nonnegative(),
+  staleOrDelayedJobs: z.number().int().nonnegative()
+});
+export type EndOfDayOperatingSummaryDto = z.infer<typeof EndOfDayOperatingSummarySchema>;
+
+export const EndOfDayPaymentsSummarySchema = z.object({
+  authorized: z.number().int().nonnegative(),
+  captured: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  deliveredNotCaptured: z.number().int().nonnegative(),
+  payoutReviewCount: z.number().int().nonnegative()
+});
+export type EndOfDayPaymentsSummaryDto = z.infer<typeof EndOfDayPaymentsSummarySchema>;
+
+export const EndOfDayIncidentsSummarySchema = z.object({
+  dispatchFailed: z.number().int().nonnegative(),
+  delayIncidents: z.number().int().nonnegative(),
+  paymentRisks: z.number().int().nonnegative(),
+  driverFollowUpIncidents: z.number().int().nonnegative(),
+  unresolvedRecommendations: z.number().int().nonnegative()
+});
+export type EndOfDayIncidentsSummaryDto = z.infer<typeof EndOfDayIncidentsSummarySchema>;
+
+export const EndOfDayActionItemSchema = z.object({
+  id: z.string().min(3),
+  type: EndOfDayActionTypeSchema,
+  severity: EndOfDayActionSeveritySchema,
+  label: z.string().min(2),
+  summary: z.string().min(2),
+  href: z.string().min(2),
+  entityType: DailyBriefingEntityTypeSchema,
+  entityId: z.string().uuid(),
+  orderId: z.string().uuid().nullable(),
+  jobId: z.string().uuid().nullable(),
+  paymentId: z.string().uuid().nullable()
+});
+export type EndOfDayActionItemDto = z.infer<typeof EndOfDayActionItemSchema>;
+
+export const EndOfDayEvidenceLinkSchema = z.object({
+  id: z.string().min(3),
+  label: z.string().min(2),
+  summary: z.string().min(2),
+  href: z.string().min(2),
+  entityType: DailyBriefingEntityTypeSchema,
+  entityId: z.string().uuid(),
+  orderId: z.string().uuid().nullable(),
+  jobId: z.string().uuid().nullable(),
+  paymentId: z.string().uuid().nullable()
+});
+export type EndOfDayEvidenceLinkDto = z.infer<typeof EndOfDayEvidenceLinkSchema>;
+
+export const EndOfDayReportSchema = z.object({
+  scope: EndOfDayReportScopeSchema,
+  date: EndOfDayReportDateSchema,
+  generatedAt: IsoDateTimeSchema,
+  headline: z.string().min(2),
+  summary: z.string().min(2),
+  unresolvedCount: z.number().int().nonnegative(),
+  operatingSummary: EndOfDayOperatingSummarySchema,
+  paymentsSummary: EndOfDayPaymentsSummarySchema,
+  incidentsSummary: EndOfDayIncidentsSummarySchema,
+  unresolvedActions: z.array(EndOfDayActionItemSchema),
+  evidenceLinks: z.array(EndOfDayEvidenceLinkSchema),
+  guidance: z.string().min(2)
+});
+export type EndOfDayReportDto = z.infer<typeof EndOfDayReportSchema>;
+
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;
 

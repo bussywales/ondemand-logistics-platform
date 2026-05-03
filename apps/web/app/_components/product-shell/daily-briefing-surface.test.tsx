@@ -128,6 +128,7 @@ describe("DailyBriefingSurface", () => {
     expect(markup).toContain("Dispatch failed");
     expect(markup).toContain("Retry or reassign dispatch");
     expect(markup).toContain('href="/app/jobs/job-1"');
+    expect(markup).toContain('href="/app/reports/end-of-day"');
     expect(markup).toContain("Human approval is required for all recovery actions.");
     expect(markup).toContain("Recovery suggestion");
     expect(markup).toContain("Retry Dispatch");

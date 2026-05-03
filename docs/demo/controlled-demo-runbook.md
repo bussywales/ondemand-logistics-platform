@@ -31,6 +31,7 @@ Core routes:
 - business workspace: `https://ondemand-logistics-platform-web.vercel.app/app`
 - business orders: `https://ondemand-logistics-platform-web.vercel.app/app/orders`
 - payment risk: `https://ondemand-logistics-platform-web.vercel.app/app/payments`
+- end-of-day report: `https://ondemand-logistics-platform-web.vercel.app/app/reports/end-of-day`
 - notifications: `https://ondemand-logistics-platform-web.vercel.app/app/notifications`
 - restaurant setup: `https://ondemand-logistics-platform-web.vercel.app/app/restaurant`
 - driver route: `https://ondemand-logistics-platform-web.vercel.app/driver`
@@ -93,11 +94,12 @@ Recommended order:
 5. open the public tracking route
 6. show the business orders queue
 7. show the payment risk surface
-8. show notifications
-9. show the driver execution route
-10. show the admin control plane
-11. show help and pilot playbooks
-12. close by referencing the proof artifacts and current known limitations
+8. show the end-of-day report
+9. show notifications
+10. show the driver execution route
+11. show the admin control plane
+12. show help and pilot playbooks
+13. close by referencing the proof artifacts and current known limitations
 
 ## Session Discipline
 Keep the session controlled:
@@ -111,6 +113,7 @@ Do not claim:
 - open public pilot readiness
 - unattended real-world reliability
 - full payout automation
+- autonomous end-of-day closeout or AI-led incident resolution
 - live-map courier movement
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - broad compliance completeness for live courier operations

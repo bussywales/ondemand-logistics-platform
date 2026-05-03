@@ -7,6 +7,7 @@ type WorkspaceNavView =
   | "jobs"
   | "orders"
   | "payments"
+  | "reports"
   | "notifications"
   | "restaurant"
   | "updates"
@@ -17,6 +18,7 @@ const items = [
   { href: "/app/jobs", label: "Jobs", view: "jobs" },
   { href: "/app/orders", label: "Orders", view: "orders" },
   { href: "/app/payments", label: "Payment risk", view: "payments" },
+  { href: "/app/reports/end-of-day", label: "Reports", view: "reports" },
   { href: "/app/notifications", label: "Notifications", view: "notifications" },
   { href: "/app/restaurant", label: "Restaurant", view: "restaurant" },
   { href: "/app/updates", label: "What’s new", view: "updates" },

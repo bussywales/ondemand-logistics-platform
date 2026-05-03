@@ -11,6 +11,8 @@ describe("WorkspaceNav", () => {
     expect(markup).toContain("href=\"/admin\"");
     expect(markup).toContain("Payment risk");
     expect(markup).toContain("href=\"/app/payments\"");
+    expect(markup).toContain("Reports");
+    expect(markup).toContain("href=\"/app/reports/end-of-day\"");
   });
 
   it("hides the admin control plane link for non-admin users", () => {

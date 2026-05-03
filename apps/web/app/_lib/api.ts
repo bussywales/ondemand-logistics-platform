@@ -6,6 +6,7 @@ import type {
   AdminOverview,
   AppJob,
   DailyBriefing,
+  EndOfDayReport,
   DispatchRecoverySuggestion,
   OperationalIncidentSummary,
   BusinessNotification,
@@ -144,6 +145,7 @@ type BusinessPaymentListResponse = {
   items: BusinessPaymentSummary[];
 };
 type DailyBriefingResponse = DailyBriefing;
+type EndOfDayReportResponse = EndOfDayReport;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
@@ -492,6 +494,19 @@ export async function getBusinessDailyBriefing(session: BusinessSession): Promis
   return apiFetch<DailyBriefingResponse>(session, "/v1/business/briefing/daily", {
     method: "GET"
   });
+}
+
+export async function getBusinessEndOfDayReport(
+  session: BusinessSession,
+  date: string
+): Promise<EndOfDayReport> {
+  return apiFetch<EndOfDayReportResponse>(
+    session,
+    `/v1/business/reports/end-of-day?date=${encodeURIComponent(date)}`,
+    {
+      method: "GET"
+    }
+  );
 }
 
 export async function getBusinessOrder(session: BusinessSession, orderId: string): Promise<BusinessCustomerOrder> {

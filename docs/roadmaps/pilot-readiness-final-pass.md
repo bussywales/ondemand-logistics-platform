@@ -78,6 +78,7 @@ The latest proof artifact shows processed outbox coverage for:
 Repo and staging evidence support:
 - `/app/orders` exists as the order-first operator queue
 - `/app/payments` exists as the payment-risk lens over orders
+- `/app/reports/end-of-day` exists as the deterministic closeout report
 - `/app/notifications` exists with persistent read state
 - `/driver` exists as the driver execution surface
 - `/admin` exists for `PLATFORM_ADMIN`
@@ -158,6 +159,10 @@ Recommended next tranche:
 - AI-generated incident summaries
 - end-of-day operations report
 - pilot readiness command dashboard
+
+Current state of this layer:
+- daily briefing, dispatch recovery, delay detection, incident drafts, and end-of-day reporting are implemented as deterministic human-in-the-loop command surfaces
+- no autonomous AI decisioning is required for the current staging-proof posture
 
 Reference roadmap:
 - `docs/roadmaps/ai-assisted-command-centre-roadmap.md`

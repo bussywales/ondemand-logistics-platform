@@ -108,10 +108,16 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
             <p>{props.briefing.summary}</p>
           </div>
         </div>
-        <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
-          <ShipWrightIcon name="arrow" />
-          <span>Open orders</span>
-        </Link>
+        <div className="briefing-header-actions">
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/app/reports/end-of-day">
+            <ShipWrightIcon name="document" />
+            <span>Open end-of-day report</span>
+          </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
+            <ShipWrightIcon name="arrow" />
+            <span>Open orders</span>
+          </Link>
+        </div>
       </div>
 
       <p className="briefing-guidance">{props.briefing.guidance}</p>

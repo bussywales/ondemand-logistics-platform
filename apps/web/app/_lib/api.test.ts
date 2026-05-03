@@ -6,6 +6,7 @@ import {
   createProofOfDelivery,
   createRestaurant,
   getBusinessDailyBriefing,
+  getBusinessEndOfDayReport,
   getDriverAssignmentIneligibility,
   getBusinessOrder,
   getCurrentDriverJob,
@@ -328,6 +329,83 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/business/briefing/daily');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(briefing.criticalItems[0]?.category).toBe('dispatch_failed');
+  });
+
+  it("reads the end-of-day report with bearer auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          scope: "business",
+          date: "2026-05-03",
+          generatedAt: new Date().toISOString(),
+          headline: "12 orders completed, 2 items need follow-up",
+          summary: "Dispatch, payment, and delayed-order signals are summarised for closeout review.",
+          unresolvedCount: 2,
+          operatingSummary: {
+            ordersReceived: 12,
+            fulfilledOrders: 10,
+            activeOrUnresolvedOrders: 2,
+            cancelledOrPaymentFailedOrders: 1,
+            activeJobs: 1,
+            deliveredJobs: 10,
+            dispatchFailures: 1,
+            staleOrDelayedJobs: 1
+          },
+          paymentsSummary: {
+            authorized: 2,
+            captured: 10,
+            failed: 1,
+            deliveredNotCaptured: 1,
+            payoutReviewCount: 1
+          },
+          incidentsSummary: {
+            dispatchFailed: 1,
+            delayIncidents: 1,
+            paymentRisks: 2,
+            driverFollowUpIncidents: 1,
+            unresolvedRecommendations: 2
+          },
+          unresolvedActions: [
+            {
+              id: "action:dispatch:job-1",
+              type: "RETRY_DISPATCH",
+              severity: "danger",
+              label: "Retry dispatch",
+              summary: "A delivery remains unresolved after dispatch failed.",
+              href: "/app/jobs/job-1",
+              entityType: "job",
+              entityId: "job-1",
+              orderId: "order-1",
+              jobId: "job-1",
+              paymentId: "payment-1"
+            }
+          ],
+          evidenceLinks: [
+            {
+              id: "evidence:order-1",
+              label: "Order ORDER-1",
+              summary: "Payment authorised, dispatch unresolved.",
+              href: "/app/orders/order-1",
+              entityType: "order",
+              entityId: "order-1",
+              orderId: "order-1",
+              jobId: "job-1",
+              paymentId: "payment-1"
+            }
+          ],
+          guidance:
+            "This report summarises operational signals. Operators remain responsible for recovery, refunds, cancellations, and customer communications."
+        })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const report = await getBusinessEndOfDayReport(session, "2026-05-03");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/v1/business/reports/end-of-day?date=2026-05-03");
+    expect((init.headers as Record<string, string>).authorization).toBe("Bearer access-token");
+    expect(report.unresolvedActions[0]?.type).toBe("RETRY_DISPATCH");
   });
 
   it('parses structured driver assignment ineligibility errors', () => {

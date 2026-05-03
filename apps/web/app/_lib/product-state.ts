@@ -474,6 +474,83 @@ export type DailyBriefing = {
   guidance: string;
 };
 
+export type EndOfDayReportScope = "business" | "admin";
+export type EndOfDayActionType =
+  | "REVIEW_PAYMENT_RISK"
+  | "RETRY_DISPATCH"
+  | "ASSIGN_DRIVER"
+  | "CHECK_DELAYED_ORDER"
+  | "REVIEW_CUSTOMER_COMMUNICATION_DRAFT";
+export type EndOfDayActionSeverity = "danger" | "warning" | "info";
+
+export type EndOfDayOperatingSummary = {
+  ordersReceived: number;
+  fulfilledOrders: number;
+  activeOrUnresolvedOrders: number;
+  cancelledOrPaymentFailedOrders: number;
+  activeJobs: number;
+  deliveredJobs: number;
+  dispatchFailures: number;
+  staleOrDelayedJobs: number;
+};
+
+export type EndOfDayPaymentsSummary = {
+  authorized: number;
+  captured: number;
+  failed: number;
+  deliveredNotCaptured: number;
+  payoutReviewCount: number;
+};
+
+export type EndOfDayIncidentsSummary = {
+  dispatchFailed: number;
+  delayIncidents: number;
+  paymentRisks: number;
+  driverFollowUpIncidents: number;
+  unresolvedRecommendations: number;
+};
+
+export type EndOfDayActionItem = {
+  id: string;
+  type: EndOfDayActionType;
+  severity: EndOfDayActionSeverity;
+  label: string;
+  summary: string;
+  href: string;
+  entityType: DailyBriefingEntityType;
+  entityId: string;
+  orderId: string | null;
+  jobId: string | null;
+  paymentId: string | null;
+};
+
+export type EndOfDayEvidenceLink = {
+  id: string;
+  label: string;
+  summary: string;
+  href: string;
+  entityType: DailyBriefingEntityType;
+  entityId: string;
+  orderId: string | null;
+  jobId: string | null;
+  paymentId: string | null;
+};
+
+export type EndOfDayReport = {
+  scope: EndOfDayReportScope;
+  date: string;
+  generatedAt: string;
+  headline: string;
+  summary: string;
+  unresolvedCount: number;
+  operatingSummary: EndOfDayOperatingSummary;
+  paymentsSummary: EndOfDayPaymentsSummary;
+  incidentsSummary: EndOfDayIncidentsSummary;
+  unresolvedActions: EndOfDayActionItem[];
+  evidenceLinks: EndOfDayEvidenceLink[];
+  guidance: string;
+};
+
 export type BusinessPaymentSummary = {
   id: string;
   orderId: string;

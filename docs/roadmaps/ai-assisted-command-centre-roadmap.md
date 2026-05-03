@@ -178,6 +178,12 @@ Generate a shift closeout summary covering:
 - top recurring failure categories
 - notable courier or merchant operational signals
 
+Command Intelligence v1D should stay deterministic:
+- end-of-day reporting is rules-based, not LLM-generated
+- no scheduled send is implied yet
+- no refund, cancellation, or communication action is executed automatically
+- the report is a closeout review surface, not an autonomous operations agent
+
 ### Pilot readiness command dashboard
 A command summary that answers:
 - is the system healthy enough to run a controlled session now?
@@ -307,6 +313,12 @@ Why this tranche first:
 - it makes the existing command surfaces more useful without rewriting core workflows
 
 The first shipping slice of Tranche 2A should remain deterministic and human-in-the-loop even though the broader product direction is AI-assisted.
+
+Current tranche status:
+- v1A daily operator briefing: implemented as deterministic rules
+- v1B failed dispatch recovery suggestions: implemented as deterministic rules
+- v1C delay detection and incident summary drafts: implemented as deterministic rules
+- v1D end-of-day operations report: implemented as deterministic closeout reporting
 
 ### Tranche 2B: Dispatch Intelligence v1
 After Tranche 2A and sufficient instrumentation:

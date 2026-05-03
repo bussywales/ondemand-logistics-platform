@@ -5,6 +5,7 @@ import {
   BusinessPaymentListSchema,
   BusinessContextSchema,
   DailyBriefingSchema,
+  EndOfDayReportSchema,
   OperationalIncidentSummarySchema,
   BusinessNotificationReadAllSchema,
   BusinessNotificationReadSchema,
@@ -357,6 +358,73 @@ describe("admin schemas", () => {
         }
       ],
       guidance: "This briefing is based on current ShipWright operational signals. Human approval is required for all recovery actions."
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses deterministic end-of-day reports", () => {
+    const parsed = EndOfDayReportSchema.safeParse({
+      scope: "business",
+      date: "2026-05-03",
+      generatedAt: new Date().toISOString(),
+      headline: "12 orders completed, 2 items need follow-up",
+      summary: "Dispatch, payment, and delayed-order signals are summarised for closeout review.",
+      unresolvedCount: 2,
+      operatingSummary: {
+        ordersReceived: 12,
+        fulfilledOrders: 10,
+        activeOrUnresolvedOrders: 2,
+        cancelledOrPaymentFailedOrders: 1,
+        activeJobs: 1,
+        deliveredJobs: 10,
+        dispatchFailures: 1,
+        staleOrDelayedJobs: 1
+      },
+      paymentsSummary: {
+        authorized: 2,
+        captured: 10,
+        failed: 1,
+        deliveredNotCaptured: 1,
+        payoutReviewCount: 1
+      },
+      incidentsSummary: {
+        dispatchFailed: 1,
+        delayIncidents: 1,
+        paymentRisks: 2,
+        driverFollowUpIncidents: 1,
+        unresolvedRecommendations: 2
+      },
+      unresolvedActions: [
+        {
+          id: "action:dispatch:job-1",
+          type: "RETRY_DISPATCH",
+          severity: "danger",
+          label: "Retry dispatch",
+          summary: "A delivery remains unresolved after dispatch failed.",
+          href: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd",
+          entityType: "job",
+          entityId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+          orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+          paymentId: "1cc3382c-f799-4856-b537-dbd61c851075"
+        }
+      ],
+      evidenceLinks: [
+        {
+          id: "evidence:order-1",
+          label: "Order 2CB2F7E9",
+          summary: "Payment authorised, dispatch unresolved.",
+          href: "/app/orders/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          entityType: "order",
+          entityId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+          paymentId: "1cc3382c-f799-4856-b537-dbd61c851075"
+        }
+      ],
+      guidance:
+        "This report summarises operational signals. Operators remain responsible for recovery, refunds, cancellations, and customer communications."
     });
 
     expect(parsed.success).toBe(true);

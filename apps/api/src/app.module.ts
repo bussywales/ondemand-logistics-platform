@@ -36,6 +36,8 @@ import { BriefingController } from "./briefing/briefing.controller.js";
 import { BriefingService } from "./briefing/briefing.service.js";
 import { DispatchRecoveryService } from "./briefing/dispatch-recovery.service.js";
 import { IncidentIntelligenceService } from "./briefing/incident-intelligence.service.js";
+import { AdminReportsController, ReportsController } from "./reports/reports.controller.js";
+import { ReportsService } from "./reports/reports.service.js";
 
 @Module({
   imports: [],
@@ -49,6 +51,8 @@ import { IncidentIntelligenceService } from "./briefing/incident-intelligence.se
     BusinessController,
     NotificationsController,
     BriefingController,
+    ReportsController,
+    AdminReportsController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -67,6 +71,7 @@ import { IncidentIntelligenceService } from "./briefing/incident-intelligence.se
     BusinessService,
     NotificationsService,
     BriefingService,
+    ReportsService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,

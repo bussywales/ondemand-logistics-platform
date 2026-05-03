@@ -398,9 +398,14 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             <p className="eyebrow">Pilot playbooks</p>
             <h2>Manual recovery guidance</h2>
           </div>
-          <Link className="sw-button sw-button--secondary button button-secondary" href="/help/pilot-operations">
-            Open playbooks
-          </Link>
+          <div className="admin-section-actions">
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/app/reports/end-of-day">
+              End-of-day report
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/help/pilot-operations">
+              Open playbooks
+            </Link>
+          </div>
         </div>
         <p className="ops-detail-note">
           Use the documented fallback playbooks for failed dispatch, blocked deliveries, cancellations, reassignment, and support escalation.

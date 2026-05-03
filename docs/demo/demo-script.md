@@ -96,6 +96,20 @@ Say:
 - this is not a finance ledger dashboard
 - it is an operational payment risk surface tied to fulfilment
 
+### 6A. End-of-day report
+Open:
+- `/app/reports/end-of-day`
+
+Show:
+- deterministic closeout headline
+- operating summary
+- payment and incident summaries
+- unresolved actions with order/job/payment links
+
+Say:
+- this is a rules-based closeout report, not an AI autopilot
+- operators still decide recovery, refunds, cancellations, and customer communication
+
 ### 7. Notifications
 Open:
 - `/app/notifications`
