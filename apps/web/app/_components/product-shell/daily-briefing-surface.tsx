@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { type DailyBriefing } from "../../_lib/product-state";
+import { type DailyBriefing, type DispatchRecoverySuggestion } from "../../_lib/product-state";
 import { ShipWrightIcon } from "../shipwright-icon";
 import { formatStatusLabel } from "./shared";
 
@@ -26,6 +26,35 @@ function MetricCard(props: { label: string; value: number | null; copy: string; 
       <span className="sw-metric-label">{props.label}</span>
       <strong className="sw-metric-value">{props.value ?? "--"}</strong>
       <p className="sw-metric-copy">{props.copy}</p>
+    </div>
+  );
+}
+
+function formatRecoveryActionLabel(value: DispatchRecoverySuggestion["recommendedAction"]) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function RecoverySuggestionBlock(props: { suggestion: DispatchRecoverySuggestion }) {
+  const { suggestion } = props;
+
+  return (
+    <div className="briefing-recovery-block">
+      <div className="briefing-recovery-header">
+        <span className="sw-badge sw-badge--warning">Recovery suggestion</span>
+        <strong>{formatRecoveryActionLabel(suggestion.recommendedAction)}</strong>
+      </div>
+      <p>{suggestion.explanation}</p>
+      <div className="briefing-evidence-row">
+        <span>Offers {suggestion.evidence.offerCount ?? "--"}</span>
+        <span>Eligible drivers {suggestion.evidence.eligibleDriverCount ?? "--"}</span>
+        <span>Payment {formatStatusLabel(suggestion.evidence.paymentStatus)}</span>
+        {suggestion.evidence.latestOfferStatus ? <span>Latest offer {formatStatusLabel(suggestion.evidence.latestOfferStatus)}</span> : null}
+      </div>
+      <p className="briefing-recovery-note">{suggestion.advisory}</p>
     </div>
   );
 }
@@ -94,6 +123,7 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
                     {item.jobStatus ? <span>Job {formatStatusLabel(item.jobStatus)}</span> : null}
                     {item.paymentStatus ? <span>Payment {formatStatusLabel(item.paymentStatus)}</span> : null}
                   </div>
+                  {item.recoverySuggestion ? <RecoverySuggestionBlock suggestion={item.recoverySuggestion} /> : null}
                 </div>
                 <div className="sw-queue-row-actions briefing-item-actions">
                   <Link className="sw-button sw-button--secondary button button-secondary" href={item.href}>

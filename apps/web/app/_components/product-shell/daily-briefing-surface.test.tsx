@@ -32,7 +32,28 @@ const attentionBriefing: DailyBriefing = {
       paymentStatus: "AUTHORIZED",
       detectedAt: "2026-05-03T08:42:00.000Z",
       ageMinutes: 18,
-      href: "/app/jobs/job-1"
+      href: "/app/jobs/job-1",
+      recoverySuggestion: {
+        jobId: "job-1",
+        orderId: "order-1",
+        issueType: "DISPATCH_FAILED",
+        recommendedAction: "RETRY_DISPATCH",
+        explanation: "Retry dispatch first: no open driver offer is active.",
+        evidence: {
+          currentJobStatus: "DISPATCH_FAILED",
+          paymentStatus: "AUTHORIZED",
+          offerCount: 0,
+          latestOfferStatus: null,
+          eligibleDriverCount: 0,
+          ageMinutes: 18
+        },
+        links: {
+          jobHref: "/app/jobs/job-1",
+          orderHref: "/app/orders/order-1",
+          paymentsHref: null
+        },
+        advisory: "Human approval is required for all recovery actions."
+      }
     }
   ],
   operatingState: {
@@ -77,6 +98,8 @@ describe("DailyBriefingSurface", () => {
     expect(markup).toContain("Retry or reassign dispatch");
     expect(markup).toContain('href="/app/jobs/job-1"');
     expect(markup).toContain("Human approval is required for all recovery actions.");
+    expect(markup).toContain("Recovery suggestion");
+    expect(markup).toContain("Retry Dispatch");
   });
 
   it("renders a clear briefing without implying autonomous action", () => {

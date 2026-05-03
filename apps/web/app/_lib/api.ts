@@ -6,6 +6,7 @@ import type {
   AdminOverview,
   AppJob,
   DailyBriefing,
+  DispatchRecoverySuggestion,
   BusinessNotification,
   BusinessNotificationList,
   BusinessCustomerOrder,
@@ -95,6 +96,7 @@ type TrackingResponse = {
     eventType: string;
     createdAt: string;
   }>;
+  recoverySuggestion?: DispatchRecoverySuggestion | null;
 };
 
 type PaymentResponse = {
@@ -368,7 +370,8 @@ function toAppJob(job: JobResponse, tracking?: TrackingResponse | null, payment?
     pricingVersion: job.pricingVersion,
     createdAt: job.createdAt,
     tracking: toTrackingSummary(tracking),
-    payment: toPaymentSummary(job, payment)
+    payment: toPaymentSummary(job, payment),
+    recoverySuggestion: tracking?.recoverySuggestion ?? null
   };
 }
 

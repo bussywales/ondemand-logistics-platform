@@ -1,3 +1,4 @@
+import React from "react";
 import { ShipWrightIcon } from "../shipwright-icon";
 import type { AppJob } from "../../_lib/product-state";
 import { getDispatchIntelligence } from "../../_lib/dispatch-intelligence";
@@ -11,8 +12,17 @@ type JobDecisionSurfaceProps = {
   onRetryDispatch: (job: AppJob) => void;
 };
 
+function formatRecoveryLabel(value: NonNullable<AppJob["recoverySuggestion"]>["recommendedAction"]) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
   const { job, jobDecision } = props;
+  const recoverySuggestion = job.recoverySuggestion;
 
   return (
     <section
@@ -82,6 +92,40 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
             <span className="sw-label">Next action</span>
             <strong>{jobDecision.recommendedActionLabel}</strong>
             <p>{jobDecision.explanation}</p>
+          </div>
+        </div>
+      ) : null}
+      {recoverySuggestion ? (
+        <div className="sw-decision-insight dispatch-recovery-surface">
+          <div className="dispatch-recovery-topline">
+            <span className="sw-badge sw-badge--warning">Recovery suggestion</span>
+            <strong>{formatRecoveryLabel(recoverySuggestion.recommendedAction)}</strong>
+          </div>
+          <p className="dispatch-recovery-copy">{recoverySuggestion.explanation}</p>
+          <div className="briefing-evidence-row dispatch-recovery-evidence">
+            <span>Issue {recoverySuggestion.issueType.replaceAll("_", " ")}</span>
+            <span>Offers {recoverySuggestion.evidence.offerCount ?? "--"}</span>
+            <span>Eligible drivers {recoverySuggestion.evidence.eligibleDriverCount ?? "--"}</span>
+            <span>Payment {formatStatusLabel(recoverySuggestion.evidence.paymentStatus)}</span>
+          </div>
+          <p className="dispatch-recovery-note">{recoverySuggestion.advisory}</p>
+          <div className="sw-action-row">
+            <a className="sw-button sw-button--secondary button button-secondary" href={recoverySuggestion.links.jobHref}>
+              <ShipWrightIcon name="arrow" />
+              <span>Open job</span>
+            </a>
+            {recoverySuggestion.links.orderHref ? (
+              <a className="sw-button sw-button--secondary button button-secondary" href={recoverySuggestion.links.orderHref}>
+                <ShipWrightIcon name="document" />
+                <span>Open order</span>
+              </a>
+            ) : null}
+            {recoverySuggestion.links.paymentsHref ? (
+              <a className="sw-button sw-button--secondary button button-secondary" href={recoverySuggestion.links.paymentsHref}>
+                <ShipWrightIcon name="payment" />
+                <span>Open payment risk</span>
+              </a>
+            ) : null}
           </div>
         </div>
       ) : null}

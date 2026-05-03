@@ -7,6 +7,7 @@
 ## How to identify it in ShipWright
 - `/app` shows the job in `Needs Review`.
 - `/app/jobs/[jobId]` decision surface shows dispatch failure or retry guidance.
+- `/app` daily briefing may show a deterministic recovery suggestion with evidence and recommended next action.
 - `/app/orders/[orderId]` shows the linked delivery as blocked.
 - `/admin` intervention queue shows a dispatch-related item.
 
@@ -16,6 +17,7 @@
 3. Check whether a staged driver is online and eligible.
 4. Retry dispatch only if the underlying driver/availability issue has changed.
 5. If a suitable driver exists but dispatch logic still failed, use the manual reassignment flow.
+6. Treat any recovery suggestion as advisory only. Human approval is required before retrying, reassigning, contacting the customer, or cancelling the order.
 
 ## Customer/restaurant communication guidance
 - Tell the restaurant the order is paid but courier assignment is delayed.

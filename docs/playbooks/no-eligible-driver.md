@@ -5,6 +5,7 @@
 
 ## How to identify it in ShipWright
 - Job detail shows dispatch failure or assignment blocker.
+- Daily briefing or job detail may show a deterministic `Review driver pool` suggestion with evidence such as eligible-driver count and offer state.
 - Driver assignment picker shows blocked candidates or an empty eligible list.
 - `/driver` shows no approved/online staged courier for the route.
 
@@ -14,6 +15,7 @@
 3. Confirm candidate drivers are not already active on another job.
 4. Confirm the nearest staged driver has recent location availability if expected.
 5. Retry dispatch only after the underlying eligibility issue changes.
+6. Do not treat the suggestion surface as automatic assignment logic. It is a human-reviewed recovery aid only.
 
 ## Customer/restaurant communication guidance
 - Tell the restaurant courier capacity is temporarily constrained.

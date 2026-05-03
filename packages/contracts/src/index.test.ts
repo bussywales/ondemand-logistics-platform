@@ -280,7 +280,28 @@ describe("admin schemas", () => {
           paymentStatus: "AUTHORIZED",
           detectedAt: new Date().toISOString(),
           ageMinutes: 18,
-          href: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd"
+          href: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd",
+          recoverySuggestion: {
+            jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+            orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+            issueType: "DISPATCH_FAILED",
+            recommendedAction: "RETRY_DISPATCH",
+            explanation: "Retry dispatch first: no open driver offer is active.",
+            evidence: {
+              currentJobStatus: "DISPATCH_FAILED",
+              paymentStatus: "AUTHORIZED",
+              offerCount: 0,
+              latestOfferStatus: null,
+              eligibleDriverCount: 0,
+              ageMinutes: 18
+            },
+            links: {
+              jobHref: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd",
+              orderHref: "/app/orders/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+              paymentsHref: null
+            },
+            advisory: "Human approval is required for all recovery actions."
+          }
         }
       ],
       operatingState: {

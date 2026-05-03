@@ -335,6 +335,43 @@ export type DailyBriefingItemCategory =
   | "stale_job";
 export type DailyBriefingSeverity = "danger" | "warning" | "success";
 export type DailyBriefingEntityType = "order" | "job" | "payment";
+export type DispatchRecoveryIssueType =
+  | "DISPATCH_FAILED"
+  | "NO_ELIGIBLE_DRIVER"
+  | "OPEN_OFFER_STALE"
+  | "DRIVER_UNAVAILABLE"
+  | "VEHICLE_MISMATCH"
+  | "PAYMENT_BLOCKER";
+export type DispatchRecoveryAction =
+  | "RETRY_DISPATCH"
+  | "MANUAL_ASSIGN_DRIVER"
+  | "REVIEW_DRIVER_POOL"
+  | "REVIEW_PAYMENT_RISK"
+  | "CONTACT_CUSTOMER"
+  | "CANCEL_AND_REFUND_REVIEW";
+export type DispatchRecoveryEvidence = {
+  currentJobStatus: JobStatus;
+  paymentStatus: PaymentStatus;
+  offerCount: number | null;
+  latestOfferStatus: "OFFERED" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "WITHDRAWN" | null;
+  eligibleDriverCount: number | null;
+  ageMinutes: number;
+};
+export type DispatchRecoveryLinks = {
+  jobHref: string;
+  orderHref: string | null;
+  paymentsHref: string | null;
+};
+export type DispatchRecoverySuggestion = {
+  jobId: string;
+  orderId: string | null;
+  issueType: DispatchRecoveryIssueType;
+  recommendedAction: DispatchRecoveryAction;
+  explanation: string;
+  evidence: DispatchRecoveryEvidence;
+  links: DispatchRecoveryLinks;
+  advisory: string;
+};
 
 export type DailyBriefingItem = {
   id: string;
@@ -358,6 +395,7 @@ export type DailyBriefingItem = {
   detectedAt: string;
   ageMinutes: number;
   href: string;
+  recoverySuggestion?: DispatchRecoverySuggestion | null;
 };
 
 export type DailyBriefingRecommendation = {
@@ -646,6 +684,7 @@ export type AppJob = {
   createdAt: string;
   tracking: TrackingSummary;
   payment: PaymentSummary;
+  recoverySuggestion?: DispatchRecoverySuggestion | null;
 };
 
 const BUSINESS_SESSION_KEY = "shipwright.business-session.v2";

@@ -105,4 +105,41 @@ describe("BriefingService", () => {
     const [sql] = pg.query.mock.calls[0] as [string];
     expect(sql).not.toContain("from public.org_memberships m");
   });
+
+  it("attaches recovery suggestions to job-backed attention items", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rows: [{ ...baseRow, job_status: "DISPATCH_FAILED", dispatch_failed_at: "2026-05-03T08:45:00.000Z" }]
+      })
+    };
+    const recoveryService = {
+      getBusinessRecoverySuggestion: vi.fn().mockResolvedValue({
+        jobId: baseRow.job_id,
+        orderId: baseRow.order_id,
+        issueType: "DISPATCH_FAILED",
+        recommendedAction: "RETRY_DISPATCH",
+        explanation: "Retry dispatch first: no open driver offer is active.",
+        evidence: {
+          currentJobStatus: "DISPATCH_FAILED",
+          paymentStatus: "AUTHORIZED",
+          offerCount: 0,
+          latestOfferStatus: null,
+          eligibleDriverCount: 0,
+          ageMinutes: 15
+        },
+        links: {
+          jobHref: `/app/jobs/${baseRow.job_id}`,
+          orderHref: `/app/orders/${baseRow.order_id}`,
+          paymentsHref: null
+        },
+        advisory: "Human approval is required."
+      })
+    };
+
+    const service = new BriefingService(pg as never, recoveryService as never);
+    const briefing = await service.getBusinessDailyBriefing("user-1");
+
+    expect(briefing.criticalItems[0]?.recoverySuggestion?.recommendedAction).toBe("RETRY_DISPATCH");
+    expect(recoveryService.getBusinessRecoverySuggestion).toHaveBeenCalledWith(baseRow.job_id, "user-1");
+  });
 });

@@ -106,6 +106,12 @@ For `DISPATCH_FAILED` or slow-dispatch jobs, AI should suggest:
 - whether to retry dispatch, reassign, contact restaurant, or cancel
 - which playbook to open
 
+Command Intelligence v1B should remain deterministic and rules-based:
+- no LLM dependency
+- no autonomous retry, assignment, cancellation, or refund
+- explicit evidence for each suggestion
+- operator approval required before any recovery action
+
 ### Courier assignment recommendations
 Recommend the best available courier based on:
 - vehicle suitability

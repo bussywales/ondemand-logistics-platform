@@ -8756,3 +8756,38 @@ select:hover,
     grid-template-columns: 1fr;
   }
 }
+.briefing-recovery-block {
+  margin-top: 0.9rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(19, 61, 108, 0.12);
+  border-radius: 1rem;
+  background: rgba(239, 248, 255, 0.75);
+}
+
+.briefing-recovery-header,
+.dispatch-recovery-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.briefing-recovery-note,
+.dispatch-recovery-note {
+  margin: 0.65rem 0 0;
+  color: var(--sw-text-muted, #62748f);
+  font-size: 0.92rem;
+}
+
+.dispatch-recovery-surface {
+  margin-top: 1rem;
+}
+
+.dispatch-recovery-copy {
+  margin: 0.35rem 0 0.6rem;
+}
+
+.dispatch-recovery-evidence {
+  margin-bottom: 0.55rem;
+}

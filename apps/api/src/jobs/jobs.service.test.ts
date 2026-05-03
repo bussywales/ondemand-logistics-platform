@@ -280,14 +280,38 @@ describe("JobsService", () => {
       previewCancellationSettlementForJob: vi.fn(),
       enqueueCancellationSettlement: vi.fn()
     };
+    const recoveryService = {
+      getBusinessRecoverySuggestion: vi.fn().mockResolvedValue({
+        jobId: JOB_ID,
+        orderId: "11111111-1111-4111-8111-111111111111",
+        issueType: "DISPATCH_FAILED",
+        recommendedAction: "RETRY_DISPATCH",
+        explanation: "Retry dispatch first: no open driver offer is active.",
+        evidence: {
+          currentJobStatus: "DISPATCH_FAILED",
+          paymentStatus: "AUTHORIZED",
+          offerCount: 0,
+          latestOfferStatus: null,
+          eligibleDriverCount: 0,
+          ageMinutes: 12
+        },
+        links: {
+          jobHref: `/app/jobs/${JOB_ID}`,
+          orderHref: "/app/orders/11111111-1111-4111-8111-111111111111",
+          paymentsHref: null
+        },
+        advisory: "Human approval is required."
+      })
+    };
 
-    const service = new JobsService(pg as never, payments as never);
+    const service = new JobsService(pg as never, payments as never, recoveryService as never);
     const tracking = await service.getTracking(JOB_ID, ACTOR_ID);
 
     expect(tracking.jobId).toBe(JOB_ID);
     expect(tracking.assignedDriver?.displayName).toBe("Driver One");
     expect(tracking.dispatchAttempts).toHaveLength(1);
     expect(tracking.timeline).toHaveLength(2);
+    expect(tracking.recoverySuggestion?.recommendedAction).toBe("RETRY_DISPATCH");
   });
 
   it("returns empty-state tracking payloads and coerces timeline ids from pg strings", async () => {

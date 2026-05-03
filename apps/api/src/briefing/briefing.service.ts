@@ -14,6 +14,7 @@ import {
 } from "@shipwright/contracts";
 import { toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
+import { DispatchRecoveryService } from "./dispatch-recovery.service.js";
 
 type BriefingRow = {
   org_id: string | null;
@@ -311,16 +312,51 @@ export function buildDailyBriefing(rows: BriefingRow[], scope: DailyBriefingScop
 
 @Injectable()
 export class BriefingService {
-  constructor(private readonly pg: PgService) {}
+  constructor(
+    private readonly pg: PgService,
+    private readonly recoveryService?: DispatchRecoveryService
+  ) {}
 
   async getBusinessDailyBriefing(userId: string) {
     const result = await this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(true), [userId]);
-    return buildDailyBriefing(result.rows, "business");
+    return this.enrichRecoverySuggestions(buildDailyBriefing(result.rows, "business"), userId, false);
   }
 
   async getAdminDailyBriefing() {
     const result = await this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(false));
-    return buildDailyBriefing(result.rows, "admin");
+    return this.enrichRecoverySuggestions(buildDailyBriefing(result.rows, "admin"), null, true);
+  }
+
+  private async enrichRecoverySuggestions(
+    briefing: DailyBriefingDto,
+    userId: string | null,
+    admin: boolean
+  ) {
+    if (!this.recoveryService || briefing.criticalItems.length === 0) {
+      return briefing;
+    }
+
+    const criticalItems = await Promise.all(
+      briefing.criticalItems.map(async (item) => {
+        if (!item.jobId) {
+          return item;
+        }
+
+        const recoverySuggestion = admin
+          ? await this.recoveryService!.getAdminRecoverySuggestion(item.jobId)
+          : await this.recoveryService!.getBusinessRecoverySuggestion(item.jobId, userId!);
+
+        return {
+          ...item,
+          recoverySuggestion
+        };
+      })
+    );
+
+    return DailyBriefingSchema.parse({
+      ...briefing,
+      criticalItems
+    });
   }
 
   private buildDailyBriefingQuery(scopeToMemberships: boolean) {

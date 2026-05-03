@@ -34,6 +34,7 @@ import { AdminController } from "./admin/admin.controller.js";
 import { AdminService } from "./admin/admin.service.js";
 import { BriefingController } from "./briefing/briefing.controller.js";
 import { BriefingService } from "./briefing/briefing.service.js";
+import { DispatchRecoveryService } from "./briefing/dispatch-recovery.service.js";
 
 @Module({
   imports: [],
@@ -65,6 +66,7 @@ import { BriefingService } from "./briefing/briefing.service.js";
     BusinessService,
     NotificationsService,
     BriefingService,
+    DispatchRecoveryService,
     RestaurantsService,
     PlatformAdminService,
     PlatformAdminGuard,
