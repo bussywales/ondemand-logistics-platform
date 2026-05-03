@@ -5,7 +5,7 @@ ShipWright Stage 1 is **staging-proven and ready for controlled demos plus tight
 
 ShipWright Stage 1 is **not yet ready for an open real-world pilot without named operational ownership and manual fallback discipline**.
 
-This pass reflects the latest verified staging evidence, current repo implementation, and the supporting runbooks and playbooks available in the repository as of 2026-05-02.
+This pass reflects the latest verified staging evidence, current repo implementation, and the supporting runbooks and playbooks available in the repository as of 2026-05-02. It should also be read as the foundation document for the next AI-assisted command-centre phase, not as evidence that assistive AI is already shipping in production workflows.
 
 ## Latest evidence used
 - release verification artifact:
@@ -83,6 +83,7 @@ Repo and staging evidence support:
 - `/admin` exists for `PLATFORM_ADMIN`
 - help centre and product updates surfaces exist
 - pilot playbooks now exist and are linked from help and admin
+- the current command surfaces are strong enough to become the base layer for assistive AI overlays later
 
 ## What is browser-tested vs structurally checked
 This pass separates direct live evidence from route/component structure.
@@ -147,6 +148,20 @@ Controlled testers can proceed only if:
 - a human operator is actively monitoring `/app/orders`, `/app/payments`, and `/admin`
 - the fallback playbooks in `docs/playbooks/` are treated as the operating path, not optional reading
 
+## Near-term AI direction
+The recommended next strategic layer is assistive AI for command-centre workflows, not silent automation.
+
+Recommended next tranche:
+- daily operator briefing
+- failed dispatch recovery suggestions
+- delay detection
+- AI-generated incident summaries
+- end-of-day operations report
+- pilot readiness command dashboard
+
+Reference roadmap:
+- `docs/roadmaps/ai-assisted-command-centre-roadmap.md`
+
 ## What is parked
 The following is intentionally not treated as a current pilot proof requirement:
 - Resend-backed outbound email delivery
@@ -156,6 +171,7 @@ The following is intentionally not treated as a current pilot proof requirement:
 - rich live-map or real-time courier movement
 - full design-system migration of every shell
 - full `globals.css` retirement
+- autonomous AI decisions on refunds, cancellations, driver assignment, payments, customer messaging, or incident closure
 
 ## What blocks a real pilot
 These are the real blockers to claiming broad live-pilot readiness.

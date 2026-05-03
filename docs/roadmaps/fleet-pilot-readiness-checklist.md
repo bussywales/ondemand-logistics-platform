@@ -32,9 +32,10 @@ These are already evidenced in the current repo and staging proof flow.
 - [x] proof artifacts are written under `docs/proofs/`
 - [x] direct schema sanity can run when `DATABASE_URL` is present
 - [x] authenticated smoke checks can run when bearer tokens are present
+- [ ] operator and incident instrumentation is complete enough to support assistive AI safely
 
 ## 2) Still required before controlled live pilot use
-These are not closed just because staging proof is green.
+These are not closed just because staging proof is green. They also define the minimum control layer ShipWright needs before assistive AI recommendations can be trusted operationally.
 
 ### Operations and support
 - [ ] fallback manual dispatch procedure exists and is owned
@@ -46,6 +47,7 @@ These are not closed just because staging proof is green.
 - [ ] customer/operator tracking v1 is sufficient for pilot support needs
 - [ ] restaurant staff can see live order state clearly enough to operate without internal admin help
 - [ ] business new-order notification remains visibly verified in the live browser flow after notification UI changes
+- [ ] operator workflows are instrumented enough to support briefing, triage, and incident-summary recommendations
 
 ### Compliance and pilot operations
 - [ ] minimum courier onboarding and identity checks are defined and applied operationally, not just via staging fixtures
@@ -66,7 +68,28 @@ Before wider demos or pilot traffic:
 - [ ] repeat browser checkout proof after customer ordering UI changes
 - [ ] repeat notification visibility proof after notifications UI changes
 
-## 5) Not required for pilot
+## 5) Human-in-the-loop rules for any assistive AI
+Any near-term AI in ShipWright must not automatically:
+- refund
+- cancel orders
+- assign drivers without operator approval during pilot
+- suspend or penalise couriers
+- send customer messages without approval
+- override payments
+- close incidents
+
+## 6) Instrumentation prerequisites for assistive AI
+Before recommendation systems are trusted, ShipWright needs reliable capture of:
+- stage timestamps
+- dispatch attempts
+- driver offer outcomes
+- payment events
+- cancellation and refund reasons
+- operator overrides
+- support notes
+- incident categories
+
+## 7) Not required for pilot
 The following are useful, but not pilot gates:
 - subscription billing automation
 - advanced analytics and reporting
@@ -77,7 +100,7 @@ The following are useful, but not pilot gates:
 - rich courier earnings tooling
 - complete design-system migration of every shell
 
-## 6) Pilot success criteria
+## 8) Pilot success criteria
 Use these measures to judge whether the pilot is working, not just whether the software shipped.
 
 - [ ] first successful live order completed outside the proof harness

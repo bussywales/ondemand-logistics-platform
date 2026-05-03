@@ -1,6 +1,6 @@
 # ShipWright (Stage 1 Pilot MVP)
 
-ShipWright is a Stage 1 pilot logistics platform for branded local delivery operations.
+ShipWright is evolving from a Stage 1 pilot logistics platform into an AI-assisted logistics command centre for local commerce.
 
 Current repo state is beyond foundations-only work. The platform now includes a real staged spine for:
 - public restaurant ordering
@@ -13,7 +13,7 @@ Current repo state is beyond foundations-only work. The platform now includes a 
 - terminal customer order state as `FULFILLED`
 - admin control plane, business notifications, help, product updates, and staging proof tooling
 
-This is still a controlled pilot system, not a production-scale marketplace.
+This is still a controlled pilot system, not a production-scale marketplace. AI-assisted command-centre capabilities are a roadmap direction, not a current autonomous product claim.
 
 ## Core guarantees
 - server-side RBAC
@@ -60,6 +60,12 @@ See the full migration history in:
 
 Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, and platform admin support.
 
+## Strategic direction
+- current state: operational delivery and dispatch foundations
+- near-term direction: operator-first AI assistance for briefing, triage, recovery, and summaries
+- later direction: recommendation systems with human approval
+- deferred: high-risk automation without operator review
+
 ## Current Stage 1 evidence
 - Proof archive: `docs/proofs/`
 - Paid delivery proof runbook: `docs/staging-paid-delivery-proof.md`
@@ -85,6 +91,7 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 - `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution status and priorities
 - `docs/roadmaps/fleet-pilot-readiness-checklist.md` - pilot gate split into staging-proof and live-pilot readiness
 - `docs/roadmaps/fleet-pilot-gap-review.md` - current repo-to-plan gap review
+- `docs/roadmaps/ai-assisted-command-centre-roadmap.md` - AI-assisted command-centre direction and implementation phases
 - `docs/roadmaps/fleet-stage1-execution-tranche-01.md` - earlier Stage 1 tranche reference
 
 ## Design authority

@@ -6,7 +6,7 @@ This is the Stage 1 execution document for Fleet / ShipWright.
 Use it to:
 - prioritise weekly work
 - prevent Stage 2 and Stage 3 scope from leaking into pilot
-- track what is active, blocked, manual, or deferred
+- track what is active, blocked, manual, deferred, or instrumented for the next intelligence layer
 - keep staging proof and demo claims tied to actual repo evidence
 
 This document must stay aligned with:
@@ -27,6 +27,7 @@ Stage 1 exists to prove the operating model. It does not exist to finish the ful
 - reliability matters more than broad feature depth
 - merchant activation is sales-led
 - investor demos require repeatable staging proof, not fake success states
+- assistive AI should improve operator decision quality, not silently automate high-risk workflows
 
 ## Current evidence
 Current Stage 1 evidence is now stronger than the original plan baseline.
@@ -49,6 +50,20 @@ Reference evidence:
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/release-checklist.md`
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/proofs/`
+
+## Strategic next direction
+After Stage 1 operational foundations, ShipWright should evolve into an AI-assisted logistics command centre.
+
+Near-term direction:
+- operator briefings
+- failed dispatch recovery suggestions
+- delay detection
+- AI-generated incident summaries
+- end-of-day operations reporting
+- pilot readiness command dashboard
+
+Reference roadmap:
+- `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/ai-assisted-command-centre-roadmap.md`
 
 ## Workstreams
 
@@ -195,6 +210,8 @@ Reference evidence:
 4. Close customer/operator tracking v1 gaps
 5. Write fallback, escalation, and reconciliation playbooks
 6. Continue release reliability discipline without letting it replace product work
+7. Instrument the operational spine for assistive intelligence
+8. Build Tranche 2A: Command Intelligence v1
 
 ## Explicitly manual for Pilot MVP
 These can remain manual in Stage 1 if ownership is explicit:
@@ -216,6 +233,19 @@ Do not pull these into Stage 1 unless they directly unblock pilot:
 - retention and optimisation features
 - scale-grade operational efficiency tooling
 - Stage 2 dispatch automation beyond pilot necessity
+- autonomous AI decision-making in live pilot workflows
+- customer messaging automation without approval
+- refund or cancellation automation without operator review
+
+## Instrumentation priorities for the next intelligence layer
+- stage timestamps
+- dispatch attempts
+- driver offer outcomes
+- payment events
+- cancellation and refund reasons
+- operator overrides
+- support notes
+- incident categories
 
 ## Blockers / open questions
 - customer and operator tracking v1 is still not complete
@@ -257,6 +287,8 @@ Use these statuses only:
 | Basic customer and restaurant visibility | In progress | close tracking v1 and keep order notifications verified |
 | Pilot operations and manual fallback processes | At risk | write fallback, escalation, and reconciliation playbooks |
 | Release reliability and platform hardening | In progress | keep `/readyz`, schema verification, and proof archive current |
+| Command intelligence instrumentation | In progress | capture timestamps, overrides, incident tags, and offer outcomes consistently |
+| Tranche 2A: Command Intelligence v1 | Not started | ship operator briefing, dispatch recovery suggestions, delay detection, incident summaries, EOD report, and readiness dashboard |
 
 ## Change control
 - this working plan must stay aligned with the roadmap package
