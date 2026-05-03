@@ -40,6 +40,20 @@ describe("buildDailyBriefing", () => {
     expect(briefing.recommendations[0]?.label).toContain("Retry");
   });
 
+  it("generates a delay attention item for requested jobs over threshold", () => {
+    const briefing = buildDailyBriefing([
+      {
+        ...baseRow,
+        assigned_driver_id: null,
+        job_status: "REQUESTED",
+        job_updated_at: "2026-05-03T08:40:00.000Z"
+      }
+    ], "business", now);
+
+    expect(briefing.attentionCount).toBe(1);
+    expect(briefing.criticalItems[0]?.category).toBe("active_without_driver");
+  });
+
   it("generates a payment-failed attention item", () => {
     const briefing = buildDailyBriefing([
       { ...baseRow, order_status: "PAYMENT_FAILED", payment_status: "FAILED" }

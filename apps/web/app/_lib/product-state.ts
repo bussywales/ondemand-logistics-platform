@@ -372,6 +372,49 @@ export type DispatchRecoverySuggestion = {
   links: DispatchRecoveryLinks;
   advisory: string;
 };
+export type IncidentSeverity = "critical" | "warning";
+export type OperationalIncidentType =
+  | "REQUESTED_STALE"
+  | "ASSIGNED_STALE"
+  | "EN_ROUTE_PICKUP_STALE"
+  | "PICKED_UP_STALE"
+  | "EN_ROUTE_DROP_STALE"
+  | "DISPATCH_FAILED_UNRESOLVED"
+  | "PAYMENT_AUTHORIZED_DELIVERY_BLOCKED";
+export type IncidentCommunicationDrafts = {
+  customerDraft: string | null;
+  restaurantDraft: string | null;
+  driverDraft: string | null;
+};
+export type OperationalIncidentEvidence = {
+  currentJobStatus: JobStatus;
+  currentOrderStatus: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED" | null;
+  currentPaymentStatus: PaymentStatus | null;
+  assignedDriverName: string | null;
+  lastTimelineEventType: string | null;
+  lastTimelineEventAt: string | null;
+  dispatchAttemptsCount: number;
+};
+export type OperationalIncidentLinks = {
+  jobHref: string;
+  orderHref: string | null;
+  paymentsHref: string | null;
+};
+export type OperationalIncidentSummary = {
+  incidentType: OperationalIncidentType;
+  severity: IncidentSeverity;
+  jobId: string;
+  orderId: string | null;
+  title: string;
+  summary: string;
+  likelyCause: string | null;
+  currentState: string;
+  elapsedMinutes: number;
+  evidence: OperationalIncidentEvidence;
+  recommendedNextAction: string;
+  links: OperationalIncidentLinks;
+  communicationDrafts: IncidentCommunicationDrafts;
+};
 
 export type DailyBriefingItem = {
   id: string;
@@ -396,6 +439,7 @@ export type DailyBriefingItem = {
   ageMinutes: number;
   href: string;
   recoverySuggestion?: DispatchRecoverySuggestion | null;
+  incidentSummary?: OperationalIncidentSummary | null;
 };
 
 export type DailyBriefingRecommendation = {
@@ -685,6 +729,7 @@ export type AppJob = {
   tracking: TrackingSummary;
   payment: PaymentSummary;
   recoverySuggestion?: DispatchRecoverySuggestion | null;
+  incidentSummary?: OperationalIncidentSummary | null;
 };
 
 const BUSINESS_SESSION_KEY = "shipwright.business-session.v2";

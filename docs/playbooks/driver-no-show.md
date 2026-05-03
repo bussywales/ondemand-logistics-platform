@@ -7,6 +7,7 @@
 - Job remains `ASSIGNED` or `EN_ROUTE_PICKUP` without meaningful progress.
 - Tracking/timeline stops updating.
 - Driver route panel shows stale or absent live signal after assignment.
+- `/app/jobs/[jobId]` may show an incident summary draft stating that the assigned courier has not moved to pickup or has stalled during delivery.
 
 ## Immediate operator action
 1. Confirm the job is truly assigned to a driver.
@@ -14,6 +15,7 @@
 3. Decide whether manual reassignment is safe.
 4. If reassignment is needed, use the manual reassignment playbook.
 5. If the order is no longer recoverable, move to cancellation/refund handling.
+6. If contacting the courier, use the draft section as a suggested prompt only. Review the current facts before sending.
 
 ## Customer/restaurant communication guidance
 - Tell the restaurant pickup is delayed due to courier execution failure.

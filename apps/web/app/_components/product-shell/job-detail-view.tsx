@@ -3,6 +3,7 @@ import type { AppJob, BusinessSession, EligibleDriver } from "../../_lib/product
 import type { DriverAssignmentFailureModel } from "../../_lib/driver-assignment";
 import { getDispatchIntelligence } from "../../_lib/dispatch-intelligence";
 import { DispatchTimelinePanel } from "./dispatch-timeline-panel";
+import { JobIncidentSummaryPanel } from "./job-incident-summary-panel";
 import { JobDecisionSurface } from "./job-decision-surface";
 import { JobRouteAndDriverPanel } from "./job-route-and-driver-panel";
 import { OperatorControlsPanel } from "./operator-controls-panel";
@@ -47,6 +48,7 @@ export function JobDetailView(props: JobDetailViewProps) {
         onAssignDriver={props.onOpenDriverPicker}
         onRetryDispatch={props.onRetryDispatch}
       />
+      <JobIncidentSummaryPanel incidentSummary={props.job.incidentSummary} />
       <JobRouteAndDriverPanel job={props.job} />
       <DispatchTimelinePanel job={props.job} />
       <PaymentStatusPanel

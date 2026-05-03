@@ -129,6 +129,12 @@ Detect when an order is slipping relative to expected progression:
 - picked up but drop-off timing drifting
 - stale driver/job state vs expected stage timing
 
+Command Intelligence v1C should stay deterministic:
+- delay detection is rules-based
+- incident summaries are drafted from current order, job, payment, and timeline signals
+- customer, restaurant, and driver drafts are suggestions only
+- no message is sent automatically
+
 ### Customer communication suggestions
 Draft, but do not send automatically:
 - delay notices

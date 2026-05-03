@@ -13,6 +13,7 @@
 2. Gather the minimum evidence bundle.
 3. Escalate to the named owner with the exact blocker and desired decision.
 4. Keep customer and restaurant communication factual while escalation is in progress.
+5. Use any incident-summary draft as a starting point only. Review and edit it before sending.
 
 ## Customer/restaurant communication guidance
 - State that the issue is under active review.
@@ -37,3 +38,4 @@
 - exact error or contradiction observed
 - person escalated to
 - escalation timestamp
+- whether draft communication was used and what was edited before it was sent

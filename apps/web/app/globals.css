@@ -8791,3 +8791,47 @@ select:hover,
 .dispatch-recovery-evidence {
   margin-bottom: 0.55rem;
 }
+
+.briefing-incident-block {
+  margin-top: 0.9rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(194, 131, 37, 0.18);
+  border-radius: 1rem;
+  background: rgba(255, 248, 232, 0.7);
+}
+
+.incident-summary-panel {
+  gap: 1rem;
+}
+
+.incident-summary-grid,
+.incident-drafts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.incident-summary-card,
+.incident-draft-box {
+  min-height: 100%;
+}
+
+.incident-summary-card p:last-child,
+.incident-draft-box p:last-child {
+  margin-bottom: 0;
+}
+
+.incident-summary-evidence {
+  margin-top: 0.25rem;
+}
+
+.incident-drafts-panel {
+  margin-top: 0.35rem;
+}
+
+@media (max-width: 960px) {
+  .incident-summary-grid,
+  .incident-drafts-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -277,6 +277,62 @@ export const DispatchRecoverySuggestionSchema = z.object({
 });
 export type DispatchRecoverySuggestionDto = z.infer<typeof DispatchRecoverySuggestionSchema>;
 
+export const IncidentSeveritySchema = z.enum(["critical", "warning"]);
+export type IncidentSeverity = z.infer<typeof IncidentSeveritySchema>;
+
+export const OperationalIncidentTypeSchema = z.enum([
+  "REQUESTED_STALE",
+  "ASSIGNED_STALE",
+  "EN_ROUTE_PICKUP_STALE",
+  "PICKED_UP_STALE",
+  "EN_ROUTE_DROP_STALE",
+  "DISPATCH_FAILED_UNRESOLVED",
+  "PAYMENT_AUTHORIZED_DELIVERY_BLOCKED"
+]);
+export type OperationalIncidentType = z.infer<typeof OperationalIncidentTypeSchema>;
+
+export const IncidentCommunicationDraftsSchema = z.object({
+  customerDraft: z.string().min(2).nullable(),
+  restaurantDraft: z.string().min(2).nullable(),
+  driverDraft: z.string().min(2).nullable()
+});
+export type IncidentCommunicationDraftsDto = z.infer<typeof IncidentCommunicationDraftsSchema>;
+
+export const OperationalIncidentEvidenceSchema = z.object({
+  currentJobStatus: JobStatusSchema,
+  currentOrderStatus: z.lazy(() => CustomerOrderStatusSchema).nullable(),
+  currentPaymentStatus: z.lazy(() => PaymentStatusSchema).nullable(),
+  assignedDriverName: z.string().min(2).nullable(),
+  lastTimelineEventType: z.string().min(2).nullable(),
+  lastTimelineEventAt: IsoDateTimeSchema.nullable(),
+  dispatchAttemptsCount: z.number().int().nonnegative()
+});
+export type OperationalIncidentEvidenceDto = z.infer<typeof OperationalIncidentEvidenceSchema>;
+
+export const OperationalIncidentLinksSchema = z.object({
+  jobHref: z.string().min(2),
+  orderHref: z.string().min(2).nullable(),
+  paymentsHref: z.string().min(2).nullable()
+});
+export type OperationalIncidentLinksDto = z.infer<typeof OperationalIncidentLinksSchema>;
+
+export const OperationalIncidentSummarySchema = z.object({
+  incidentType: OperationalIncidentTypeSchema,
+  severity: IncidentSeveritySchema,
+  jobId: z.string().uuid(),
+  orderId: z.string().uuid().nullable(),
+  title: z.string().min(2),
+  summary: z.string().min(2),
+  likelyCause: z.string().min(2).nullable(),
+  currentState: z.string().min(2),
+  elapsedMinutes: z.number().int().nonnegative(),
+  evidence: OperationalIncidentEvidenceSchema,
+  recommendedNextAction: z.string().min(2),
+  links: OperationalIncidentLinksSchema,
+  communicationDrafts: IncidentCommunicationDraftsSchema
+});
+export type OperationalIncidentSummaryDto = z.infer<typeof OperationalIncidentSummarySchema>;
+
 export const JobTrackingSchema = z.object({
   jobId: z.string().uuid(),
   status: JobStatusSchema,
@@ -295,7 +351,8 @@ export const JobTrackingSchema = z.object({
   assignedDriver: TrackingDriverSummarySchema.nullable(),
   dispatchAttempts: z.array(DispatchAttemptSchema),
   timeline: z.array(JobTimelineEventSchema),
-  recoverySuggestion: DispatchRecoverySuggestionSchema.nullable().optional()
+  recoverySuggestion: DispatchRecoverySuggestionSchema.nullable().optional(),
+  incidentSummary: OperationalIncidentSummarySchema.nullable().optional()
 });
 export type JobTrackingDto = z.infer<typeof JobTrackingSchema>;
 
@@ -932,7 +989,8 @@ export const DailyBriefingItemSchema = z.object({
   detectedAt: IsoDateTimeSchema,
   ageMinutes: z.number().int().nonnegative(),
   href: z.string().min(2),
-  recoverySuggestion: DispatchRecoverySuggestionSchema.nullable().optional()
+  recoverySuggestion: DispatchRecoverySuggestionSchema.nullable().optional(),
+  incidentSummary: OperationalIncidentSummarySchema.nullable().optional()
 });
 export type DailyBriefingItemDto = z.infer<typeof DailyBriefingItemSchema>;
 

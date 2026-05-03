@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { type DailyBriefing, type DispatchRecoverySuggestion } from "../../_lib/product-state";
+import { type DailyBriefing, type DispatchRecoverySuggestion, type OperationalIncidentSummary } from "../../_lib/product-state";
 import { ShipWrightIcon } from "../shipwright-icon";
 import { formatStatusLabel } from "./shared";
 
@@ -55,6 +55,25 @@ function RecoverySuggestionBlock(props: { suggestion: DispatchRecoverySuggestion
         {suggestion.evidence.latestOfferStatus ? <span>Latest offer {formatStatusLabel(suggestion.evidence.latestOfferStatus)}</span> : null}
       </div>
       <p className="briefing-recovery-note">{suggestion.advisory}</p>
+    </div>
+  );
+}
+
+function IncidentSummaryBlock(props: { incident: OperationalIncidentSummary }) {
+  return (
+    <div className="briefing-incident-block">
+      <div className="briefing-recovery-header">
+        <span className={`sw-badge ${props.incident.severity === "critical" ? "sw-badge--danger" : "sw-badge--warning"}`}>
+          Incident
+        </span>
+        <strong>{props.incident.title}</strong>
+      </div>
+      <p>{props.incident.summary}</p>
+      <div className="briefing-evidence-row">
+        <span>{props.incident.currentState}</span>
+        <span>{props.incident.elapsedMinutes} min in state</span>
+      </div>
+      {props.incident.likelyCause ? <p className="briefing-recovery-note">{props.incident.likelyCause}</p> : null}
     </div>
   );
 }
@@ -123,6 +142,7 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
                     {item.jobStatus ? <span>Job {formatStatusLabel(item.jobStatus)}</span> : null}
                     {item.paymentStatus ? <span>Payment {formatStatusLabel(item.paymentStatus)}</span> : null}
                   </div>
+                  {item.incidentSummary ? <IncidentSummaryBlock incident={item.incidentSummary} /> : null}
                   {item.recoverySuggestion ? <RecoverySuggestionBlock suggestion={item.recoverySuggestion} /> : null}
                 </div>
                 <div className="sw-queue-row-actions briefing-item-actions">

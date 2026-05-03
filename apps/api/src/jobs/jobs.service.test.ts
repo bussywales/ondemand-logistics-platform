@@ -303,8 +303,41 @@ describe("JobsService", () => {
         advisory: "Human approval is required."
       })
     };
+    const incidentService = {
+      getBusinessIncidentSummary: vi.fn().mockResolvedValue({
+        incidentType: "DISPATCH_FAILED_UNRESOLVED",
+        severity: "critical",
+        jobId: JOB_ID,
+        orderId: "11111111-1111-4111-8111-111111111111",
+        title: "Dispatch failed and remains unresolved",
+        summary: "Pilot Kitchen is still blocked 12 min after dispatch failed.",
+        likelyCause: "No courier accepted or completed the latest dispatch path.",
+        currentState: "The job is in DISPATCH_FAILED and no active courier movement is recorded.",
+        elapsedMinutes: 12,
+        evidence: {
+          currentJobStatus: "DISPATCH_FAILED",
+          currentOrderStatus: "PAYMENT_AUTHORIZED",
+          currentPaymentStatus: "AUTHORIZED",
+          assignedDriverName: null,
+          lastTimelineEventType: "JOB_DISPATCH_FAILED",
+          lastTimelineEventAt: new Date().toISOString(),
+          dispatchAttemptsCount: 1
+        },
+        recommendedNextAction: "Open the job and review dispatch recovery guidance.",
+        links: {
+          jobHref: `/app/jobs/${JOB_ID}`,
+          orderHref: "/app/orders/11111111-1111-4111-8111-111111111111",
+          paymentsHref: "/app/payments"
+        },
+        communicationDrafts: {
+          customerDraft: "We are reviewing a delay with your delivery.",
+          restaurantDraft: "We are reviewing the delivery delay.",
+          driverDraft: null
+        }
+      })
+    };
 
-    const service = new JobsService(pg as never, payments as never, recoveryService as never);
+    const service = new JobsService(pg as never, payments as never, recoveryService as never, incidentService as never);
     const tracking = await service.getTracking(JOB_ID, ACTOR_ID);
 
     expect(tracking.jobId).toBe(JOB_ID);
@@ -312,6 +345,7 @@ describe("JobsService", () => {
     expect(tracking.dispatchAttempts).toHaveLength(1);
     expect(tracking.timeline).toHaveLength(2);
     expect(tracking.recoverySuggestion?.recommendedAction).toBe("RETRY_DISPATCH");
+    expect(tracking.incidentSummary?.incidentType).toBe("DISPATCH_FAILED_UNRESOLVED");
   });
 
   it("returns empty-state tracking payloads and coerces timeline ids from pg strings", async () => {

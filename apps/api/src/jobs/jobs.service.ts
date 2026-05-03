@@ -26,6 +26,7 @@ import { toFiniteNumber, toInteger, toIsoDateTime, toNullableIsoDateTime } from 
 import { PgService } from "../database/pg.service.js";
 import { PaymentsService } from "../payments/payments.service.js";
 import { DispatchRecoveryService } from "../briefing/dispatch-recovery.service.js";
+import { IncidentIntelligenceService } from "../briefing/incident-intelligence.service.js";
 
 type QuoteRecord = {
   id: string;
@@ -162,7 +163,8 @@ export class JobsService {
   constructor(
     private readonly pg: PgService,
     private readonly payments: PaymentsService,
-    private readonly recoveryService?: DispatchRecoveryService
+    private readonly recoveryService?: DispatchRecoveryService,
+    private readonly incidentService?: IncidentIntelligenceService
   ) {}
 
   async createJobRequest(input: unknown, userId: string, idempotencyKey: string) {
@@ -364,7 +366,7 @@ export class JobsService {
   async getTracking(jobId: string, userId: string): Promise<JobTrackingDto> {
     const job = await this.loadAuthorizedTrackingJob(jobId, userId);
     const attention = this.computeAttention(job);
-    const [dispatchAttempts, timeline, recoverySuggestion] = await Promise.all([
+    const [dispatchAttempts, timeline, recoverySuggestion, incidentSummary] = await Promise.all([
       this.loadDispatchAttempts(jobId),
       this.pg.query<TimelineRow>(
         `select id, event_type, actor_id, created_at, payload
@@ -374,7 +376,8 @@ export class JobsService {
          limit 100`,
         [jobId]
       ),
-      this.recoveryService?.getBusinessRecoverySuggestion(jobId, userId) ?? Promise.resolve(null)
+      this.recoveryService?.getBusinessRecoverySuggestion(jobId, userId) ?? Promise.resolve(null),
+      this.incidentService?.getBusinessIncidentSummary(jobId, userId) ?? Promise.resolve(null)
     ]);
 
     return JobTrackingSchema.parse({
@@ -422,7 +425,8 @@ export class JobsService {
         createdAt: toIsoDateTime(event.created_at),
         payload: event.payload
       })),
-      recoverySuggestion
+      recoverySuggestion,
+      incidentSummary
     });
   }
 

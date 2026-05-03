@@ -5,6 +5,7 @@ import {
   BusinessPaymentListSchema,
   BusinessContextSchema,
   DailyBriefingSchema,
+  OperationalIncidentSummarySchema,
   BusinessNotificationReadAllSchema,
   BusinessNotificationReadSchema,
   BusinessNotificationListSchema,
@@ -281,6 +282,37 @@ describe("admin schemas", () => {
           detectedAt: new Date().toISOString(),
           ageMinutes: 18,
           href: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd",
+          incidentSummary: {
+            incidentType: "DISPATCH_FAILED_UNRESOLVED",
+            severity: "critical",
+            jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+            orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+            title: "Dispatch failed and remains unresolved",
+            summary: "Pilot Kitchen order is still blocked 18 min after dispatch failed.",
+            likelyCause: "No courier accepted or completed the latest dispatch path.",
+            currentState: "The job is in DISPATCH_FAILED and no active courier movement is recorded.",
+            elapsedMinutes: 18,
+            evidence: {
+              currentJobStatus: "DISPATCH_FAILED",
+              currentOrderStatus: "PAYMENT_AUTHORIZED",
+              currentPaymentStatus: "AUTHORIZED",
+              assignedDriverName: null,
+              lastTimelineEventType: "JOB_DISPATCH_FAILED",
+              lastTimelineEventAt: new Date().toISOString(),
+              dispatchAttemptsCount: 1
+            },
+            recommendedNextAction: "Open the job and review dispatch recovery guidance.",
+            links: {
+              jobHref: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd",
+              orderHref: "/app/orders/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+              paymentsHref: "/app/payments"
+            },
+            communicationDrafts: {
+              customerDraft: "We are reviewing a delay with your delivery.",
+              restaurantDraft: "We are reviewing the delivery delay.",
+              driverDraft: null
+            }
+          },
           recoverySuggestion: {
             jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
             orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
@@ -528,7 +560,74 @@ describe("read models", () => {
           payload: { offerId: "abc" }
         }
       ],
-      dispatchAttempts: []
+      dispatchAttempts: [],
+      incidentSummary: {
+        incidentType: "ASSIGNED_STALE",
+        severity: "warning",
+        jobId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        title: "Assigned courier has not moved to pickup",
+        summary: "The assigned courier has not progressed to pickup after 25 min.",
+        likelyCause: "The courier may be delayed or unavailable.",
+        currentState: "The job is ASSIGNED but pickup travel has not been confirmed.",
+        elapsedMinutes: 25,
+        evidence: {
+          currentJobStatus: "ASSIGNED",
+          currentOrderStatus: "PAYMENT_AUTHORIZED",
+          currentPaymentStatus: "AUTHORIZED",
+          assignedDriverName: "Driver One",
+          lastTimelineEventType: "JOB_ASSIGNED",
+          lastTimelineEventAt: new Date().toISOString(),
+          dispatchAttemptsCount: 1
+        },
+        recommendedNextAction: "Open the job and confirm courier status.",
+        links: {
+          jobHref: "/app/jobs/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          orderHref: "/app/orders/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          paymentsHref: null
+        },
+        communicationDrafts: {
+          customerDraft: "We are reviewing a delivery delay.",
+          restaurantDraft: "We are reviewing the delivery delay.",
+          driverDraft: "We are reviewing the current delivery state."
+        }
+      }
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses operational incident summaries directly", () => {
+    const parsed = OperationalIncidentSummarySchema.safeParse({
+      incidentType: "EN_ROUTE_DROP_STALE",
+      severity: "warning",
+      jobId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      title: "Drop-off travel looks delayed",
+      summary: "The courier has been en route to drop-off for 34 min without completion.",
+      likelyCause: "Traffic or courier progress may need review.",
+      currentState: "The job is EN_ROUTE_DROP and delivery completion is late.",
+      elapsedMinutes: 34,
+      evidence: {
+        currentJobStatus: "EN_ROUTE_DROP",
+        currentOrderStatus: "PAYMENT_AUTHORIZED",
+        currentPaymentStatus: "AUTHORIZED",
+        assignedDriverName: "Driver One",
+        lastTimelineEventType: "JOB_EN_ROUTE_DROP",
+        lastTimelineEventAt: new Date().toISOString(),
+        dispatchAttemptsCount: 1
+      },
+      recommendedNextAction: "Review the job timeline and confirm courier progress.",
+      links: {
+        jobHref: "/app/jobs/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        orderHref: "/app/orders/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+        paymentsHref: null
+      },
+      communicationDrafts: {
+        customerDraft: "We are reviewing a delay with your delivery.",
+        restaurantDraft: "We are reviewing the delivery delay.",
+        driverDraft: "We are reviewing the current delivery state."
+      }
     });
 
     expect(parsed.success).toBe(true);

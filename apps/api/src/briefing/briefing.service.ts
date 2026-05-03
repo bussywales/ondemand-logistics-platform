@@ -15,6 +15,7 @@ import {
 import { toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 import { DispatchRecoveryService } from "./dispatch-recovery.service.js";
+import { IncidentIntelligenceService } from "./incident-intelligence.service.js";
 
 type BriefingRow = {
   org_id: string | null;
@@ -61,7 +62,9 @@ const ACTIVE_JOB_STATUSES: JobStatus[] = [
   "IN_PROGRESS"
 ];
 
-const STALE_JOB_MINUTES = 45;
+const REQUESTED_THRESHOLD_MINUTES = 15;
+const ASSIGNED_THRESHOLD_MINUTES = 20;
+const EN_ROUTE_THRESHOLD_MINUTES = 30;
 const MAX_CRITICAL_ITEMS = 5;
 const MAX_RECOMMENDATIONS = 5;
 const GUIDANCE =
@@ -109,11 +112,18 @@ function getBriefingCategory(row: BriefingRow, now: Date): DailyBriefingItemCate
     return "delivered_uncaptured";
   }
 
-  if (isActiveJob(row.job_status) && !row.assigned_driver_id) {
+  if (row.job_status === "REQUESTED" && !row.assigned_driver_id && minutesBetween(now, toIsoDateTime(row.job_updated_at)) >= REQUESTED_THRESHOLD_MINUTES) {
     return "active_without_driver";
   }
 
-  if (isActiveJob(row.job_status) && minutesBetween(now, toIsoDateTime(row.job_updated_at)) >= STALE_JOB_MINUTES) {
+  if (row.job_status === "ASSIGNED" && minutesBetween(now, toIsoDateTime(row.job_updated_at)) >= ASSIGNED_THRESHOLD_MINUTES) {
+    return "stale_job";
+  }
+
+  if (
+    ["EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(row.job_status) &&
+    minutesBetween(now, toIsoDateTime(row.job_updated_at)) >= EN_ROUTE_THRESHOLD_MINUTES
+  ) {
     return "stale_job";
   }
 
@@ -314,25 +324,26 @@ export function buildDailyBriefing(rows: BriefingRow[], scope: DailyBriefingScop
 export class BriefingService {
   constructor(
     private readonly pg: PgService,
-    private readonly recoveryService?: DispatchRecoveryService
+    private readonly recoveryService?: DispatchRecoveryService,
+    private readonly incidentService?: IncidentIntelligenceService
   ) {}
 
   async getBusinessDailyBriefing(userId: string) {
     const result = await this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(true), [userId]);
-    return this.enrichRecoverySuggestions(buildDailyBriefing(result.rows, "business"), userId, false);
+    return this.enrichIntelligence(buildDailyBriefing(result.rows, "business"), userId, false);
   }
 
   async getAdminDailyBriefing() {
     const result = await this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(false));
-    return this.enrichRecoverySuggestions(buildDailyBriefing(result.rows, "admin"), null, true);
+    return this.enrichIntelligence(buildDailyBriefing(result.rows, "admin"), null, true);
   }
 
-  private async enrichRecoverySuggestions(
+  private async enrichIntelligence(
     briefing: DailyBriefingDto,
     userId: string | null,
     admin: boolean
   ) {
-    if (!this.recoveryService || briefing.criticalItems.length === 0) {
+    if ((!this.recoveryService && !this.incidentService) || briefing.criticalItems.length === 0) {
       return briefing;
     }
 
@@ -342,13 +353,23 @@ export class BriefingService {
           return item;
         }
 
-        const recoverySuggestion = admin
-          ? await this.recoveryService!.getAdminRecoverySuggestion(item.jobId)
-          : await this.recoveryService!.getBusinessRecoverySuggestion(item.jobId, userId!);
+        const [recoverySuggestion, incidentSummary] = await Promise.all([
+          this.recoveryService
+            ? admin
+              ? this.recoveryService.getAdminRecoverySuggestion(item.jobId)
+              : this.recoveryService.getBusinessRecoverySuggestion(item.jobId, userId!)
+            : Promise.resolve(null),
+          this.incidentService
+            ? admin
+              ? this.incidentService.getAdminIncidentSummary(item.jobId)
+              : this.incidentService.getBusinessIncidentSummary(item.jobId, userId!)
+            : Promise.resolve(null)
+        ]);
 
         return {
           ...item,
-          recoverySuggestion
+          recoverySuggestion,
+          incidentSummary
         };
       })
     );

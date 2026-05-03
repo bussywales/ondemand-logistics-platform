@@ -33,6 +33,37 @@ const attentionBriefing: DailyBriefing = {
       detectedAt: "2026-05-03T08:42:00.000Z",
       ageMinutes: 18,
       href: "/app/jobs/job-1",
+      incidentSummary: {
+        incidentType: "DISPATCH_FAILED_UNRESOLVED",
+        severity: "critical",
+        jobId: "job-1",
+        orderId: "order-1",
+        title: "Dispatch failed and remains unresolved",
+        summary: "Pilot Kitchen order for Ada Customer is still blocked 18 min after dispatch failed.",
+        likelyCause: "No courier accepted or completed the latest dispatch path.",
+        currentState: "The job is in DISPATCH_FAILED and no active courier movement is recorded.",
+        elapsedMinutes: 18,
+        evidence: {
+          currentJobStatus: "DISPATCH_FAILED",
+          currentOrderStatus: "PAYMENT_AUTHORIZED",
+          currentPaymentStatus: "AUTHORIZED",
+          assignedDriverName: null,
+          lastTimelineEventType: "JOB_DISPATCH_FAILED",
+          lastTimelineEventAt: "2026-05-03T08:42:00.000Z",
+          dispatchAttemptsCount: 1
+        },
+        recommendedNextAction: "Open the job and review dispatch recovery guidance.",
+        links: {
+          jobHref: "/app/jobs/job-1",
+          orderHref: "/app/orders/order-1",
+          paymentsHref: "/app/payments"
+        },
+        communicationDrafts: {
+          customerDraft: "We are reviewing a delay with your delivery.",
+          restaurantDraft: "We are reviewing the delivery delay.",
+          driverDraft: null
+        }
+      },
       recoverySuggestion: {
         jobId: "job-1",
         orderId: "order-1",
@@ -100,6 +131,7 @@ describe("DailyBriefingSurface", () => {
     expect(markup).toContain("Human approval is required for all recovery actions.");
     expect(markup).toContain("Recovery suggestion");
     expect(markup).toContain("Retry Dispatch");
+    expect(markup).toContain("Dispatch failed and remains unresolved");
   });
 
   it("renders a clear briefing without implying autonomous action", () => {
