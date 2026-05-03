@@ -72,6 +72,13 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 - `docs/staging-paid-delivery-proof.md` - full paid order to delivered proof runbook
 - `docs/release-checklist.md` - staging release verification and readiness gate
 
+## Demo And Tester Guides
+- `docs/demo/README.md` - index for controlled demo and tester session guides
+- `docs/demo/controlled-demo-runbook.md` - controlled staging demo preparation and guardrails
+- `docs/demo/demo-script.md` - live walkthrough sequence for demos
+- `docs/demo/tester-session-checklist.md` - before/during/after checklist for internal tester sessions
+- `docs/demo/known-limitations.md` - claims boundary and current limitations
+
 ## Roadmaps
 - `docs/roadmaps/fleet-roadmap.md` - primary Fleet delivery roadmap
 - `docs/roadmaps/fleet-scope-cut-matrix.md` - build, buy, manual, and defer decisions by stage

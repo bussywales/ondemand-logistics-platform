@@ -189,6 +189,12 @@ Conditions:
 - treat playbooks as live operating instructions
 - avoid claiming production-grade autonomy or unattended pilot readiness
 
+Recommended supporting docs for these sessions:
+- `docs/demo/controlled-demo-runbook.md`
+- `docs/demo/demo-script.md`
+- `docs/demo/tester-session-checklist.md`
+- `docs/demo/known-limitations.md`
+
 ## Recommended next pilot actions
 1. Rehearse one full browser-led demo using the latest proof order plus `/track/[orderId]`, `/app/orders`, `/app/payments`, `/driver`, and `/admin`.
 2. Run `pnpm release:verify-staging` and `pnpm proof:staging-paid-delivery` immediately before any investor or pilot-facing session.

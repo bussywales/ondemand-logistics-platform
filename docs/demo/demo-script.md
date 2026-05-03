@@ -1,0 +1,169 @@
+# Demo Script
+
+## Objective
+Walk a stakeholder through the current Stage 1 ShipWright loop without overstating what is production-ready.
+
+## Setup
+Have ready:
+- latest release verification result
+- latest paid-delivery proof artifact
+- seeded business operator session
+- seeded driver session
+- seeded platform admin session
+- public restaurant route open in a clean tab
+
+## Step-By-Step Walkthrough
+
+### 1. Public restaurant menu
+Open:
+- `https://ondemand-logistics-platform-web.vercel.app/restaurants/pilot-kitchen-1777370757`
+
+Say:
+- this is the branded public customer ordering surface
+- menu and basket are real staging data, not mock cards
+
+Show:
+- restaurant identity
+- live menu item list
+- cart rail
+- delivery detail form
+- payment section
+
+### 2. Place paid order
+Use the public checkout flow.
+
+Say:
+- the customer authorises payment through Stripe test mode
+- the order creates real downstream order, job, and payment records
+
+Show:
+- paid order submission
+- successful order creation outcome
+
+### 3. Customer success screen
+Stay on the success state.
+
+Show:
+- order confirmation
+- linked job/payment state tiles
+- `Back to menu`
+- `Track order` call to action
+
+Say:
+- the customer gets a clear next step immediately after order creation
+
+### 4. Track order
+Open the tracking route from the success screen, or use:
+- `/track/<latestOrderId>`
+
+Show:
+- order status
+- job status
+- payment status
+- progress stepper
+- timeline
+
+Say:
+- tracking is progress/status based
+- this is not a live map product yet
+
+### 5. Business orders queue
+Open:
+- `/app/orders`
+
+Show:
+- order-first queue
+- payment state
+- delivery state
+- fulfilment state
+- risk state
+- customer total
+- platform fee / driver payout when available
+
+Say:
+- operators manage fulfilment and financial risk from one order surface
+
+### 6. Payment risk page
+Open:
+- `/app/payments`
+
+Show:
+- risk-only lens over the order set
+- no-risk or risk-bearing queue depending on current data
+
+Say:
+- this is not a finance ledger dashboard
+- it is an operational payment risk surface tied to fulfilment
+
+### 7. Notifications
+Open:
+- `/app/notifications`
+
+Show:
+- recent grouped notifications
+- persisted read state
+- order/job-linked navigation
+
+Say:
+- this is for operational events, not release notes
+- product updates live elsewhere under `/app/updates`
+
+### 8. Driver route
+Open:
+- `/driver`
+
+Show:
+- online/offline state
+- staged offer acceptance path
+- job progression
+- POD submission
+
+Say:
+- the driver route proves staged execution and delivery completion
+- it is not yet a broad live-courier production app
+
+### 9. Admin control plane
+Open:
+- `/admin`
+
+Show:
+- intervention queue
+- active operations
+- orders
+- payment oversight
+- outbox/health visibility
+
+Say:
+- platform admins can inspect cross-org operational posture from one surface
+
+### 10. Playbooks and help
+Open:
+- `/help/pilot-operations`
+- `docs/playbooks/README.md` if the repo is available in the session
+
+Say:
+- fallback and escalation paths are documented explicitly
+- these are part of the controlled pilot discipline, not hidden tribal knowledge
+
+### 11. Proof evidence
+Reference the latest proof artifacts in `docs/proofs/`.
+
+Call out:
+- latest release verification artifact
+- latest paid-delivery proof artifact
+- final `DELIVERED`, `CAPTURED`, `FULFILLED` chain
+- processed outbox signals including order, driver, delivery, and payment notifications
+
+## Optional fallback path
+If live ordering is unstable during the session:
+- do not improvise or hide the issue
+- switch to the latest proof order and tracking route
+- continue the walkthrough from proof-backed states
+- explicitly state that you are continuing from the latest verified staging proof rather than a fresh live order
+
+## Close
+End with:
+- what is staging-proven
+- what is still manually operated
+- what is parked
+- why the current state is appropriate for controlled demos and tightly managed testers, not open pilot traffic
