@@ -4,6 +4,7 @@ import {
   AdminOverviewSchema,
   BusinessPaymentListSchema,
   BusinessContextSchema,
+  DailyBriefingSchema,
   BusinessNotificationReadAllSchema,
   BusinessNotificationReadSchema,
   BusinessNotificationListSchema,
@@ -248,6 +249,64 @@ describe("admin schemas", () => {
         ]
       }).success
     ).toBe(true);
+  });
+
+  it("parses deterministic daily briefing payloads", () => {
+    const parsed = DailyBriefingSchema.safeParse({
+      scope: "business",
+      generatedAt: new Date().toISOString(),
+      headline: "2 items need attention before service",
+      summary: "Dispatch and payment signals need review before service expands.",
+      attentionCount: 2,
+      criticalItems: [
+        {
+          id: "dispatch_failed:job-1",
+          category: "dispatch_failed",
+          severity: "danger",
+          title: "Dispatch failed",
+          summary: "Pilot Kitchen order for Ada Customer has no accepted courier.",
+          reason: "No eligible driver accepted the latest dispatch attempt.",
+          entityType: "job",
+          entityId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+          orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+          paymentId: "1cc3382c-f799-4856-b537-dbd61c851075",
+          orgId: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+          orgName: "Pilot Org",
+          restaurantName: "Pilot Kitchen",
+          customerName: "Ada Customer",
+          orderStatus: "PAYMENT_AUTHORIZED",
+          jobStatus: "DISPATCH_FAILED",
+          paymentStatus: "AUTHORIZED",
+          detectedAt: new Date().toISOString(),
+          ageMinutes: 18,
+          href: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd"
+        }
+      ],
+      operatingState: {
+        ordersToday: 5,
+        activeJobs: 2,
+        fulfilledOrders: 1,
+        paymentRisks: 2,
+        availableDrivers: null
+      },
+      recommendations: [
+        {
+          id: "rec:dispatch_failed:job-1",
+          label: "Assign driver",
+          summary: "Open the delivery job and retry or manually reassign the courier.",
+          href: "/app/jobs/bf835fca-017a-465d-adc1-bc5a42e311bd",
+          entityType: "job",
+          entityId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+          orderId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          jobId: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+          paymentId: "1cc3382c-f799-4856-b537-dbd61c851075"
+        }
+      ],
+      guidance: "This briefing is based on current ShipWright operational signals. Human approval is required for all recovery actions."
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });
 

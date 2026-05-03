@@ -1,0 +1,91 @@
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { DailyBriefingSurface } from "./daily-briefing-surface";
+import type { DailyBriefing } from "../../_lib/product-state";
+
+const attentionBriefing: DailyBriefing = {
+  scope: "business",
+  generatedAt: "2026-05-03T09:00:00.000Z",
+  headline: "2 items need attention before service",
+  summary: "Review dispatch, payment, and delivery exceptions before expanding service volume.",
+  attentionCount: 2,
+  criticalItems: [
+    {
+      id: "dispatch_failed:order-1",
+      category: "dispatch_failed",
+      severity: "danger",
+      title: "Dispatch failed",
+      summary: "Pilot Kitchen order for Ada Customer is still waiting for a courier 18 min after dispatch failed.",
+      reason: "No eligible driver accepted the latest dispatch attempt.",
+      entityType: "job",
+      entityId: "job-1",
+      orderId: "order-1",
+      jobId: "job-1",
+      paymentId: "payment-1",
+      orgId: "org-1",
+      orgName: "Pilot Org",
+      restaurantName: "Pilot Kitchen",
+      customerName: "Ada Customer",
+      orderStatus: "PAYMENT_AUTHORIZED",
+      jobStatus: "DISPATCH_FAILED",
+      paymentStatus: "AUTHORIZED",
+      detectedAt: "2026-05-03T08:42:00.000Z",
+      ageMinutes: 18,
+      href: "/app/jobs/job-1"
+    }
+  ],
+  operatingState: {
+    ordersToday: 4,
+    activeJobs: 2,
+    fulfilledOrders: 1,
+    paymentRisks: 1,
+    availableDrivers: null
+  },
+  recommendations: [
+    {
+      id: "rec:dispatch_failed:order-1",
+      label: "Retry or reassign dispatch",
+      summary: "Open the job, retry dispatch, or manually assign a courier after reviewing eligibility.",
+      href: "/app/jobs/job-1",
+      entityType: "job",
+      entityId: "job-1",
+      orderId: "order-1",
+      jobId: "job-1",
+      paymentId: "payment-1"
+    }
+  ],
+  guidance:
+    "This briefing is based on current ShipWright operational signals. Human approval is required for all recovery actions."
+};
+
+const clearBriefing: DailyBriefing = {
+  ...attentionBriefing,
+  headline: "Operations look clear",
+  summary: "No current dispatch, payment, or delivery signals require immediate operator intervention.",
+  attentionCount: 0,
+  criticalItems: [],
+  recommendations: []
+};
+
+describe("DailyBriefingSurface", () => {
+  it("renders an attention briefing with recommendation links", () => {
+    const markup = renderToStaticMarkup(<DailyBriefingSurface briefing={attentionBriefing} />);
+
+    expect(markup).toContain("2 items need attention before service");
+    expect(markup).toContain("Dispatch failed");
+    expect(markup).toContain("Retry or reassign dispatch");
+    expect(markup).toContain('href="/app/jobs/job-1"');
+    expect(markup).toContain("Human approval is required for all recovery actions.");
+  });
+
+  it("renders a clear briefing without implying autonomous action", () => {
+    const markup = renderToStaticMarkup(<DailyBriefingSurface briefing={clearBriefing} />);
+
+    expect(markup).toContain("Operations look clear");
+    expect(markup).toContain("No immediate recovery actions are queued.");
+    expect(markup).toContain("Human approval is required for all recovery actions.");
+    expect(markup).not.toContain("AI-generated");
+    expect(markup).not.toContain("automatically");
+  });
+});

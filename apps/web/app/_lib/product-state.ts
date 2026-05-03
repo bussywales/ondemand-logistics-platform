@@ -326,6 +326,72 @@ export type AdminOrderSummary = {
 
 export type PayoutLedgerStatus = "PENDING" | "READY" | "PAID" | "FAILED" | "CANCELLED";
 
+export type DailyBriefingScope = "business" | "admin";
+export type DailyBriefingItemCategory =
+  | "dispatch_failed"
+  | "payment_failed"
+  | "delivered_uncaptured"
+  | "active_without_driver"
+  | "stale_job";
+export type DailyBriefingSeverity = "danger" | "warning" | "success";
+export type DailyBriefingEntityType = "order" | "job" | "payment";
+
+export type DailyBriefingItem = {
+  id: string;
+  category: DailyBriefingItemCategory;
+  severity: DailyBriefingSeverity;
+  title: string;
+  summary: string;
+  reason: string;
+  entityType: DailyBriefingEntityType;
+  entityId: string;
+  orderId: string | null;
+  jobId: string | null;
+  paymentId: string | null;
+  orgId: string | null;
+  orgName: string | null;
+  restaurantName: string | null;
+  customerName: string | null;
+  orderStatus: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED" | null;
+  jobStatus: JobStatus | null;
+  paymentStatus: PaymentStatus | null;
+  detectedAt: string;
+  ageMinutes: number;
+  href: string;
+};
+
+export type DailyBriefingRecommendation = {
+  id: string;
+  label: string;
+  summary: string;
+  href: string;
+  entityType: DailyBriefingEntityType;
+  entityId: string;
+  orderId: string | null;
+  jobId: string | null;
+  paymentId: string | null;
+};
+
+export type DailyBriefingOperatingState = {
+  ordersToday: number;
+  activeJobs: number;
+  fulfilledOrders: number;
+  paymentRisks: number;
+  availableDrivers: number | null;
+};
+
+export type DailyBriefing = {
+  scope: DailyBriefingScope;
+  generatedAt: string;
+  headline: string;
+  summary: string;
+  attentionCount: number;
+  criticalItems: DailyBriefingItem[];
+  operatingState: DailyBriefingOperatingState;
+  recommendations: DailyBriefingRecommendation[];
+  guidance: string;
+};
+
 export type BusinessPaymentSummary = {
   id: string;
   orderId: string;

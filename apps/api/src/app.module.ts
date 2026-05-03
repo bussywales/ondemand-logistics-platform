@@ -32,6 +32,8 @@ import { PlatformAdminService } from "./security/platform-admin.service.js";
 import { PlatformAdminGuard } from "./security/platform-admin.guard.js";
 import { AdminController } from "./admin/admin.controller.js";
 import { AdminService } from "./admin/admin.service.js";
+import { BriefingController } from "./briefing/briefing.controller.js";
+import { BriefingService } from "./briefing/briefing.service.js";
 
 @Module({
   imports: [],
@@ -44,6 +46,7 @@ import { AdminService } from "./admin/admin.service.js";
     PaymentsController,
     BusinessController,
     NotificationsController,
+    BriefingController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -61,6 +64,7 @@ import { AdminService } from "./admin/admin.service.js";
     PaymentsService,
     BusinessService,
     NotificationsService,
+    BriefingService,
     RestaurantsService,
     PlatformAdminService,
     PlatformAdminGuard,

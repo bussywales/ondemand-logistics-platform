@@ -2,13 +2,15 @@ import { Controller, Get, UseGuards } from "@nestjs/common";
 import { AdminService } from "./admin.service.js";
 import { PlatformAdminGuard } from "../security/platform-admin.guard.js";
 import { PaymentsService } from "../payments/payments.service.js";
+import { BriefingService } from "../briefing/briefing.service.js";
 
 @UseGuards(PlatformAdminGuard)
 @Controller("v1/admin")
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
-    private readonly paymentsService: PaymentsService
+    private readonly paymentsService: PaymentsService,
+    private readonly briefingService: BriefingService
   ) {}
 
   @Get("overview")
@@ -35,6 +37,11 @@ export class AdminController {
     return {
       items: await this.paymentsService.listAdminPayments()
     };
+  }
+
+  @Get("briefing/daily")
+  getDailyBriefing() {
+    return this.briefingService.getAdminDailyBriefing();
   }
 
   @Get("outbox")

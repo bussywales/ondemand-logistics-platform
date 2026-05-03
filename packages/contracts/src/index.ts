@@ -842,6 +842,84 @@ export const AdminOverviewSchema = z.object({
 });
 export type AdminOverviewDto = z.infer<typeof AdminOverviewSchema>;
 
+export const DailyBriefingScopeSchema = z.enum(["business", "admin"]);
+export type DailyBriefingScope = z.infer<typeof DailyBriefingScopeSchema>;
+
+export const DailyBriefingItemCategorySchema = z.enum([
+  "dispatch_failed",
+  "payment_failed",
+  "delivered_uncaptured",
+  "active_without_driver",
+  "stale_job"
+]);
+export type DailyBriefingItemCategory = z.infer<typeof DailyBriefingItemCategorySchema>;
+
+export const DailyBriefingSeveritySchema = z.enum(["danger", "warning", "success"]);
+export type DailyBriefingSeverity = z.infer<typeof DailyBriefingSeveritySchema>;
+
+export const DailyBriefingEntityTypeSchema = z.enum(["order", "job", "payment"]);
+export type DailyBriefingEntityType = z.infer<typeof DailyBriefingEntityTypeSchema>;
+
+export const DailyBriefingItemSchema = z.object({
+  id: z.string().min(3),
+  category: DailyBriefingItemCategorySchema,
+  severity: DailyBriefingSeveritySchema,
+  title: z.string().min(2),
+  summary: z.string().min(2),
+  reason: z.string().min(2),
+  entityType: DailyBriefingEntityTypeSchema,
+  entityId: z.string().uuid(),
+  orderId: z.string().uuid().nullable(),
+  jobId: z.string().uuid().nullable(),
+  paymentId: z.string().uuid().nullable(),
+  orgId: z.string().uuid().nullable(),
+  orgName: z.string().nullable(),
+  restaurantName: z.string().nullable(),
+  customerName: z.string().nullable(),
+  orderStatus: CustomerOrderStatusSchema.nullable(),
+  jobStatus: JobStatusSchema.nullable(),
+  paymentStatus: PaymentStatusSchema.nullable(),
+  detectedAt: IsoDateTimeSchema,
+  ageMinutes: z.number().int().nonnegative(),
+  href: z.string().min(2)
+});
+export type DailyBriefingItemDto = z.infer<typeof DailyBriefingItemSchema>;
+
+export const DailyBriefingRecommendationSchema = z.object({
+  id: z.string().min(3),
+  label: z.string().min(2),
+  summary: z.string().min(2),
+  href: z.string().min(2),
+  entityType: DailyBriefingEntityTypeSchema,
+  entityId: z.string().uuid(),
+  orderId: z.string().uuid().nullable(),
+  jobId: z.string().uuid().nullable(),
+  paymentId: z.string().uuid().nullable()
+});
+export type DailyBriefingRecommendationDto = z.infer<typeof DailyBriefingRecommendationSchema>;
+
+export const DailyBriefingOperatingStateSchema = z.object({
+  ordersToday: z.number().int().nonnegative(),
+  activeJobs: z.number().int().nonnegative(),
+  fulfilledOrders: z.number().int().nonnegative(),
+  paymentRisks: z.number().int().nonnegative(),
+  availableDrivers: z.number().int().nonnegative().nullable()
+});
+export type DailyBriefingOperatingStateDto = z.infer<typeof DailyBriefingOperatingStateSchema>;
+
+export const DailyBriefingSchema = z.object({
+  scope: DailyBriefingScopeSchema,
+  generatedAt: IsoDateTimeSchema,
+  headline: z.string().min(2),
+  summary: z.string().min(2),
+  attentionCount: z.number().int().nonnegative(),
+  criticalItems: z.array(DailyBriefingItemSchema),
+  operatingState: DailyBriefingOperatingStateSchema,
+  recommendations: z.array(DailyBriefingRecommendationSchema),
+  guidance: z.string().min(2)
+});
+export type DailyBriefingDto = z.infer<typeof DailyBriefingSchema>;
+
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;
 

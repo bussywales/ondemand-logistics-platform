@@ -21,6 +21,7 @@ import {
   cancelJob,
   createLiveJob,
   getDriverAssignmentIneligibility,
+  getBusinessDailyBriefing,
   getLiveJob,
   listBusinessOrders,
   listEligibleDrivers,
@@ -37,6 +38,7 @@ import { getDispatchIntelligence, shouldShowInReviewQueue, sortReviewQueue } fro
 import {
   type AppJob,
   type BusinessCustomerOrder,
+  type DailyBriefing,
   type BusinessSession,
   type DeliveryFormInput,
   type EligibleDriver,
@@ -66,6 +68,8 @@ export function ProductShell(props: ProductShellProps) {
   const [jobs, setJobs] = useState<AppJob[]>([]);
   const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
+  const [dailyBriefing, setDailyBriefing] = useState<DailyBriefing | null>(null);
+  const [briefingError, setBriefingError] = useState<string | null>(null);
   const [deliveryForm, setDeliveryForm] = useState<DeliveryFormInput>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -151,8 +155,20 @@ export function ProductShell(props: ProductShellProps) {
 
   async function refreshJobs(currentSession: NonNullable<typeof session>) {
     try {
-      const liveJobs = await listLiveJobs(currentSession);
+      const [liveJobs, nextBriefing] = await Promise.all([
+        listLiveJobs(currentSession),
+        getBusinessDailyBriefing(currentSession)
+          .then((briefing) => {
+            setBriefingError(null);
+            return briefing;
+          })
+          .catch((issue) => {
+            setBriefingError(issue instanceof Error ? issue.message : "Unable to load daily briefing.");
+            return null;
+          })
+      ]);
       setJobs(liveJobs);
+      setDailyBriefing(nextBriefing);
       const customerOrders = await listBusinessOrders(currentSession).catch(() => []);
       setOrders(customerOrders);
     } catch (issue) {
@@ -342,6 +358,8 @@ export function ProductShell(props: ProductShellProps) {
   async function handleSignOut() {
     await signOut();
     setJobs([]);
+    setDailyBriefing(null);
+    setBriefingError(null);
     setSelectedJob(null);
     router.push("/get-started");
   }
@@ -472,6 +490,8 @@ export function ProductShell(props: ProductShellProps) {
               actionSubmitting={actionSubmitting}
               activeJobs={activeJobs}
               attentionJobs={attentionJobs}
+              briefing={dailyBriefing}
+              briefingError={briefingError}
               onRefresh={() => void handleRefresh()}
               onRetryDispatch={(nextJob) => void handleRetryDispatch(nextJob)}
               recentOrders={recentOrders}

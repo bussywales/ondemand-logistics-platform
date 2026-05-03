@@ -55,6 +55,7 @@ Reference evidence:
 After Stage 1 operational foundations, ShipWright should evolve into an AI-assisted logistics command centre.
 
 Near-term direction:
+- Daily Operator Briefing v1 should ship first as a deterministic, rules-based command surface with explicit human approval requirements.
 - operator briefings
 - failed dispatch recovery suggestions
 - delay detection
@@ -211,7 +212,7 @@ Reference roadmap:
 5. Write fallback, escalation, and reconciliation playbooks
 6. Continue release reliability discipline without letting it replace product work
 7. Instrument the operational spine for assistive intelligence
-8. Build Tranche 2A: Command Intelligence v1
+8. Build Tranche 2A: Command Intelligence v1, starting with the deterministic Daily Operator Briefing
 
 ## Explicitly manual for Pilot MVP
 These can remain manual in Stage 1 if ownership is explicit:

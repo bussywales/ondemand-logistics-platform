@@ -97,6 +97,8 @@ A start-of-shift briefing summarising:
 - drivers currently unavailable or unreliable
 - unresolved incidents from the previous shift
 
+Daily Operator Briefing v1 should be deterministic and rules-based, not LLM-generated. It should behave as a human-readable operating brief built from current platform signals, with explicit evidence and operator review links.
+
 ### Failed dispatch recovery suggestions
 For `DISPATCH_FAILED` or slow-dispatch jobs, AI should suggest:
 - likely reason category
@@ -287,6 +289,8 @@ Why this tranche first:
 - it stays human-in-the-loop
 - it does not require silent automation
 - it makes the existing command surfaces more useful without rewriting core workflows
+
+The first shipping slice of Tranche 2A should remain deterministic and human-in-the-loop even though the broader product direction is AI-assisted.
 
 ### Tranche 2B: Dispatch Intelligence v1
 After Tranche 2A and sufficient instrumentation:

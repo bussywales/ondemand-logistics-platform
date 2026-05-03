@@ -5,6 +5,7 @@ import type {
   AdminOutboxItem,
   AdminOverview,
   AppJob,
+  DailyBriefing,
   BusinessNotification,
   BusinessNotificationList,
   BusinessCustomerOrder,
@@ -138,6 +139,7 @@ type BusinessNotificationListResponse = BusinessNotificationList;
 type BusinessPaymentListResponse = {
   items: BusinessPaymentSummary[];
 };
+type DailyBriefingResponse = DailyBriefing;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
@@ -478,6 +480,12 @@ export async function listBusinessPayments(session: BusinessSession): Promise<Bu
   });
 
   return payload.items;
+}
+
+export async function getBusinessDailyBriefing(session: BusinessSession): Promise<DailyBriefing> {
+  return apiFetch<DailyBriefingResponse>(session, "/v1/business/briefing/daily", {
+    method: "GET"
+  });
 }
 
 export async function getBusinessOrder(session: BusinessSession, orderId: string): Promise<BusinessCustomerOrder> {

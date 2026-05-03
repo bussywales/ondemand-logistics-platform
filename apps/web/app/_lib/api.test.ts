@@ -5,6 +5,7 @@ import {
   authorizePayment,
   createProofOfDelivery,
   createRestaurant,
+  getBusinessDailyBriefing,
   getDriverAssignmentIneligibility,
   getBusinessOrder,
   getCurrentDriverJob,
@@ -258,6 +259,75 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/business/payments');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(payments[0]?.paymentStatus).toBe('AUTHORIZED');
+  });
+
+  it('reads the daily briefing with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          scope: 'business',
+          generatedAt: new Date().toISOString(),
+          headline: '1 item needs attention before service',
+          summary: 'Dispatch and payment signals need review before service expands.',
+          attentionCount: 1,
+          criticalItems: [
+            {
+              id: 'dispatch_failed:order-1',
+              category: 'dispatch_failed',
+              severity: 'danger',
+              title: 'Dispatch failed',
+              summary: 'Pilot Kitchen order for Ada Customer is still waiting for a courier.',
+              reason: 'No eligible driver accepted the latest dispatch attempt.',
+              entityType: 'job',
+              entityId: 'job-1',
+              orderId: 'order-1',
+              jobId: 'job-1',
+              paymentId: 'payment-1',
+              orgId: 'org-1',
+              orgName: 'Pilot Org',
+              restaurantName: 'Pilot Kitchen',
+              customerName: 'Ada Customer',
+              orderStatus: 'PAYMENT_AUTHORIZED',
+              jobStatus: 'DISPATCH_FAILED',
+              paymentStatus: 'AUTHORIZED',
+              detectedAt: new Date().toISOString(),
+              ageMinutes: 18,
+              href: '/app/jobs/job-1'
+            }
+          ],
+          operatingState: {
+            ordersToday: 4,
+            activeJobs: 2,
+            fulfilledOrders: 1,
+            paymentRisks: 1,
+            availableDrivers: null
+          },
+          recommendations: [
+            {
+              id: 'rec:dispatch_failed:order-1',
+              label: 'Retry or reassign dispatch',
+              summary: 'Open the job and retry dispatch after checking courier eligibility.',
+              href: '/app/jobs/job-1',
+              entityType: 'job',
+              entityId: 'job-1',
+              orderId: 'order-1',
+              jobId: 'job-1',
+              paymentId: 'payment-1'
+            }
+          ],
+          guidance:
+            'This briefing is based on current ShipWright operational signals. Human approval is required for all recovery actions.'
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const briefing = await getBusinessDailyBriefing(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/briefing/daily');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(briefing.criticalItems[0]?.category).toBe('dispatch_failed');
   });
 
   it('parses structured driver assignment ineligibility errors', () => {

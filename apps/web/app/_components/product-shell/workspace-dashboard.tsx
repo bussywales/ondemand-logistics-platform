@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ShipWrightIcon } from "../shipwright-icon";
-import { formatCurrency, formatDateTime, type AppJob, type BusinessCustomerOrder } from "../../_lib/product-state";
+import { formatCurrency, formatDateTime, type AppJob, type BusinessCustomerOrder, type DailyBriefing } from "../../_lib/product-state";
 import { getDispatchIntelligence, getJobShortId } from "../../_lib/dispatch-intelligence";
+import { DailyBriefingSurface } from "./daily-briefing-surface";
 import {
   attentionTone,
   formatStatusLabel,
@@ -32,6 +33,8 @@ type WorkspaceDashboardProps = {
   actionSubmitting: boolean;
   activeJobs: AppJob[];
   attentionJobs: ReviewQueueItem[];
+  briefing: DailyBriefing | null;
+  briefingError: string | null;
   onRefresh: () => void;
   onRetryDispatch: (job: AppJob) => void;
   recentOrders: BusinessCustomerOrder[];
@@ -338,6 +341,7 @@ export function WorkspaceDashboard(props: WorkspaceDashboardProps) {
         attentionCount={props.attentionJobs.length}
         onRefresh={props.onRefresh}
       />
+      <DailyBriefingSurface briefing={props.briefing} error={props.briefingError} />
       <MetricSignalGrid attentionCount={props.attentionJobs.length} workspaceSummary={props.workspaceSummary} />
       <RecentOrdersSurface recentOrders={props.recentOrders} />
       <ActiveJobsQueue activeJobs={props.activeJobs} />
