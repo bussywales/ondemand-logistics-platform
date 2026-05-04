@@ -10,8 +10,10 @@ import {
   SupabaseBrowserAuthError,
   createBusinessOrg,
   fetchBusinessContext,
+  requestPasswordReset,
   signInWithPassword,
-  signUpWithPassword
+  signUpWithPassword,
+  updatePassword
 } from "../_lib/auth";
 import { saveDriverProfile, type VehicleType } from "../_lib/product-state";
 import { sanitizePostAuthDestination } from "../_lib/route-protection";
@@ -26,6 +28,11 @@ type AuthSession = BrowserAuthSession;
 const authDefaults = {
   email: "",
   password: ""
+};
+
+const recoveryDefaults = {
+  password: "",
+  confirmPassword: ""
 };
 
 const businessSetupDefaults = {
@@ -67,6 +74,18 @@ function getFriendlyBusinessError(issue: unknown) {
         "Too many signup emails were requested for this address. Wait a short while before trying again, use a different email, or switch to Sign in if the account already exists.",
       requiresCooldown: true
     };
+  }
+
+  if (issue instanceof SupabaseBrowserAuthError) {
+    const message = issue.message.toLowerCase();
+    const code = issue.code?.toLowerCase() ?? "";
+    if (code.includes("invalid_credentials") || message.includes("invalid login credentials")) {
+      return {
+        message:
+          "Invalid email or password. If this is an existing operator account, use Send reset link before trying again.",
+        requiresCooldown: false
+      };
+    }
   }
 
   if (issue instanceof BrowserAuthTimeoutError) {
@@ -135,6 +154,9 @@ export function OnboardingFlow() {
   const [signupCooldownSecondsLeft, setSignupCooldownSecondsLeft] = useState(0);
   const [authenticatedSession, setAuthenticatedSession] = useState<AuthSession | null>(null);
   const [postAuthDestination, setPostAuthDestination] = useState("/app");
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryForm, setRecoveryForm] = useState(recoveryDefaults);
+  const [resetRequestMessage, setResetRequestMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (signupCooldownSecondsLeft <= 0) {
@@ -167,7 +189,59 @@ export function OnboardingFlow() {
 
     const params = new URLSearchParams(window.location.search);
     setPostAuthDestination(sanitizePostAuthDestination(params.get("next")));
+    setRecoveryMode(params.get("recovery") === "1");
   }, []);
+
+  async function handlePasswordResetRequest() {
+    setError(null);
+    setResetRequestMessage(null);
+
+    if (!authForm.email.trim()) {
+      setError("Enter the operator email first, then request a password reset link.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      await requestPasswordReset({ email: authForm.email.trim() });
+      setResetRequestMessage("Password reset link sent. Check the operator email inbox and open the latest ShipWright recovery email.");
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to send the password reset email.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handlePasswordRecoverySubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setResetRequestMessage(null);
+
+    try {
+      if (!recoveryForm.password || !recoveryForm.confirmPassword) {
+        throw new Error("Enter and confirm the new password.");
+      }
+
+      if (recoveryForm.password !== recoveryForm.confirmPassword) {
+        throw new Error("The new password confirmation does not match.");
+      }
+
+      if (recoveryForm.password.length < 8) {
+        throw new Error("Use a password with at least 8 characters.");
+      }
+
+      const authSession = await updatePassword({ password: recoveryForm.password });
+      const context = await fetchBusinessContext(authSession.accessToken);
+      hydrateSession(authSession, context);
+      router.push(context.currentOrg ? postAuthDestination : context.platformAdmin ? "/admin" : postAuthDestination);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to reset the password.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function handleBusinessAuthSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -301,6 +375,7 @@ export function OnboardingFlow() {
     setBusinessStep("auth");
     setAuthenticatedSession(null);
     setError(null);
+    setResetRequestMessage(null);
     if (nextMode) {
       setAuthMode(nextMode);
     }
@@ -340,7 +415,13 @@ export function OnboardingFlow() {
             <h2>
               {role === "business" ? "Business onboarding" : role === "driver" ? "Driver onboarding" : "Current focus"}
             </h2>
-            <p>{businessStep === "setup" && role === "business" ? "You’re one step away from going live." : roleSummary}</p>
+            <p>
+              {recoveryMode
+                ? "Open the recovery email, set a new password, and then continue back into the live workspace."
+                : businessStep === "setup" && role === "business"
+                  ? "You’re one step away from going live."
+                  : roleSummary}
+            </p>
             {role === "business" && businessStep === "setup" ? (
               <>
                 <div className="operator-identity">
@@ -363,7 +444,7 @@ export function OnboardingFlow() {
                 <li>The dashboard then reuses that real context for jobs, tracking, and payment reads.</li>
               </ul>
             )}
-            {existingSession?.context.currentOrg ? (
+            {existingSession?.context.currentOrg && !recoveryMode ? (
               <div className="existing-session-callout">
                 <strong>Existing session detected</strong>
                 <p>{existingSession.context.currentOrg.name}</p>
@@ -375,7 +456,55 @@ export function OnboardingFlow() {
           </div>
 
           {role === "business" ? (
-            businessStep === "auth" ? (
+            recoveryMode ? (
+              <form className="form-card" onSubmit={handlePasswordRecoverySubmit}>
+                <div className="onboarding-step-header">
+                  <span className="step-pill">Recovery</span>
+                  <div>
+                    <h3>Set a new password</h3>
+                    <p>Use the password recovery email link first. Then choose the new password here.</p>
+                  </div>
+                </div>
+
+                <div className="form-grid-two">
+                  <label>
+                    <span>New password</span>
+                    <input
+                      name="recoveryPassword"
+                      onChange={(event) => setRecoveryForm((current) => ({ ...current, password: event.target.value }))}
+                      placeholder="Choose a new password"
+                      type="password"
+                      value={recoveryForm.password}
+                    />
+                  </label>
+                  <label>
+                    <span>Confirm new password</span>
+                    <input
+                      name="recoveryPasswordConfirm"
+                      onChange={(event) => setRecoveryForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+                      placeholder="Repeat the new password"
+                      type="password"
+                      value={recoveryForm.confirmPassword}
+                    />
+                  </label>
+                </div>
+
+                <p className="support-note">
+                  This recovery step only updates the operator password. Human operators still use the same business account and workspace after sign-in.
+                </p>
+
+                {error ? <p className="form-error">{error}</p> : null}
+
+                <div className="hero-actions">
+                  <button className="button button-primary" disabled={submitting} type="submit">
+                    {submitting ? "Updating password..." : "Save new password"}
+                  </button>
+                  <Link className="button button-secondary" href="/get-started">
+                    Return to Sign in
+                  </Link>
+                </div>
+              </form>
+            ) : businessStep === "auth" ? (
               <form className="form-card" onSubmit={handleBusinessAuthSubmit}>
                 <div className="onboarding-step-header">
                   <span className="step-pill">Step 1 of 2</span>
@@ -441,11 +570,27 @@ export function OnboardingFlow() {
                   </button>
                 </div>
 
+                {authMode === "signin" ? (
+                  <div className="auth-helper-row">
+                    <span className="support-note">Existing operator account but password no longer works?</span>
+                    <button
+                      className="text-action"
+                      disabled={submitting}
+                      onClick={() => void handlePasswordResetRequest()}
+                      type="button"
+                    >
+                      Send reset link
+                    </button>
+                  </div>
+                ) : null}
+
                 {authMode === "create" && signupCooldownSecondsLeft > 0 ? (
                   <p className="form-hint">
                     Signup is temporarily paused for {signupCooldownSecondsLeft}s to avoid repeated rate-limited requests. You can still switch to Sign in now.
                   </p>
                 ) : null}
+
+                {resetRequestMessage ? <p className="form-hint">{resetRequestMessage}</p> : null}
 
                 {error ? <p className="form-error">{error}</p> : null}
 

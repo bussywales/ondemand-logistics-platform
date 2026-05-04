@@ -201,7 +201,13 @@ export function BusinessAuthProvider(props: { children: ReactNode }) {
         return;
       }
 
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      if (
+        event === 'INITIAL_SESSION' ||
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED' ||
+        event === 'PASSWORD_RECOVERY'
+      ) {
         void resolveBusinessSession(authSession);
       }
     });

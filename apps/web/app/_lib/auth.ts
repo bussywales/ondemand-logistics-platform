@@ -212,6 +212,39 @@ export async function signInWithPassword(input: { email: string; password: strin
   return mapped;
 }
 
+export async function requestPasswordReset(input: { email: string }) {
+  const client = getSupabaseBrowserClient();
+  const redirectTo = hasWindow()
+    ? `${window.location.origin}/get-started?recovery=1`
+    : undefined;
+  const { error } = await client.auth.resetPasswordForEmail(input.email, redirectTo ? { redirectTo } : undefined);
+
+  if (error) {
+    throw toAuthError(error, 'Unable to send the password reset email.');
+  }
+}
+
+export async function updatePassword(input: { password: string }) {
+  const client = getSupabaseBrowserClient();
+  const { error } = await client.auth.updateUser({
+    password: input.password
+  });
+
+  if (error) {
+    throw toAuthError(error, 'Unable to update the password.');
+  }
+
+  const mapped = await getCurrentAuthSession();
+  if (!mapped) {
+    throw new SupabaseBrowserAuthError({
+      message: 'Password updated, but the recovery session could not be restored.',
+      status: 400
+    });
+  }
+
+  return mapped;
+}
+
 export async function signOutBusiness() {
   const client = getSupabaseBrowserClient();
   const { error } = await client.auth.signOut();
