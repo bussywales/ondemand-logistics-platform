@@ -165,6 +165,20 @@ Show:
 Say:
 - platform admins can inspect cross-org operational posture from one surface
 
+### 9A. Admin command intelligence
+Open:
+- `/admin/command`
+
+Show:
+- cross-org command summary
+- grouped attention queue
+- incident intelligence
+- end-of-day closeout preview
+
+Say:
+- this is deterministic command intelligence for platform oversight
+- it helps admins spot which organisations need support without silently taking action
+
 ### 10. Playbooks and help
 Open:
 - `/help/pilot-operations`

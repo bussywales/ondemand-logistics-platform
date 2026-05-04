@@ -99,8 +99,9 @@ Recommended order:
 10. show notifications
 11. show the driver execution route
 12. show the admin control plane
-13. show help and pilot playbooks
-14. close by referencing the proof artifacts and current known limitations
+13. show admin command intelligence
+14. show help and pilot playbooks
+15. close by referencing the proof artifacts and current known limitations
 
 ## Session Discipline
 Keep the session controlled:
@@ -125,6 +126,7 @@ When Command Intelligence is shown, describe it as:
 - rules-based
 - based on current operational signals
 - human-in-the-loop
+- cross-org for platform admins when shown in `/admin/command`
 
 Do not describe it as:
 - self-driving operations

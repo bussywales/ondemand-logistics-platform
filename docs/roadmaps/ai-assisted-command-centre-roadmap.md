@@ -319,6 +319,7 @@ Current tranche status:
 - v1B failed dispatch recovery suggestions: implemented as deterministic rules
 - v1C delay detection and incident summary drafts: implemented as deterministic rules
 - v1D end-of-day operations report: implemented as deterministic closeout reporting
+- Tranche 2B admin-native command intelligence: implemented as cross-org deterministic oversight for platform admins
 
 Packaging rule for Command Intelligence v1:
 - position these surfaces as one assistive operations layer

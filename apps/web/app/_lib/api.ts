@@ -496,6 +496,12 @@ export async function getBusinessDailyBriefing(session: BusinessSession): Promis
   });
 }
 
+export async function getAdminDailyBriefing(session: BusinessSession): Promise<DailyBriefing> {
+  return apiFetch<DailyBriefingResponse>(session, "/v1/admin/briefing/daily", {
+    method: "GET"
+  });
+}
+
 export async function getBusinessEndOfDayReport(
   session: BusinessSession,
   date: string
@@ -503,6 +509,19 @@ export async function getBusinessEndOfDayReport(
   return apiFetch<EndOfDayReportResponse>(
     session,
     `/v1/business/reports/end-of-day?date=${encodeURIComponent(date)}`,
+    {
+      method: "GET"
+    }
+  );
+}
+
+export async function getAdminEndOfDayReport(
+  session: BusinessSession,
+  date: string
+): Promise<EndOfDayReport> {
+  return apiFetch<EndOfDayReportResponse>(
+    session,
+    `/v1/admin/reports/end-of-day?date=${encodeURIComponent(date)}`,
     {
       method: "GET"
     }

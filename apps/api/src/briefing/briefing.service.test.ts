@@ -37,6 +37,8 @@ describe("buildDailyBriefing", () => {
     expect(briefing.attentionCount).toBe(1);
     expect(briefing.criticalItems[0]?.category).toBe("dispatch_failed");
     expect(briefing.criticalItems[0]?.href).toBe(`/app/jobs/${baseRow.job_id}`);
+    expect(briefing.criticalItems[0]?.orgName).toBe("Pilot Org");
+    expect(briefing.criticalItems[0]?.restaurantName).toBe("Pilot Kitchen");
     expect(briefing.recommendations[0]?.label).toContain("Retry");
   });
 

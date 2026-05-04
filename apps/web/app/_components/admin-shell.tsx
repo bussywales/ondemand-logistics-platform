@@ -419,8 +419,8 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             <h2>Deterministic assistive operations</h2>
           </div>
           <div className="admin-section-actions">
-            <Link className="sw-button sw-button--secondary button button-secondary" href="/app">
-              Daily briefing
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/command">
+              Open command view
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/app/reports/end-of-day">
               End-of-day report

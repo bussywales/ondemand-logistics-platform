@@ -5,6 +5,8 @@ import {
   authorizePayment,
   createProofOfDelivery,
   createRestaurant,
+  getAdminDailyBriefing,
+  getAdminEndOfDayReport,
   getBusinessDailyBriefing,
   getBusinessEndOfDayReport,
   getDriverAssignmentIneligibility,
@@ -546,6 +548,115 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/business/notifications');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(notifications[0]?.type).toBe('JOB_DISPATCH_FAILED');
+  });
+
+  it("reads the admin daily briefing with bearer auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          scope: "admin",
+          generatedAt: new Date().toISOString(),
+          headline: "2 items need attention before service",
+          summary: "Review dispatch, payment, and delivery exceptions before expanding service volume.",
+          attentionCount: 1,
+          criticalItems: [
+            {
+              id: "dispatch_failed:order-1",
+              category: "dispatch_failed",
+              severity: "danger",
+              title: "Dispatch failed",
+              summary: "Pilot Kitchen order for Ada Customer is still waiting for a courier.",
+              reason: "No eligible driver accepted the latest dispatch attempt.",
+              entityType: "job",
+              entityId: "job-1",
+              orderId: "order-1",
+              jobId: "job-1",
+              paymentId: "payment-1",
+              orgId: "org-1",
+              orgName: "Pilot Org",
+              restaurantName: "Pilot Kitchen",
+              customerName: "Ada Customer",
+              orderStatus: "PAYMENT_AUTHORIZED",
+              jobStatus: "DISPATCH_FAILED",
+              paymentStatus: "AUTHORIZED",
+              detectedAt: new Date().toISOString(),
+              ageMinutes: 18,
+              href: "/app/jobs/job-1"
+            }
+          ],
+          operatingState: {
+            ordersToday: 4,
+            activeJobs: 2,
+            fulfilledOrders: 1,
+            paymentRisks: 1,
+            availableDrivers: null
+          },
+          recommendations: [],
+          guidance:
+            "This briefing is based on current ShipWright operational signals. Human approval is required for all recovery actions."
+        })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const briefing = await getAdminDailyBriefing(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/v1/admin/briefing/daily");
+    expect((init.headers as Record<string, string>).authorization).toBe("Bearer access-token");
+    expect(briefing.scope).toBe("admin");
+    expect(briefing.criticalItems[0]?.orgName).toBe("Pilot Org");
+  });
+
+  it("reads the admin end-of-day report with bearer auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          scope: "admin",
+          date: "2026-05-04",
+          generatedAt: new Date().toISOString(),
+          headline: "No unresolved items today",
+          summary: "The day closed without unresolved dispatch, payment, or delay follow-up items.",
+          unresolvedCount: 0,
+          operatingSummary: {
+            ordersReceived: 12,
+            fulfilledOrders: 12,
+            activeOrUnresolvedOrders: 0,
+            cancelledOrPaymentFailedOrders: 0,
+            activeJobs: 0,
+            deliveredJobs: 12,
+            dispatchFailures: 0,
+            staleOrDelayedJobs: 0
+          },
+          paymentsSummary: {
+            authorized: 0,
+            captured: 12,
+            failed: 0,
+            deliveredNotCaptured: 0,
+            payoutReviewCount: 0
+          },
+          incidentsSummary: {
+            dispatchFailed: 0,
+            delayIncidents: 0,
+            paymentRisks: 0,
+            driverFollowUpIncidents: 0,
+            unresolvedRecommendations: 0
+          },
+          unresolvedActions: [],
+          evidenceLinks: [],
+          guidance:
+            "This report summarises operational signals. Operators remain responsible for recovery, refunds, cancellations, and customer communications."
+        })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const report = await getAdminEndOfDayReport(session, "2026-05-04");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/v1/admin/reports/end-of-day?date=2026-05-04");
+    expect((init.headers as Record<string, string>).authorization).toBe("Bearer access-token");
+    expect(report.scope).toBe("admin");
   });
 
   it('marks a business notification as read with bearer auth', async () => {
