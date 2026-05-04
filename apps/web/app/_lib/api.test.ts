@@ -13,6 +13,7 @@ import {
   getBusinessOrder,
   getCurrentDriverJob,
   getDriverState,
+  getUserFacingApiError,
   getPublicRestaurantMenu,
   getRestaurantMenu,
   isUnauthorizedApiError,
@@ -58,6 +59,24 @@ const session: BusinessSession = {
 describe('authorizePayment', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('maps internal server errors to a user-facing fallback message', () => {
+    const message = getUserFacingApiError(
+      new ApiRequestError('internal_server_error', 500, { error: { message: 'internal_server_error' } }),
+      'Report data unavailable. Refresh or contact support.'
+    );
+
+    expect(message).toBe('Report data unavailable. Refresh or contact support.');
+  });
+
+  it('preserves specific non-server API error messages', () => {
+    const message = getUserFacingApiError(
+      new ApiRequestError('invalid_report_date', 422, { error: { message: 'invalid_report_date' } }),
+      'fallback'
+    );
+
+    expect(message).toBe('invalid_report_date');
   });
 
   it('posts the Stripe payment method id to the authorization endpoint', async () => {

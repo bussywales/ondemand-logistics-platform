@@ -112,6 +112,46 @@ describe("SchemaReadinessService", () => {
     } satisfies Partial<SchemaCompatibilityError>);
   });
 
+  it("fails when a required dispatch attempts table is missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows().filter((row) => row.table_name !== "job_dispatch_attempts")
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter((row) => row.table_name !== "job_dispatch_attempts")
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.job_dispatch_attempts (table missing)"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
+
+  it("fails when payout_ledger.payment_id is missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows()
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter(
+          (row) => !(row.table_name === "payout_ledger" && row.column_name === "payment_id")
+        )
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.payout_ledger.payment_id"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
+
   it("fails when the restaurant foundation schema is missing", async () => {
     const query = vi
       .fn()

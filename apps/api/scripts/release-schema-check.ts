@@ -25,6 +25,20 @@ async function tableExists(client: Client, schema: string, table: string) {
   return result.rows[0]?.exists === true;
 }
 
+async function columnExists(client: Client, schema: string, table: string, column: string) {
+  const result = await client.query<{ exists: boolean }>(
+    `select exists (
+       select 1
+       from information_schema.columns
+       where table_schema = $1
+         and table_name = $2
+         and column_name = $3
+     ) as exists`,
+    [schema, table, column]
+  );
+  return result.rows[0]?.exists === true;
+}
+
 async function customerOrdersSupportsFulfilled(client: Client) {
   const result = await client.query<{ definition: string }>(
     `select pg_get_constraintdef(c.oid) as definition
@@ -51,7 +65,8 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     ["public", "payments"],
     ["public", "jobs"],
     ["public", "outbox_messages"],
-    ["public", "customer_orders"]
+    ["public", "customer_orders"],
+    ["public", "job_dispatch_attempts"]
   ] as const) {
     const exists = await tableExists(client, schema, table);
     items.push({
@@ -60,6 +75,13 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
       detail: exists ? "table_present" : "table_missing"
     });
   }
+
+  const payoutLedgerPaymentId = await columnExists(client, "public", "payout_ledger", "payment_id");
+  items.push({
+    name: "public.payout_ledger.payment_id",
+    ok: payoutLedgerPaymentId,
+    detail: payoutLedgerPaymentId ? "column_present" : "column_missing"
+  });
 
   for (const table of POST_0011_RELEASE_CRITICAL_TABLES) {
     const exists = await tableExists(client, "public", table);

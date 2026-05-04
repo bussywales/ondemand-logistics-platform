@@ -208,6 +208,21 @@ export function isUnauthorizedApiError(error: unknown): error is ApiRequestError
   return error instanceof ApiRequestError && error.status === 401;
 }
 
+export function getUserFacingApiError(
+  error: unknown,
+  fallbackMessage: string
+) {
+  if (error instanceof ApiRequestError) {
+    if (error.status >= 500 || error.message === "internal_server_error") {
+      return fallbackMessage;
+    }
+
+    return error.message;
+  }
+
+  return error instanceof Error ? error.message : fallbackMessage;
+}
+
 export function getDriverAssignmentIneligibility(
   error: unknown
 ): DriverAssignmentIneligibilityPayload | null {

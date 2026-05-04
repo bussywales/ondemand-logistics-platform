@@ -11,10 +11,12 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getBusinessEndOfDayReport } from "../_lib/api";
+import { getBusinessEndOfDayReport, getUserFacingApiError } from "../_lib/api";
 import { formatDateTime, type BusinessSession, type EndOfDayActionItem, type EndOfDayEvidenceLink, type EndOfDayReport } from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { COMMAND_INTELLIGENCE_EXPLAINER, COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
+
+const REPORT_DATA_UNAVAILABLE_MESSAGE = "Report data unavailable. Refresh or contact support.";
 
 function toneToClass(value: EndOfDayActionItem["severity"]) {
   if (value === "danger") {
@@ -294,7 +296,7 @@ export function ReportsShell(props: { initialDate?: string }) {
       })
       .catch((issue) => {
         if (active) {
-          setLoadError(issue instanceof Error ? issue.message : "Unable to load the end-of-day report.");
+          setLoadError(getUserFacingApiError(issue, REPORT_DATA_UNAVAILABLE_MESSAGE));
         }
       })
       .finally(() => {
@@ -330,7 +332,7 @@ export function ReportsShell(props: { initialDate?: string }) {
       const nextReport = await loadEndOfDayReport(nextSession, selectedDate);
       setReport(nextReport);
     } catch (issue) {
-      setLoadError(issue instanceof Error ? issue.message : "Unable to load the end-of-day report.");
+      setLoadError(getUserFacingApiError(issue, REPORT_DATA_UNAVAILABLE_MESSAGE));
     } finally {
       setLoading(false);
     }

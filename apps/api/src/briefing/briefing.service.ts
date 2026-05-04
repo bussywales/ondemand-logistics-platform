@@ -34,7 +34,6 @@ type BriefingRow = {
   job_id: string;
   job_status: JobStatus;
   assigned_driver_id: string | null;
-  attention_reason: string | null;
   eta_minutes: number;
   job_updated_at: string | Date;
   dispatch_failed_at: string | Date | null;
@@ -138,7 +137,7 @@ const CATEGORY_CONFIG: Record<DailyBriefingItemCategory, DailyBriefingCategoryCo
     entityType: "job",
     href: (row) => `/app/jobs/${row.job_id}`,
     summary: (row, ageMinutes) => `${row.restaurant_name} order for ${row.customer_name} is still waiting for a courier ${ageMinutes} min after dispatch failed.`,
-    reason: (row) => row.attention_reason ?? "No eligible driver accepted the latest dispatch attempt.",
+    reason: () => "No eligible driver accepted the latest dispatch attempt.",
     detectedAt: (row) => toNullableIsoDateTime(row.dispatch_failed_at) ?? toIsoDateTime(row.job_updated_at)
   },
   payment_failed: {
@@ -178,7 +177,7 @@ const CATEGORY_CONFIG: Record<DailyBriefingItemCategory, DailyBriefingCategoryCo
     entityType: "job",
     href: (row) => `/app/jobs/${row.job_id}`,
     summary: (row, ageMinutes) => `${row.restaurant_name} delivery for ${row.customer_name} has had no fresh job movement for ${ageMinutes} min.`,
-    reason: (row) => row.attention_reason ?? "Active delivery state has not advanced within the expected operating window.",
+    reason: () => "Active delivery state has not advanced within the expected operating window.",
     detectedAt: (row) => toIsoDateTime(row.job_updated_at)
   }
 };
@@ -409,7 +408,6 @@ export class BriefingService {
         j.id as job_id,
         j.status::text as job_status,
         j.assigned_driver_id,
-        j.attention_reason,
         j.eta_minutes,
         j.updated_at as job_updated_at,
         j.dispatch_failed_at,

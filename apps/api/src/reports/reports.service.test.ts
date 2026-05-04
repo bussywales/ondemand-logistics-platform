@@ -18,7 +18,6 @@ const baseRow = {
   job_id: "33333333-3333-4333-8333-333333333333",
   job_status: "REQUESTED" as const,
   assigned_driver_id: "44444444-4444-4444-8444-444444444444",
-  attention_reason: null,
   job_updated_at: "2026-05-03T08:10:00.000Z",
   dispatch_failed_at: null,
   restaurant_name: "Pilot Kitchen"

@@ -8,11 +8,13 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
 import { formatDateTime, type BusinessSession, type DailyBriefing, type DailyBriefingItem, type EndOfDayReport } from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { COMMAND_INTELLIGENCE_EXPLAINER, COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
+
+const COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE = "Command intelligence data unavailable. Refresh or contact support.";
 
 type AdminCommandGroup = {
   key: string;
@@ -494,7 +496,7 @@ export function AdminCommandShell() {
           return;
         }
 
-        setLoadError(issue instanceof Error ? issue.message : "Unable to load admin command intelligence.");
+        setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
       })
       .finally(() => {
         if (active) {
@@ -521,7 +523,7 @@ export function AdminCommandShell() {
       setBriefing(nextBriefing);
       setReport(nextReport);
     } catch (issue) {
-      setLoadError(issue instanceof Error ? issue.message : "Unable to load admin command intelligence.");
+      setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
     } finally {
       setLoading(false);
     }

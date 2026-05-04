@@ -355,7 +355,7 @@ export class IncidentIntelligenceService {
       ),
       this.pg.query<{ count: string | number }>(
         `select count(*)::text as count
-         from public.dispatch_attempts
+         from public.job_dispatch_attempts
          where job_id = $1`,
         [row.job_id]
       )

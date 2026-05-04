@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { buildOperationalIncidentSummary } from "./incident-intelligence.service.js";
+import { describe, expect, it, vi } from "vitest";
+import { IncidentIntelligenceService, buildOperationalIncidentSummary } from "./incident-intelligence.service.js";
 
 const baseInput = {
   jobId: "33333333-3333-4333-8333-333333333333",
@@ -86,5 +86,44 @@ describe("buildOperationalIncidentSummary", () => {
     expect(incident?.communicationDrafts.customerDraft).toContain("We are reviewing");
     expect(incident?.communicationDrafts.customerDraft).not.toContain("sent automatically");
     expect(incident?.communicationDrafts.restaurantDraft).toContain("Please hold");
+  });
+});
+
+describe("IncidentIntelligenceService", () => {
+  it("loads dispatch attempt counts from job_dispatch_attempts", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              order_id: baseInput.orderId,
+              payment_id: baseInput.paymentId,
+              job_id: baseInput.jobId,
+              job_status: "DISPATCH_FAILED",
+              order_status: baseInput.orderStatus,
+              payment_status: baseInput.paymentStatus,
+              customer_name: baseInput.customerName,
+              restaurant_name: baseInput.restaurantName,
+              assigned_driver_id: baseInput.assignedDriverId,
+              assigned_driver_name: baseInput.assignedDriverName,
+              job_created_at: baseInput.jobCreatedAt,
+              job_updated_at: baseInput.jobUpdatedAt,
+              dispatch_failed_at: "2026-05-03T08:10:00.000Z"
+            }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rows: [{ event_type: "JOB_DISPATCH_FAILED", created_at: "2026-05-03T08:10:00.000Z" }]
+        })
+        .mockResolvedValueOnce({
+          rows: [{ count: "1" }]
+        })
+    };
+
+    const service = new IncidentIntelligenceService(pg as never);
+    await service.getAdminIncidentSummary(baseInput.jobId);
+
+    expect(pg.query.mock.calls[2]?.[0]).toContain("from public.job_dispatch_attempts");
   });
 });

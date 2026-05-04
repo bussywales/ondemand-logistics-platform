@@ -32,7 +32,6 @@ type ReportRow = {
   job_id: string;
   job_status: JobStatus;
   assigned_driver_id: string | null;
-  attention_reason: string | null;
   job_updated_at: string | Date;
   dispatch_failed_at: string | Date | null;
   restaurant_name: string;
@@ -373,7 +372,6 @@ export class ReportsService {
         j.id as job_id,
         j.status::text as job_status,
         j.assigned_driver_id,
-        j.attention_reason,
         j.updated_at as job_updated_at,
         j.dispatch_failed_at,
         r.name as restaurant_name

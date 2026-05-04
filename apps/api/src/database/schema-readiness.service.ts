@@ -56,6 +56,17 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
   },
   dispatch: {
     drivers: ["id", "user_id"],
+    job_dispatch_attempts: [
+      "id",
+      "job_id",
+      "attempt_number",
+      "trigger_source",
+      "outcome",
+      "driver_id",
+      "offer_id",
+      "notes",
+      "created_at"
+    ],
     job_offers: [
       "id",
       "job_id",
@@ -155,6 +166,7 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "id",
       "job_id",
       "driver_id",
+      "payment_id",
       "status",
       "gross_payout_cents",
       "hold_reason",
