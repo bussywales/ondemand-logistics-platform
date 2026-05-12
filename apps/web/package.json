@@ -9,7 +9,9 @@
     "lint": "echo 'web lint placeholder'",
     "typecheck": "next build > /dev/null",
     "test": "vitest run",
-    "test:integration": "echo 'web integration tests not required for phase 0 shell'"
+    "test:integration": "echo 'web integration tests not required for phase 0 shell'",
+    "test:e2e": "playwright test",
+    "test:smoke": "playwright test staging-smoke.spec.ts"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.2.0",
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2"
+    "@types/react-dom": "^19.2.2",
+    "@playwright/test": "^1.52.0"
   }
 }

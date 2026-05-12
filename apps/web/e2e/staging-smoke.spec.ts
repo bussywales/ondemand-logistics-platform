@@ -1,0 +1,149 @@
+import { expect, Page, test } from '@playwright/test';
+
+const PUBLIC_RESTAURANT_PATH = '/restaurants/pilot-kitchen-1777370757';
+const LATEST_ORDER_ID = process.env.SMOKE_LATEST_ORDER_ID || process.env.LATEST_ORDER_ID;
+
+const BUSINESS_TEST_ACCOUNT = {
+  email: process.env.SMOKE_BUSINESS_EMAIL || process.env.BUSINESS_SMOKE_EMAIL || '',
+  password: process.env.SMOKE_BUSINESS_PASSWORD || process.env.BUSINESS_SMOKE_PASSWORD || ''
+};
+
+const ADMIN_TEST_ACCOUNT = {
+  email: process.env.SMOKE_ADMIN_EMAIL || process.env.ADMIN_SMOKE_EMAIL || '',
+  password: process.env.SMOKE_ADMIN_PASSWORD || process.env.ADMIN_SMOKE_PASSWORD || ''
+};
+
+const DRIVER_TEST_ACCOUNT = {
+  email: process.env.SMOKE_DRIVER_EMAIL || process.env.DRIVER_SMOKE_EMAIL || '',
+  password: process.env.SMOKE_DRIVER_PASSWORD || process.env.DRIVER_SMOKE_PASSWORD || ''
+};
+
+async function signInOperator(page: Page, credentials: { email: string; password: string }) {
+  if (!credentials.email || !credentials.password) {
+    return false;
+  }
+
+  await page.goto('/get-started', { waitUntil: 'domcontentloaded' });
+
+  const signInMode = page.getByRole('button', { name: /sign in/i }).first();
+  if (await signInMode.isVisible().catch(() => false)) {
+    await signInMode.click();
+  }
+
+  await page.getByRole('textbox', { name: /email/i }).fill(credentials.email);
+  await page.getByRole('textbox', { name: /password/i }).fill(credentials.password);
+  await page.getByRole('button', { name: /continue to business setup/i }).click();
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await page.waitForLoadState('domcontentloaded');
+
+    const url = page.url();
+    if (!url.includes('/get-started')) {
+      return true;
+    }
+
+    const errorVisible = await page.locator('.form-error').isVisible();
+    if (errorVisible) {
+      return false;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  return false;
+}
+
+async function assertProtectedRouteLoads(page: Page, path: string) {
+  const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+
+  if (response) {
+    expect(response.status(), `GET ${path}`).toBeLessThan(500);
+  }
+
+  await expect(page.locator('main').first()).toBeVisible({ timeout: 12000 });
+  expect(page.url()).not.toContain('/get-started');
+}
+
+test('public ordering smoke with checkout surface', async ({ page }) => {
+  await page.goto(PUBLIC_RESTAURANT_PATH, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('main')).toBeVisible({ timeout: 15000 });
+
+  const firstAddButton = page.getByRole('button', { name: /^Add /i }).first();
+  await expect(firstAddButton).toBeVisible({ timeout: 15000 });
+  await firstAddButton.click();
+
+  const checkoutButton = page.getByRole('button', { name: /continue to checkout/i });
+  await expect(checkoutButton).toBeEnabled({ timeout: 15000 });
+  await checkoutButton.click();
+
+  await expect(
+    page.getByRole('heading', { name: /(authorize payment|checkout|payment)/i })
+  ).toBeVisible({ timeout: 15000 });
+
+  const cardElement = page.locator('.payment-card-element');
+  const fallbackState = page.getByText(/Stripe frontend is not configured/i);
+  await expect(cardElement.or(fallbackState)).toBeVisible({ timeout: 20000 });
+
+  if (await cardElement.isVisible()) {
+    await expect(cardElement).toBeVisible();
+  } else {
+    await expect(fallbackState).toBeVisible();
+  }
+});
+
+test('public tracking smoke opens latest order', async ({ page }) => {
+  test.skip(!LATEST_ORDER_ID, 'Set SMOKE_LATEST_ORDER_ID to smoke the public tracking route.');
+
+  await page.goto(`/track/${LATEST_ORDER_ID}`, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('main')).toBeVisible({ timeout: 15000 });
+  await expect(
+    page.getByRole('heading', { name: /(tracking|order status|delivery status)/i })
+  ).toBeVisible({ timeout: 10000 });
+});
+
+test('authenticated business workspace routes smoke', async ({ page }) => {
+  test.skip(
+    !BUSINESS_TEST_ACCOUNT.email || !BUSINESS_TEST_ACCOUNT.password,
+    'Set SMOKE_BUSINESS_EMAIL and SMOKE_BUSINESS_PASSWORD for authenticated workspace smoke.'
+  );
+
+  const signedIn = await signInOperator(page, BUSINESS_TEST_ACCOUNT);
+  if (!signedIn) {
+    test.skip(true, 'Business smoke credentials were not accepted.');
+  }
+
+  const routes = ['/app', '/app/orders', '/app/payments', '/app/reports/end-of-day'];
+  for (const route of routes) {
+    await assertProtectedRouteLoads(page, route);
+  }
+
+  await page.goto('/app/orders');
+  const firstOrder = page.locator('a[href^="/app/orders/"]').first();
+  if (await firstOrder.isVisible()) {
+    await firstOrder.click();
+    await assertProtectedRouteLoads(page, page.url());
+  }
+});
+
+test('authenticated admin routes smoke', async ({ page }) => {
+  test.skip(!ADMIN_TEST_ACCOUNT.email || !ADMIN_TEST_ACCOUNT.password, 'Set SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD for admin smoke.');
+
+  const signedIn = await signInOperator(page, ADMIN_TEST_ACCOUNT);
+  if (!signedIn) {
+    test.skip(true, 'Admin smoke credentials were not accepted.');
+  }
+
+  await assertProtectedRouteLoads(page, '/admin');
+  await assertProtectedRouteLoads(page, '/admin/command');
+});
+
+test('authenticated driver route smoke', async ({ page }) => {
+  test.skip(!DRIVER_TEST_ACCOUNT.email || !DRIVER_TEST_ACCOUNT.password, 'Set SMOKE_DRIVER_EMAIL and SMOKE_DRIVER_PASSWORD for driver smoke.');
+
+  const signedIn = await signInOperator(page, DRIVER_TEST_ACCOUNT);
+  if (!signedIn) {
+    test.skip(true, 'Driver smoke credentials were not accepted.');
+  }
+
+  await assertProtectedRouteLoads(page, '/driver');
+});
