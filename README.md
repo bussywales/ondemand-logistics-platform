@@ -57,6 +57,33 @@ pnpm --filter api test
 pnpm typecheck
 ```
 
+## Browser smoke testing (Playwright)
+Commit `4975b8c` adds a minimal Playwright setup for staging smoke checks.
+
+```bash
+pnpm --filter @shipwright/web exec playwright install chromium
+pnpm --filter @shipwright/web test:e2e
+pnpm --filter @shipwright/web test:smoke
+```
+
+Notes:
+- Public restaurant smoke flow runs without authentication.
+- Tracking smoke needs an order id:
+  - `SMOKE_LATEST_ORDER_ID` (preferred), or
+  - `LATEST_ORDER_ID` fallback.
+- Authenticated workspace/admin/driver smoke checks require credentials and are skipped if missing.
+- Playwright artifacts are local test outputs and must not be committed:
+  - `playwright-report`
+  - `test-results`
+
+Optional authenticated smoke env vars in the Playwright spec:
+- `SMOKE_BUSINESS_EMAIL`, `SMOKE_BUSINESS_PASSWORD`
+- `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`
+- `SMOKE_DRIVER_EMAIL`, `SMOKE_DRIVER_PASSWORD`
+
+Global run env:
+- `STAGING_WEB_BASE_URL` (set to staging host for authenticated and public smoke routes)
+
 ## Migrations
 The schema has moved well beyond the original foundations migrations.
 

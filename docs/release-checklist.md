@@ -34,6 +34,32 @@ Optional env:
 
 If `.env.smoke` is absent or `SMOKE_API_BASE_URL` is still missing after auto-loading, the command fails with an actionable message.
 
+## 3.5) Browser smoke (Playwright)
+Use this optional smoke pass when you need UI/route-level staging confidence.
+
+```bash
+pnpm --filter @shipwright/web exec playwright install chromium
+pnpm --filter @shipwright/web test:e2e
+pnpm --filter @shipwright/web test:smoke
+```
+
+Configuration:
+- `STAGING_WEB_BASE_URL` should point at the staging web URL.
+- Public tracking smoke requires one of:
+  - `SMOKE_LATEST_ORDER_ID`
+  - `LATEST_ORDER_ID`
+- Authenticated workspace/admin/driver smoke requires credentials and is skipped otherwise.
+- Required/used auth variables:
+  - `SMOKE_BUSINESS_EMAIL`, `SMOKE_BUSINESS_PASSWORD`
+  - `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`
+  - `SMOKE_DRIVER_EMAIL`, `SMOKE_DRIVER_PASSWORD`
+- Playwright artifacts are local-only and ignored:
+  - `playwright-report`
+  - `test-results`
+- Playwright complements, not replaces, release verification:
+  - `pnpm release:verify-staging`
+  - `pnpm proof:staging-paid-delivery`
+
 ## 4) What the command runs
 1. `GET /healthz`
 2. `GET /readyz`
