@@ -272,7 +272,18 @@ export function getDeliveryCopy(order: BusinessCustomerOrder) {
   return `Linked delivery job is ${formatOrderStatusLabel(order.job.status).toLowerCase()}.`;
 }
 
-export function getOrderDecisionState(order: BusinessCustomerOrder): OrderDecisionState {
+export function getOrderDecisionState(order: OrderFinancialView): OrderDecisionState {
+  if (hasOrderPaymentRisk(order)) {
+    return {
+      headline: "Payment review required",
+      summary: "Operator review is needed before this order can be marked complete.",
+      impact: "The order is otherwise in a recoverable state, but payment or payout risk blocks safe closure.",
+      nextAction: "Review the payment risk row and clear the payment or payout reason before manual handoff.",
+      nextHref: `/app/payments`,
+      severity: "warning"
+    };
+  }
+
   if (isOrderFulfilled(order)) {
     return {
       headline: "Order fulfilled",
@@ -286,18 +297,18 @@ export function getOrderDecisionState(order: BusinessCustomerOrder): OrderDecisi
 
   if (isOrderPaymentFailed(order)) {
     return {
-      headline: "Payment failed",
+      headline: "Payment review required",
       summary: "The customer order cannot continue until payment is resolved.",
       impact: "Dispatch should not proceed because the order has no valid payment outcome.",
       nextAction: "Confirm the failure details and ask the customer to retry checkout.",
-      nextHref: `/app/orders/${order.id}`,
+      nextHref: `/app/payments`,
       severity: "danger"
     };
   }
 
   if (order.job.status === "DISPATCH_FAILED") {
     return {
-      headline: "Delivery blocked",
+      headline: "Delivery review required",
       summary: "Payment is authorised but dispatch did not secure a driver.",
       impact: "The customer is waiting and the order is not moving toward fulfilment.",
       nextAction: "Open the linked delivery job and retry dispatch or assign a driver manually.",
@@ -308,7 +319,7 @@ export function getOrderDecisionState(order: BusinessCustomerOrder): OrderDecisi
 
   if (isOrderInDelivery(order)) {
     return {
-      headline: "Order in delivery",
+      headline: "Order in progress",
       summary: "Payment is secure and the driver is actively progressing the job.",
       impact: "Monitor route progress, ETA, and timeline until delivery completes.",
       nextAction: "Open the delivery job if the driver stalls or the customer requests an update.",
@@ -318,10 +329,10 @@ export function getOrderDecisionState(order: BusinessCustomerOrder): OrderDecisi
   }
 
   return {
-    headline: "Paid order waiting for fulfilment",
-    summary: "Checkout completed and the order is ready for operational handling.",
-    impact: "The order needs a delivery job to move from payment into fulfilment.",
-    nextAction: "Review the linked job and watch dispatch until a driver is secured.",
+    headline: "Order in progress",
+    summary: "Checkout completed and fulfilment is in the control path.",
+    impact: "Delivery needs operational progress before completion.",
+    nextAction: "Open the linked delivery job and monitor dispatch readiness.",
     nextHref: `/app/jobs/${order.job.id}`,
     severity: "warning"
   };

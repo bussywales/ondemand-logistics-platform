@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ContextualHelpLink } from "./help";
@@ -10,7 +11,7 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getBusinessOrder, listBusinessOrders, listBusinessPayments } from "../_lib/api";
+import { fetchTracking, getBusinessOrder, listBusinessOrders, listBusinessPayments } from "../_lib/api";
 import {
   formatCurrency,
   formatDateTime,
@@ -18,6 +19,7 @@ import {
   type BusinessPaymentSummary,
   type BusinessSession
 } from "../_lib/product-state";
+import type { DispatchRecoverySuggestion, OperationalIncidentSummary } from "../_lib/product-state";
 import {
   formatOrderStatusLabel,
   formatOrderTimeAgo,
@@ -38,7 +40,15 @@ import {
   type OrderFinancialView,
   withOrderFinancials
 } from "../_lib/orders-state";
-import { buildPublicTrackingHref } from "../_lib/tracking-state";
+import { buildPublicTrackingHref, getCustomerTrackingTimelineEntry } from "../_lib/tracking-state";
+import { COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
+import { JobIncidentSummaryPanel } from "./product-shell/job-incident-summary-panel";
+
+type OrderTrackingIntelligence = {
+  assignedDriverName: string | null;
+  recoverySuggestion: DispatchRecoverySuggestion | null;
+  incidentSummary: OperationalIncidentSummary | null;
+};
 
 export type OrdersShellProps = {
   orderId?: string;
@@ -275,15 +285,94 @@ function DetailInsight(props: {
   );
 }
 
-function OrderDetail({ order }: { order: OrderFinancialView }) {
+type OrderDetailProps = {
+  order: OrderFinancialView;
+  tracking: OrderTrackingIntelligence | null;
+};
+
+function RecoverySuggestionPanel(props: { suggestion: DispatchRecoverySuggestion }) {
+  return (
+    <section className="sw-operational-surface orders-recovery-panel">
+      <div className="sw-card-header">
+        <p className="eyebrow">Recovery suggestion</p>
+        <h2>{props.suggestion.explanation}</h2>
+      </div>
+      <p>{props.suggestion.advisory}</p>
+      <p>Recommended next step: {props.suggestion.recommendedAction.replaceAll("_", " ")}</p>
+      <p>{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>
+      <div className="sw-action-row">
+        <Link className="sw-button sw-button--secondary button button-secondary" href={props.suggestion.links.jobHref}>
+          <ShipWrightIcon name="route" />
+          <span>Open linked job</span>
+        </Link>
+        {props.suggestion.links.orderHref ? (
+          <Link className="sw-button sw-button--secondary button button-secondary" href={props.suggestion.links.orderHref}>
+            <ShipWrightIcon name="document" />
+            <span>Open linked order</span>
+          </Link>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function DeliveryCopy(order: OrderFinancialView) {
+  if (order.job.status === "DISPATCH_FAILED") {
+    return "Delivery is blocked and requires operator review.";
+  }
+
+  if (isOrderInDelivery(order)) {
+    return "Delivery is in progress with active operational signals.";
+  }
+
+  if (order.job.status === "REQUESTED") {
+    return "Job is requested and waiting for courier assignment.";
+  }
+
+  return "Delivery state is waiting for operator action.";
+}
+
+function trackingStateLabel(order: OrderFinancialView, tracking: OrderTrackingIntelligence | null) {
+  if (order.job.status === "DISPATCH_FAILED") {
+    return "Operator review required";
+  }
+
+  if (tracking?.assignedDriverName) {
+    return `Courier assigned: ${tracking.assignedDriverName}`;
+  }
+
+  if (isOrderInDelivery(order)) {
+    return "Courier attached";
+  }
+
+  return "Awaiting tracking signal";
+}
+
+export function OrderDetail({ order, tracking }: OrderDetailProps) {
   const decision = getOrderDecisionState(order);
+  const riskReasons = getOrderFinancialRiskReasons(order);
   const fulfilled = isOrderFulfilled(order);
+  const hasRisk = riskReasons.length > 0;
+  const trackingReady = Boolean(order.id);
+  const paymentCopy = getPaymentCopy(order);
+  const timelineItems = order.timeline.map((event) => {
+    const readable = getCustomerTrackingTimelineEntry(event.eventType);
+    return {
+      ...event,
+      readableTitle: readable.title,
+      readableSummary: readable.summary
+    };
+  });
 
   return (
     <section className="ops-stack orders-detail-stack">
       <section
         className={`sw-decision-surface ops-decision-banner orders-decision-surface ${
-          decision.severity === "danger" ? "ops-job-hero-blocker" : decision.severity === "success" ? "orders-decision-surface-success" : "orders-decision-surface-neutral"
+          decision.severity === "danger"
+            ? "ops-job-hero-blocker"
+            : decision.severity === "success"
+              ? "orders-decision-surface-success"
+              : "orders-decision-surface-neutral"
         }`}
       >
         <div className="ops-decision-header">
@@ -306,6 +395,8 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
                 {decision.headline} — Order {getOrderShortId(order.id)}
               </h2>
               <p className="ops-detail-note">{decision.summary}</p>
+              <p className="ops-detail-note">Impact: {decision.impact}</p>
+              <p className="ops-detail-note">Recommended next step: {decision.nextAction}</p>
             </div>
           </div>
 
@@ -318,15 +409,34 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
 
         <div className="ops-decision-grid orders-decision-grid">
           <DetailInsight
-            copy="Customer fulfilment state visible in the business queue."
+            copy="Fulfilment and job lifecycle visibility for the active order record."
             icon="document"
             label="Fulfilment"
-            tone={decision.severity === "success" ? "success" : decision.severity === "danger" ? "danger" : "warning"}
+            tone={fulfilled ? "success" : isOrderInDelivery(order) ? "info" : isOrderBlocked(order) ? "danger" : "warning"}
             value={statusSummaryLabel(order.status)}
           />
-          <DetailInsight copy={getPaymentCopy(order)} icon="payment" label="Payment" tone={order.payment.status === "FAILED" ? "danger" : order.payment.status === "CAPTURED" ? "success" : "info"} value={formatOrderStatusLabel(order.payment.status)} />
-          <DetailInsight copy={getDeliveryCopy(order)} icon="route" label="Delivery job" tone={order.job.status === "DISPATCH_FAILED" ? "danger" : order.job.status === "DELIVERED" ? "success" : isOrderInDelivery(order) ? "info" : "warning"} value={formatOrderStatusLabel(order.job.status)} />
-          <DetailInsight copy={decision.impact} icon={fulfilled ? "check" : decision.severity === "danger" ? "warning" : "arrow"} label="Next action" tone={decision.severity} value={decision.nextAction} />
+          <DetailInsight
+            copy={paymentCopy}
+            icon="payment"
+            label="Payment"
+            tone={hasRisk ? "danger" : order.payment.status === "CAPTURED" ? "success" : "info"}
+            value={formatOrderStatusLabel(order.payment.status)}
+          />
+          <DetailInsight copy={DeliveryCopy(order)} icon="route" label="Delivery" tone={order.job.status === "DISPATCH_FAILED" ? "danger" : isOrderInDelivery(order) ? "info" : "warning"} value={formatOrderStatusLabel(order.job.status)} />
+          <DetailInsight
+            copy="Tracking state for customer communication and support context."
+            icon="timeline"
+            label="Customer tracking"
+            tone={tracking?.assignedDriverName ? "info" : "warning"}
+            value={trackingStateLabel(order, tracking)}
+          />
+          <DetailInsight
+            copy="All recovery actions remain operator-managed."
+            icon="queue"
+            label="Next action"
+            tone={decision.severity}
+            value={decision.nextAction}
+          />
         </div>
 
         <div className="ops-decision-actions orders-decision-actions">
@@ -334,16 +444,43 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
             <ShipWrightIcon name={fulfilled ? "timeline" : "route"} />
             <span>{fulfilled ? "Review delivery timeline" : "Open linked delivery job"}</span>
           </Link>
-          <Link className="sw-button sw-button--secondary button button-secondary" href={buildPublicTrackingHref(order.id)}>
+          {trackingReady ? (
+            <Link className="sw-button sw-button--secondary button button-secondary" href={buildPublicTrackingHref(order.id)}>
+              <ShipWrightIcon name="route" />
+              <span>Open customer tracking</span>
+            </Link>
+          ) : null}
+          {hasRisk ? (
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/app/payments">
+              <ShipWrightIcon name="payment" />
+              <span>Review payment risk</span>
+            </Link>
+          ) : null}
+          <Link className="sw-button sw-button--secondary button button-secondary" href={`/app/jobs/${order.job.id}`}>
             <ShipWrightIcon name="route" />
-            <span>Open customer tracking</span>
+            <span>Open linked job</span>
           </Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
             <ShipWrightIcon name="queue" />
             <span>Back to orders queue</span>
           </Link>
         </div>
+
+        <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_SIGNAL_COPY} />
       </section>
+
+      {tracking?.recoverySuggestion ? <RecoverySuggestionPanel suggestion={tracking.recoverySuggestion} /> : null}
+      {tracking?.incidentSummary ? <JobIncidentSummaryPanel incidentSummary={tracking.incidentSummary} /> : null}
+      {!tracking?.recoverySuggestion && !tracking?.incidentSummary ? (
+        <section className="sw-supporting-surface orders-recommendation-note">
+          <p className="eyebrow">Incident context</p>
+          <p>Review linked delivery job for incident intelligence and operator-safe recovery options.</p>
+          <Link className="sw-button sw-button--secondary button button-secondary" href={`/app/jobs/${order.job.id}`}>
+            <ShipWrightIcon name="document" />
+            <span>Review linked job for incident intelligence</span>
+          </Link>
+        </section>
+      ) : null}
 
       {fulfilled ? (
         <section className="sw-command-surface orders-success-callout">
@@ -353,7 +490,7 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
           <div>
             <p className="eyebrow">Completed</p>
             <h3>Customer order fulfilled</h3>
-            <p>Delivery is complete and payment has been captured. This order now serves as the final operational record for support or audit review.</p>
+            <p>Delivery is complete and payment is captured. Keep this order as a support and audit record.</p>
           </div>
         </section>
       ) : null}
@@ -529,15 +666,40 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
               <span>Drop</span>
               <strong>{order.job.dropoffAddress}</strong>
             </div>
+            <div>
+              <span>Assigned courier</span>
+              <strong>{tracking?.assignedDriverName ?? "Awaiting assignment"}</strong>
+            </div>
+            {tracking?.recoverySuggestion?.links.paymentsHref ? (
+              <div>
+                <span>Payment risk check</span>
+                <Link href={tracking.recoverySuggestion.links.paymentsHref}>
+                  Open related payment context
+                </Link>
+              </div>
+            ) : null}
+            <div>
+              <span>Risk signal</span>
+              <strong>{hasRisk ? "Review before closing" : "Clear"}</strong>
+            </div>
+            {hasRisk ? <p className="sw-micro-copy">{riskReasons.join(" · ")}</p> : null}
           </div>
           <Link className="sw-button sw-button--primary button button-primary" href={`/app/jobs/${order.job.id}`}>
             <ShipWrightIcon name="arrow" />
             <span>Open delivery job</span>
           </Link>
-          <Link className="sw-button sw-button--secondary button button-secondary" href={buildPublicTrackingHref(order.id)}>
-            <ShipWrightIcon name="route" />
-            <span>Open customer tracking</span>
-          </Link>
+          {trackingReady ? (
+            <Link className="sw-button sw-button--secondary button button-secondary" href={buildPublicTrackingHref(order.id)}>
+              <ShipWrightIcon name="route" />
+              <span>Open customer tracking</span>
+            </Link>
+          ) : null}
+          {hasRisk ? (
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/app/payments">
+              <ShipWrightIcon name="payment" />
+              <span>Review payment risk</span>
+            </Link>
+          ) : null}
         </section>
 
         <section className="sw-supporting-surface ops-section orders-detail-card">
@@ -557,11 +719,11 @@ function OrderDetail({ order }: { order: OrderFinancialView }) {
             </div>
           ) : (
             <div className="timeline-list">
-              {order.timeline.map((event) => (
+              {timelineItems.map((event) => (
                 <div className="timeline-item" key={event.id}>
                   <span>{formatDateTime(event.createdAt)}</span>
-                  <strong>{formatOrderStatusLabel(event.eventType)}</strong>
-                  <p>{event.summary}</p>
+                  <strong>{event.readableTitle}</strong>
+                  <p>{event.readableSummary}</p>
                 </div>
               ))}
             </div>
@@ -578,6 +740,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [payments, setPayments] = useState<BusinessPaymentSummary[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<BusinessCustomerOrder | null>(null);
+  const [selectedOrderTracking, setSelectedOrderTracking] = useState<OrderTrackingIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(Boolean(orderId));
   const [error, setError] = useState<string | null>(null);
@@ -594,6 +757,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   useEffect(() => {
     if (!session || !orderId) {
       setSelectedOrder(null);
+      setSelectedOrderTracking(null);
       return;
     }
 
@@ -667,15 +831,28 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   async function refreshOrderDetail(id: string, currentSession: BusinessSession) {
     setDetailLoading(true);
     setError(null);
+    setSelectedOrderTracking(null);
 
     try {
       const order = await getBusinessOrder(currentSession, id);
       const paymentItems = await listBusinessPayments(currentSession);
+      const tracking = await fetchTracking(currentSession, order.job.id).catch(() => null);
       setSelectedOrder(order);
       setPayments(paymentItems);
       setOrders((current) => [order, ...current.filter((item) => item.id !== order.id)]);
+
+      setSelectedOrderTracking(
+        tracking
+          ? {
+              assignedDriverName: tracking.assignedDriver?.displayName ?? null,
+              recoverySuggestion: tracking.recoverySuggestion ?? null,
+              incidentSummary: tracking.incidentSummary ?? null
+            }
+          : null
+      );
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load customer order.");
+      setSelectedOrderTracking(null);
     } finally {
       setDetailLoading(false);
     }
@@ -914,7 +1091,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
               <p className="sw-empty-copy">Fetching customer order detail and linked delivery state.</p>
             </section>
           ) : selectedOrderView ? (
-            <OrderDetail order={selectedOrderView} />
+            <OrderDetail order={selectedOrderView} tracking={selectedOrderTracking} />
           ) : (
             <section className="sw-empty-state orders-empty-state">
               <strong className="sw-empty-title">Order not found</strong>

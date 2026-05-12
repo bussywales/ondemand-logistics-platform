@@ -76,7 +76,7 @@ describe("orders-state", () => {
     };
 
     expect(filtered(order, "in-delivery")).toBe(true);
-    expect(getOrderDecisionState(order).headline).toBe("Order in delivery");
+    expect(getOrderDecisionState(withOrderFinancials(order)).headline).toBe("Order in progress");
   });
 
   it("groups a delivered captured order into fulfilled", () => {
@@ -95,7 +95,7 @@ describe("orders-state", () => {
     };
 
     expect(filtered(order, "fulfilled")).toBe(true);
-    expect(getOrderDecisionState(order).severity).toBe("success");
+    expect(getOrderDecisionState(withOrderFinancials(order)).severity).toBe("success");
   });
 
   it("treats failed payment as a payment-risk queue item", () => {
@@ -110,7 +110,7 @@ describe("orders-state", () => {
     };
 
     expect(filtered(order, "payment-risk")).toBe(true);
-    expect(getOrderDecisionState(order).headline).toBe("Payment failed");
+    expect(getOrderDecisionState(withOrderFinancials(order)).headline).toBe("Payment review required");
   });
 
   it("derives payment risk reasons from delivered uncaptured and payout hold states", () => {
