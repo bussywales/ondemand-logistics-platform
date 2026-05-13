@@ -1,44 +1,48 @@
 :root {
   /* ShipWright Design System v1 tokens */
-  --sw-color-background: #edeff3;
+  --sw-color-background: #f1f3f0;
   --sw-color-surface: #ffffff;
-  --sw-color-surface-elevated: #f8fbff;
-  --sw-color-navy-950: #050c19;
-  --sw-color-navy-900: #0a2142;
-  --sw-color-navy-800: #102f5a;
-  --sw-color-navy-700: #1f3a63;
-  --sw-color-navy-100: #e8eef7;
-  --sw-color-text-primary: #0a2142;
-  --sw-color-text-muted: #66758b;
+  --sw-color-surface-elevated: #fbfcfb;
+  --sw-color-navy-950: #111b2a;
+  --sw-color-navy-900: #1a2a40;
+  --sw-color-navy-800: #263a56;
+  --sw-color-navy-700: #3d506b;
+  --sw-color-navy-100: #e8edf3;
+  --sw-color-text-primary: #182434;
+  --sw-color-text-muted: #687386;
+  --sw-color-ink-strong: #182434;
+  --sw-color-ink-muted: #687386;
+  --sw-color-ink-subtle: #788497;
+  --sw-color-ink-soft: #8994a5;
   --sw-color-text-inverse: #ffffff;
-  --sw-color-success: #2da44e;
-  --sw-color-warning: #e3a008;
-  --sw-color-danger: #d73a49;
-  --sw-color-info: #1f6feb;
-  --sw-color-teal: #00a6a6;
-  --sw-color-success-soft: rgba(45, 164, 78, 0.12);
-  --sw-color-warning-soft: rgba(227, 160, 8, 0.14);
-  --sw-color-danger-soft: rgba(215, 58, 73, 0.12);
-  --sw-color-info-soft: rgba(31, 111, 235, 0.11);
-  --sw-color-teal-soft: rgba(0, 166, 166, 0.12);
+  --sw-color-success: #317a4b;
+  --sw-color-warning: #a26d1b;
+  --sw-color-danger: #a7434b;
+  --sw-color-info: #315f9b;
+  --sw-color-teal: #2c807f;
+  --sw-color-success-soft: rgba(49, 122, 75, 0.1);
+  --sw-color-warning-soft: rgba(162, 109, 27, 0.11);
+  --sw-color-danger-soft: rgba(167, 67, 75, 0.1);
+  --sw-color-info-soft: rgba(49, 95, 155, 0.1);
+  --sw-color-teal-soft: rgba(44, 128, 127, 0.1);
 
   --sw-gradient-danger-command:
-    radial-gradient(circle at 8% 9%, rgba(255, 97, 109, 0.48), transparent 19rem),
-    radial-gradient(circle at 74% 24%, rgba(0, 166, 166, 0.17), transparent 25rem),
-    linear-gradient(128deg, #050c19 0%, #11162d 24%, #671321 57%, #081b36 100%);
+    radial-gradient(circle at 8% 9%, rgba(167, 67, 75, 0.2), transparent 20rem),
+    radial-gradient(circle at 76% 20%, rgba(44, 128, 127, 0.1), transparent 26rem),
+    linear-gradient(128deg, #172234 0%, #1d2b3f 48%, #29364a 100%);
   --sw-gradient-warning-command:
-    radial-gradient(circle at 9% 4%, rgba(227, 160, 8, 0.2), transparent 17rem),
-    radial-gradient(circle at 86% 14%, rgba(0, 166, 166, 0.11), transparent 20rem),
-    linear-gradient(135deg, #ffffff 0%, #fffaf0 48%, #eef4fb 100%);
+    radial-gradient(circle at 9% 4%, rgba(162, 109, 27, 0.1), transparent 17rem),
+    radial-gradient(circle at 86% 14%, rgba(44, 128, 127, 0.06), transparent 20rem),
+    linear-gradient(135deg, #ffffff 0%, #fbf8ef 54%, #f4f6f4 100%);
   --sw-gradient-neutral-command:
-    radial-gradient(circle at 10% 0%, rgba(0, 166, 166, 0.18), transparent 17rem),
-    radial-gradient(circle at 86% 18%, rgba(31, 58, 99, 0.14), transparent 19rem),
-    linear-gradient(135deg, #ffffff 0%, #f7fbff 54%, #eef4fb 100%);
+    radial-gradient(circle at 10% 0%, rgba(44, 128, 127, 0.08), transparent 17rem),
+    radial-gradient(circle at 86% 18%, rgba(61, 80, 107, 0.08), transparent 19rem),
+    linear-gradient(135deg, #ffffff 0%, #fbfcfb 58%, #f2f5f4 100%);
 
-  --sw-shadow-sm: 0 8px 22px rgba(10, 33, 66, 0.06);
-  --sw-shadow-md: 0 18px 48px rgba(10, 33, 66, 0.1);
-  --sw-shadow-lg: 0 34px 110px rgba(10, 33, 66, 0.18);
-  --sw-shadow-danger-glow: 0 0 90px rgba(215, 58, 73, 0.2);
+  --sw-shadow-sm: 0 6px 18px rgba(24, 36, 52, 0.045);
+  --sw-shadow-md: 0 14px 36px rgba(24, 36, 52, 0.075);
+  --sw-shadow-lg: 0 28px 84px rgba(24, 36, 52, 0.12);
+  --sw-shadow-danger-glow: 0 0 56px rgba(167, 67, 75, 0.1);
 
   --sw-radius-sm: 10px;
   --sw-radius-md: 14px;
@@ -53,13 +57,13 @@
   --sw-space-8: 2rem;
   --sw-space-12: 3rem;
 
-  --sw-type-hero: 920 clamp(2.55rem, 4.8vw, 4.45rem) / 0.94 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-page-title: 900 clamp(2.1rem, 4vw, 3.5rem) / 0.96 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-section-title: 860 clamp(1.45rem, 2.2vw, 2rem) / 1.02 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-card-title: 820 1.1rem / 1.2 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-hero: 760 clamp(2.35rem, 4.5vw, 4rem) / 1 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-page-title: 760 clamp(1.95rem, 3.7vw, 3.05rem) / 1.03 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-section-title: 700 clamp(1.28rem, 2vw, 1.78rem) / 1.08 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-card-title: 680 1.04rem / 1.28 "IBM Plex Sans", "Segoe UI", sans-serif;
   --sw-type-body: 500 1rem / 1.55 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-label: 850 0.75rem / 1.2 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-value: 850 1rem / 1.24 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-label: 720 0.72rem / 1.25 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-value: 760 1rem / 1.28 "IBM Plex Sans", "Segoe UI", sans-serif;
 
   /* Backward-compatible aliases for the current app layer. */
   --bg: var(--sw-color-background);
@@ -137,7 +141,7 @@
   position: relative;
   overflow: hidden;
   padding: var(--sw-surface-inset);
-  border: 1px solid rgba(255, 79, 93, 0.72);
+  border: 1px solid rgba(167, 67, 75, 0.28);
   border-radius: var(--sw-radius-xl);
   background: var(--sw-gradient-danger-command);
   box-shadow: var(--sw-shadow-lg), var(--sw-shadow-danger-glow);
@@ -149,30 +153,30 @@
   position: relative;
   overflow: hidden;
   padding: var(--sw-surface-inset);
-  border: 1px solid rgba(10, 33, 66, 0.1);
+  border: 1px solid rgba(24, 36, 52, 0.08);
   border-radius: var(--sw-radius-xl);
   background: var(--sw-gradient-neutral-command);
   box-shadow: var(--sw-shadow-md);
 }
 
 .sw-command-surface--warning {
-  border-color: rgba(215, 58, 73, 0.24);
+  border-color: rgba(162, 109, 27, 0.18);
   background: var(--sw-gradient-warning-command);
 }
 
 .sw-operational-surface {
   --sw-surface-inset: var(--sw-space-4);
   padding: var(--sw-surface-inset);
-  border: 1px solid rgba(10, 33, 66, 0.09);
+  border: 1px solid rgba(24, 36, 52, 0.075);
   border-radius: var(--sw-radius-lg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.92));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 248, 0.92));
   box-shadow: var(--sw-shadow-md);
 }
 
 .sw-supporting-surface {
   --sw-surface-inset: var(--sw-space-4);
   padding: var(--sw-surface-inset);
-  border: 1px solid rgba(10, 33, 66, 0.08);
+  border: 1px solid rgba(24, 36, 52, 0.07);
   border-radius: var(--sw-radius-lg);
   background: rgba(255, 255, 255, 0.84);
   box-shadow: var(--sw-shadow-sm);
@@ -183,7 +187,7 @@
   padding: var(--sw-surface-inset);
   border: 1px dashed rgba(102, 117, 139, 0.28);
   border-radius: var(--sw-radius-lg);
-  background: rgba(245, 248, 252, 0.72);
+  background: rgba(247, 248, 246, 0.72);
   box-shadow: var(--sw-shadow-sm);
 }
 
@@ -197,7 +201,7 @@
 .sw-decision-title {
   color: var(--sw-color-text-inverse);
   font: var(--sw-type-hero);
-  letter-spacing: -0.075em;
+  letter-spacing: -0.052em;
 }
 
 .sw-decision-copy {
@@ -214,8 +218,8 @@
 .sw-decision-insight {
   padding: var(--sw-space-4);
   border-radius: var(--sw-radius-lg);
-  background: rgba(255, 255, 255, 0.09);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 22px 48px rgba(0, 0, 0, 0.13);
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 34px rgba(0, 0, 0, 0.09);
   backdrop-filter: blur(18px);
 }
 
@@ -230,9 +234,10 @@
   position: relative;
   overflow: hidden;
   padding: var(--sw-surface-inset);
+  border: 1px solid rgba(24, 36, 52, 0.065);
   border-radius: var(--sw-radius-lg);
   background: var(--sw-color-surface);
-  box-shadow: var(--sw-shadow-md);
+  box-shadow: var(--sw-shadow-sm);
 }
 
 .sw-metric-icon,
@@ -245,7 +250,7 @@
 
 .sw-metric-value {
   color: var(--sw-color-text-primary);
-  font-weight: 900;
+  font-weight: 760;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.06em;
 }
@@ -272,18 +277,19 @@
   gap: var(--sw-space-4);
   padding: var(--sw-row-inset);
   border-radius: var(--sw-radius-lg);
-  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(24, 36, 52, 0.06);
+  background: rgba(255, 255, 255, 0.74);
   box-shadow: var(--sw-shadow-sm);
 }
 
 .sw-queue-row--danger {
-  border: 1px solid rgba(215, 58, 73, 0.14);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 246, 247, 0.78));
+  border-color: rgba(167, 67, 75, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(250, 245, 244, 0.8));
 }
 
 .sw-queue-row--warning {
-  border: 1px solid rgba(227, 160, 8, 0.2);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 250, 238, 0.78));
+  border-color: rgba(162, 109, 27, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(250, 247, 239, 0.8));
 }
 
 .sw-queue-row-main {
@@ -328,8 +334,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sw-space-1);
-  min-height: 30px;
-  padding: 0.38rem 0.62rem;
+  min-height: 26px;
+  padding: 0.28rem 0.52rem;
   border: 1px solid transparent;
   border-radius: 999px;
   font: var(--sw-type-label);
@@ -338,32 +344,32 @@
 }
 
 .sw-badge--danger {
-  border-color: rgba(215, 58, 73, 0.22);
+  border-color: rgba(167, 67, 75, 0.18);
   background: var(--sw-color-danger-soft);
   color: var(--sw-color-danger);
 }
 
 .sw-badge--warning {
-  border-color: rgba(227, 160, 8, 0.26);
+  border-color: rgba(162, 109, 27, 0.18);
   background: var(--sw-color-warning-soft);
-  color: #9b6500;
+  color: var(--sw-color-warning);
 }
 
 .sw-badge--success {
-  border-color: rgba(45, 164, 78, 0.24);
+  border-color: rgba(49, 122, 75, 0.18);
   background: var(--sw-color-success-soft);
-  color: #1f7a3a;
+  color: var(--sw-color-success);
 }
 
 .sw-badge--info {
-  border-color: rgba(31, 111, 235, 0.2);
+  border-color: rgba(49, 95, 155, 0.17);
   background: var(--sw-color-info-soft);
   color: var(--sw-color-info);
 }
 
 .sw-badge--neutral {
-  border-color: rgba(102, 117, 139, 0.18);
-  background: rgba(102, 117, 139, 0.08);
+  border-color: rgba(104, 115, 134, 0.14);
+  background: rgba(104, 115, 134, 0.07);
   color: var(--sw-color-text-primary);
 }
 
@@ -376,7 +382,7 @@
   padding: 0.85rem 1.15rem;
   border: 1px solid transparent;
   border-radius: var(--sw-radius-sm);
-  font-weight: 800;
+  font-weight: 720;
   transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
@@ -386,7 +392,7 @@
 }
 
 .sw-button--secondary {
-  border-color: rgba(10, 33, 66, 0.12);
+  border-color: rgba(24, 36, 52, 0.1);
   background: var(--sw-color-surface);
   color: var(--sw-color-text-primary);
 }
@@ -394,7 +400,7 @@
 .sw-button--danger {
   background: var(--sw-color-danger);
   color: var(--sw-color-text-inverse);
-  box-shadow: 0 18px 42px rgba(215, 58, 73, 0.22);
+  box-shadow: 0 12px 30px rgba(167, 67, 75, 0.16);
 }
 
 .sw-button--ghost {
@@ -415,12 +421,12 @@
 
 .sw-icon-badge--warning {
   background: var(--sw-color-warning-soft);
-  color: #9b6500;
+  color: var(--sw-color-warning);
 }
 
 .sw-icon-badge--success {
   background: var(--sw-color-success-soft);
-  color: #1f7a3a;
+  color: var(--sw-color-success);
 }
 
 .sw-icon-badge--info {
@@ -457,7 +463,8 @@
   display: grid;
   gap: var(--sw-space-2);
   border-radius: var(--sw-radius-lg);
-  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(24, 36, 52, 0.06);
+  background: rgba(255, 255, 255, 0.74);
   box-shadow: var(--sw-shadow-sm);
 }
 
@@ -488,4 +495,202 @@
   .sw-action-row {
     justify-content: flex-start;
   }
+}
+
+/* Premium visual tone pass: keep operations legible without emergency-dashboard weight. */
+.ops-shell h1,
+.ops-shell h2,
+.ops-shell h3,
+.admin-shell-page h1,
+.admin-shell-page h2,
+.admin-shell-page h3,
+.reports-shell-page h1,
+.reports-shell-page h2,
+.reports-shell-page h3,
+.payments-shell-page h1,
+.payments-shell-page h2,
+.payments-shell-page h3,
+.customer-order-page h1,
+.customer-order-page h2,
+.customer-order-page h3,
+.driver-shell h1,
+.driver-shell h2,
+.driver-shell h3 {
+  color: var(--sw-color-text-primary);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.ops-shell .sw-card-header h2,
+.admin-shell-page .sw-card-header h2,
+.reports-shell-page .sw-card-header h2,
+.payments-shell-page .sw-card-header h2 {
+  font: var(--sw-type-section-title);
+}
+
+.ops-shell .sw-list-row,
+.ops-shell .sw-queue-row,
+.admin-shell-page .sw-list-row,
+.admin-shell-page .sw-queue-row,
+.reports-shell-page .sw-list-row,
+.payments-shell-page .sw-list-row {
+  border-color: rgba(24, 36, 52, 0.065);
+  box-shadow: var(--sw-shadow-sm);
+}
+
+.ops-decision-banner,
+.ops-job-hero,
+.orders-decision-surface,
+.tracking-command-surface {
+  border-color: rgba(44, 128, 127, 0.16);
+  background:
+    radial-gradient(circle at 86% 10%, rgba(44, 128, 127, 0.14), transparent 24rem),
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.09), transparent 18rem),
+    linear-gradient(135deg, #172234 0%, #1f2f45 52%, #34465d 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 24px 70px rgba(24, 36, 52, 0.2);
+}
+
+.ops-job-hero-blocker,
+.orders-command-surface-alert,
+.orders-decision-surface:not(.orders-decision-surface-success):not(.orders-decision-surface-neutral),
+.reports-empty-state-danger,
+.payments-empty-state-danger {
+  border-color: rgba(167, 67, 75, 0.15);
+}
+
+.ops-job-hero-blocker,
+.orders-decision-surface:not(.orders-decision-surface-success):not(.orders-decision-surface-neutral) {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(167, 67, 75, 0.16), transparent 22rem),
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.08), transparent 18rem),
+    linear-gradient(135deg, #3a2230 0%, #1f2f45 62%, #34465d 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 24px 72px rgba(55, 33, 43, 0.18);
+}
+
+.ops-decision-banner h2,
+.ops-job-hero h2,
+.orders-decision-surface h2 {
+  font-size: clamp(1.72rem, 3.2vw, 2.72rem);
+  font-weight: 720;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.ops-decision-grid > div,
+.sw-decision-insight,
+.orders-decision-hero-success,
+.orders-decision-hero-neutral {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11);
+}
+
+.ops-metric-card,
+.admin-summary-card,
+.admin-health-card,
+.reports-metric-card,
+.payments-metric-card {
+  border-color: rgba(24, 36, 52, 0.065);
+  background:
+    radial-gradient(circle at top right, rgba(44, 128, 127, 0.035), transparent 11rem),
+    linear-gradient(180deg, #ffffff, #fafbf9);
+  box-shadow: var(--sw-shadow-sm);
+}
+
+.ops-metric-card strong,
+.admin-summary-card strong,
+.admin-health-card strong,
+.reports-metric-card strong,
+.payments-metric-card strong {
+  color: var(--sw-color-text-primary);
+  font-weight: 720;
+  letter-spacing: -0.035em;
+}
+
+.ops-metric-card-attention,
+.admin-summary-card-warning,
+.reports-action-row-warning,
+.payments-queue-row-warning .payments-risk-strip {
+  background:
+    radial-gradient(circle at top right, rgba(162, 109, 27, 0.055), transparent 11rem),
+    linear-gradient(180deg, #ffffff, #fbf8ef);
+}
+
+.ops-metric-card-attention.ops-metric-card-alert,
+.admin-summary-card-danger,
+.briefing-item-danger,
+.reports-action-row-danger,
+.payments-queue-row-danger .payments-risk-strip,
+.orders-command-surface-alert {
+  background:
+    radial-gradient(circle at top right, rgba(167, 67, 75, 0.055), transparent 12rem),
+    linear-gradient(180deg, #ffffff, #faf5f4);
+}
+
+.admin-command-item-danger,
+.admin-intervention-row-danger,
+.admin-outbox-row-danger,
+.orders-queue-row-danger,
+.assignment-row-blocked {
+  border-left-width: 3px;
+  border-left-color: var(--sw-color-danger);
+}
+
+.admin-command-item-warning,
+.admin-intervention-row-warning,
+.admin-outbox-row-warning {
+  border-left-width: 3px;
+  border-left-color: var(--sw-color-warning);
+}
+
+.admin-command-item-success,
+.orders-queue-row-success,
+.assignment-row-ready {
+  border-left-width: 3px;
+  border-left-color: var(--sw-color-success);
+}
+
+.attention-queue-row,
+.admin-command-item,
+.briefing-item,
+.reports-action-row,
+.payments-queue-row,
+.orders-queue-row {
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 28px rgba(24, 36, 52, 0.045);
+}
+
+.attention-queue-row,
+.briefing-item-danger,
+.reports-action-row-danger,
+.payments-queue-row-danger,
+.orders-queue-row-danger {
+  border-color: rgba(167, 67, 75, 0.12);
+}
+
+.briefing-item-warning,
+.reports-action-row-warning,
+.payments-queue-row-warning {
+  border-color: rgba(162, 109, 27, 0.13);
+}
+
+.attention-queue-row::before {
+  background: var(--sw-color-danger);
+  box-shadow: none;
+  width: 3px;
+}
+
+.attention-severity-risk::before {
+  background: var(--sw-color-warning);
+}
+
+.sw-button--danger,
+.button-danger {
+  background: var(--sw-color-danger);
+  box-shadow: 0 12px 28px rgba(167, 67, 75, 0.14);
 }
