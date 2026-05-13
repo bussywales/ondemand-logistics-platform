@@ -24,17 +24,26 @@ async function signInOperator(page: Page, credentials: { email: string; password
   }
 
   await page.goto('/get-started', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => undefined);
 
-  const signInMode = page.getByRole('button', { name: /sign in/i }).first();
-  if (await signInMode.isVisible().catch(() => false)) {
+  const signInMode = page.getByRole('button', { name: /^sign in$/i }).first();
+  if (await signInMode.isVisible({ timeout: 10000 }).catch(() => false)) {
     await signInMode.click();
   }
+  const signInCopy = page.getByText(/sign in with the existing operator account/i);
+  if (!(await signInCopy.isVisible({ timeout: 1000 }).catch(() => false))) {
+    const switchToSignIn = page.getByRole('button', { name: /switch to sign in/i }).first();
+    if (await switchToSignIn.isVisible().catch(() => false)) {
+      await switchToSignIn.click();
+    }
+  }
+  await expect(signInCopy).toBeVisible({ timeout: 5000 });
 
   await page.getByRole('textbox', { name: /email/i }).fill(credentials.email);
   await page.getByRole('textbox', { name: /password/i }).fill(credentials.password);
   await page.getByRole('button', { name: /continue to business setup/i }).click();
 
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
     await page.waitForLoadState('domcontentloaded');
 
     const url = page.url();
@@ -110,9 +119,7 @@ test('authenticated business workspace routes smoke', async ({ page }) => {
   );
 
   const signedIn = await signInOperator(page, BUSINESS_TEST_ACCOUNT);
-  if (!signedIn) {
-    test.skip(true, 'Business smoke credentials were not accepted.');
-  }
+  expect(signedIn, 'Business smoke credentials should sign in when configured.').toBe(true);
 
   const routes = ['/app', '/app/orders', '/app/payments', '/app/reports/end-of-day'];
   for (const route of routes) {
@@ -131,9 +138,7 @@ test('authenticated admin routes smoke', async ({ page }) => {
   test.skip(!ADMIN_TEST_ACCOUNT.email || !ADMIN_TEST_ACCOUNT.password, 'Set SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD for admin smoke.');
 
   const signedIn = await signInOperator(page, ADMIN_TEST_ACCOUNT);
-  if (!signedIn) {
-    test.skip(true, 'Admin smoke credentials were not accepted.');
-  }
+  expect(signedIn, 'Admin smoke credentials should sign in when configured.').toBe(true);
 
   await assertProtectedRouteLoads(page, '/admin');
   await assertProtectedRouteLoads(page, '/admin/command');
@@ -143,9 +148,7 @@ test('authenticated driver route smoke', async ({ page }) => {
   test.skip(!DRIVER_TEST_ACCOUNT.email || !DRIVER_TEST_ACCOUNT.password, 'Set SMOKE_DRIVER_EMAIL and SMOKE_DRIVER_PASSWORD for driver smoke.');
 
   const signedIn = await signInOperator(page, DRIVER_TEST_ACCOUNT);
-  if (!signedIn) {
-    test.skip(true, 'Driver smoke credentials were not accepted.');
-  }
+  expect(signedIn, 'Driver smoke credentials should sign in when configured.').toBe(true);
 
   await assertProtectedRouteLoads(page, '/driver');
 });
