@@ -58,7 +58,7 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
           <p className="assignment-error-copy">{props.driverAssignmentError.suitabilityReason}</p>
           <div className="assignment-flag-list">
             {props.driverAssignmentError.suitabilityFlags.map((flag) => (
-              <span className={`status-badge ${getEligibleDriverTone(flag)}`} key={`assignment-error-${flag}`}>
+              <span className={`sw-badge ${getEligibleDriverTone(flag)}`} key={`assignment-error-${flag}`}>
                 {getEligibleDriverFlagLabel(flag)}
               </span>
             ))}
@@ -103,7 +103,7 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
                       {driver.distanceMiles === null ? "Distance unavailable" : `${driver.distanceMiles.toFixed(1)} mi from pickup`}
                     </p>
                   </div>
-                  <span className={`status-badge ${driver.eligible ? "status-positive" : "status-negative"}`}>
+                  <span className={`sw-badge ${driver.eligible ? "sw-badge--success" : "sw-badge--danger"}`}>
                     {getBlockedDriverLabel(driver)}
                   </span>
                 </div>
@@ -124,7 +124,7 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
 
                 <div className="assignment-flag-list">
                   {driver.suitabilityFlags.map((flag) => (
-                    <span className={`status-badge ${getEligibleDriverTone(flag)}`} key={`${driver.id}-${flag}`}>
+                    <span className={`sw-badge ${getEligibleDriverTone(flag)}`} key={`${driver.id}-${flag}`}>
                       {getEligibleDriverFlagLabel(flag)}
                     </span>
                   ))}

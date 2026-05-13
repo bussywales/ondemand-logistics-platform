@@ -39,14 +39,14 @@ function formatAgeMinutes(value: number) {
 
 function severityClass(value: DailyBriefing["criticalItems"][number]["severity"]) {
   if (value === "danger") {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (value === "warning") {
-    return "status-live";
+    return "sw-badge--warning";
   }
 
-  return "status-positive";
+  return "sw-badge--success";
 }
 
 function severityIcon(value: DailyBriefing["criticalItems"][number]["severity"]): ShipWrightIconName {
@@ -255,7 +255,7 @@ export function AdminCommandView(props: {
                             </span>
                             <div>
                               <div className="admin-command-item-meta">
-                                <span className={`status-badge ${severityClass(item.severity)}`}>{toReadableIssue(item.category)}</span>
+                                <span className={`sw-badge ${severityClass(item.severity)}`}>{toReadableIssue(item.category)}</span>
                                 <span>{formatAgeMinutes(item.ageMinutes)}</span>
                                 {item.orderId ? <span>Order {item.orderId.slice(0, 8).toUpperCase()}</span> : null}
                                 {item.jobId ? <span>Job {item.jobId.slice(0, 8).toUpperCase()}</span> : null}
@@ -326,10 +326,10 @@ export function AdminCommandView(props: {
                       </span>
                       <div>
                         <div className="admin-command-item-meta">
-                          <span className={`status-badge ${severityClass(item.severity)}`}>{item.incidentSummary ? "Incident summary" : toReadableIssue(item.category)}</span>
+                          <span className={`sw-badge ${severityClass(item.severity)}`}>{item.incidentSummary ? "Incident summary" : toReadableIssue(item.category)}</span>
                           <span>{item.orgName ?? "Unknown organisation"}</span>
                           {item.restaurantName ? <span>{item.restaurantName}</span> : null}
-                          {hasDraft ? <span className="status-badge status-neutral">Draft only — review before sending</span> : null}
+                          {hasDraft ? <span className="sw-badge sw-badge--neutral">Draft only — review before sending</span> : null}
                         </div>
                         <h3>{item.incidentSummary?.title ?? item.title}</h3>
                         <p>{item.incidentSummary?.summary ?? item.reason}</p>
@@ -418,7 +418,7 @@ export function AdminCommandView(props: {
                   <strong>{item.label}</strong>
                   <p>{item.summary}</p>
                 </div>
-                <span className={`status-badge ${item.severity === "danger" ? "status-negative" : item.severity === "warning" ? "status-live" : "status-neutral"}`}>
+                <span className={`sw-badge ${item.severity === "danger" ? "sw-badge--danger" : item.severity === "warning" ? "sw-badge--warning" : "sw-badge--neutral"}`}>
                   {item.type.replaceAll("_", " ")}
                 </span>
               </article>

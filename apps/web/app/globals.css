@@ -198,18 +198,6 @@ h3 {
   align-items: center;
 }
 
-.preview-status-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.8rem;
-  border: 1px solid rgba(21, 154, 99, 0.28);
-  background: rgba(21, 154, 99, 0.08);
-  color: #0c6d46;
-  font-size: 0.86rem;
-  font-weight: 700;
-}
-
 .preview-label {
   display: block;
   color: var(--muted);
@@ -987,44 +975,6 @@ h3 {
 .mode-chip:disabled {
   cursor: not-allowed;
   opacity: 0.45;
-}
-
-.status-badge {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 0.35rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.status-neutral {
-  background: #f5f5f5;
-  color: var(--ink);
-}
-
-.status-live {
-  background: rgba(21, 154, 99, 0.1);
-  border-color: rgba(21, 154, 99, 0.22);
-  color: #0c6d46;
-}
-
-.status-positive {
-  background: rgba(21, 154, 99, 0.12);
-  border-color: rgba(21, 154, 99, 0.24);
-  color: #0c6d46;
-}
-
-.status-negative {
-  background: rgba(204, 78, 78, 0.08);
-  border-color: rgba(204, 78, 78, 0.18);
-  color: #8f2323;
 }
 
 .button-block {
@@ -2600,35 +2550,6 @@ h3 {
   color: #60716c;
 }
 
-.status-badge {
-  border-radius: 10px;
-  font-weight: 900;
-}
-
-.status-neutral {
-  border-color: rgba(16, 32, 27, 0.1);
-  background: #f4f0e8;
-  color: #10201b;
-}
-
-.status-live {
-  background: rgba(15, 76, 73, 0.1);
-  border-color: rgba(15, 76, 73, 0.22);
-  color: #0f4c49;
-}
-
-.status-positive {
-  background: rgba(21, 154, 99, 0.12);
-  border-color: rgba(21, 154, 99, 0.24);
-  color: #0c6d46;
-}
-
-.status-negative {
-  background: #fff3f0;
-  border-color: rgba(159, 47, 47, 0.2);
-  color: #8f2323;
-}
-
 .ops-creation-panel {
   background: linear-gradient(180deg, #ffffff, #fbf8f1);
 }
@@ -3087,39 +3008,6 @@ p {
   font-weight: 850;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-
-.status-badge {
-  min-height: 26px;
-  border-radius: 999px;
-  padding: 0.34rem 0.6rem;
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-}
-
-.status-neutral {
-  border-color: #ced6e3;
-  background: #eef2f7;
-  color: var(--secondary);
-}
-
-.status-live {
-  border-color: rgba(0, 166, 166, 0.26);
-  background: rgba(0, 166, 166, 0.1);
-  color: #007d7d;
-}
-
-.status-positive {
-  border-color: rgba(45, 164, 78, 0.26);
-  background: rgba(45, 164, 78, 0.1);
-  color: #1f7a3a;
-}
-
-.status-negative {
-  border-color: rgba(215, 58, 73, 0.28);
-  background: rgba(215, 58, 73, 0.09);
-  color: #a72231;
 }
 
 .form-error,
@@ -4524,22 +4412,6 @@ h3,
   gap: 0.7rem;
 }
 
-.status-badge {
-  box-shadow: 0 1px 2px rgba(10, 33, 66, 0.04);
-}
-
-.status-live {
-  box-shadow: 0 0 0 3px rgba(0, 166, 166, 0.06);
-}
-
-.status-positive {
-  box-shadow: 0 0 0 3px rgba(45, 164, 78, 0.06);
-}
-
-.status-negative {
-  box-shadow: 0 0 0 3px rgba(215, 58, 73, 0.06);
-}
-
 .payment-panel,
 .ops-advanced-section,
 .inline-details,
@@ -4679,7 +4551,7 @@ select:hover,
   white-space: normal;
 }
 
-.jobs-cell .status-badge {
+.jobs-cell .sw-badge {
   max-width: 100%;
   white-space: normal;
   text-align: left;
@@ -4705,17 +4577,6 @@ select:hover,
 .button .sw-icon {
   width: 1rem;
   height: 1rem;
-}
-
-.status-with-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.38rem;
-}
-
-.status-with-icon .sw-icon {
-  width: 0.95rem;
-  height: 0.95rem;
 }
 
 .metric-icon,
@@ -4932,7 +4793,7 @@ select:hover,
   color: rgba(255, 255, 255, 0.82);
 }
 
-.ops-decision-banner .ops-job-statuses .status-badge {
+.ops-decision-banner .ops-job-statuses .sw-badge {
   border-color: rgba(255, 255, 255, 0.24);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
 }
@@ -5199,7 +5060,7 @@ select:hover,
   gap: 0.7rem;
 }
 
-.ops-decision-banner .ops-job-statuses .status-badge {
+.ops-decision-banner .ops-job-statuses .sw-badge {
   min-height: 38px;
   padding: 0.58rem 0.82rem;
   border-radius: 999px;
@@ -5207,14 +5068,14 @@ select:hover,
   letter-spacing: 0.07em;
 }
 
-.ops-decision-banner .ops-job-statuses .status-negative {
+.ops-decision-banner .ops-job-statuses .sw-badge--danger {
   border-color: rgba(255, 112, 124, 0.34);
   background: linear-gradient(180deg, rgba(255, 77, 91, 0.86), rgba(183, 32, 47, 0.84));
   color: #ffffff;
 }
 
-.ops-decision-banner .ops-job-statuses .status-neutral,
-.ops-decision-banner .ops-job-statuses .status-live {
+.ops-decision-banner .ops-job-statuses .sw-badge--neutral,
+.ops-decision-banner .ops-job-statuses .sw-badge--info {
   border-color: rgba(255, 255, 255, 0.26);
   background: rgba(255, 255, 255, 0.92);
   color: var(--primary);
@@ -6154,7 +6015,7 @@ select:hover,
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.orders-status-block .status-badge {
+.orders-status-block .sw-badge {
   justify-content: center;
   min-height: 2.4rem;
   width: fit-content;
@@ -8123,7 +7984,7 @@ select:hover,
   gap: 0.85rem;
 }
 
-.product-update-card-header .status-badge {
+.product-update-card-header .sw-badge {
   margin-left: auto;
 }
 
@@ -8156,7 +8017,7 @@ select:hover,
     flex-wrap: wrap;
   }
 
-  .product-update-card-header .status-badge {
+  .product-update-card-header .sw-badge {
     margin-left: 0;
   }
 }

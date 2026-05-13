@@ -34,7 +34,7 @@ export function JobsListView(props: JobsListViewProps) {
                 <span>{formatDateTime(item.createdAt)}</span>
               </div>
               <div className="jobs-cell">
-                <span className={`status-badge status-with-icon ${statusTone(item.status)}`}>
+                <span className={`sw-badge ${statusTone(item.status)}`}>
                   <ShipWrightIcon name={statusIconName(item.status)} />
                   <span>{formatStatusLabel(item.status)}</span>
                 </span>

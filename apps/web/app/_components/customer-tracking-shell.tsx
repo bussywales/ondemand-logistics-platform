@@ -29,18 +29,18 @@ function mapTrackingError(error: unknown) {
 
 function getStatusTone(status: string) {
   if (["FULFILLED", "DELIVERED", "CAPTURED"].includes(status)) {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (["PAYMENT_FAILED", "FAILED", "DISPATCH_FAILED", "CANCELLED"].includes(status)) {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (["PAYMENT_AUTHORIZED", "AUTHORIZED", "ASSIGNED", "PICKED_UP", "EN_ROUTE_PICKUP", "EN_ROUTE_DROP"].includes(status)) {
-    return "status-live";
+    return "sw-badge--info";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 function getStepTone(state: ReturnType<typeof getTrackingSteps>[number]["state"]) {
@@ -199,7 +199,7 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
                   <h2>Delivery progress</h2>
                   <p className="customer-tracking-note">Status and progress only. This is not a live map.</p>
                 </div>
-                <span className={`status-badge ${getStatusTone(tracking.job.status)}`}>{getCustomerJobStatusLabel(tracking.job.status)}</span>
+                <span className={`sw-badge ${getStatusTone(tracking.job.status)}`}>{getCustomerJobStatusLabel(tracking.job.status)}</span>
               </div>
 
               <div className="customer-route-visual sw-supporting-surface">
@@ -239,7 +239,7 @@ export function CustomerTrackingShell({ orderId }: { orderId: string }) {
                   <h2>{nextStep?.title}</h2>
                   <p className="customer-tracking-note">{nextStep?.copy}</p>
                 </div>
-                <span className={`status-badge ${getStatusTone(tracking.payment.status)}`}>{getCustomerPaymentStatusLabel(tracking.payment.status)}</span>
+                <span className={`sw-badge ${getStatusTone(tracking.payment.status)}`}>{getCustomerPaymentStatusLabel(tracking.payment.status)}</span>
               </div>
 
               <div className="sw-supporting-surface customer-tracking-support">

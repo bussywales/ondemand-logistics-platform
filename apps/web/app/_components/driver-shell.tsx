@@ -42,18 +42,18 @@ function formatStatusLabel(status: string) {
 
 function statusTone(status: string) {
   if (["ONLINE", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(status)) {
-    return "status-live";
+    return "sw-badge--info";
   }
 
   if (["DELIVERED", "COMPLETED", "ACCEPTED"].includes(status)) {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (["OFFLINE", "REJECTED", "EXPIRED", "CANCELLED", "DISPATCH_FAILED"].includes(status)) {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 function shortId(id: string) {
@@ -119,7 +119,7 @@ function OfferCard(props: {
               <p>Expires {formatDateTime(props.offer.expiresAt)}</p>
             </div>
           </div>
-          <span className={`status-badge status-with-icon ${statusTone(props.offer.status)}`}>
+          <span className={`sw-badge ${statusTone(props.offer.status)}`}>
             <ShipWrightIcon name="queue" />
             <span>{formatStatusLabel(props.offer.status)}</span>
           </span>
@@ -210,7 +210,7 @@ function ActiveJobPanel(props: {
           <h2>Delivery {shortId(props.job.id)}</h2>
           <p>{props.job.pickupAddress} to {props.job.dropoffAddress}</p>
         </div>
-        <span className={`status-badge status-with-icon ${statusTone(props.job.status)}`}>
+        <span className={`sw-badge ${statusTone(props.job.status)}`}>
           <ShipWrightIcon name="queue" />
           <span>{formatStatusLabel(props.job.status)}</span>
         </span>

@@ -21,34 +21,34 @@ export function statusTone(status: AppJob["status"] | AppJob["payment"]["status"
     status === "EN_ROUTE_DROP" ||
     status === "AUTHORIZED"
   ) {
-    return "status-live";
+    return "sw-badge--info";
   }
 
   if (status === "DELIVERED" || status === "CAPTURED") {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (status === "FAILED" || status === "CANCELLED" || status === "DISPATCH_FAILED") {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 export function orderStatusTone(status: BusinessCustomerOrder["status"]) {
   if (status === "FULFILLED") {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (status === "PAYMENT_AUTHORIZED") {
-    return "status-live";
+    return "sw-badge--info";
   }
 
   if (status === "PAYMENT_FAILED") {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 export function summarizeDriver(job: AppJob) {
@@ -61,30 +61,30 @@ export function summarizeDriver(job: AppJob) {
 
 export function attentionTone(level: AppJob["attentionLevel"]) {
   if (level === "BLOCKER") {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (level === "RISK") {
-    return "status-live";
+    return "sw-badge--warning";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 export function severityTone(level: "BLOCKER" | "RISK" | "NORMAL" | "INFO") {
   if (level === "BLOCKER") {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (level === "RISK") {
-    return "status-live";
+    return "sw-badge--warning";
   }
 
   if (level === "INFO") {
-    return "status-neutral";
+    return "sw-badge--neutral";
   }
 
-  return "status-positive";
+  return "sw-badge--success";
 }
 
 export function statusIconName(status: AppJob["status"] | AppJob["payment"]["status"]): ShipWrightIconName {

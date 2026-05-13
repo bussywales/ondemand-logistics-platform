@@ -56,18 +56,18 @@ export type OrdersShellProps = {
 
 function statusTone(status: string) {
   if (["PAYMENT_AUTHORIZED", "AUTHORIZED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP"].includes(status)) {
-    return "status-live";
+    return "sw-badge--info";
   }
 
   if (["DELIVERED", "COMPLETED", "FULFILLED", "CAPTURED"].includes(status)) {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (["PAYMENT_FAILED", "FAILED", "CANCELLED", "DISPATCH_FAILED"].includes(status)) {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 function statusIconName(status: string): ShipWrightIconName {
@@ -108,7 +108,7 @@ function statusSummaryLabel(status: BusinessCustomerOrder["status"]) {
 
 function StatusBadge(props: { status: string }) {
   return (
-    <span className={`status-badge status-with-icon ${statusTone(props.status)}`}>
+    <span className={`sw-badge ${statusTone(props.status)}`}>
       <ShipWrightIcon name={statusIconName(props.status)} />
       <span>{formatOrderStatusLabel(props.status)}</span>
     </span>

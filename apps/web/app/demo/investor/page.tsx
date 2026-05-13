@@ -44,14 +44,14 @@ function readProofSummary(): ProofSummary | null {
 
 function proofTone(result: ProofSummary["result"] | null) {
   if (result === "pass") {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (result === "partial") {
-    return "status-live";
+    return "sw-badge--info";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 function proofIcon(result: ProofSummary["result"] | null): ShipWrightIconName {
@@ -159,7 +159,7 @@ export default function InvestorDemoPage() {
               <p className="eyebrow">Latest documented proof</p>
               <h2>Staging paid-delivery summary</h2>
             </div>
-            <span className={`status-badge status-with-icon ${proofTone(proof?.result ?? null)}`}>
+            <span className={`sw-badge ${proofTone(proof?.result ?? null)}`}>
               <ShipWrightIcon name={proofIcon(proof?.result ?? null)} />
               <span>{proof ? proof.result.toUpperCase() : "UNAVAILABLE"}</span>
             </span>

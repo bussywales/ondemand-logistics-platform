@@ -44,9 +44,9 @@ const drivers: EligibleDriver[] = [
 describe("driver assignment helpers", () => {
   it("labels and tones suitability flags", () => {
     expect(getEligibleDriverFlagLabel("READY")).toBe("Ready");
-    expect(getEligibleDriverTone("READY")).toBe("status-positive");
+    expect(getEligibleDriverTone("READY")).toBe("sw-badge--success");
     expect(getEligibleDriverFlagLabel("VEHICLE_MISMATCH")).toBe("Vehicle mismatch");
-    expect(getEligibleDriverTone("VEHICLE_MISMATCH")).toBe("status-negative");
+    expect(getEligibleDriverTone("VEHICLE_MISMATCH")).toBe("sw-badge--danger");
   });
 
   it("summarizes empty-state causes from blocked drivers", () => {

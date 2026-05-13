@@ -39,7 +39,7 @@ function UpdateCard(props: { update: ProductUpdate; compact?: boolean }) {
           <p className="eyebrow">What’s new</p>
           <h3>{props.update.title}</h3>
         </div>
-        <span className="status-badge status-live">New</span>
+        <span className="sw-badge sw-badge--info">New</span>
       </div>
       <p className="product-update-summary">{props.update.summary}</p>
       <div className="sw-row product-update-meta">

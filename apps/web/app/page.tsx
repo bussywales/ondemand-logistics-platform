@@ -56,7 +56,7 @@ function ProductPreview() {
           <span className="preview-label">Operations console</span>
           <strong>Stoke pilot workspace</strong>
         </div>
-        <span className="status-badge status-with-icon status-live">
+        <span className="sw-badge sw-badge--info">
           <ShipWrightIcon name="queue" />
           <span>Live</span>
         </span>
@@ -86,7 +86,7 @@ function ProductPreview() {
         </div>
         <div className="preview-queue-row">
           <strong>JOB-20481</strong>
-          <span className="status-badge status-with-icon status-live">
+          <span className="sw-badge sw-badge--info">
             <ShipWrightIcon name="route" />
             <span>En route</span>
           </span>
@@ -95,7 +95,7 @@ function ProductPreview() {
         </div>
         <div className="preview-queue-row preview-queue-row-alert">
           <strong>JOB-20477</strong>
-          <span className="status-badge status-with-icon status-negative">
+          <span className="sw-badge sw-badge--danger">
             <ShipWrightIcon name="alert" />
             <span>Blocker</span>
           </span>
@@ -104,7 +104,7 @@ function ProductPreview() {
         </div>
         <div className="preview-queue-row">
           <strong>JOB-20472</strong>
-          <span className="status-badge status-with-icon status-positive">
+          <span className="sw-badge sw-badge--success">
             <ShipWrightIcon name="check" />
             <span>Delivered</span>
           </span>

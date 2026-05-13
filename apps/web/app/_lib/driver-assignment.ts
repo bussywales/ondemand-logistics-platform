@@ -105,11 +105,11 @@ export function toDriverAssignmentFailureModel(input: {
 export function getEligibleDriverTone(flag: EligibleDriverSuitabilityFlag) {
   switch (flag) {
     case "READY":
-      return "status-positive";
+      return "sw-badge--success";
     case "NO_LIVE_LOCATION":
-      return "status-live";
+      return "sw-badge--warning";
     default:
-      return "status-negative";
+      return "sw-badge--danger";
   }
 }
 

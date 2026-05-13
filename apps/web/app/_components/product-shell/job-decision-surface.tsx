@@ -48,15 +48,15 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
           </div>
         </div>
         <div className="ops-job-statuses">
-          <span className={`status-badge status-with-icon ${statusTone(job.status)}`}>
+          <span className={`sw-badge ${statusTone(job.status)}`}>
             <ShipWrightIcon name={statusIconName(job.status)} />
             <span>{formatStatusLabel(job.status)}</span>
           </span>
-          <span className={`status-badge status-with-icon ${attentionTone(job.attentionLevel)}`}>
+          <span className={`sw-badge ${attentionTone(job.attentionLevel)}`}>
             <ShipWrightIcon name={severityIconName(job.attentionLevel)} />
             <span>{job.attentionLevel}</span>
           </span>
-          <span className={`status-badge status-with-icon ${statusTone(job.payment.status)}`}>
+          <span className={`sw-badge ${statusTone(job.payment.status)}`}>
             <ShipWrightIcon name={statusIconName(job.payment.status)} />
             <span>{formatStatusLabel(job.payment.status)}</span>
           </span>

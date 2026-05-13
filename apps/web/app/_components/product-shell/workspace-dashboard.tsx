@@ -159,7 +159,7 @@ function RecentOrdersSurface(props: { recentOrders: BusinessCustomerOrder[] }) {
                 <strong>{order.customer.name}</strong>
                 <span>{order.restaurant.name}</span>
               </div>
-              <span className={`status-badge status-with-icon ${orderStatusTone(order.status)}`}>
+              <span className={`sw-badge ${orderStatusTone(order.status)}`}>
                 <ShipWrightIcon name={order.status === "PAYMENT_FAILED" ? "alert" : "payment"} />
                 <span>{formatStatusLabel(order.status)}</span>
               </span>
@@ -220,7 +220,7 @@ export function ActiveJobsQueue(props: { activeJobs: AppJob[] }) {
                 <span>{formatDateTime(item.createdAt)}</span>
               </div>
               <div className="jobs-cell">
-                <span className={`status-badge status-with-icon ${statusTone(item.status)}`}>
+                <span className={`sw-badge ${statusTone(item.status)}`}>
                   <ShipWrightIcon name={statusIconName(item.status)} />
                   <span>{formatStatusLabel(item.status)}</span>
                 </span>
@@ -282,11 +282,7 @@ export function NeedsReviewQueue(props: {
                   <span className={`icon-chip icon-chip-${intelligence.severity.toLowerCase()}`} aria-hidden="true">
                     <ShipWrightIcon name={severityIconName(intelligence.severity)} />
                   </span>
-                  <span
-                    className={`sw-badge ${
-                      intelligence.severity === "BLOCKER" ? "sw-badge--danger" : "sw-badge--warning"
-                    } status-badge ${severityTone(intelligence.severity)}`}
-                  >
+                  <span className={`sw-badge ${severityTone(intelligence.severity)}`}>
                     {intelligence.severity}
                   </span>
                   <strong>{getJobShortId(job.id)}</strong>

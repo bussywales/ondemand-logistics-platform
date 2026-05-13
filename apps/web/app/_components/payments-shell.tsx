@@ -39,18 +39,18 @@ import { buildAuthRedirectTarget } from "../_lib/route-protection";
 
 function statusTone(status: string) {
   if (["PAYMENT_FAILED", "FAILED", "CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED", "DISPATCH_FAILED"].includes(status)) {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (["DELIVERED", "FULFILLED", "CAPTURED", "PAID"].includes(status)) {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (["AUTHORIZED", "PAYMENT_AUTHORIZED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP", "READY", "PENDING"].includes(status)) {
-    return "status-live";
+    return "sw-badge--info";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 function statusIconName(status: string): ShipWrightIconName {
@@ -75,7 +75,7 @@ function statusIconName(status: string): ShipWrightIconName {
 
 function StatusBadge(props: { status: string; label?: string }) {
   return (
-    <span className={`status-badge status-with-icon ${statusTone(props.status)}`}>
+    <span className={`sw-badge ${statusTone(props.status)}`}>
       <ShipWrightIcon name={statusIconName(props.status)} />
       <span>{props.label ?? formatOrderStatusLabel(props.status)}</span>
     </span>
@@ -458,7 +458,7 @@ export function PaymentsShell() {
                   <h2>Orders first, finance visible</h2>
                   <p className="ops-detail-note">Payment state stays connected to dispatch, delivery, and fulfilment rather than sitting in a separate ledger view.</p>
                 </div>
-                <span className={`status-badge ${riskOrders.length ? "status-negative" : "status-positive"}`}>
+                <span className={`sw-badge ${riskOrders.length ? "sw-badge--danger" : "sw-badge--success"}`}>
                   {riskOrders.length ? "Payment action required" : "No payment blockers"}
                 </span>
               </div>

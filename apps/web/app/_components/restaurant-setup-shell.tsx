@@ -470,7 +470,7 @@ export function RestaurantSetupShell() {
                   <h2>Restaurant identity</h2>
                   <p>Create the merchant profile and customer-facing link.</p>
                 </div>
-                {hasRestaurant ? <span className="status-badge status-positive">Profile ready</span> : null}
+                {hasRestaurant ? <span className="sw-badge sw-badge--success">Profile ready</span> : null}
               </div>
 
               <form className="merchant-form" onSubmit={handleCreateRestaurant}>
@@ -586,7 +586,7 @@ export function RestaurantSetupShell() {
                   <h2>Add a menu section</h2>
                   <p>Start with the customer’s first decision: mains, drinks, sides, or specials.</p>
                 </div>
-                {!selectedRestaurant ? <span className="status-badge status-neutral">Locked</span> : null}
+                {!selectedRestaurant ? <span className="sw-badge sw-badge--neutral">Locked</span> : null}
               </div>
 
               <form className="merchant-form" onSubmit={handleCreateCategory}>
@@ -631,7 +631,7 @@ export function RestaurantSetupShell() {
                   <h2>Add an orderable item</h2>
                   <p>Tie every item to a section so the public menu stays structured.</p>
                 </div>
-                {hasCategory ? null : <span className="status-badge status-neutral">Needs section</span>}
+                {hasCategory ? null : <span className="sw-badge sw-badge--neutral">Needs section</span>}
               </div>
 
               <form className="merchant-form" onSubmit={handleCreateItem}>
@@ -759,7 +759,7 @@ export function RestaurantSetupShell() {
                         <strong>{category.name}</strong>
                         <p>Display order {category.sortOrder}</p>
                       </div>
-                      <span className={category.isActive ? "status-badge status-positive" : "status-badge status-neutral"}>
+                      <span className={category.isActive ? "sw-badge sw-badge--success" : "sw-badge sw-badge--neutral"}>
                         {category.isActive ? "Live" : "Inactive"}
                       </span>
                     </div>

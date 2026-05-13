@@ -20,14 +20,14 @@ const REPORT_DATA_UNAVAILABLE_MESSAGE = "Report data unavailable. Refresh or con
 
 function toneToClass(value: EndOfDayActionItem["severity"]) {
   if (value === "danger") {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (value === "warning") {
-    return "status-live";
+    return "sw-badge--warning";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 function toneToIcon(value: EndOfDayActionItem["severity"]): ShipWrightIconName {
@@ -91,7 +91,7 @@ function ActionRow(props: { item: EndOfDayActionItem }) {
           </span>
           <div>
             <div className="reports-action-meta">
-              <span className={`status-badge ${toneToClass(item.severity)}`}>{formatActionLabel(item.type)}</span>
+              <span className={`sw-badge ${toneToClass(item.severity)}`}>{formatActionLabel(item.type)}</span>
               {item.orderId ? <span>Order {item.orderId.slice(0, 8).toUpperCase()}</span> : null}
               {item.jobId ? <span>Job {item.jobId.slice(0, 8).toUpperCase()}</span> : null}
             </div>

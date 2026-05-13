@@ -16,26 +16,26 @@ const DRIVER_READINESS_UNAVAILABLE_MESSAGE = "Driver readiness data unavailable.
 
 function readinessTone(status: AdminDriverReadinessItem["readinessStatus"]) {
   if (status === "READY") {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (status === "NEEDS_REVIEW") {
-    return "status-live";
+    return "sw-badge--warning";
   }
 
-  return "status-negative";
+  return "sw-badge--danger";
 }
 
 function checklistTone(result: AdminDriverReadinessItem["checklist"][number]["result"]) {
   if (result === "pass") {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (result === "warn") {
-    return "status-live";
+    return "sw-badge--warning";
   }
 
-  return "status-negative";
+  return "sw-badge--danger";
 }
 
 function formatStatus(value: string) {
@@ -110,7 +110,7 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
                     </span>
                     <div>
                       <div className="admin-command-item-meta">
-                        <span className={`status-badge ${readinessTone(driver.readinessStatus)}`}>{formatStatus(driver.readinessStatus)}</span>
+                        <span className={`sw-badge ${readinessTone(driver.readinessStatus)}`}>{formatStatus(driver.readinessStatus)}</span>
                         <span>{driver.availabilityStatus}</span>
                         <span>{driver.vehicleType ?? "No vehicle"}</span>
                         {driver.orgName ? <span>{driver.orgName}</span> : null}
@@ -130,7 +130,7 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
                   <div className="sw-supporting-surface admin-detail-panel">
                     <div className="briefing-evidence-row">
                       {driver.checklist.map((item) => (
-                        <span className={`status-badge ${checklistTone(item.result)}`} key={item.key}>
+                        <span className={`sw-badge ${checklistTone(item.result)}`} key={item.key}>
                           {item.label}: {item.reason}
                         </span>
                       ))}

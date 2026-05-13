@@ -326,7 +326,7 @@ export function CustomerOrderingShell({ slug }: { slug: string }) {
                           <p className="eyebrow">Menu section</p>
                           <h2>{category.name}</h2>
                         </div>
-                        <span className="status-badge status-neutral">
+                        <span className="sw-badge sw-badge--neutral">
                           {category.items.length} item{category.items.length === 1 ? "" : "s"}
                         </span>
                       </div>

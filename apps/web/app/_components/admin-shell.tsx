@@ -34,18 +34,18 @@ import { buildAuthRedirectTarget } from "../_lib/route-protection";
 
 function toneToClass(value: "danger" | "warning" | "info" | "success") {
   if (value === "danger") {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (value === "warning") {
-    return "status-live";
+    return "sw-badge--warning";
   }
 
   if (value === "success") {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
-  return "status-neutral";
+  return "sw-badge--info";
 }
 
 function toneToIcon(value: "danger" | "warning" | "info" | "success"): ShipWrightIconName {
@@ -66,18 +66,18 @@ function toneToIcon(value: "danger" | "warning" | "info" | "success"): ShipWrigh
 
 function statusTone(value: string) {
   if (["DISPATCH_FAILED", "FAILED", "PAYMENT_FAILED", "CANCELLED"].includes(value)) {
-    return "status-negative";
+    return "sw-badge--danger";
   }
 
   if (["FULFILLED", "DELIVERED", "CAPTURED"].includes(value)) {
-    return "status-positive";
+    return "sw-badge--success";
   }
 
   if (["AUTHORIZED", "PAYMENT_AUTHORIZED", "ASSIGNED", "EN_ROUTE_PICKUP", "PICKED_UP", "EN_ROUTE_DROP", "REQUESTED"].includes(value)) {
-    return "status-live";
+    return "sw-badge--info";
   }
 
-  return "status-neutral";
+  return "sw-badge--neutral";
 }
 
 function statusIcon(value: string): ShipWrightIconName {
@@ -102,7 +102,7 @@ function statusIcon(value: string): ShipWrightIconName {
 
 function StatusBadge(props: { value: string; label?: string }) {
   return (
-    <span className={`status-badge status-with-icon ${statusTone(props.value)}`}>
+    <span className={`sw-badge ${statusTone(props.value)}`}>
       <ShipWrightIcon name={statusIcon(props.value)} />
       <span>{props.label ?? props.value.replace(/_/g, " ")}</span>
     </span>
@@ -504,7 +504,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
                 <h2>Top interventions</h2>
               </div>
               <div className="admin-section-actions">
-                <span className="status-badge status-negative">{filteredInterventions.length} open</span>
+                <span className="sw-badge sw-badge--danger">{filteredInterventions.length} open</span>
                 {filteredInterventions.length > 5 ? (
                   <button
                     className="sw-button sw-button--ghost button button-secondary"
@@ -537,7 +537,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
                           </span>
                           <div>
                             <div className="admin-row-meta">
-                              <span className={`status-badge ${toneToClass(item.severity)}`}>{formatInterventionSeverityLabel(item.severity)}</span>
+                              <span className={`sw-badge ${toneToClass(item.severity)}`}>{formatInterventionSeverityLabel(item.severity)}</span>
                               <span>{item.orgName ?? "Unknown org"}</span>
                               {item.restaurantName ? <span>{item.restaurantName}</span> : null}
                             </div>
@@ -629,7 +629,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
                             </span>
                             <div>
                               <div className="admin-row-meta">
-                                <span className={`status-badge ${toneToClass(item.severity)}`}>{formatInterventionSeverityLabel(item.severity)}</span>
+                                <span className={`sw-badge ${toneToClass(item.severity)}`}>{formatInterventionSeverityLabel(item.severity)}</span>
                                 <span>{item.orgName ?? "Unknown org"}</span>
                                 {item.restaurantName ? <span>{item.restaurantName}</span> : null}
                               </div>
