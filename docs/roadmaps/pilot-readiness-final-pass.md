@@ -7,6 +7,9 @@ ShipWright Stage 1 is **not yet ready for an open real-world pilot without named
 
 This pass reflects the latest verified staging evidence, current repo implementation, and the supporting runbooks and playbooks available in the repository as of 2026-05-02. It should also be read as the foundation document for the next AI-assisted command-centre phase, not as evidence that assistive AI is already shipping in production workflows.
 
+Current staging-ready validation standard:
+- `docs/validation/staging-validation-standard.md`
+
 ## Latest evidence used
 - release verification artifact:
   - `docs/proofs/release-verify-20260502T202910Z.json`
@@ -18,6 +21,7 @@ This pass reflects the latest verified staging evidence, current repo implementa
   - `docs/playbooks/README.md`
   - `docs/staging-paid-delivery-proof.md`
   - `docs/release-checklist.md`
+  - `docs/validation/staging-validation-standard.md`
 
 ## What is staging-proven
 The following is backed by current staging verification or the live paid-delivery proof harness:
@@ -105,6 +109,12 @@ This pass separates direct live evidence from route/component structure.
   - verified by `release:verify-staging`
 - full Stage 1 order-to-fulfilled loop
   - verified by `pnpm proof:staging-paid-delivery`
+
+Current baseline after browser smoke credential seeding:
+- public restaurant ordering route is covered by Playwright smoke
+- public tracking route is covered by Playwright smoke with `SMOKE_LATEST_ORDER_ID`
+- authenticated business workspace, admin command, and driver routes are covered by Playwright smoke when staging smoke credentials are configured
+- staging-ready feature work should use `docs/validation/staging-validation-standard.md` as the required quality gate
 
 ### Structurally checked in this pass
 The following screens were checked through current route/component structure, successful builds/tests, and shell composition rather than a live authenticated browser session in this pass:
@@ -220,7 +230,7 @@ Recommended supporting docs for these sessions:
 
 ## Recommended next pilot actions
 1. Rehearse one full browser-led demo using the latest proof order plus `/track/[orderId]`, `/app/orders`, `/app/payments`, `/driver`, and `/admin`.
-2. Run `pnpm release:verify-staging` and `pnpm proof:staging-paid-delivery` immediately before any investor or pilot-facing session.
+2. Run the full validation standard in `docs/validation/staging-validation-standard.md` immediately before any investor or pilot-facing session.
 3. Assign named owners for:
    - incident command
    - customer support

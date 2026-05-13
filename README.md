@@ -55,7 +55,10 @@ pnpm proof:staging-paid-delivery
 pnpm --filter @shipwright/web test
 pnpm --filter api test
 pnpm typecheck
+pnpm --filter @shipwright/web test:smoke
 ```
+
+The required staging-ready quality gate is documented in `docs/validation/staging-validation-standard.md`.
 
 ## Browser smoke testing (Playwright)
 Commit `4975b8c` adds a minimal Playwright setup for staging smoke checks.
@@ -100,6 +103,7 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 
 ## Current Stage 1 evidence
 - Proof archive: `docs/proofs/`
+- Staging validation standard: `docs/validation/staging-validation-standard.md`
 - Paid delivery proof runbook: `docs/staging-paid-delivery-proof.md`
 - Release verification runbook: `docs/release-checklist.md`
 - Working execution plan: `docs/roadmaps/fleet-pilot-working-plan.md`

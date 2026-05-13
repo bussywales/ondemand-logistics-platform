@@ -2,6 +2,9 @@
 
 This is the operator path for declaring a ShipWright staging release healthy.
 
+Canonical staging quality gate:
+- `docs/validation/staging-validation-standard.md`
+
 ## 1) Apply migrations first
 - apply required staging migrations before deploy
 - migration application is part of release gating, not an optional post-deploy cleanup step
@@ -35,7 +38,7 @@ Optional env:
 If `.env.smoke` is absent or `SMOKE_API_BASE_URL` is still missing after auto-loading, the command fails with an actionable message.
 
 ## 3.5) Browser smoke (Playwright)
-Use this optional smoke pass when you need UI/route-level staging confidence.
+Run browser smoke as part of the staging-ready validation gate.
 
 ```bash
 pnpm --filter @shipwright/web exec playwright install chromium
@@ -59,6 +62,17 @@ Configuration:
 - Playwright complements, not replaces, release verification:
   - `pnpm release:verify-staging`
   - `pnpm proof:staging-paid-delivery`
+
+## 3.6) Do not merge if
+Do not merge or mark staging-ready when:
+- release verification fails
+- paid-delivery proof fails
+- Playwright smoke fails with configured smoke credentials
+- readiness is missing a critical schema dependency introduced by the change
+- a new route bypasses auth, org, driver, or platform-admin role boundaries
+- `internal_server_error` appears on staging command surfaces
+
+See the full rule set in `docs/validation/staging-validation-standard.md`.
 
 ## 4) What the command runs
 1. `GET /healthz`
