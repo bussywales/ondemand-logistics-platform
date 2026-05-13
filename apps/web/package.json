@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "echo 'web lint placeholder'",
     "typecheck": "next build > /dev/null",
-    "test": "vitest run",
+    "test": "vitest run --exclude e2e/**",
     "test:integration": "echo 'web integration tests not required for phase 0 shell'",
     "test:e2e": "playwright test",
     "test:smoke": "playwright test staging-smoke.spec.ts"

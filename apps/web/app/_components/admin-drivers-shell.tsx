@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";

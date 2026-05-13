@@ -77,7 +77,8 @@ function appJobFixture(overrides: Partial<AppJob> = {}): AppJob {
     tracking: {
       assignedDriverName: null,
       latestLocation: null,
-      updatedAt: null
+      dispatchAttempts: [],
+      timeline: []
     },
     payment: {
       id: "payment_123",

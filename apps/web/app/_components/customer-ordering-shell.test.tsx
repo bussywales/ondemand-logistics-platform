@@ -44,15 +44,37 @@ describe("CustomerOrderingShell", () => {
         orderResult={{
           order: {
             id: "order_123",
+            restaurantId: "restaurant_123",
+            jobId: "job_123",
+            paymentId: "payment_123",
             status: "PAYMENT_AUTHORIZED",
+            customerName: "Ada Customer",
+            customerEmail: "ada@example.com",
+            customerPhone: "07123456789",
+            deliveryAddress: "10 Pilot Street",
+            deliveryNotes: null,
+            subtotalCents: 1486,
+            deliveryFeeCents: 400,
             totalCents: 1886,
-            currency: "GBP"
+            currency: "GBP",
+            createdAt: "2026-05-02T10:00:00.000Z",
+            items: []
           },
           job: {
-            id: "job_123"
+            id: "job_123",
+            status: "REQUESTED",
+            etaMinutes: 22,
+            pickupAddress: "Pilot Kitchen pickup",
+            dropoffAddress: "10 Pilot Street"
           },
           payment: {
-            status: "PAYMENT_AUTHORIZED"
+            id: "payment_123",
+            status: "AUTHORIZED",
+            amountAuthorizedCents: 1886,
+            amountCapturedCents: 0,
+            totalCents: 1886,
+            currency: "GBP",
+            lastError: null
           }
         }}
       />
@@ -63,6 +85,6 @@ describe("CustomerOrderingShell", () => {
     expect(markup).toContain("/track/order_123");
     expect(markup).toContain("order_123");
     expect(markup).toContain("job_123");
-    expect(markup).toContain("PAYMENT AUTHORIZED");
+    expect(markup).toContain("AUTHORIZED");
   });
 });
