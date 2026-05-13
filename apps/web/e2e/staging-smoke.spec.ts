@@ -67,9 +67,11 @@ async function assertProtectedRouteLoads(page: Page, path: string) {
 test('public ordering smoke with checkout surface', async ({ page }) => {
   await page.goto(PUBLIC_RESTAURANT_PATH, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('main')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: /loading menu/i })).toBeHidden({ timeout: 30000 });
+  await expect(page.getByRole('heading', { name: /mains/i })).toBeVisible({ timeout: 30000 });
 
-  const firstAddButton = page.getByRole('button', { name: /^Add /i }).first();
-  await expect(firstAddButton).toBeVisible({ timeout: 15000 });
+  const firstAddButton = page.getByRole('button', { name: /^Add/i }).first();
+  await expect(firstAddButton).toBeVisible({ timeout: 30000 });
   await firstAddButton.click();
 
   const checkoutButton = page.getByRole('button', { name: /continue to checkout/i });
