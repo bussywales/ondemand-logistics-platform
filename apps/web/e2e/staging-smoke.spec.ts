@@ -142,6 +142,7 @@ test('authenticated admin routes smoke', async ({ page }) => {
 
   await assertProtectedRouteLoads(page, '/admin');
   await assertProtectedRouteLoads(page, '/admin/command');
+  await assertProtectedRouteLoads(page, '/admin/drivers');
 });
 
 test('authenticated driver route smoke', async ({ page }) => {

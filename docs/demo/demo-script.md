@@ -187,12 +187,14 @@ Open:
 
 Show:
 - courier readiness status
+- readiness counts for ready, needs review, and not eligible couriers
 - verification, vehicle, online, location, and active-job checklist
 - recommended next action for blocked couriers
 
 Say:
 - this is a read-only pilot control surface
 - approval, courier communication, and eligibility decisions remain human responsibilities
+- the surface is not a punitive driver score and does not approve, suspend, or assign couriers automatically
 
 ### 10. Playbooks and help
 Open:

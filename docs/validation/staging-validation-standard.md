@@ -53,6 +53,7 @@ Authenticated routes:
 - `/app/reports/end-of-day`
 - `/admin`
 - `/admin/command`
+- `/admin/drivers`
 - `/driver`
 
 Browser smoke must validate both unauthenticated and authenticated surfaces when smoke credentials are configured.
@@ -121,7 +122,7 @@ Do not merge or mark staging-ready if any of the following are true:
 - `pnpm typecheck` fails.
 - A new release-critical schema dependency is missing from readiness or release verification.
 - A new authenticated route bypasses auth, org, driver, or platform-admin boundaries.
-- `internal_server_error` appears on staging command surfaces such as `/app`, `/app/orders`, `/app/payments`, `/app/reports/end-of-day`, `/admin`, `/admin/command`, or `/driver`.
+- `internal_server_error` appears on staging command surfaces such as `/app`, `/app/orders`, `/app/payments`, `/app/reports/end-of-day`, `/admin`, `/admin/command`, `/admin/drivers`, or `/driver`.
 - Playwright failures are hidden by weakening the app or silently skipping configured auth checks.
 
 ## Known Limitations

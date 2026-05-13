@@ -73,12 +73,14 @@ describe("AdminDriversView", () => {
       />
     );
 
-    expect(markup).toContain("2 couriers need review");
+    expect(markup).toContain("1 ready, 1 need review, 1 not eligible");
     expect(markup).toContain("Ready Courier");
     expect(markup).toContain("Pending Courier");
     expect(markup).toContain("Busy Courier");
     expect(markup).toContain("Verification approved");
     expect(markup).toContain("Human approval is required");
+    expect(markup).toContain("No automated approval");
+    expect(markup).toContain("Review before acting");
     expect(markup).toContain("href=\"/app/jobs/44444444-4444-4444-8444-444444444444\"");
   });
 
@@ -87,5 +89,6 @@ describe("AdminDriversView", () => {
 
     expect(markup).toContain("No courier profiles found");
     expect(markup).toContain("Driver readiness will appear here");
+    expect(markup).toContain("Do not treat an empty list as an approved courier pool");
   });
 });

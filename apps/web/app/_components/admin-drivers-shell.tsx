@@ -42,6 +42,18 @@ function formatStatus(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function checklistResultLabel(result: AdminDriverReadinessItem["checklist"][number]["result"]) {
+  if (result === "pass") {
+    return "Ready";
+  }
+
+  if (result === "warn") {
+    return "Review";
+  }
+
+  return "Blocked";
+}
+
 function CountCard(props: { label: string; value: number; copy: string; tone: "success" | "warning" | "danger" | "info" }) {
   return (
     <div className="sw-metric-card sw-supporting-surface admin-command-metric-card">
@@ -51,6 +63,22 @@ function CountCard(props: { label: string; value: number; copy: string; tone: "s
       <span className="sw-metric-label">{props.label}</span>
       <strong className="sw-metric-value">{props.value}</strong>
       <p className="sw-metric-copy">{props.copy}</p>
+    </div>
+  );
+}
+
+function DriverChecklist(props: { items: AdminDriverReadinessItem["checklist"] }) {
+  return (
+    <div className="admin-driver-checklist" aria-label="Courier readiness checklist">
+      {props.items.map((item) => (
+        <div className="sw-list-row admin-driver-checklist-row" key={item.key}>
+          <span className={`sw-badge ${checklistTone(item.result)}`}>{checklistResultLabel(item.result)}</span>
+          <div>
+            <strong>{item.label}</strong>
+            <p>{item.reason}</p>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -66,6 +94,9 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
     [props.items]
   );
   const needsAction = summary.needsReview + summary.notEligible;
+  const headline = needsAction
+    ? `${summary.ready} ready, ${summary.needsReview} need review, ${summary.notEligible} not eligible`
+    : `${summary.ready} courier${summary.ready === 1 ? "" : "s"} ready for pilot review`;
 
   return (
     <section className="ops-stack admin-command-stack">
@@ -77,8 +108,13 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
           <div>
             <span className="sw-badge sw-badge--info admin-command-page-badge">Courier compliance</span>
             <p className="eyebrow">Driver readiness</p>
-            <h2>{needsAction ? `${needsAction} courier${needsAction === 1 ? "" : "s"} need review` : "Courier pool ready for pilot review"}</h2>
-            <p>Read-only compliance and assignment readiness for pilot operations. Human approval is required before any courier is approved or relied on for dispatch.</p>
+            <h2>{headline}</h2>
+            <p>Read-only compliance and assignment readiness for pilot operations. Human approval is required before any courier is approved, contacted, or relied on for dispatch.</p>
+            <div className="admin-driver-hero-notes" aria-label="Driver readiness operating rules">
+              <span className="sw-badge sw-badge--warning">Human approval required</span>
+              <span className="sw-badge sw-badge--neutral">No automated approval</span>
+              <span className="sw-badge sw-badge--neutral">No punitive scoring</span>
+            </div>
           </div>
         </div>
 
@@ -95,7 +131,7 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
           <div>
             <p className="eyebrow">Readiness queue</p>
             <h2>Courier compliance and assignment state</h2>
-            <p className="ops-detail-note">This surface is visibility-only in v1. It does not approve, suspend, score, or assign couriers.</p>
+            <p className="ops-detail-note">This visibility-only surface separates dispatch readiness from approval authority. It does not approve, suspend, score, or assign couriers.</p>
           </div>
         </div>
 
@@ -127,14 +163,15 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
                     <div><span>Updated</span><strong>{formatDateTime(driver.updatedAt)}</strong></div>
                   </div>
 
-                  <div className="sw-supporting-surface admin-detail-panel">
-                    <div className="briefing-evidence-row">
-                      {driver.checklist.map((item) => (
-                        <span className={`sw-badge ${checklistTone(item.result)}`} key={item.key}>
-                          {item.label}: {item.reason}
-                        </span>
-                      ))}
+                  <div className="sw-supporting-surface admin-detail-panel admin-driver-checklist-panel">
+                    <div className="sw-card-header admin-driver-checklist-header">
+                      <div>
+                        <p className="eyebrow">Checklist</p>
+                        <h4>Readiness evidence</h4>
+                      </div>
+                      <span className="sw-badge sw-badge--neutral">Review before acting</span>
                     </div>
+                    <DriverChecklist items={driver.checklist} />
                   </div>
                 </div>
 
@@ -155,7 +192,7 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
               <ShipWrightIcon name="driver" />
             </span>
             <strong className="sw-empty-title">No courier profiles found</strong>
-            <p className="sw-empty-copy">Driver readiness will appear here once courier profiles exist in staging.</p>
+            <p className="sw-empty-copy">Driver readiness will appear here once staging has courier profiles. Do not treat an empty list as an approved courier pool.</p>
           </div>
         )}
       </section>
@@ -167,7 +204,7 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
             <h2>Courier approval remains operator-led</h2>
           </div>
         </div>
-        <p>ShipWright shows readiness signals only. Platform operators remain responsible for verification approval, courier communication, and pilot eligibility decisions.</p>
+        <p>ShipWright shows readiness signals only. Platform operators remain responsible for verification approval, courier communication, and pilot eligibility decisions before any courier is used in a live service window.</p>
       </section>
     </section>
   );

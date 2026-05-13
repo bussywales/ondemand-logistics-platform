@@ -52,6 +52,7 @@ Configuration:
   - `SMOKE_LATEST_ORDER_ID`
   - `LATEST_ORDER_ID`
 - Authenticated workspace/admin/driver smoke requires credentials and is skipped otherwise.
+- Admin browser smoke includes `/admin`, `/admin/command`, and `/admin/drivers`.
 - Required/used auth variables:
   - `SMOKE_BUSINESS_EMAIL`, `SMOKE_BUSINESS_PASSWORD`
   - `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`

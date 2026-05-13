@@ -7624,6 +7624,13 @@ select:hover,
   margin-bottom: var(--sw-space-2);
 }
 
+.admin-driver-hero-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-2);
+  margin-top: var(--sw-space-3);
+}
+
 .admin-command-page-counts,
 .admin-command-report-grid {
   display: grid;
@@ -7744,6 +7751,34 @@ select:hover,
 
 .admin-command-guidance p {
   margin: 0;
+  color: var(--sw-color-text-muted);
+}
+
+.admin-driver-checklist-panel {
+  display: grid;
+  gap: var(--sw-space-3);
+}
+
+.admin-driver-checklist-header {
+  align-items: flex-start;
+}
+
+.admin-driver-checklist-header h4 {
+  margin: 0;
+}
+
+.admin-driver-checklist {
+  display: grid;
+  gap: var(--sw-space-2);
+}
+
+.admin-driver-checklist-row {
+  align-items: flex-start;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.admin-driver-checklist-row p {
+  margin: var(--sw-space-1) 0 0;
   color: var(--sw-color-text-muted);
 }
 
