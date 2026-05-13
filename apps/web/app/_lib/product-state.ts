@@ -594,6 +594,40 @@ export type AdminOutboxItem = {
   createdAt: string;
 };
 
+export type AdminDriverReadinessStatus = "READY" | "NEEDS_REVIEW" | "NOT_ELIGIBLE";
+
+export type AdminDriverReadinessChecklistItem = {
+  key: string;
+  label: string;
+  result: "pass" | "warn" | "fail";
+  reason: string;
+};
+
+export type AdminDriverReadinessItem = {
+  driverId: string;
+  driverName: string;
+  availabilityStatus: DriverAvailabilityStatus;
+  verificationStatus: DriverVerificationStatus;
+  vehicleType: VehicleType | null;
+  activeJobId: string | null;
+  activeJobStatus: JobStatus | null;
+  orgId: string | null;
+  orgName: string | null;
+  restaurantName: string | null;
+  restaurantSlug: string | null;
+  lastLocationAt: string | null;
+  locationRecentlySeen: boolean;
+  readinessStatus: AdminDriverReadinessStatus;
+  checklist: AdminDriverReadinessChecklistItem[];
+  recommendedNextAction: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminDriverReadinessList = {
+  items: AdminDriverReadinessItem[];
+};
+
 export type AdminSystemHealth = {
   liveness: {
     status: "ok" | "error";

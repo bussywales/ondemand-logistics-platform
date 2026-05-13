@@ -1,5 +1,7 @@
 import type {
   AdminPaymentSummary,
+  AdminDriverReadinessItem,
+  AdminDriverReadinessList,
   AdminJobSummary,
   AdminOrderSummary,
   AdminOutboxItem,
@@ -156,6 +158,7 @@ type AdminOrderListResponse = {
 type AdminPaymentListResponse = {
   items: AdminPaymentSummary[];
 };
+type AdminDriverReadinessListResponse = AdminDriverReadinessList;
 type AdminOutboxListResponse = {
   items: AdminOutboxItem[];
 };
@@ -826,6 +829,14 @@ export async function listAdminOrders(session: BusinessSession): Promise<AdminOr
 
 export async function listAdminPayments(session: BusinessSession): Promise<AdminPaymentSummary[]> {
   const result = await apiFetch<AdminPaymentListResponse>(session, "/v1/admin/payments", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function listAdminDriverReadiness(session: BusinessSession): Promise<AdminDriverReadinessItem[]> {
+  const result = await apiFetch<AdminDriverReadinessListResponse>(session, "/v1/admin/drivers/readiness", {
     method: "GET"
   });
 

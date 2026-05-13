@@ -17,6 +17,7 @@ import {
   getPublicRestaurantMenu,
   getRestaurantMenu,
   isUnauthorizedApiError,
+  listAdminDriverReadiness,
   listAdminPayments,
   listEligibleDrivers,
   listBusinessNotifications,
@@ -537,6 +538,52 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/admin/payments');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(payments[0]?.orgName).toBe('Pilot Org');
+  });
+
+  it('reads admin driver readiness with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              driverId: '11111111-1111-4111-8111-111111111111',
+              driverName: 'Ready Courier',
+              availabilityStatus: 'ONLINE',
+              verificationStatus: 'APPROVED',
+              vehicleType: 'BIKE',
+              activeJobId: null,
+              activeJobStatus: null,
+              orgId: '2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b',
+              orgName: 'Pilot Org',
+              restaurantName: null,
+              restaurantSlug: null,
+              lastLocationAt: new Date().toISOString(),
+              locationRecentlySeen: true,
+              readinessStatus: 'READY',
+              checklist: [
+                {
+                  key: 'verification_approved',
+                  label: 'Verification approved',
+                  result: 'pass',
+                  reason: 'Verification is approved for pilot operations.'
+                }
+              ],
+              recommendedNextAction: 'Courier is ready for pilot assignment after operator review.',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const readiness = await listAdminDriverReadiness(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/admin/drivers/readiness');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(readiness[0]?.readinessStatus).toBe('READY');
   });
 
   it('reads business notifications with bearer auth', async () => {

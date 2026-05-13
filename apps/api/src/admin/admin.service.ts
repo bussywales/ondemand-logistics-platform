@@ -10,12 +10,16 @@ import {
   AdminOverviewSchema,
   type AdminInterventionItemDto,
   type AdminInterventionSeverity,
+  type AdminDriverReadinessStatus,
+  type AdminDriverReadinessItemDto,
+  type AdminDriverReadinessChecklistItemDto,
+  AdminDriverReadinessListSchema,
   type AdminJobSummaryDto,
   type AdminOrderSummaryDto,
   type AdminOutboxItemDto,
   type AdminOverviewDto
 } from "@shipwright/contracts";
-import { toIsoDateTime } from "../database/mapper.js";
+import { toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 import {
   SchemaCompatibilityError,
@@ -87,6 +91,23 @@ type NotificationAuditRow = {
   created_at: string | Date;
 };
 
+type AdminDriverReadinessRow = {
+  driver_id: string;
+  driver_name: string | null;
+  availability_status: string | null;
+  verification_status: string | null;
+  vehicle_type: string | null;
+  active_job_id: string | null;
+  active_job_status: string | null;
+  org_id: string | null;
+  org_name: string | null;
+  restaurant_name: string | null;
+  restaurant_slug: string | null;
+  last_location_at: string | Date | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
 const ACTIVE_JOB_STATUSES = [
   "REQUESTED",
   "ASSIGNED",
@@ -96,8 +117,18 @@ const ACTIVE_JOB_STATUSES = [
   "DISPATCH_FAILED"
 ] as const;
 
+const DRIVER_LOCATION_RECENT_MINUTES = 15;
+
 function normalizeOrderStatus(status: AdminOrderRow["status"]) {
   return status === "COMPLETED" ? "FULFILLED" : status;
+}
+
+function isRecentLocation(value: string | Date | null, now = Date.now()) {
+  if (!value) {
+    return false;
+  }
+
+  return now - new Date(value).getTime() <= DRIVER_LOCATION_RECENT_MINUTES * 60 * 1000;
 }
 
 @Injectable()
@@ -214,6 +245,67 @@ export class AdminService {
     return AdminOutboxListSchema.parse({
       items: result.rows.map((row) => this.mapOutbox(row))
     }).items;
+  }
+
+  async listDriverReadiness() {
+    const result = await this.pg.query<AdminDriverReadinessRow>(
+      `select
+          d.id as driver_id,
+          u.display_name as driver_name,
+          d.availability_status::text as availability_status,
+          coalesce(vstatus.status, 'MISSING')::text as verification_status,
+          vprimary.vehicle_type::text as vehicle_type,
+          d.active_job_id,
+          aj.status::text as active_job_status,
+          d.home_org_id as org_id,
+          o.name as org_name,
+          r.name as restaurant_name,
+          r.slug as restaurant_slug,
+          d.last_location_at,
+          d.created_at,
+          d.updated_at
+       from public.drivers d
+       left join public.users u on u.id = d.user_id
+       left join public.orgs o on o.id = d.home_org_id
+       left join public.jobs aj on aj.id = d.active_job_id
+       left join public.customer_orders co on co.job_id = d.active_job_id
+       left join public.restaurants r on r.id = co.restaurant_id
+       left join lateral (
+         select dv.vehicle_type::text as vehicle_type
+         from public.driver_vehicle dv
+         where dv.driver_id = d.id
+           and dv.is_primary = true
+         order by dv.updated_at desc
+         limit 1
+       ) vprimary on true
+       left join lateral (
+         select dvf.status::text as status
+         from public.driver_verifications dvf
+         where dvf.driver_id = d.id
+         order by
+           case dvf.status
+             when 'APPROVED' then 1
+             when 'PENDING' then 2
+             else 3
+           end,
+           dvf.updated_at desc
+         limit 1
+       ) vstatus on true
+       order by
+         case
+           when coalesce(vstatus.status, 'MISSING') <> 'APPROVED' then 1
+           when d.active_job_id is not null then 2
+           when d.availability_status <> 'ONLINE' then 3
+           when vprimary.vehicle_type is null then 4
+           when d.last_location_at is null or d.last_location_at < now() - interval '15 minutes' then 5
+           else 6
+         end,
+         d.updated_at desc`
+    );
+
+    return AdminDriverReadinessListSchema.parse({
+      items: result.rows.map((row) => this.mapDriverReadiness(row))
+    });
   }
 
   private async listInterventionQueue() {
@@ -584,6 +676,155 @@ export class AdminService {
       nextAttemptAt: toIsoDateTime(row.next_attempt_at),
       createdAt: toIsoDateTime(row.created_at)
     });
+  }
+
+  private mapDriverReadiness(row: AdminDriverReadinessRow): AdminDriverReadinessItemDto {
+    const verificationStatus = (row.verification_status ?? "MISSING") as AdminDriverReadinessItemDto["verificationStatus"];
+    const availabilityStatus = (row.availability_status ?? "OFFLINE") as AdminDriverReadinessItemDto["availabilityStatus"];
+    const vehicleType = row.vehicle_type as AdminDriverReadinessItemDto["vehicleType"];
+    const activeJobStatus = row.active_job_status as AdminDriverReadinessItemDto["activeJobStatus"];
+    const locationRecentlySeen = isRecentLocation(row.last_location_at);
+
+    const checklist: AdminDriverReadinessChecklistItemDto[] = [
+      {
+        key: "profile_exists",
+        label: "Profile exists",
+        result: row.driver_name ? "pass" : "fail",
+        reason: row.driver_name ? "Driver profile is linked to a user account." : "Driver profile is missing a user display name."
+      },
+      {
+        key: "verification_approved",
+        label: "Verification approved",
+        result: verificationStatus === "APPROVED" ? "pass" : verificationStatus === "PENDING" ? "warn" : "fail",
+        reason:
+          verificationStatus === "APPROVED"
+            ? "Verification is approved for pilot operations."
+            : verificationStatus === "PENDING"
+              ? "Verification is pending human approval."
+              : "Verification is missing or rejected."
+      },
+      {
+        key: "vehicle_registered",
+        label: "Vehicle registered",
+        result: vehicleType ? "pass" : "fail",
+        reason: vehicleType ? `${vehicleType} vehicle is registered.` : "No primary vehicle is registered."
+      },
+      {
+        key: "currently_active",
+        label: "Currently active",
+        result: availabilityStatus === "ONLINE" ? "pass" : "fail",
+        reason:
+          availabilityStatus === "ONLINE"
+            ? "Courier is online and can receive pilot dispatch."
+            : "Courier is offline. This is not a compliance failure, but they are not eligible for dispatch now."
+      },
+      {
+        key: "location_recently_seen",
+        label: "Location recently seen",
+        result: locationRecentlySeen ? "pass" : "warn",
+        reason: locationRecentlySeen ? "Location was seen recently." : "Location is missing or older than the pilot freshness window."
+      },
+      {
+        key: "no_active_blocking_job",
+        label: "No active blocking job",
+        result: row.active_job_id ? "fail" : "pass",
+        reason: row.active_job_id
+          ? `Courier is already linked to job ${row.active_job_id.slice(0, 8)}.`
+          : "No active job is blocking assignment."
+      }
+    ];
+
+    const readinessStatus = this.computeDriverReadinessStatus({
+      availabilityStatus,
+      verificationStatus,
+      vehicleType,
+      activeJobId: row.active_job_id,
+      locationRecentlySeen
+    });
+
+    return {
+      driverId: row.driver_id,
+      driverName: row.driver_name ?? "Unnamed courier",
+      availabilityStatus,
+      verificationStatus,
+      vehicleType,
+      activeJobId: row.active_job_id,
+      activeJobStatus,
+      orgId: row.org_id,
+      orgName: row.org_name,
+      restaurantName: row.restaurant_name,
+      restaurantSlug: row.restaurant_slug,
+      lastLocationAt: toNullableIsoDateTime(row.last_location_at),
+      locationRecentlySeen,
+      readinessStatus,
+      checklist,
+      recommendedNextAction: this.getDriverReadinessAction({
+        availabilityStatus,
+        verificationStatus,
+        vehicleType,
+        activeJobId: row.active_job_id,
+        locationRecentlySeen
+      }),
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
+    };
+  }
+
+  private computeDriverReadinessStatus(input: {
+    availabilityStatus: AdminDriverReadinessItemDto["availabilityStatus"];
+    verificationStatus: AdminDriverReadinessItemDto["verificationStatus"];
+    vehicleType: AdminDriverReadinessItemDto["vehicleType"];
+    activeJobId: string | null;
+    locationRecentlySeen: boolean;
+  }): AdminDriverReadinessStatus {
+    if (input.verificationStatus === "PENDING") {
+      return "NEEDS_REVIEW";
+    }
+
+    if (
+      input.verificationStatus !== "APPROVED" ||
+      !input.vehicleType ||
+      input.availabilityStatus !== "ONLINE" ||
+      input.activeJobId
+    ) {
+      return "NOT_ELIGIBLE";
+    }
+
+    return input.locationRecentlySeen ? "READY" : "NEEDS_REVIEW";
+  }
+
+  private getDriverReadinessAction(input: {
+    availabilityStatus: AdminDriverReadinessItemDto["availabilityStatus"];
+    verificationStatus: AdminDriverReadinessItemDto["verificationStatus"];
+    vehicleType: AdminDriverReadinessItemDto["vehicleType"];
+    activeJobId: string | null;
+    locationRecentlySeen: boolean;
+  }) {
+    if (input.verificationStatus === "PENDING") {
+      return "Review verification and approve only after human checks are complete.";
+    }
+
+    if (input.verificationStatus !== "APPROVED") {
+      return "Request profile or verification update before pilot dispatch.";
+    }
+
+    if (!input.vehicleType) {
+      return "Check vehicle registration before making the courier eligible.";
+    }
+
+    if (input.activeJobId) {
+      return "Clear or complete the active job before assigning another delivery.";
+    }
+
+    if (input.availabilityStatus !== "ONLINE") {
+      return "Ask courier to go online before dispatch.";
+    }
+
+    if (!input.locationRecentlySeen) {
+      return "Ask courier to refresh location before relying on assignment.";
+    }
+
+    return "Courier is ready for pilot assignment after operator review.";
   }
 
   private makeIntervention(input: {

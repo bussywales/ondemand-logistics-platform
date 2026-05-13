@@ -39,6 +39,11 @@ export class AdminController {
     };
   }
 
+  @Get("drivers/readiness")
+  getDriverReadiness() {
+    return this.adminService.listDriverReadiness();
+  }
+
   @Get("briefing/daily")
   getDailyBriefing() {
     return this.briefingService.getAdminDailyBriefing();

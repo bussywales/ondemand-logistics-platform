@@ -18,6 +18,7 @@ These are already evidenced in the current repo and staging proof flow.
 - [x] payment capture after delivery is proven
 - [x] customer order terminal state reaches `FULFILLED`
 - [x] admin control plane is available to `PLATFORM_ADMIN`
+- [x] admin driver readiness surface exists for read-only courier compliance and assignment review
 - [x] business notifications exist with persistent read state
 - [x] release verification and proof archive exist
 
@@ -50,7 +51,8 @@ These are not closed just because staging proof is green. They also define the m
 - [ ] operator workflows are instrumented enough to support briefing, triage, and incident-summary recommendations
 
 ### Compliance and pilot operations
-- [ ] minimum courier onboarding and identity checks are defined and applied operationally, not just via staging fixtures
+- [x] minimum courier readiness signals are visible to platform admins in `/admin/drivers`
+- [ ] courier approval ownership and identity checks are applied operationally, not just via staging fixtures
 - [ ] terms, liability, and operating responsibilities are clear enough for pilot use
 - [ ] pilot geography and service window are explicitly constrained
 - [ ] at least one restaurant has agreed to pilot on the defined operating terms

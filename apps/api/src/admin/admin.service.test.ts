@@ -136,4 +136,90 @@ describe("AdminService", () => {
     expect(outbox[0]?.lastError).toBe("driver_lookup_failed");
     expect(outbox[0]?.retryCount).toBe(2);
   });
+
+  it("maps admin driver readiness statuses and checklist evidence", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValueOnce({
+        rows: [
+          {
+            driver_id: "11111111-1111-4111-8111-111111111111",
+            driver_name: "Ready Courier",
+            availability_status: "ONLINE",
+            verification_status: "APPROVED",
+            vehicle_type: "BIKE",
+            active_job_id: null,
+            active_job_status: null,
+            org_id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+            org_name: "Pilot Org",
+            restaurant_name: null,
+            restaurant_slug: null,
+            last_location_at: new Date(),
+            created_at: new Date("2026-04-30T10:00:00.000Z"),
+            updated_at: new Date("2026-04-30T10:05:00.000Z")
+          },
+          {
+            driver_id: "22222222-2222-4222-8222-222222222222",
+            driver_name: "Pending Courier",
+            availability_status: "ONLINE",
+            verification_status: "PENDING",
+            vehicle_type: "CAR",
+            active_job_id: null,
+            active_job_status: null,
+            org_id: null,
+            org_name: null,
+            restaurant_name: null,
+            restaurant_slug: null,
+            last_location_at: new Date(),
+            created_at: new Date("2026-04-30T10:00:00.000Z"),
+            updated_at: new Date("2026-04-30T10:05:00.000Z")
+          },
+          {
+            driver_id: "33333333-3333-4333-8333-333333333333",
+            driver_name: "Offline Courier",
+            availability_status: "OFFLINE",
+            verification_status: "APPROVED",
+            vehicle_type: "BIKE",
+            active_job_id: null,
+            active_job_status: null,
+            org_id: null,
+            org_name: null,
+            restaurant_name: null,
+            restaurant_slug: null,
+            last_location_at: null,
+            created_at: new Date("2026-04-30T10:00:00.000Z"),
+            updated_at: new Date("2026-04-30T10:05:00.000Z")
+          },
+          {
+            driver_id: "44444444-4444-4444-8444-444444444444",
+            driver_name: "Busy Courier",
+            availability_status: "ONLINE",
+            verification_status: "APPROVED",
+            vehicle_type: "BIKE",
+            active_job_id: "55555555-5555-4555-8555-555555555555",
+            active_job_status: "ASSIGNED",
+            org_id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+            org_name: "Pilot Org",
+            restaurant_name: "Pilot Kitchen",
+            restaurant_slug: "pilot-kitchen",
+            last_location_at: new Date(),
+            created_at: new Date("2026-04-30T10:00:00.000Z"),
+            updated_at: new Date("2026-04-30T10:05:00.000Z")
+          }
+        ]
+      })
+    };
+
+    const service = new AdminService(pg as never, createSchemaReadiness() as never);
+    const readiness = await service.listDriverReadiness();
+
+    expect(readiness.items.map((item) => item.readinessStatus)).toEqual([
+      "READY",
+      "NEEDS_REVIEW",
+      "NOT_ELIGIBLE",
+      "NOT_ELIGIBLE"
+    ]);
+    expect(readiness.items[1]?.recommendedNextAction).toContain("Review verification");
+    expect(readiness.items[2]?.recommendedNextAction).toContain("go online");
+    expect(readiness.items[3]?.checklist.find((item) => item.key === "no_active_blocking_job")?.result).toBe("fail");
+  });
 });

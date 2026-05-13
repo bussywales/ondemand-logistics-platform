@@ -434,6 +434,44 @@ export const EligibleDriverSchema = z.object({
 });
 export type EligibleDriverDto = z.infer<typeof EligibleDriverSchema>;
 
+export const AdminDriverReadinessStatusSchema = z.enum(["READY", "NEEDS_REVIEW", "NOT_ELIGIBLE"]);
+export type AdminDriverReadinessStatus = z.infer<typeof AdminDriverReadinessStatusSchema>;
+
+export const AdminDriverReadinessChecklistItemSchema = z.object({
+  key: z.string().min(2),
+  label: z.string().min(2),
+  result: z.enum(["pass", "warn", "fail"]),
+  reason: z.string().min(2)
+});
+export type AdminDriverReadinessChecklistItemDto = z.infer<typeof AdminDriverReadinessChecklistItemSchema>;
+
+export const AdminDriverReadinessItemSchema = z.object({
+  driverId: z.string().uuid(),
+  driverName: z.string().min(2),
+  availabilityStatus: DriverAvailabilityStatusSchema,
+  verificationStatus: EligibleDriverVerificationStatusSchema,
+  vehicleType: VehicleTypeSchema.nullable(),
+  activeJobId: z.string().uuid().nullable(),
+  activeJobStatus: JobStatusSchema.nullable(),
+  orgId: z.string().uuid().nullable(),
+  orgName: z.string().nullable(),
+  restaurantName: z.string().nullable(),
+  restaurantSlug: z.string().min(2).max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).nullable(),
+  lastLocationAt: z.string().nullable(),
+  locationRecentlySeen: z.boolean(),
+  readinessStatus: AdminDriverReadinessStatusSchema,
+  checklist: z.array(AdminDriverReadinessChecklistItemSchema),
+  recommendedNextAction: z.string().min(2),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type AdminDriverReadinessItemDto = z.infer<typeof AdminDriverReadinessItemSchema>;
+
+export const AdminDriverReadinessListSchema = z.object({
+  items: z.array(AdminDriverReadinessItemSchema)
+});
+export type AdminDriverReadinessListDto = z.infer<typeof AdminDriverReadinessListSchema>;
+
 export const EligibleDriverListSchema = z.object({
   items: z.array(EligibleDriverSchema)
 });

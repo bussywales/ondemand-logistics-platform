@@ -7,6 +7,7 @@
 - Job detail shows dispatch failure or assignment blocker.
 - Daily briefing or job detail may show a deterministic `Review driver pool` suggestion with evidence such as eligible-driver count and offer state.
 - Driver assignment picker shows blocked candidates or an empty eligible list.
+- `/admin/drivers` shows courier readiness, verification, vehicle, active-job, availability, and location freshness signals.
 - `/driver` shows no approved/online staged courier for the route.
 
 ## Immediate operator action
@@ -23,6 +24,7 @@
 
 ## Admin checks
 - Use `/admin` to see whether this is isolated or part of a wider driver-pool issue.
+- Use `/admin/drivers` to confirm whether the issue is verification, vehicle, offline status, stale location, or an active blocking job.
 - Verify notifications/outbox are not masking a real assignment that already happened.
 
 ## When to cancel/refund

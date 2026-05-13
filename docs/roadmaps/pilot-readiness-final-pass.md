@@ -83,6 +83,7 @@ Repo and staging evidence support:
 - `/driver` exists as the driver execution surface
 - `/admin` exists for `PLATFORM_ADMIN`
 - `/admin/command` exists as the admin-native cross-org command-intelligence view
+- `/admin/drivers` exists as the read-only courier readiness and compliance review surface
 - help centre and product updates surfaces exist
 - pilot playbooks now exist and are linked from help and admin
 - the current command surfaces are strong enough to become the base layer for assistive AI overlays later

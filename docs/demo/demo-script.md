@@ -160,10 +160,12 @@ Show:
 - active operations
 - orders
 - payment oversight
+- driver readiness link
 - outbox/health visibility
 
 Say:
 - platform admins can inspect cross-org operational posture from one surface
+- courier approval remains human-led; ShipWright surfaces readiness signals but does not auto-approve drivers
 
 ### 9A. Admin command intelligence
 Open:
@@ -178,6 +180,19 @@ Show:
 Say:
 - this is deterministic command intelligence for platform oversight
 - it helps admins spot which organisations need support without silently taking action
+
+### 9B. Driver readiness
+Open:
+- `/admin/drivers`
+
+Show:
+- courier readiness status
+- verification, vehicle, online, location, and active-job checklist
+- recommended next action for blocked couriers
+
+Say:
+- this is a read-only pilot control surface
+- approval, courier communication, and eligibility decisions remain human responsibilities
 
 ### 10. Playbooks and help
 Open:
