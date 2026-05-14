@@ -199,7 +199,7 @@ export function AdminCommandView(props: {
 
   return (
     <section className="ops-stack admin-command-stack">
-      <section className={`${hasAttention ? "sw-decision-surface" : "sw-command-surface"} admin-command-page-hero`}>
+      <section className={`sw-command-surface admin-command-page-hero ${hasAttention ? "sw-command-surface--warning" : ""}`}>
         <div className="sw-row admin-command-page-copy">
           <span className={`sw-icon-badge ${hasAttention ? "sw-icon-badge--warning" : "sw-icon-badge--success"}`} aria-hidden="true">
             <ShipWrightIcon name={hasAttention ? "warning" : "check"} />

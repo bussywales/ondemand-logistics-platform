@@ -136,7 +136,7 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
 
   return (
     <section className="ops-stack reports-stack">
-      <section className={`${hasUnresolved ? "sw-decision-surface" : "sw-command-surface"} reports-command-surface ${hasUnresolved ? "reports-command-surface-alert" : "reports-command-surface-clear"}`}>
+      <section className={`sw-command-surface reports-command-surface ${hasUnresolved ? "sw-command-surface--warning reports-command-surface-alert" : "reports-command-surface-clear"}`}>
         <div className="sw-row reports-command-copy">
           <span className={`sw-icon-badge reports-command-icon ${hasUnresolved ? "admin-command-icon-warning" : "admin-command-icon-success"}`} aria-hidden="true">
             <ShipWrightIcon name={hasUnresolved ? "warning" : "check"} />
@@ -210,7 +210,7 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
         </section>
       </div>
 
-      <section className={`${hasUnresolved ? "sw-decision-surface" : "sw-supporting-surface"} reports-section reports-actions-section`}>
+      <section className={`${hasUnresolved ? "sw-operational-surface" : "sw-supporting-surface"} reports-section reports-actions-section`}>
         <div className="sw-card-header reports-section-header">
           <div>
             <p className="eyebrow">Unresolved actions</p>

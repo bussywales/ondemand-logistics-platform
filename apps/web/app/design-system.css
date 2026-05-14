@@ -692,3 +692,596 @@
 .briefing-surface .briefing-recommendations {
   border-color: rgba(24, 36, 52, 0.06);
 }
+
+/* Phase 1 visual architecture reset: calm operational SaaS foundation. */
+:root {
+  --sw-color-background: #f7f7f4;
+  --sw-color-surface: #ffffff;
+  --sw-color-surface-elevated: #fbfbf8;
+  --sw-color-navy-950: #111827;
+  --sw-color-navy-900: #1f2937;
+  --sw-color-navy-800: #334155;
+  --sw-color-navy-700: #475569;
+  --sw-color-navy-100: #e9edf2;
+  --sw-color-text-primary: #1f2937;
+  --sw-color-text-muted: #687385;
+  --sw-color-ink-strong: #1f2937;
+  --sw-color-ink-muted: #687385;
+  --sw-color-ink-subtle: #7a8494;
+  --sw-color-ink-soft: #8b94a1;
+  --sw-color-success: #2f6f4e;
+  --sw-color-warning: #946722;
+  --sw-color-danger: #9f424b;
+  --sw-color-info: #3d5f8f;
+  --sw-color-teal: #3a7876;
+  --sw-color-success-soft: rgba(47, 111, 78, 0.08);
+  --sw-color-warning-soft: rgba(148, 103, 34, 0.08);
+  --sw-color-danger-soft: rgba(159, 66, 75, 0.08);
+  --sw-color-info-soft: rgba(61, 95, 143, 0.08);
+  --sw-color-teal-soft: rgba(58, 120, 118, 0.08);
+  --sw-gradient-danger-command: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+  --sw-gradient-warning-command: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+  --sw-gradient-neutral-command: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+  --sw-shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --sw-shadow-md: 0 8px 24px rgba(17, 24, 39, 0.055);
+  --sw-shadow-lg: 0 16px 48px rgba(17, 24, 39, 0.07);
+  --sw-type-hero: 650 clamp(1.8rem, 3.2vw, 2.8rem) / 1.12 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-page-title: 650 clamp(1.55rem, 2.6vw, 2.25rem) / 1.15 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-section-title: 590 clamp(1.08rem, 1.45vw, 1.32rem) / 1.22 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-card-title: 580 0.98rem / 1.35 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-label: 660 0.69rem / 1.25 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-value: 650 0.98rem / 1.32 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --bg: var(--sw-color-background);
+  --surface: var(--sw-color-surface);
+  --surface-strong: var(--sw-color-surface-elevated);
+  --ink: var(--sw-color-text-primary);
+  --muted: var(--sw-color-text-muted);
+  --primary: var(--sw-color-navy-900);
+  --secondary: var(--sw-color-navy-700);
+  --danger: var(--sw-color-danger);
+  --warning: var(--sw-color-warning);
+  --success: var(--sw-color-success);
+  --teal: var(--sw-color-teal);
+  --shadow: var(--sw-shadow-md);
+  --shadow-soft: var(--sw-shadow-sm);
+  --shadow-card: var(--sw-shadow-sm);
+  --shadow-elevated: var(--sw-shadow-md);
+  --layer-bg: var(--sw-color-background);
+  --layer-card: var(--sw-color-surface);
+  --layer-elevated: var(--sw-color-surface-elevated);
+}
+
+html,
+body {
+  background: var(--sw-color-background);
+}
+
+body {
+  color: var(--sw-color-text-primary);
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+.brand-wordmark,
+.ops-command-copy h2,
+.admin-shell-header h1,
+.admin-command-copy h2,
+.admin-section-header h2,
+.ops-section-header h2,
+.ops-job-header h2,
+.sw-card-header h2,
+.customer-restaurant-heading h1,
+.customer-order-state h1,
+.reports-command-copy h2,
+.payments-command-copy h2,
+.product-updates-hero h1 {
+  color: var(--sw-color-text-primary);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+  text-shadow: none;
+}
+
+.admin-shell-header h1,
+.customer-restaurant-heading h1,
+.customer-order-state h1,
+.product-updates-hero h1 {
+  font: var(--sw-type-page-title);
+}
+
+p,
+.ops-detail-note,
+.sw-empty-copy,
+.briefing-guidance,
+.command-intelligence-note p,
+.admin-command-copy p:last-child,
+.reports-command-copy p,
+.payments-command-copy p,
+.orders-queue-identity p,
+.customer-restaurant-subtitle,
+.customer-success-copy,
+.customer-next-note {
+  color: var(--sw-color-text-muted);
+  font-weight: 450;
+  line-height: 1.62;
+}
+
+.eyebrow,
+.ops-section-label,
+.sw-label,
+.preview-label,
+.jobs-table-head,
+.attention-facts dt,
+.orders-queue-facts span,
+.orders-status-block span,
+.reports-stat-list span,
+.payments-queue-facts span,
+.payments-status-cluster .orders-status-block > span {
+  color: var(--sw-color-ink-subtle);
+  font-weight: 650;
+  letter-spacing: 0.075em;
+}
+
+.sw-command-surface,
+.sw-decision-surface,
+.sw-operational-surface,
+.sw-supporting-surface,
+.sw-utility-surface,
+.ops-section,
+.ops-zone,
+.ops-queue-section,
+.ops-creation-panel,
+.admin-section,
+.admin-command-group,
+.admin-command-report-card,
+.reports-section,
+.payments-section,
+.customer-menu-panel,
+.customer-cart-panel,
+.customer-order-state,
+.driver-section,
+.driver-panel {
+  border: 1px solid rgba(31, 41, 55, 0.08);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: var(--sw-shadow-sm);
+}
+
+.sw-command-surface,
+.sw-decision-surface {
+  padding: clamp(1.1rem, 2vw, 1.55rem);
+}
+
+.sw-operational-surface,
+.sw-supporting-surface,
+.sw-utility-surface {
+  padding: clamp(1rem, 1.7vw, 1.35rem);
+}
+
+.sw-decision-surface,
+.sw-command-surface--warning,
+.briefing-surface-alert,
+.reports-command-surface-alert,
+.orders-command-surface-alert,
+.ops-job-hero-blocker,
+.assignment-error-panel,
+.admin-command-page-hero.sw-command-surface--warning {
+  border-left: 3px solid var(--sw-color-warning);
+  background: #ffffff;
+  color: var(--sw-color-text-primary);
+}
+
+.sw-decision-surface,
+.ops-job-hero-blocker,
+.assignment-error-panel,
+.orders-decision-surface:not(.orders-decision-surface-success):not(.orders-decision-surface-neutral) {
+  border-left-color: var(--sw-color-danger);
+}
+
+.sw-decision-title,
+.ops-decision-banner h2,
+.ops-job-hero h2,
+.orders-decision-surface h2,
+.reports-command-copy h2,
+.admin-command-page-copy h2,
+.briefing-header h2 {
+  color: var(--sw-color-text-primary);
+  font: var(--sw-type-section-title);
+  letter-spacing: -0.022em;
+  line-height: 1.22;
+}
+
+.sw-decision-copy,
+.ops-decision-banner .ops-detail-note,
+.ops-decision-banner .eyebrow,
+.ops-decision-tile .sw-label,
+.ops-decision-tile .ops-section-label,
+.ops-decision-tile p {
+  color: var(--sw-color-text-muted);
+}
+
+.sw-decision-insight,
+.ops-decision-grid > div,
+.ops-decision-tile,
+.orders-decision-hero-success,
+.orders-decision-hero-neutral,
+.incident-summary-card,
+.incident-draft-box,
+.incident-drafts-panel,
+.dispatch-recovery-surface,
+.briefing-metric-card,
+.briefing-recommendations,
+.reports-stat-list div,
+.payments-queue-facts div,
+.payments-status-cluster .orders-status-block,
+.payments-risk-strip,
+.attention-facts div,
+.admin-command-stat-list div,
+.orders-status-block,
+.customer-trust-tile,
+.customer-confirmation-tile {
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sw-metric-card,
+.ops-metric-card,
+.admin-command-metric-card,
+.admin-summary-card,
+.admin-health-card,
+.reports-metric-card,
+.payments-metric-card {
+  border: 1px solid rgba(31, 41, 55, 0.075);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: none;
+  min-height: auto;
+}
+
+.sw-metric-value,
+.ops-metric-card strong,
+.admin-command-metric-card strong,
+.admin-summary-card strong,
+.admin-health-card strong,
+.reports-metric-card strong,
+.payments-metric-card strong {
+  color: var(--sw-color-text-primary);
+  font-weight: 620;
+  letter-spacing: -0.02em;
+}
+
+.ops-metric-card strong {
+  font-size: clamp(1.7rem, 3.2vw, 2.35rem);
+}
+
+.sw-list-row,
+.sw-queue-row,
+.jobs-table-row,
+.attention-row,
+.attention-queue-row,
+.admin-command-item,
+.reports-action-row,
+.payments-queue-row,
+.orders-queue-row,
+.assignment-row,
+.customer-tracking-step,
+.recent-order-row {
+  border: 1px solid rgba(31, 41, 55, 0.07);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.sw-queue-row--danger,
+.sw-queue-row--warning,
+.briefing-item-danger,
+.briefing-item-warning,
+.reports-action-row-danger,
+.reports-action-row-warning,
+.payments-queue-row-danger,
+.payments-queue-row-warning,
+.orders-queue-row-danger,
+.assignment-row-blocked,
+.admin-command-item-danger,
+.admin-command-item-warning {
+  background: #ffffff;
+}
+
+.sw-queue-row--danger,
+.briefing-item-danger,
+.reports-action-row-danger,
+.payments-queue-row-danger,
+.orders-queue-row-danger,
+.assignment-row-blocked,
+.admin-command-item-danger {
+  border-left: 3px solid var(--sw-color-danger);
+}
+
+.sw-queue-row--warning,
+.briefing-item-warning,
+.reports-action-row-warning,
+.payments-queue-row-warning,
+.admin-command-item-warning {
+  border-left: 3px solid var(--sw-color-warning);
+}
+
+.sw-badge {
+  min-height: 24px;
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.67rem;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+}
+
+.sw-icon-badge,
+.ops-command-icon,
+.admin-command-icon,
+.admin-command-item-icon,
+.reports-command-icon,
+.payments-command-icon,
+.decision-hero-icon,
+.decision-tile-icon,
+.section-title-icon,
+.metric-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.ops-command-icon,
+.admin-command-icon,
+.reports-command-icon,
+.payments-command-icon {
+  background: var(--sw-color-info-soft);
+  color: var(--sw-color-info);
+}
+
+.sw-button,
+.button {
+  min-height: 40px;
+  padding: 0.62rem 0.9rem;
+  border-radius: 10px;
+  font-weight: 620;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.sw-button--primary,
+.button-primary,
+.ops-command-actions .button-primary,
+.ops-decision-banner .button-primary {
+  border-color: var(--sw-color-navy-900);
+  background: var(--sw-color-navy-900);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.sw-button--secondary,
+.button-secondary,
+.ops-decision-banner .button-secondary {
+  border-color: rgba(31, 41, 55, 0.12);
+  background: #ffffff;
+  color: var(--sw-color-text-primary);
+  box-shadow: none;
+}
+
+.app-shell.ops-shell,
+.ops-shell,
+.admin-shell-page,
+.reports-shell-page,
+.payments-shell-page,
+.driver-shell,
+.customer-order-page {
+  background: transparent;
+}
+
+.ops-layout,
+.admin-shell-page,
+.reports-shell-page,
+.payments-shell-page {
+  gap: clamp(1.25rem, 2vw, 2rem);
+}
+
+.ops-main,
+.admin-shell-page,
+.reports-shell-page,
+.payments-shell-page {
+  padding-top: clamp(1.25rem, 2vw, 2rem);
+}
+
+.ops-sidebar,
+.merchant-sidebar {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111827;
+  box-shadow: none;
+}
+
+.ops-sidebar p,
+.ops-sidebar span,
+.ops-sidebar .ops-section-label,
+.ops-sidebar-live p,
+.ops-sidebar-live .ops-section-label {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.ops-sidebar strong,
+.ops-sidebar-live strong,
+.ops-sidebar .brand-wordmark,
+.ops-sidebar .brand-logo-inverse .brand-wordmark {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+}
+
+.ops-sidebar-section,
+.ops-sidebar-live {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+}
+
+.ops-command-strip,
+.admin-command-page-hero,
+.reports-command-surface,
+.payments-command-surface,
+.orders-command-surface,
+.customer-tracking-hero,
+.driver-hero {
+  border: 1px solid rgba(31, 41, 55, 0.08);
+  border-left: 3px solid var(--sw-color-info);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: var(--sw-shadow-sm);
+}
+
+.ops-command-strip-alert,
+.admin-command-page-hero.sw-command-surface--warning,
+.reports-command-surface-alert,
+.orders-command-surface-alert {
+  border-left-color: var(--sw-color-warning);
+}
+
+.ops-command-strip::before,
+.ops-command-strip::after,
+.ops-decision-banner::before,
+.ops-decision-banner::after,
+.ops-metric-card::after {
+  content: none;
+  display: none;
+}
+
+.ops-command-copy,
+.admin-command-page-copy,
+.reports-command-copy,
+.payments-command-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.ops-command-copy h2,
+.admin-command-page-copy h2,
+.reports-command-copy h2,
+.payments-command-copy h2 {
+  margin: 0.1rem 0 0.25rem;
+  font: var(--sw-type-section-title);
+}
+
+.ops-command-copy p:last-child,
+.admin-command-page-copy p,
+.reports-command-copy p,
+.payments-command-copy p {
+  max-width: 760px;
+  margin: 0;
+}
+
+.briefing-surface {
+  gap: 1rem;
+  border-left: 3px solid var(--sw-color-info);
+}
+
+.briefing-surface-alert {
+  border-left-color: var(--sw-color-warning);
+}
+
+.briefing-header {
+  gap: 0.85rem;
+}
+
+.briefing-title-row {
+  gap: 0.75rem;
+}
+
+.briefing-metrics-grid,
+.admin-command-page-counts,
+.reports-metrics-grid,
+.payments-metric-grid {
+  gap: 0.75rem;
+}
+
+.briefing-content-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 0.9rem;
+}
+
+.briefing-critical-list,
+.briefing-recommendations,
+.admin-command-list,
+.reports-action-list,
+.payments-list,
+.orders-queue-list,
+.attention-list {
+  gap: 0.65rem;
+}
+
+.ops-review-section,
+.reports-actions-section {
+  border-left: 3px solid var(--sw-color-warning);
+}
+
+.ops-decision-banner,
+.ops-job-hero,
+.orders-decision-surface {
+  min-height: auto;
+  padding: clamp(1.1rem, 2vw, 1.55rem);
+  border-left: 3px solid var(--sw-color-info);
+}
+
+.ops-job-hero-blocker,
+.orders-decision-surface:not(.orders-decision-surface-success):not(.orders-decision-surface-neutral) {
+  border-left-color: var(--sw-color-danger);
+}
+
+.ops-decision-grid {
+  gap: 0.75rem;
+}
+
+.ops-decision-actions {
+  margin-top: 0.4rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(31, 41, 55, 0.08);
+}
+
+.orders-queue-facts,
+.orders-queue-status-cluster,
+.payments-queue-facts,
+.payments-status-cluster,
+.admin-fact-grid,
+.reports-summary-grid {
+  gap: 0.75rem;
+}
+
+.orders-queue-row,
+.payments-queue-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.customer-route-node,
+.customer-tracking-step,
+.customer-route-node-current,
+.customer-route-node-problem,
+.customer-route-node-complete,
+.customer-route-node-upcoming {
+  background: #ffffff;
+}
+
+@media (max-width: 960px) {
+  .briefing-content-grid,
+  .orders-queue-row,
+  .payments-queue-row {
+    grid-template-columns: 1fr;
+  }
+}
