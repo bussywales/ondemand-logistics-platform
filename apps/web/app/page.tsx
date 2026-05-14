@@ -4,161 +4,154 @@ import { ShipWrightIcon, type ShipWrightIconName } from "./_components/shipwrigh
 
 const proofPoints = [
   "Paid order to delivered proof",
-  "Human-in-the-loop operations",
-  "Payment-state visibility",
-  "Pilot-ready command workflows"
+  "Human-in-the-loop recovery",
+  "Payment state visible",
+  "Pilot-ready operating evidence"
 ];
 
-const audiences = [
+const operatingMoments = [
   {
     icon: "restaurant",
-    audience: "Restaurants",
-    problem: "Delivery demand arrives faster than teams can coordinate menus, orders, couriers, and customer updates.",
-    solution: "ShipWright gives restaurant operators a controlled ordering and fulfilment path from public menu to delivery completion.",
-    outcome: "More predictable service windows, fewer blind handoffs, and cleaner customer support context."
+    label: "Merchant",
+    title: "The order is real.",
+    body: "A customer checks out from a branded restaurant menu. Payment is authorised before fulfilment work begins."
   },
   {
     icon: "queue",
-    audience: "Operators",
-    problem: "Live delivery work becomes fragmented across payment tools, dispatch notes, courier chats, and spreadsheets.",
-    solution: "One operations surface connects order state, delivery job state, payment posture, tracking, and recommended next action.",
-    outcome: "Operators spend less time interpreting dashboards and more time resolving the right work."
+    label: "Operator",
+    title: "The work becomes visible.",
+    body: "Orders, jobs, driver state, tracking, payment posture, and next action live in one operating picture."
   },
   {
     icon: "driver",
-    audience: "Couriers",
-    problem: "Courier readiness, assignment, and proof of delivery need structure before local delivery can scale.",
-    solution: "Driver routes, offers, execution states, proof of delivery, and readiness surfaces keep courier work legible.",
-    outcome: "Cleaner execution paths and fewer ambiguous states during controlled pilot operations."
-  },
-  {
-    icon: "payment",
-    audience: "Local retail",
-    problem: "Retail delivery needs payment confidence, fulfilment visibility, and recovery workflows without enterprise complexity.",
-    solution: "ShipWright presents payment risk as an operational lens on orders, not a disconnected finance dashboard.",
-    outcome: "Teams know when an order can move, when capture happened, and what still needs review."
-  },
-  {
-    icon: "timeline",
-    audience: "Platform oversight",
-    problem: "Multi-merchant pilot operations need clear escalation, evidence, and closeout without bypassing human responsibility.",
-    solution: "Admin command views show cross-org attention, incidents, courier readiness, and end-of-day closeout signals.",
-    outcome: "Platform teams can support operators while preserving org boundaries and approval controls."
+    label: "Courier",
+    title: "Execution is structured.",
+    body: "Offer, accept, pickup, drop-off, proof of delivery, and closeout move through a controlled delivery path."
   }
-] satisfies Array<{
-  audience: string;
-  icon: ShipWrightIconName;
-  outcome: string;
-  problem: string;
-  solution: string;
-}>;
+] satisfies Array<{ body: string; icon: ShipWrightIconName; label: string; title: string }>;
 
-const intelligence = [
+const audienceNarrative = [
   {
-    title: "Daily briefing",
-    body: "A concise view of what needs attention before service starts."
+    audience: "Restaurants",
+    statement: "Keep orders moving without turning service into a dispatch room.",
+    outcome: "Menus, paid orders, delivery handoff, and support context stay connected."
   },
   {
-    title: "Recovery suggestions",
-    body: "Deterministic guidance for failed dispatch, no-driver, and payment-blocked situations."
+    audience: "Operators",
+    statement: "See the exception before the customer feels the failure.",
+    outcome: "Blocked dispatch, payment risk, driver gaps, and stale jobs surface as reviewable work."
   },
   {
-    title: "Incident intelligence",
-    body: "Delay detection and calm communication drafts that require review before use."
+    audience: "Couriers",
+    statement: "Make courier execution legible enough for a live pilot.",
+    outcome: "Driver readiness, offers, assignment, route stages, and POD create a clear operating record."
   },
   {
-    title: "End-of-day report",
-    body: "A closeout summary of orders, deliveries, incidents, payment risks, and unresolved work."
+    audience: "Platform teams",
+    statement: "Support multiple businesses without bypassing accountability.",
+    outcome: "Admin views expose cross-org attention while preserving human approval and access boundaries."
   }
+];
+
+const intelligenceMoments = [
+  "Daily briefing",
+  "Recovery suggestions",
+  "Delay detection",
+  "Incident summaries",
+  "End-of-day reports"
 ];
 
 const workflow = [
   "Customer order",
-  "Payment authorisation",
+  "Payment authorised",
   "Dispatch",
-  "Courier execution",
-  "Tracking",
-  "Payment capture",
-  "Fulfilment closeout"
+  "Courier accepts",
+  "Pickup",
+  "Drop-off",
+  "Capture",
+  "Closeout"
 ];
 
 const confidenceSignals = [
-  "Release verification and schema readiness gates",
+  "Release verification gates",
   "Paid-delivery proof artifacts",
-  "Dispatch attempts and job timelines",
-  "Payment capture and payout-risk visibility",
-  "Pilot recovery playbooks",
-  "Operator-approved recovery actions"
+  "Dispatch attempt history",
+  "Proof of delivery records",
+  "Payment capture visibility",
+  "Pilot fallback playbooks"
 ];
 
-function EditorialHeading(props: { eyebrow: string; title: string; body?: string }) {
+function EditorialEyebrow(props: { children: string }) {
+  return <p className="landing-kicker">{props.children}</p>;
+}
+
+function HeroScene() {
   return (
-    <div className="landing-editorial-heading">
-      <p className="eyebrow">{props.eyebrow}</p>
-      <h2>{props.title}</h2>
-      {props.body ? <p>{props.body}</p> : null}
+    <div className="landing-cinematic-scene" aria-label="ShipWright logistics command scene">
+      <div className="landing-city-grid" aria-hidden="true">
+        <span className="landing-city-block landing-city-block-tall" />
+        <span className="landing-city-block" />
+        <span className="landing-city-block landing-city-block-wide" />
+        <span className="landing-city-block" />
+        <span className="landing-city-block landing-city-block-low" />
+        <span className="landing-city-block landing-city-block-wide" />
+      </div>
+      <div className="landing-route-thread" aria-hidden="true">
+        <span className="landing-route-pin landing-route-pin-start">Kitchen</span>
+        <span className="landing-route-arc" />
+        <span className="landing-route-courier-marker">
+          <ShipWrightIcon name="driver" />
+        </span>
+        <span className="landing-route-arc landing-route-arc-second" />
+        <span className="landing-route-pin landing-route-pin-end">Customer</span>
+      </div>
+      <div className="landing-floating-card landing-floating-card-command">
+        <span>Command Intelligence</span>
+        <strong>2 items need review</strong>
+        <p>Dispatch delay detected. Operator approval required.</p>
+      </div>
+      <div className="landing-floating-card landing-floating-card-proof">
+        <span>Proof state</span>
+        <strong>Payment captured</strong>
+        <p>Delivery fulfilled with POD recorded.</p>
+      </div>
     </div>
   );
 }
 
-function CommandIllustration() {
+function MovementScene() {
   return (
-    <div className="landing-command-visual" aria-label="ShipWright operational command visual">
-      <div className="landing-command-topline">
-        <div>
-          <span>Command centre</span>
-          <strong>Friday service window</strong>
-        </div>
-        <span className="landing-status-pill">Operational signals</span>
+    <div className="landing-movement-scene" aria-hidden="true">
+      <div className="landing-movement-map">
+        <span className="landing-map-road landing-map-road-one" />
+        <span className="landing-map-road landing-map-road-two" />
+        <span className="landing-map-road landing-map-road-three" />
+        <span className="landing-map-node landing-map-node-merchant" />
+        <span className="landing-map-node landing-map-node-driver" />
+        <span className="landing-map-node landing-map-node-customer" />
       </div>
-
-      <div className="landing-route-visual" aria-hidden="true">
-        <span className="landing-route-node landing-route-node-start">Pickup</span>
-        <span className="landing-route-line" />
-        <span className="landing-route-courier">
-          <ShipWrightIcon name="driver" />
-        </span>
-        <span className="landing-route-line" />
-        <span className="landing-route-node landing-route-node-end">Drop-off</span>
+      <div className="landing-movement-caption">
+        <span>Service window</span>
+        <strong>Orders, drivers, payments, and recovery state moving together.</strong>
       </div>
+    </div>
+  );
+}
 
-      <div className="landing-command-summary">
-        <div>
-          <span>Orders today</span>
-          <strong>42</strong>
-        </div>
-        <div>
-          <span>Moving</span>
-          <strong>9</strong>
-        </div>
-        <div>
-          <span>Review</span>
-          <strong>2</strong>
-        </div>
+function IntelligenceScene() {
+  return (
+    <div className="landing-intelligence-theatre" aria-label="Assistive operations intelligence">
+      <div className="landing-theatre-header">
+        <span>Based on operational signals</span>
+        <strong>Human approval required</strong>
       </div>
-
-      <div className="landing-command-stream">
-        <article>
-          <span className="landing-stream-dot" />
-          <div>
-            <strong>Payment authorised</strong>
-            <p>Ready for dispatch once restaurant confirms handoff.</p>
+      <div className="landing-theatre-list">
+        {intelligenceMoments.map((item, index) => (
+          <div key={item}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{item}</strong>
           </div>
-        </article>
-        <article>
-          <span className="landing-stream-dot landing-stream-dot-attention" />
-          <div>
-            <strong>Dispatch needs review</strong>
-            <p>Retry dispatch first: no open courier offer is active.</p>
-          </div>
-        </article>
-        <article>
-          <span className="landing-stream-dot" />
-          <div>
-            <strong>Delivery completed</strong>
-            <p>Proof of delivery recorded and payment captured.</p>
-          </div>
-        </article>
+        ))}
       </div>
     </div>
   );
@@ -166,118 +159,109 @@ function CommandIllustration() {
 
 export default function HomePage() {
   return (
-    <main className="landing-page landing-page-premium">
-      <header className="topbar landing-topbar">
+    <main className="landing-page landing-page-premium landing-page-story">
+      <header className="topbar landing-topbar landing-story-topbar">
         <BrandLogo href="/" />
         <nav className="topnav landing-topnav" aria-label="Primary">
-          <a href="#platform">Platform</a>
-          <a href="#audiences">Who it serves</a>
-          <a href="#intelligence">Command Intelligence</a>
-          <a href="#workflow">How it works</a>
+          <a href="#story">Story</a>
+          <a href="#operators">Operators</a>
+          <a href="#intelligence">Intelligence</a>
+          <a href="#proof">Proof</a>
           <Link href="/get-started">Get started</Link>
         </nav>
       </header>
 
-      <section className="landing-hero">
-        <div className="landing-hero-copy">
-          <p className="landing-kicker">Premium logistics infrastructure for local commerce</p>
-          <h1>AI-assisted logistics command centre for local commerce.</h1>
-          <p className="landing-hero-body">
-            ShipWright helps restaurants, retailers, operators, and couriers coordinate paid orders, dispatch, tracking,
-            delivery proof, payment capture, and recovery workflows from one calm operating layer.
+      <section className="landing-story-hero">
+        <div className="landing-story-hero-copy">
+          <EditorialEyebrow>Modern logistics infrastructure</EditorialEyebrow>
+          <h1>The operating system for local commerce in motion.</h1>
+          <p>
+            ShipWright brings paid ordering, dispatch, courier execution, customer tracking, payment capture, and
+            assistive operations intelligence into one calm command centre.
           </p>
           <div className="landing-hero-actions">
             <Link className="button button-primary landing-button-primary" href="/get-started">
               Start a controlled pilot
             </Link>
-            <Link className="button button-secondary landing-button-secondary" href="/demo">
-              View demo
+            <Link className="button button-secondary landing-button-secondary" href="/demo/investor">
+              View investor demo
             </Link>
           </div>
         </div>
-
-        <CommandIllustration />
+        <HeroScene />
       </section>
 
-      <section className="landing-proof-strip" aria-label="Operational proof points">
+      <section className="landing-proof-marquee" aria-label="Operational proof points">
         {proofPoints.map((item) => (
           <span key={item}>{item}</span>
         ))}
       </section>
 
-      <section className="landing-narrative" id="platform">
-        <div>
-          <p className="eyebrow">The operating gap</p>
-          <h2>Local delivery breaks when order, courier, payment, and support state live in different places.</h2>
-        </div>
-        <p>
-          ShipWright is designed as logistics infrastructure, not another dashboard. It connects customer ordering,
-          dispatch execution, proof of delivery, payment state, operator review, and admin oversight into one
-          decision-oriented system.
-        </p>
+      <section className="landing-statement-section" id="story">
+        <p>Local delivery is not a dashboard problem.</p>
+        <h2>It is a choreography problem: customer demand, merchant readiness, courier movement, payment state, and operator judgement all have to stay aligned.</h2>
       </section>
 
-      <section className="landing-audience-section" id="audiences">
-        <EditorialHeading
-          eyebrow="Who it serves"
-          title="Built for the people who keep local commerce moving."
-          body="Each surface is shaped around a real operational handoff: what happened, why it matters, and what the human operator should review next."
-        />
-        <div className="landing-audience-list">
-          {audiences.map((item) => (
-            <article className="landing-audience-row" key={item.audience}>
-              <div className="landing-audience-title">
-                <span aria-hidden="true">
-                  <ShipWrightIcon name={item.icon} />
-                </span>
-                <h3>{item.audience}</h3>
-              </div>
-              <div>
-                <p className="landing-row-label">Problem</p>
-                <p>{item.problem}</p>
-              </div>
-              <div>
-                <p className="landing-row-label">ShipWright</p>
-                <p>{item.solution}</p>
-              </div>
-              <div>
-                <p className="landing-row-label">Outcome</p>
-                <p>{item.outcome}</p>
-              </div>
+      <section className="landing-motion-section">
+        <div className="landing-motion-copy">
+          <EditorialEyebrow>Commerce movement</EditorialEyebrow>
+          <h2>From order intake to proof of delivery, every stage needs a visible owner.</h2>
+          <p>
+            ShipWright turns fulfilment into a traceable operating sequence. The product does not hide risk behind
+            green dashboards; it shows what is moving, what is blocked, and what needs human review.
+          </p>
+        </div>
+        <MovementScene />
+      </section>
+
+      <section className="landing-moments-section">
+        {operatingMoments.map((moment) => (
+          <article className="landing-moment" key={moment.label}>
+            <span className="landing-moment-icon" aria-hidden="true">
+              <ShipWrightIcon name={moment.icon} />
+            </span>
+            <p>{moment.label}</p>
+            <h3>{moment.title}</h3>
+            <span>{moment.body}</span>
+          </article>
+        ))}
+      </section>
+
+      <section className="landing-operators-section" id="operators">
+        <div className="landing-section-lead">
+          <EditorialEyebrow>Operational clarity</EditorialEyebrow>
+          <h2>Different teams. One shared operating picture.</h2>
+        </div>
+        <div className="landing-operator-rows">
+          {audienceNarrative.map((item) => (
+            <article key={item.audience}>
+              <span>{item.audience}</span>
+              <strong>{item.statement}</strong>
+              <p>{item.outcome}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="landing-intelligence-section" id="intelligence">
-        <div className="landing-intelligence-copy">
-          <EditorialHeading
-            eyebrow="Command Intelligence"
-            title="Operational guidance without autonomous risk."
-            body="Command Intelligence is based on operational signals. It helps teams spot risk, review recommendations, and close the day while keeping recovery actions human-approved."
-          />
-          <div className="landing-human-note">
-            <ShipWrightIcon name="check" />
-            <p>Human-in-the-loop by design: ShipWright does not automatically refund, cancel, assign couriers, send customer messages, or close incidents.</p>
-          </div>
+      <section className="landing-dark-section" id="intelligence">
+        <div className="landing-dark-copy">
+          <EditorialEyebrow>Command Intelligence</EditorialEyebrow>
+          <h2>Assistive intelligence for operators, not silent automation.</h2>
+          <p>
+            ShipWright uses operational signals to brief teams, suggest recovery paths, detect delays, draft incident
+            summaries, and close the day. Humans still approve refunds, cancellations, courier assignment, customer
+            messages, and incident closure.
+          </p>
         </div>
-        <div className="landing-intelligence-list">
-          {intelligence.map((item) => (
-            <article key={item.title}>
-              <span className="landing-index-marker" aria-hidden="true" />
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
+        <IntelligenceScene />
       </section>
 
-      <section className="landing-workflow-section" id="workflow">
-        <EditorialHeading
-          eyebrow="How it works"
-          title="One continuous path from customer order to operational closeout."
-        />
-        <div className="landing-workflow">
+      <section className="landing-workflow-story">
+        <div className="landing-section-lead">
+          <EditorialEyebrow>How work moves</EditorialEyebrow>
+          <h2>One continuous fulfilment path, not seven disconnected tools.</h2>
+        </div>
+        <div className="landing-story-rail">
           {workflow.map((step, index) => (
             <article key={step}>
               <span>{String(index + 1).padStart(2, "0")}</span>
@@ -287,23 +271,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="landing-confidence-section">
-        <div>
-          <EditorialHeading
-            eyebrow="Operational confidence"
-            title="Proof-driven, reviewable, and built for controlled pilots."
-            body="ShipWright makes operational state visible before teams scale volume: readiness checks, proof artifacts, timelines, payment state, playbooks, and support evidence."
-          />
-          <div className="landing-cta-row">
-            <Link className="button button-primary landing-button-primary" href="/get-started">
-              Prepare a pilot
-            </Link>
-            <Link className="button button-secondary landing-button-secondary" href="/demo/investor">
-              Investor demo
-            </Link>
-          </div>
+      <section className="landing-proof-section" id="proof">
+        <div className="landing-proof-quote">
+          <p>“A pilot should not depend on heroic operators remembering what happened. The system should preserve the operating truth.”</p>
         </div>
-        <div className="landing-confidence-list">
+        <div className="landing-proof-list">
           {confidenceSignals.map((item) => (
             <div key={item}>
               <ShipWrightIcon name="check" />
@@ -313,10 +285,29 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="site-footer landing-footer">
+      <section className="landing-final-scene">
+        <div>
+          <EditorialEyebrow>ShipWright</EditorialEyebrow>
+          <h2>Run the pilot like infrastructure, not improvisation.</h2>
+          <p>
+            Prepare the merchant, take a paid order, dispatch the courier, track the delivery, capture payment, record
+            proof, and close the day with evidence.
+          </p>
+        </div>
+        <div className="landing-cta-row">
+          <Link className="button button-primary landing-button-primary" href="/get-started">
+            Prepare a pilot
+          </Link>
+          <Link className="button button-secondary landing-button-secondary" href="/contact">
+            Talk to us
+          </Link>
+        </div>
+      </section>
+
+      <footer className="site-footer landing-footer landing-story-footer">
         <div className="footer-brand">
           <BrandLogo className="footer-brand-mark" href="/" mode="full" />
-          <p>AI-assisted logistics command centre for restaurants, retailers, operators, couriers, and platform teams.</p>
+          <p>Premium logistics command infrastructure for restaurants, retailers, operators, couriers, and platform teams.</p>
         </div>
         <nav aria-label="Footer">
           <Link href="/get-started">Get started</Link>
