@@ -88,6 +88,8 @@ const orchestrationSignals = [
   { label: "Closeout", value: "Evidence-backed" }
 ];
 
+const atmosphereSignals = ["Kitchen", "Dispatch", "Courier", "Doorstep"];
+
 function EditorialEyebrow(props: { children: string }) {
   return <p className="landing-kicker">{props.children}</p>;
 }
@@ -156,6 +158,27 @@ function OrchestrationScene() {
         ))}
       </div>
     </div>
+  );
+}
+
+function AtmosphereScene() {
+  return (
+    <section className="landing-atmosphere-section" aria-label="ShipWright service window atmosphere">
+      <div className="landing-atmosphere-copy">
+        <EditorialEyebrow>Service window</EditorialEyebrow>
+        <h2>Warmth for customers. Control for operators.</h2>
+      </div>
+      <div className="landing-atmosphere-visual" aria-hidden="true">
+        <span className="landing-atmosphere-glow landing-atmosphere-glow-amber" />
+        <span className="landing-atmosphere-glow landing-atmosphere-glow-blue" />
+        <span className="landing-atmosphere-route" />
+        <div className="landing-atmosphere-points">
+          {atmosphereSignals.map((signal) => (
+            <span key={signal}>{signal}</span>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -236,6 +259,8 @@ export default function HomePage() {
           <span key={item}>{item}</span>
         ))}
       </section>
+
+      <AtmosphereScene />
 
       <section className="landing-statement-section" id="story">
         <p>Local delivery is not a dashboard problem.</p>

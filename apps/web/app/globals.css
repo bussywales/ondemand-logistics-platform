@@ -10690,3 +10690,277 @@ select:hover,
     min-height: 420px;
   }
 }
+
+/* Landing Phase 4: controlled warmth and cinematic atmosphere. */
+.landing-page-story {
+  --story-night: #0a1119;
+  --story-copper: #a76634;
+  --story-sky: #6d9fc1;
+}
+
+.landing-story-hero {
+  position: relative;
+}
+
+.landing-story-hero::before {
+  content: "";
+  position: absolute;
+  right: min(8vw, 6rem);
+  top: 3%;
+  width: min(36rem, 42vw);
+  height: min(36rem, 42vw);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(215, 185, 121, 0.18), transparent 62%),
+    radial-gradient(circle at 65% 30%, rgba(109, 159, 193, 0.13), transparent 58%);
+  filter: blur(24px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.landing-story-hero-copy,
+.landing-cinematic-scene {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-cinematic-scene {
+  box-shadow:
+    0 36px 110px rgba(10, 16, 23, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.66);
+}
+
+.landing-cinematic-scene::after {
+  content: "";
+  position: absolute;
+  inset: 11% 6% auto 12%;
+  height: 42%;
+  border-radius: 999px;
+  background: linear-gradient(100deg, transparent, rgba(215, 185, 121, 0.18), rgba(109, 159, 193, 0.14), transparent);
+  filter: blur(14px);
+  opacity: 0.74;
+  transform: rotate(-9deg);
+  pointer-events: none;
+}
+
+.landing-route-pin {
+  box-shadow:
+    0 14px 36px rgba(10, 16, 23, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.landing-route-pin-start {
+  border-color: rgba(184, 118, 61, 0.24);
+}
+
+.landing-route-pin-end {
+  border-color: rgba(109, 159, 193, 0.22);
+}
+
+.landing-atmosphere-section {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 0.54fr) minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: center;
+  margin-inline: calc((100vw - min(1280px, calc(100vw - 2.5rem))) / -2);
+  padding: clamp(4.5rem, 9vw, 7.5rem) max(1.25rem, calc((100vw - 1280px) / 2));
+  overflow: hidden;
+}
+
+.landing-atmosphere-section::before {
+  content: "";
+  position: absolute;
+  inset: 18% 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184, 118, 61, 0.24), rgba(109, 159, 193, 0.18), transparent);
+}
+
+.landing-atmosphere-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.landing-atmosphere-copy h2 {
+  max-width: 520px;
+  color: var(--story-ink);
+  font-size: clamp(2rem, 4vw, 4.1rem);
+  font-weight: 600;
+  letter-spacing: -0.058em;
+  line-height: 0.98;
+}
+
+.landing-atmosphere-visual {
+  position: relative;
+  min-height: clamp(250px, 28vw, 390px);
+  overflow: hidden;
+  border: 1px solid rgba(10, 16, 23, 0.075);
+  border-radius: 44px;
+  background:
+    radial-gradient(circle at 18% 70%, rgba(184, 118, 61, 0.16), transparent 20rem),
+    radial-gradient(circle at 78% 30%, rgba(109, 159, 193, 0.14), transparent 22rem),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.62), rgba(250, 247, 240, 0.92));
+  box-shadow: 0 30px 90px rgba(10, 16, 23, 0.075);
+}
+
+.landing-atmosphere-glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(30px);
+  opacity: 0.72;
+}
+
+.landing-atmosphere-glow-amber {
+  width: 18rem;
+  height: 18rem;
+  left: 5%;
+  bottom: -22%;
+  background: rgba(215, 185, 121, 0.28);
+}
+
+.landing-atmosphere-glow-blue {
+  width: 20rem;
+  height: 20rem;
+  right: 4%;
+  top: -24%;
+  background: rgba(109, 159, 193, 0.2);
+}
+
+.landing-atmosphere-route {
+  position: absolute;
+  left: 11%;
+  right: 10%;
+  top: 49%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(184, 118, 61, 0.16), rgba(184, 118, 61, 0.58), rgba(109, 159, 193, 0.5), rgba(73, 108, 91, 0.22));
+  box-shadow:
+    0 0 26px rgba(184, 118, 61, 0.18),
+    0 0 42px rgba(109, 159, 193, 0.12);
+  transform: rotate(-4deg);
+}
+
+.landing-atmosphere-points {
+  position: absolute;
+  inset: 0;
+}
+
+.landing-atmosphere-points span {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6.2rem;
+  padding: 0.6rem 0.78rem;
+  border: 1px solid rgba(10, 16, 23, 0.075);
+  border-radius: 999px;
+  color: #172230;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 18px 46px rgba(10, 16, 23, 0.09);
+  font-size: 0.78rem;
+  font-weight: 650;
+  backdrop-filter: blur(14px);
+}
+
+.landing-atmosphere-points span:nth-child(1) {
+  left: 8%;
+  top: 56%;
+}
+
+.landing-atmosphere-points span:nth-child(2) {
+  left: 32%;
+  top: 34%;
+}
+
+.landing-atmosphere-points span:nth-child(3) {
+  right: 31%;
+  top: 52%;
+}
+
+.landing-atmosphere-points span:nth-child(4) {
+  right: 8%;
+  top: 28%;
+}
+
+.landing-orchestration-visual,
+.landing-movement-map {
+  box-shadow:
+    0 32px 92px rgba(10, 16, 23, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.56);
+}
+
+.landing-dark-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-dark-section::before {
+  content: "";
+  position: absolute;
+  right: 7%;
+  top: 13%;
+  width: min(28rem, 38vw);
+  height: min(28rem, 38vw);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(215, 185, 121, 0.16), transparent 62%),
+    radial-gradient(circle at 70% 38%, rgba(109, 159, 193, 0.14), transparent 58%);
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+.landing-dark-copy,
+.landing-intelligence-theatre {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-final-scene {
+  background:
+    radial-gradient(circle at 84% 72%, rgba(215, 185, 121, 0.14), transparent 22rem),
+    linear-gradient(180deg, transparent 0%, rgba(235, 230, 220, 0.52) 100%);
+}
+
+@media (max-width: 1080px) {
+  .landing-atmosphere-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-atmosphere-section {
+    margin-inline: -0.55rem;
+    padding-inline: 0.55rem;
+  }
+
+  .landing-atmosphere-visual {
+    min-height: 360px;
+    border-radius: 32px;
+  }
+
+  .landing-atmosphere-points span {
+    min-width: auto;
+  }
+
+  .landing-atmosphere-points span:nth-child(1) {
+    left: 8%;
+    top: 62%;
+  }
+
+  .landing-atmosphere-points span:nth-child(2) {
+    left: 18%;
+    top: 32%;
+  }
+
+  .landing-atmosphere-points span:nth-child(3) {
+    right: 16%;
+    top: 50%;
+  }
+
+  .landing-atmosphere-points span:nth-child(4) {
+    right: 8%;
+    top: 20%;
+  }
+}
