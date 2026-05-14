@@ -133,10 +133,10 @@ describe("DailyBriefingSurface", () => {
     expect(markup).toContain('href="/app/payments"');
     expect(markup).toContain('href="/app/jobs"');
     expect(markup).toContain("Human approval is required for all recovery actions.");
-    expect(markup).toContain("Recovery suggestion");
-    expect(markup).toContain("Recommended next step: Retry Dispatch");
-    expect(markup).toContain("Based on current operational signals. Review before acting. Human approval required.");
-    expect(markup).toContain("Dispatch failed and remains unresolved");
+    expect(markup).toContain("Recommended next step");
+    expect(markup).toContain("Next action: Retry Dispatch");
+    expect(markup).toContain("It does not take recovery actions automatically.");
+    expect(markup).not.toContain("Dispatch failed and remains unresolved");
   });
 
   it("renders a clear briefing without implying autonomous action", () => {

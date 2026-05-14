@@ -274,7 +274,7 @@ function DetailInsight(props: {
   copy: string;
 }) {
   return (
-    <div className="ops-decision-tile orders-decision-tile">
+    <div className="sw-list-row ops-decision-tile orders-decision-tile orders-decision-summary-row">
       <span className={`decision-tile-icon decision-tile-icon-${props.tone === "danger" ? "danger" : props.tone === "warning" ? "warning" : props.tone === "success" ? "success" : "teal"}`} aria-hidden="true">
         <ShipWrightIcon name={props.icon} />
       </span>

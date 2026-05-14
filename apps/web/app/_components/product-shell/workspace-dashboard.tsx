@@ -289,20 +289,11 @@ export function NeedsReviewQueue(props: {
                   <span>{formatStatusLabel(job.status)}</span>
                 </div>
                 <h3>{intelligence.currentIssue}</h3>
-                <dl className="attention-facts">
-                  <div>
-                    <dt>Diagnosis</dt>
-                    <dd>{intelligence.diagnosis}</dd>
-                  </div>
-                  <div>
-                    <dt>Impact</dt>
-                    <dd>{intelligence.impact}</dd>
-                  </div>
-                  <div>
-                    <dt>Suggested action</dt>
-                    <dd>{intelligence.explanation}</dd>
-                  </div>
-                </dl>
+                <p className="attention-summary-line">{intelligence.diagnosis} · {intelligence.impact}</p>
+                <p className="attention-next-action">
+                  <span>Next action</span>
+                  <strong>{intelligence.recommendedActionLabel}</strong>
+                </p>
               </div>
               <div className="sw-queue-row-actions attention-actions">
                 {intelligence.recommendedActionType === "RETRY_DISPATCH" ? (

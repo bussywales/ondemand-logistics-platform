@@ -50,15 +50,17 @@ function formatActionLabel(value: EndOfDayActionItem["type"]) {
     .join(" ");
 }
 
-function SummaryMetric(props: { label: string; value: number; copy: string; tone?: "info" | "warning" | "success" | "danger" }) {
+function SummaryItem(props: { label: string; value: number; copy: string; tone?: "info" | "warning" | "success" | "danger" }) {
   return (
-    <div className="sw-metric-card sw-supporting-surface reports-metric-card">
-      <span className={`sw-metric-icon sw-icon-badge ${props.tone === "danger" ? "sw-icon-badge--warning" : props.tone === "success" ? "sw-icon-badge--success" : "sw-icon-badge--info"}`} aria-hidden="true">
+    <div className={`reports-summary-item reports-summary-item-${props.tone ?? "info"}`}>
+      <span className={`sw-icon-badge ${props.tone === "danger" ? "sw-icon-badge--warning" : props.tone === "success" ? "sw-icon-badge--success" : "sw-icon-badge--info"}`} aria-hidden="true">
         <ShipWrightIcon name={props.tone === "danger" ? "alert" : props.tone === "success" ? "check" : "queue"} />
       </span>
-      <span className="sw-metric-label">{props.label}</span>
-      <strong className="sw-metric-value">{props.value}</strong>
-      <p className="sw-metric-copy">{props.copy}</p>
+      <div>
+        <span>{props.label}</span>
+        <strong>{props.value}</strong>
+        <p>{props.copy}</p>
+      </div>
     </div>
   );
 }
@@ -97,7 +99,6 @@ function ActionRow(props: { item: EndOfDayActionItem }) {
             </div>
             <h3>{item.label}</h3>
             <p>{item.summary}</p>
-            <p className="reports-action-note">{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>
           </div>
         </div>
       </div>
@@ -164,15 +165,16 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
             <h2>Closeout posture</h2>
           </div>
         </div>
-        <div className="reports-metrics-grid">
-          <SummaryMetric copy="Customer orders opened today." label="Orders received" value={props.report.operatingSummary.ordersReceived} />
-          <SummaryMetric copy="Orders completed through fulfilment." label="Fulfilled orders" tone="success" value={props.report.operatingSummary.fulfilledOrders} />
-          <SummaryMetric copy="Open or unresolved customer orders." label="Active / unresolved" tone={props.report.operatingSummary.activeOrUnresolvedOrders ? "warning" : "success"} value={props.report.operatingSummary.activeOrUnresolvedOrders} />
-          <SummaryMetric copy="Cancelled or payment-failed orders." label="Cancelled / failed" tone={props.report.operatingSummary.cancelledOrPaymentFailedOrders ? "danger" : "info"} value={props.report.operatingSummary.cancelledOrPaymentFailedOrders} />
-          <SummaryMetric copy="Jobs still active at closeout." label="Active jobs" tone={props.report.operatingSummary.activeJobs ? "warning" : "success"} value={props.report.operatingSummary.activeJobs} />
-          <SummaryMetric copy="Jobs delivered today." label="Delivered jobs" tone="success" value={props.report.operatingSummary.deliveredJobs} />
-          <SummaryMetric copy="Jobs that hit dispatch failure." label="Dispatch failures" tone={props.report.operatingSummary.dispatchFailures ? "danger" : "info"} value={props.report.operatingSummary.dispatchFailures} />
-          <SummaryMetric copy="Jobs with stale or delayed progression." label="Delayed jobs" tone={props.report.operatingSummary.staleOrDelayedJobs ? "warning" : "info"} value={props.report.operatingSummary.staleOrDelayedJobs} />
+        <div className="reports-closeout-summary">
+          <SummaryItem copy="Customer orders opened today." label="Orders received" value={props.report.operatingSummary.ordersReceived} />
+          <SummaryItem copy="Orders completed through fulfilment." label="Fulfilled" tone="success" value={props.report.operatingSummary.fulfilledOrders} />
+          <SummaryItem copy="Open or unresolved customer orders." label="Unresolved" tone={props.report.operatingSummary.activeOrUnresolvedOrders ? "warning" : "success"} value={props.report.operatingSummary.activeOrUnresolvedOrders} />
+          <SummaryItem
+            copy="Dispatch or delay follow-up."
+            label="Delivery exceptions"
+            tone={props.report.operatingSummary.dispatchFailures || props.report.operatingSummary.staleOrDelayedJobs ? "warning" : "success"}
+            value={props.report.operatingSummary.dispatchFailures + props.report.operatingSummary.staleOrDelayedJobs}
+          />
         </div>
       </section>
 

@@ -63,35 +63,23 @@ export function JobDecisionSurface(props: JobDecisionSurfaceProps) {
         </div>
       </div>
       {jobDecision ? (
-        <div className="sw-decision-insight-grid ops-decision-grid">
-          <div className="sw-decision-insight ops-decision-tile ops-decision-tile-state">
-            <span className="decision-tile-icon decision-tile-icon-danger" aria-hidden="true">
-              <ShipWrightIcon name="document" />
-            </span>
+        <div className="ops-decision-summary-list">
+          <div className="sw-list-row ops-decision-summary-row">
             <span className="sw-label">Current state</span>
             <strong>{jobDecision.currentIssue}</strong>
             <p>{formatStatusLabel(job.status)}</p>
           </div>
-          <div className="sw-decision-insight ops-decision-tile ops-decision-tile-meaning">
-            <span className="decision-tile-icon decision-tile-icon-teal" aria-hidden="true">
-              <ShipWrightIcon name="driver" />
-            </span>
+          <div className="sw-list-row ops-decision-summary-row">
             <span className="sw-label">Operational meaning</span>
             <strong>{jobDecision.diagnosis}</strong>
             <p>{jobDecision.explanation}</p>
           </div>
-          <div className="sw-decision-insight ops-decision-tile ops-decision-tile-impact">
-            <span className="decision-tile-icon decision-tile-icon-warning" aria-hidden="true">
-              <ShipWrightIcon name="timeline" />
-            </span>
+          <div className="sw-list-row ops-decision-summary-row">
             <span className="sw-label">Impact</span>
             <strong>{jobDecision.impact}</strong>
             <p>Customer experience and SLA may be at risk.</p>
           </div>
-          <div className="sw-decision-insight ops-decision-tile ops-decision-tile-action">
-            <span className="decision-tile-icon decision-tile-icon-success" aria-hidden="true">
-              <ShipWrightIcon name="arrow" />
-            </span>
+          <div className="sw-list-row ops-decision-summary-row ops-decision-summary-row-action">
             <span className="sw-label">Next action</span>
             <strong>{jobDecision.recommendedActionLabel}</strong>
             <p>{jobDecision.explanation}</p>

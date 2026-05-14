@@ -16,7 +16,7 @@ function formatElapsed(value: number) {
 
 function DraftBox(props: { title: string; copy: string }) {
   return (
-    <section className="sw-supporting-surface incident-draft-box">
+    <section className="incident-draft-box">
       <p className="eyebrow">{props.title}</p>
       <p>{props.copy}</p>
     </section>
@@ -29,10 +29,10 @@ export function JobIncidentSummaryPanel(props: { incidentSummary: OperationalInc
     return null;
   }
 
-  const toneClass = incident.severity === "critical" ? "sw-decision-surface" : "sw-operational-surface";
+  const toneClass = incident.severity === "critical" ? "incident-summary-panel-critical" : "incident-summary-panel-warning";
 
   return (
-    <section className={`${toneClass} incident-summary-panel`}>
+    <section className={`sw-supporting-surface ${toneClass} incident-summary-panel`}>
       <div className="sw-card-header">
         <div>
           <span className="sw-badge sw-badge--info incident-command-badge">Command Intelligence</span>
@@ -46,17 +46,17 @@ export function JobIncidentSummaryPanel(props: { incidentSummary: OperationalInc
       </div>
 
       <div className="incident-summary-grid">
-        <div className="sw-supporting-surface incident-summary-card">
+        <div className="sw-list-row incident-summary-card">
           <p className="eyebrow">What happened</p>
           <strong>{incident.currentState}</strong>
           <p>{incident.likelyCause ?? "We are checking the latest operational signals."}</p>
         </div>
-        <div className="sw-supporting-surface incident-summary-card">
+        <div className="sw-list-row incident-summary-card">
           <p className="eyebrow">Why it matters</p>
           <strong>{formatElapsed(incident.elapsedMinutes)} in the current stage</strong>
           <p>Service timing and customer confidence may slip if this state is not reviewed.</p>
         </div>
-        <div className="sw-supporting-surface incident-summary-card">
+        <div className="sw-list-row incident-summary-card">
           <p className="eyebrow">Recommended next step</p>
           <strong>{incident.recommendedNextAction}</strong>
           <p>{COMMAND_INTELLIGENCE_SIGNAL_COPY}</p>

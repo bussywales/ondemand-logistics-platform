@@ -15,6 +15,8 @@ import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { COMMAND_INTELLIGENCE_EXPLAINER, COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
 
 const COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE = "Command intelligence data unavailable. Refresh or contact support.";
+const ADMIN_COMMAND_GROUP_VISIBLE_LIMIT = 3;
+const ADMIN_COMMAND_INCIDENT_VISIBLE_LIMIT = 5;
 
 type AdminCommandGroup = {
   key: string;
@@ -176,6 +178,8 @@ export function AdminCommandView(props: {
   selectedDate: string;
   session: BusinessSession;
 }) {
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(() => new Set());
+  const [incidentListExpanded, setIncidentListExpanded] = useState(false);
   const groups = useMemo(() => groupAttentionItems(props.briefing.criticalItems), [props.briefing.criticalItems]);
   const orgsWithAttention = useMemo(
     () => new Set(props.briefing.criticalItems.map((item) => item.orgId).filter(Boolean)).size,
@@ -193,6 +197,8 @@ export function AdminCommandView(props: {
       ),
     [props.briefing.criticalItems]
   );
+  const visibleIncidentItems = incidentListExpanded ? incidentItems : incidentItems.slice(0, ADMIN_COMMAND_INCIDENT_VISIBLE_LIMIT);
+  const hiddenIncidentCount = Math.max(0, incidentItems.length - visibleIncidentItems.length);
   const currentOrgReportHref = props.session.context.currentOrg
     ? `/app/reports/end-of-day?date=${encodeURIComponent(props.selectedDate)}`
     : null;
@@ -235,7 +241,7 @@ export function AdminCommandView(props: {
         {groups.length ? (
           <div className="admin-command-groups">
             {groups.map((group) => (
-              <section className="sw-supporting-surface admin-command-group" key={group.key}>
+              <section className="admin-command-group admin-command-group-flat" key={group.key}>
                 <div className="sw-card-header admin-section-header">
                   <div>
                     <p className="eyebrow">{group.orgName}</p>
@@ -244,7 +250,7 @@ export function AdminCommandView(props: {
                   </div>
                 </div>
                 <div className="admin-command-list">
-                  {group.items.map((item) => {
+                  {(expandedGroupKeys.has(group.key) ? group.items : group.items.slice(0, ADMIN_COMMAND_GROUP_VISIBLE_LIMIT)).map((item) => {
                     const canOpen = canOpenOrgConsole(props.session, item.orgId);
                     return (
                       <article className={`sw-queue-row sw-list-row admin-command-item admin-command-item-${item.severity}`} key={item.id}>
@@ -289,6 +295,25 @@ export function AdminCommandView(props: {
                     );
                   })}
                 </div>
+                {group.items.length > ADMIN_COMMAND_GROUP_VISIBLE_LIMIT ? (
+                  <button
+                    className="sw-button sw-button--ghost button button-secondary admin-command-disclosure"
+                    onClick={() => {
+                      setExpandedGroupKeys((current) => {
+                        const next = new Set(current);
+                        if (next.has(group.key)) {
+                          next.delete(group.key);
+                        } else {
+                          next.add(group.key);
+                        }
+                        return next;
+                      });
+                    }}
+                    type="button"
+                  >
+                    {expandedGroupKeys.has(group.key) ? "Collapse" : `Show ${group.items.length - ADMIN_COMMAND_GROUP_VISIBLE_LIMIT} more`}
+                  </button>
+                ) : null}
               </section>
             ))}
           </div>
@@ -313,7 +338,7 @@ export function AdminCommandView(props: {
 
         {incidentItems.length ? (
           <div className="admin-command-list">
-            {incidentItems.map((item) => {
+            {visibleIncidentItems.map((item) => {
               const canOpen = canOpenOrgConsole(props.session, item.orgId);
               const hasDraft = hasCommunicationDraft(item);
 
@@ -360,6 +385,11 @@ export function AdminCommandView(props: {
                 </article>
               );
             })}
+            {hiddenIncidentCount > 0 || incidentListExpanded ? (
+              <button className="sw-button sw-button--ghost button button-secondary admin-command-disclosure" onClick={() => setIncidentListExpanded((value) => !value)} type="button">
+                {incidentListExpanded ? "Collapse incidents" : `Show ${hiddenIncidentCount} more incident${hiddenIncidentCount === 1 ? "" : "s"}`}
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="sw-empty-state admin-empty-state">
