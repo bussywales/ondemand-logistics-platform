@@ -27,22 +27,16 @@
   --sw-color-teal-soft: rgba(44, 128, 127, 0.1);
 
   --sw-gradient-danger-command:
-    radial-gradient(circle at 8% 9%, rgba(167, 67, 75, 0.2), transparent 20rem),
-    radial-gradient(circle at 76% 20%, rgba(44, 128, 127, 0.1), transparent 26rem),
-    linear-gradient(128deg, #172234 0%, #1d2b3f 48%, #29364a 100%);
+    linear-gradient(180deg, #ffffff 0%, #fbfaf9 100%);
   --sw-gradient-warning-command:
-    radial-gradient(circle at 9% 4%, rgba(162, 109, 27, 0.1), transparent 17rem),
-    radial-gradient(circle at 86% 14%, rgba(44, 128, 127, 0.06), transparent 20rem),
-    linear-gradient(135deg, #ffffff 0%, #fbf8ef 54%, #f4f6f4 100%);
+    linear-gradient(180deg, #ffffff 0%, #fbfaf6 100%);
   --sw-gradient-neutral-command:
-    radial-gradient(circle at 10% 0%, rgba(44, 128, 127, 0.08), transparent 17rem),
-    radial-gradient(circle at 86% 18%, rgba(61, 80, 107, 0.08), transparent 19rem),
-    linear-gradient(135deg, #ffffff 0%, #fbfcfb 58%, #f2f5f4 100%);
+    linear-gradient(180deg, #ffffff 0%, #fafbf9 100%);
 
   --sw-shadow-sm: 0 6px 18px rgba(24, 36, 52, 0.045);
   --sw-shadow-md: 0 14px 36px rgba(24, 36, 52, 0.075);
-  --sw-shadow-lg: 0 28px 84px rgba(24, 36, 52, 0.12);
-  --sw-shadow-danger-glow: 0 0 56px rgba(167, 67, 75, 0.1);
+  --sw-shadow-lg: 0 22px 60px rgba(24, 36, 52, 0.09);
+  --sw-shadow-danger-glow: none;
 
   --sw-radius-sm: 10px;
   --sw-radius-md: 14px;
@@ -57,10 +51,10 @@
   --sw-space-8: 2rem;
   --sw-space-12: 3rem;
 
-  --sw-type-hero: 760 clamp(2.35rem, 4.5vw, 4rem) / 1 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-page-title: 760 clamp(1.95rem, 3.7vw, 3.05rem) / 1.03 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-section-title: 700 clamp(1.28rem, 2vw, 1.78rem) / 1.08 "IBM Plex Sans", "Segoe UI", sans-serif;
-  --sw-type-card-title: 680 1.04rem / 1.28 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-hero: 680 clamp(2rem, 3.7vw, 3.25rem) / 1.06 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-page-title: 680 clamp(1.72rem, 3vw, 2.55rem) / 1.08 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-section-title: 620 clamp(1.14rem, 1.7vw, 1.48rem) / 1.16 "IBM Plex Sans", "Segoe UI", sans-serif;
+  --sw-type-card-title: 600 1rem / 1.32 "IBM Plex Sans", "Segoe UI", sans-serif;
   --sw-type-body: 500 1rem / 1.55 "IBM Plex Sans", "Segoe UI", sans-serif;
   --sw-type-label: 720 0.72rem / 1.25 "IBM Plex Sans", "Segoe UI", sans-serif;
   --sw-type-value: 760 1rem / 1.28 "IBM Plex Sans", "Segoe UI", sans-serif;
@@ -141,11 +135,12 @@
   position: relative;
   overflow: hidden;
   padding: var(--sw-surface-inset);
-  border: 1px solid rgba(167, 67, 75, 0.28);
+  border: 1px solid rgba(167, 67, 75, 0.16);
+  border-left: 3px solid var(--sw-color-danger);
   border-radius: var(--sw-radius-xl);
   background: var(--sw-gradient-danger-command);
-  box-shadow: var(--sw-shadow-lg), var(--sw-shadow-danger-glow);
-  color: var(--sw-color-text-inverse);
+  box-shadow: var(--sw-shadow-sm);
+  color: var(--sw-color-text-primary);
 }
 
 .sw-command-surface {
@@ -156,7 +151,7 @@
   border: 1px solid rgba(24, 36, 52, 0.08);
   border-radius: var(--sw-radius-xl);
   background: var(--sw-gradient-neutral-command);
-  box-shadow: var(--sw-shadow-md);
+  box-shadow: var(--sw-shadow-sm);
 }
 
 .sw-command-surface--warning {
@@ -169,8 +164,8 @@
   padding: var(--sw-surface-inset);
   border: 1px solid rgba(24, 36, 52, 0.075);
   border-radius: var(--sw-radius-lg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 248, 0.92));
-  box-shadow: var(--sw-shadow-md);
+  background: #ffffff;
+  box-shadow: var(--sw-shadow-sm);
 }
 
 .sw-supporting-surface {
@@ -178,7 +173,7 @@
   padding: var(--sw-surface-inset);
   border: 1px solid rgba(24, 36, 52, 0.07);
   border-radius: var(--sw-radius-lg);
-  background: rgba(255, 255, 255, 0.84);
+  background: rgba(255, 255, 255, 0.82);
   box-shadow: var(--sw-shadow-sm);
 }
 
@@ -199,13 +194,13 @@
 }
 
 .sw-decision-title {
-  color: var(--sw-color-text-inverse);
+  color: var(--sw-color-text-primary);
   font: var(--sw-type-hero);
-  letter-spacing: -0.052em;
+  letter-spacing: -0.036em;
 }
 
 .sw-decision-copy {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--sw-color-text-muted);
   font: var(--sw-type-body);
 }
 
@@ -218,9 +213,9 @@
 .sw-decision-insight {
   padding: var(--sw-space-4);
   border-radius: var(--sw-radius-lg);
-  background: rgba(255, 255, 255, 0.075);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 34px rgba(0, 0, 0, 0.09);
-  backdrop-filter: blur(18px);
+  border: 1px solid rgba(24, 36, 52, 0.06);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: none;
 }
 
 .sw-decision-actions {
@@ -542,14 +537,11 @@
 .ops-job-hero,
 .orders-decision-surface,
 .tracking-command-surface {
-  border-color: rgba(44, 128, 127, 0.16);
-  background:
-    radial-gradient(circle at 86% 10%, rgba(44, 128, 127, 0.14), transparent 24rem),
-    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.09), transparent 18rem),
-    linear-gradient(135deg, #172234 0%, #1f2f45 52%, #34465d 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 24px 70px rgba(24, 36, 52, 0.2);
+  border-color: rgba(24, 36, 52, 0.08);
+  border-left: 3px solid var(--sw-color-info);
+  background: #ffffff;
+  box-shadow: var(--sw-shadow-sm);
+  color: var(--sw-color-text-primary);
 }
 
 .ops-job-hero-blocker,
@@ -557,35 +549,28 @@
 .orders-decision-surface:not(.orders-decision-surface-success):not(.orders-decision-surface-neutral),
 .reports-empty-state-danger,
 .payments-empty-state-danger {
-  border-color: rgba(167, 67, 75, 0.15);
-}
-
-.ops-job-hero-blocker,
-.orders-decision-surface:not(.orders-decision-surface-success):not(.orders-decision-surface-neutral) {
-  background:
-    radial-gradient(circle at 88% 12%, rgba(167, 67, 75, 0.16), transparent 22rem),
-    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.08), transparent 18rem),
-    linear-gradient(135deg, #3a2230 0%, #1f2f45 62%, #34465d 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 24px 72px rgba(55, 33, 43, 0.18);
+  border-color: rgba(167, 67, 75, 0.13);
+  border-left-color: var(--sw-color-danger);
+  background: #ffffff;
 }
 
 .ops-decision-banner h2,
 .ops-job-hero h2,
 .orders-decision-surface h2 {
-  font-size: clamp(1.72rem, 3.2vw, 2.72rem);
-  font-weight: 720;
-  line-height: 1.05;
-  letter-spacing: -0.045em;
+  color: var(--sw-color-text-primary);
+  font-size: clamp(1.38rem, 2.3vw, 2rem);
+  font-weight: 640;
+  line-height: 1.15;
+  letter-spacing: -0.032em;
 }
 
 .ops-decision-grid > div,
 .sw-decision-insight,
 .orders-decision-hero-success,
 .orders-decision-hero-neutral {
-  background: rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(24, 36, 52, 0.06);
+  background: rgba(248, 249, 247, 0.68);
+  box-shadow: none;
 }
 
 .ops-metric-card,
@@ -594,9 +579,7 @@
 .reports-metric-card,
 .payments-metric-card {
   border-color: rgba(24, 36, 52, 0.065);
-  background:
-    radial-gradient(circle at top right, rgba(44, 128, 127, 0.035), transparent 11rem),
-    linear-gradient(180deg, #ffffff, #fafbf9);
+  background: #ffffff;
   box-shadow: var(--sw-shadow-sm);
 }
 
@@ -614,9 +597,7 @@
 .admin-summary-card-warning,
 .reports-action-row-warning,
 .payments-queue-row-warning .payments-risk-strip {
-  background:
-    radial-gradient(circle at top right, rgba(162, 109, 27, 0.055), transparent 11rem),
-    linear-gradient(180deg, #ffffff, #fbf8ef);
+  background: #ffffff;
 }
 
 .ops-metric-card-attention.ops-metric-card-alert,
@@ -625,9 +606,7 @@
 .reports-action-row-danger,
 .payments-queue-row-danger .payments-risk-strip,
 .orders-command-surface-alert {
-  background:
-    radial-gradient(circle at top right, rgba(167, 67, 75, 0.055), transparent 12rem),
-    linear-gradient(180deg, #ffffff, #faf5f4);
+  background: #ffffff;
 }
 
 .admin-command-item-danger,
@@ -660,9 +639,7 @@
 .payments-queue-row,
 .orders-queue-row {
   background: rgba(255, 255, 255, 0.78);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 10px 28px rgba(24, 36, 52, 0.045);
+  box-shadow: none;
 }
 
 .attention-queue-row,
@@ -692,5 +669,26 @@
 .sw-button--danger,
 .button-danger {
   background: var(--sw-color-danger);
-  box-shadow: 0 12px 28px rgba(167, 67, 75, 0.14);
+  box-shadow: none;
+}
+
+.briefing-surface {
+  border-left: 3px solid var(--sw-color-info);
+  box-shadow: var(--sw-shadow-sm);
+}
+
+.briefing-surface-alert {
+  border-left-color: var(--sw-color-warning);
+}
+
+.briefing-surface .briefing-metric-card,
+.briefing-surface .briefing-recommendations,
+.briefing-surface .briefing-item {
+  background: transparent;
+  box-shadow: none;
+}
+
+.briefing-surface .briefing-metric-card,
+.briefing-surface .briefing-recommendations {
+  border-color: rgba(24, 36, 52, 0.06);
 }

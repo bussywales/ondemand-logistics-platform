@@ -96,7 +96,7 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
   const hasAttention = props.briefing.attentionCount > 0;
 
   return (
-    <section className={`${hasAttention ? "sw-decision-surface" : "sw-command-surface"} briefing-surface ${hasAttention ? "briefing-surface-alert" : "briefing-surface-clear"}`}>
+    <section className={`sw-supporting-surface briefing-surface ${hasAttention ? "briefing-surface-alert" : "briefing-surface-clear"}`}>
       <div className="sw-card-header briefing-header">
         <div className="briefing-title-row">
           <span className={`sw-icon-badge ${hasAttention ? "sw-icon-badge--warning" : "sw-icon-badge--success"}`} aria-hidden="true">
