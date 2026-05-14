@@ -5,9 +5,9 @@ import type { ReactNode } from "react";
 import { BusinessAuthProvider } from "./_components/business-auth-provider";
 
 export const metadata: Metadata = {
-  title: "ShipWright | On-demand delivery for food and local goods",
+  title: "ShipWright | AI-assisted logistics command centre",
   description:
-    "Dispatch deliveries, connect with verified drivers, track jobs live, and complete every drop with proof of delivery."
+    "Premium logistics infrastructure for restaurants, retailers, operators, couriers, and platform teams running local delivery."
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
