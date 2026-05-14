@@ -81,6 +81,13 @@ const confidenceSignals = [
   "Pilot fallback playbooks"
 ];
 
+const orchestrationSignals = [
+  { label: "Order signal", value: "Authorised" },
+  { label: "Courier state", value: "Available" },
+  { label: "Risk posture", value: "Reviewable" },
+  { label: "Closeout", value: "Evidence-backed" }
+];
+
 function EditorialEyebrow(props: { children: string }) {
   return <p className="landing-kicker">{props.children}</p>;
 }
@@ -88,6 +95,8 @@ function EditorialEyebrow(props: { children: string }) {
 function HeroScene() {
   return (
     <div className="landing-cinematic-scene" aria-label="ShipWright logistics command scene">
+      <span className="landing-scene-orb landing-scene-orb-primary" aria-hidden="true" />
+      <span className="landing-scene-orb landing-scene-orb-secondary" aria-hidden="true" />
       <div className="landing-city-grid" aria-hidden="true">
         <span className="landing-city-block landing-city-block-tall" />
         <span className="landing-city-block" />
@@ -105,6 +114,14 @@ function HeroScene() {
         <span className="landing-route-arc landing-route-arc-second" />
         <span className="landing-route-pin landing-route-pin-end">Customer</span>
       </div>
+      <div className="landing-scene-signal landing-scene-signal-order">
+        <span>Order placed</span>
+        <strong>19:42</strong>
+      </div>
+      <div className="landing-scene-signal landing-scene-signal-driver">
+        <span>Courier matched</span>
+        <strong>Bike · 1.8 mi</strong>
+      </div>
       <div className="landing-floating-card landing-floating-card-command">
         <span>Command Intelligence</span>
         <strong>2 items need review</strong>
@@ -114,6 +131,29 @@ function HeroScene() {
         <span>Proof state</span>
         <strong>Payment captured</strong>
         <p>Delivery fulfilled with POD recorded.</p>
+      </div>
+    </div>
+  );
+}
+
+function OrchestrationScene() {
+  return (
+    <div className="landing-orchestration-visual" aria-label="Commerce orchestration visual">
+      <div className="landing-orchestration-map" aria-hidden="true">
+        <span className="landing-orchestration-lane landing-orchestration-lane-one" />
+        <span className="landing-orchestration-lane landing-orchestration-lane-two" />
+        <span className="landing-orchestration-lane landing-orchestration-lane-three" />
+        <span className="landing-orchestration-node landing-orchestration-node-order">Order</span>
+        <span className="landing-orchestration-node landing-orchestration-node-dispatch">Dispatch</span>
+        <span className="landing-orchestration-node landing-orchestration-node-proof">Proof</span>
+      </div>
+      <div className="landing-orchestration-signals">
+        {orchestrationSignals.map((item) => (
+          <div key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -200,6 +240,18 @@ export default function HomePage() {
       <section className="landing-statement-section" id="story">
         <p>Local delivery is not a dashboard problem.</p>
         <h2>It is a choreography problem: customer demand, merchant readiness, courier movement, payment state, and operator judgement all have to stay aligned.</h2>
+      </section>
+
+      <section className="landing-orchestration-section">
+        <div className="landing-orchestration-copy">
+          <EditorialEyebrow>Route intelligence</EditorialEyebrow>
+          <h2>Every delivery carries a chain of signals.</h2>
+          <p>
+            ShipWright turns those signals into operational continuity: an order that can be trusted, a courier path
+            that can be followed, a payment state that can be reviewed, and a closeout record that can be defended.
+          </p>
+        </div>
+        <OrchestrationScene />
       </section>
 
       <section className="landing-motion-section">
@@ -308,6 +360,11 @@ export default function HomePage() {
         <div className="footer-brand">
           <BrandLogo className="footer-brand-mark" href="/" mode="full" />
           <p>Premium logistics command infrastructure for restaurants, retailers, operators, couriers, and platform teams.</p>
+        </div>
+        <div className="landing-footer-signal" aria-hidden="true">
+          <span />
+          <span />
+          <span />
         </div>
         <nav aria-label="Footer">
           <Link href="/get-started">Get started</Link>
