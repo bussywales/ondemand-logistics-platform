@@ -7,10 +7,21 @@ Walk a stakeholder through the current Stage 1 ShipWright loop without overstati
 Have ready:
 - latest release verification result
 - latest paid-delivery proof artifact
+- latest order id, job id, payment id, and POD id from the proof output
 - seeded business operator session
 - seeded driver session
 - seeded platform admin session
 - public restaurant route open in a clean tab
+
+Minimum demo readiness standard:
+
+```bash
+pnpm release:verify-staging
+pnpm proof:staging-paid-delivery
+pnpm --filter @shipwright/web test:smoke
+```
+
+Use `demo-reset-checklist.md` before the session and `demo-known-limitations-talk-track.md` during Q&A.
 
 ## Step-By-Step Walkthrough
 

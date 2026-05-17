@@ -63,12 +63,16 @@ Run these from the repo root before the session:
 ```bash
 pnpm release:verify-staging
 pnpm proof:staging-paid-delivery
+pnpm --filter @shipwright/web test:smoke
 ```
 
 Expected outcome:
 - release verification passes
 - paid-delivery proof passes
+- browser smoke passes for configured public/authenticated staging routes
 - latest proof artifacts are written under `docs/proofs/`
+
+Use `demo-reset-checklist.md` for the full reset process before observers join.
 
 ## Proof Artifacts To Reference
 Reference the latest generated artifacts from `docs/proofs/`.
@@ -84,6 +88,12 @@ When presenting proof, call out:
 - final `CAPTURED` payment state
 - final `FULFILLED` customer order state
 - outbox evidence for notification and payment events
+
+Record the latest ids before the session:
+- order id
+- job id
+- payment id
+- POD id, if present
 
 ## Safe Demo Flow
 Recommended order:
@@ -102,6 +112,11 @@ Recommended order:
 13. show admin command intelligence
 14. show help and pilot playbooks
 15. close by referencing the proof artifacts and current known limitations
+
+Audience-specific walkthroughs:
+- use `investor-walkthrough.md` for investor or strategic partner sessions
+- use `pilot-merchant-walkthrough.md` for restaurant or merchant sessions
+- use `tester-session-checklist.md` for internal tester sessions
 
 ## Session Discipline
 Keep the session controlled:

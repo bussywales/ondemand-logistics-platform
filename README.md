@@ -118,8 +118,22 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 - `docs/demo/README.md` - index for controlled demo and tester session guides
 - `docs/demo/controlled-demo-runbook.md` - controlled staging demo preparation and guardrails
 - `docs/demo/demo-script.md` - live walkthrough sequence for demos
+- `docs/demo/investor-walkthrough.md` - investor-focused route order, talk track, proof framing, and claims boundaries
+- `docs/demo/pilot-merchant-walkthrough.md` - pilot merchant walkthrough for setup, orders, tracking, payments, and support
+- `docs/demo/demo-reset-checklist.md` - repeatable pre-demo reset, proof id capture, route check, and cold-start fallback checklist
+- `docs/demo/demo-known-limitations-talk-track.md` - calm Q&A language for current staging limitations
 - `docs/demo/tester-session-checklist.md` - before/during/after checklist for internal tester sessions
 - `docs/demo/known-limitations.md` - claims boundary and current limitations
+
+Minimum demo readiness standard:
+
+```bash
+pnpm release:verify-staging
+pnpm proof:staging-paid-delivery
+pnpm --filter @shipwright/web test:smoke
+```
+
+Before a demo, record the latest proof order/job/payment/POD ids and keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available.
 
 ## Roadmaps
 - `docs/roadmaps/fleet-roadmap.md` - legacy roadmap filename for the core ShipWright delivery plan
@@ -135,9 +149,9 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 - `docs/design-system.md` - ShipWright Design System v1 and migration guidance
 
 ## Current remaining gaps
-- customer and operator tracking v1 remains incomplete
-- pilot fallback, escalation, and reconciliation playbooks remain incomplete
-- payout and reconciliation visibility remain incomplete
+- open, unattended real-world pilot traffic is not approved yet; demos and tester sessions remain controlled on staging
+- tracking is status/progress based, not live-map movement or guaranteed ETA tracking
+- payout and reconciliation surfaces are visibility-first, not full Stripe Connect settlement automation
+- courier readiness is read-only; approval and compliance ownership remain human operational responsibilities
 - Resend-backed external email delivery is intentionally parked until a verified sender/domain is available
-- design-system migration is ongoing; customer ordering migrated first, larger shell decomposition still remains
-- legacy `globals.css` reduction is incremental, not finished
+- design-system migration and legacy `globals.css` reduction remain incremental, not finished

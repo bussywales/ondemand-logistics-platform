@@ -14,6 +14,27 @@ pnpm typecheck
 pnpm --filter @shipwright/web test:smoke
 ```
 
+## Demo Readiness Standard
+Before any investor, pilot merchant, or internal tester demo, run at minimum:
+
+```bash
+pnpm release:verify-staging
+pnpm proof:staging-paid-delivery
+pnpm --filter @shipwright/web test:smoke
+```
+
+Also record:
+
+- latest release verification artifact path
+- latest paid-delivery proof artifact path
+- latest order id
+- latest job id
+- latest payment id
+- latest POD id, if present
+- staging routes checked for the intended audience
+
+Use `docs/demo/demo-reset-checklist.md` to prepare accounts, browser state, fallback routes, and known limitation talk tracks.
+
 Optional broader e2e command:
 
 ```bash
