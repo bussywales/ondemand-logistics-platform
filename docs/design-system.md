@@ -211,6 +211,24 @@ When building or updating command-intelligence surfaces:
   - customer communication was sent automatically
   - the system closed an incident without operator review
 
+## Public Landing Visual Signature
+The public landing page may use a more atmospheric brand layer than the internal operations app.
+
+Use ShipWright-native motifs:
+- route-light trails for delivery movement
+- commerce amber for order/customer activity
+- command blue for operator intelligence
+- proof green for delivery/POD/closeout confidence
+- restrained rose/violet only as ambient depth, not a primary product colour
+- city-grid intelligence, courier arcs, commerce nodes, and proof markers
+
+Rules:
+- keep visuals CSS-native and lightweight unless a specific asset is approved
+- do not copy another brand's illustration system directly
+- do not use crypto/neon/gaming aesthetics
+- do not import marketing gradients into internal command surfaces
+- colour should support meaning and atmosphere, not replace product clarity
+
 ## Anti-Patterns
 - a dashboard grid where every card has equal weight
 - red used for decoration or branding

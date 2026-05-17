@@ -10964,3 +10964,412 @@ select:hover,
     top: 20%;
   }
 }
+
+/* Landing Phase 5: ShipWright visual signature system. */
+.landing-page-story {
+  --sw-route-glow: rgba(232, 178, 91, 0.46);
+  --sw-commerce-amber: #c9863f;
+  --sw-command-blue: #427da0;
+  --sw-proof-green: #5f8b70;
+  --sw-signal-rose: #b9808e;
+  --sw-atmospheric-blur: 34px;
+}
+
+.landing-page-story::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, transparent 0 20%, rgba(201, 134, 63, 0.055) 21% 21.4%, transparent 22% 100%),
+    linear-gradient(62deg, transparent 0 52%, rgba(66, 125, 160, 0.05) 53% 53.35%, transparent 54% 100%);
+  opacity: 0.8;
+}
+
+.landing-button-primary,
+.landing-button-secondary,
+.landing-floating-card,
+.landing-signature-card,
+.landing-theatre-list div {
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.landing-button-primary:hover,
+.landing-button-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 42px rgba(10, 16, 23, 0.13);
+}
+
+.landing-cinematic-scene {
+  background:
+    radial-gradient(circle at 18% 78%, rgba(201, 134, 63, 0.24), transparent 21rem),
+    radial-gradient(circle at 78% 20%, rgba(66, 125, 160, 0.2), transparent 24rem),
+    radial-gradient(circle at 54% 48%, rgba(185, 128, 142, 0.09), transparent 19rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.92)),
+    #efe8dc;
+}
+
+.landing-signature-trail {
+  position: absolute;
+  z-index: 0;
+  height: 3px;
+  border-radius: 999px;
+  filter: drop-shadow(0 0 18px var(--sw-route-glow));
+  opacity: 0.86;
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.landing-signature-trail-commerce {
+  width: 46%;
+  left: 9%;
+  top: 41%;
+  background: linear-gradient(90deg, transparent, rgba(201, 134, 63, 0.76), transparent);
+  transform: rotate(-18deg);
+}
+
+.landing-signature-trail-command {
+  width: 58%;
+  right: 6%;
+  top: 54%;
+  background: linear-gradient(90deg, transparent, rgba(66, 125, 160, 0.7), transparent);
+  transform: rotate(13deg);
+}
+
+.landing-signature-trail-proof {
+  width: 34%;
+  left: 30%;
+  bottom: 34%;
+  background: linear-gradient(90deg, transparent, rgba(95, 139, 112, 0.62), transparent);
+  transform: rotate(66deg);
+}
+
+.landing-city-grid,
+.landing-route-thread,
+.landing-scene-signal,
+.landing-floating-card {
+  z-index: 1;
+}
+
+.landing-city-grid {
+  filter: drop-shadow(0 24px 50px rgba(10, 16, 23, 0.06));
+}
+
+.landing-city-block {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-city-block::after {
+  content: "";
+  position: absolute;
+  inset: 18% 16%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent, rgba(66, 125, 160, 0.12), transparent),
+    linear-gradient(0deg, transparent, rgba(201, 134, 63, 0.09), transparent);
+  opacity: 0.72;
+}
+
+.landing-floating-card:hover,
+.landing-signature-card:hover {
+  border-color: rgba(66, 125, 160, 0.18);
+  box-shadow: 0 26px 82px rgba(10, 16, 23, 0.13);
+  transform: translateY(-2px);
+}
+
+.landing-scene-signal-order {
+  border-color: rgba(201, 134, 63, 0.18);
+}
+
+.landing-scene-signal-driver {
+  border-color: rgba(66, 125, 160, 0.18);
+}
+
+.landing-signature-section {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  padding: clamp(4.5rem, 9vw, 7.5rem) 0;
+}
+
+.landing-signature-lead {
+  max-width: 850px;
+}
+
+.landing-signature-lead p {
+  max-width: 680px;
+  color: var(--story-muted);
+  font-size: 1.05rem;
+  line-height: 1.72;
+}
+
+.landing-signature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 2.4vw, 1.6rem);
+}
+
+.landing-signature-card {
+  display: grid;
+  gap: 1.15rem;
+  min-height: 440px;
+  padding: 1rem;
+  border: 1px solid rgba(10, 16, 23, 0.075);
+  border-radius: 36px;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.8), transparent 15rem),
+    rgba(255, 255, 255, 0.62);
+  box-shadow: 0 24px 72px rgba(10, 16, 23, 0.07);
+}
+
+.landing-signature-card:nth-child(2) {
+  margin-top: clamp(1.5rem, 4vw, 3rem);
+}
+
+.landing-signature-card:nth-child(3) {
+  margin-top: clamp(0.5rem, 2vw, 1.4rem);
+}
+
+.landing-signature-card-visual {
+  position: relative;
+  min-height: 230px;
+  overflow: hidden;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 22% 76%, rgba(201, 134, 63, 0.17), transparent 12rem),
+    radial-gradient(circle at 78% 28%, rgba(66, 125, 160, 0.15), transparent 13rem),
+    linear-gradient(145deg, rgba(246, 242, 234, 0.78), rgba(255, 255, 255, 0.9));
+}
+
+.landing-signature-card:nth-child(3) .landing-signature-card-visual {
+  background:
+    radial-gradient(circle at 22% 76%, rgba(95, 139, 112, 0.18), transparent 12rem),
+    radial-gradient(circle at 78% 28%, rgba(201, 134, 63, 0.12), transparent 13rem),
+    linear-gradient(145deg, rgba(246, 242, 234, 0.78), rgba(255, 255, 255, 0.9));
+}
+
+.landing-signature-card-route {
+  position: absolute;
+  left: 11%;
+  right: 11%;
+  top: 52%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(201, 134, 63, 0.12), rgba(201, 134, 63, 0.62), rgba(66, 125, 160, 0.58), rgba(95, 139, 112, 0.28));
+  box-shadow:
+    0 0 24px rgba(201, 134, 63, 0.16),
+    0 0 44px rgba(66, 125, 160, 0.1);
+  transform: rotate(-12deg);
+}
+
+.landing-signature-card-node,
+.landing-signature-card-proof {
+  position: absolute;
+  border: 1px solid rgba(10, 16, 23, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 42px rgba(10, 16, 23, 0.11);
+  backdrop-filter: blur(12px);
+}
+
+.landing-signature-card-node {
+  width: 18px;
+  height: 18px;
+}
+
+.landing-signature-card-node-start {
+  left: 14%;
+  top: 55%;
+  background: var(--sw-commerce-amber);
+}
+
+.landing-signature-card-node-mid {
+  left: 49%;
+  top: 38%;
+  background: var(--sw-command-blue);
+}
+
+.landing-signature-card-node-end {
+  right: 15%;
+  top: 28%;
+  background: var(--sw-proof-green);
+}
+
+.landing-signature-card-proof {
+  right: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: #162331;
+  font-size: 0.78rem;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+}
+
+.landing-signature-card > div:last-child {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0 0.25rem 0.2rem;
+}
+
+.landing-signature-card > div:last-child span {
+  color: #758191;
+  font-size: 0.72rem;
+  font-weight: 720;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.landing-signature-card h3 {
+  max-width: 12ch;
+  color: var(--story-ink);
+  font-size: clamp(1.55rem, 3vw, 2.45rem);
+  font-weight: 610;
+  letter-spacing: -0.052em;
+  line-height: 1;
+}
+
+.landing-signature-card p {
+  color: var(--story-muted);
+  line-height: 1.66;
+}
+
+.landing-motion-section,
+.landing-proof-section,
+.landing-final-scene {
+  position: relative;
+}
+
+.landing-motion-section::after,
+.landing-proof-section::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(var(--sw-atmospheric-blur));
+}
+
+.landing-motion-section::after {
+  right: 8%;
+  bottom: 10%;
+  width: min(22rem, 32vw);
+  height: min(22rem, 32vw);
+  background: rgba(66, 125, 160, 0.1);
+}
+
+.landing-proof-section::after {
+  right: 0;
+  top: 20%;
+  width: min(18rem, 28vw);
+  height: min(18rem, 28vw);
+  background: rgba(95, 139, 112, 0.11);
+}
+
+.landing-proof-list div:nth-child(1) .sw-icon,
+.landing-proof-list div:nth-child(2) .sw-icon {
+  color: var(--sw-commerce-amber);
+}
+
+.landing-proof-list div:nth-child(3) .sw-icon,
+.landing-proof-list div:nth-child(4) .sw-icon {
+  color: var(--sw-command-blue);
+}
+
+.landing-proof-list div:nth-child(5) .sw-icon,
+.landing-proof-list div:nth-child(6) .sw-icon {
+  color: var(--sw-proof-green);
+}
+
+.landing-story-footer {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 280px) auto auto;
+  overflow: hidden;
+  padding-top: 2.8rem;
+}
+
+.landing-story-footer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(201, 134, 63, 0.34), rgba(66, 125, 160, 0.26), rgba(95, 139, 112, 0.22), transparent);
+}
+
+.landing-footer-route {
+  position: relative;
+  width: min(280px, 24vw);
+  height: 3rem;
+  align-self: center;
+}
+
+.landing-footer-route span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(201, 134, 63, 0.62), rgba(66, 125, 160, 0.54), transparent);
+}
+
+.landing-footer-route span:nth-child(1) {
+  top: 0.65rem;
+  transform: rotate(-8deg);
+}
+
+.landing-footer-route span:nth-child(2) {
+  top: 1.45rem;
+  background: linear-gradient(90deg, transparent, rgba(66, 125, 160, 0.44), rgba(95, 139, 112, 0.42), transparent);
+}
+
+.landing-footer-route span:nth-child(3) {
+  top: 2.25rem;
+  transform: rotate(8deg);
+  background: linear-gradient(90deg, transparent, rgba(185, 128, 142, 0.3), rgba(201, 134, 63, 0.42), transparent);
+}
+
+@media (max-width: 1080px) {
+  .landing-signature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-story-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-signature-card,
+  .landing-signature-card:nth-child(2),
+  .landing-signature-card:nth-child(3) {
+    margin-top: 0;
+    min-height: auto;
+  }
+
+  .landing-footer-route {
+    width: min(320px, 100%);
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-signature-section {
+    padding-block: 4rem;
+  }
+
+  .landing-signature-card {
+    border-radius: 28px;
+  }
+
+  .landing-signature-card-visual {
+    min-height: 200px;
+  }
+
+  .landing-signature-trail {
+    display: none;
+  }
+}

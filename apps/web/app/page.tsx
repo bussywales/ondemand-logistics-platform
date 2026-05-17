@@ -90,6 +90,24 @@ const orchestrationSignals = [
 
 const atmosphereSignals = ["Kitchen", "Dispatch", "Courier", "Doorstep"];
 
+const signatureMoments = [
+  {
+    label: "Order enters the network",
+    title: "Commerce signal",
+    body: "A paid customer order becomes visible work with payment state, fulfilment context, and delivery intent."
+  },
+  {
+    label: "Dispatch intelligence coordinates movement",
+    title: "Command signal",
+    body: "Operators see route stage, courier readiness, recovery guidance, and risk before the service window breaks."
+  },
+  {
+    label: "Proof closes the loop",
+    title: "Proof signal",
+    body: "Delivery, POD, capture, fulfilment, and closeout evidence converge into one operating record."
+  }
+];
+
 function EditorialEyebrow(props: { children: string }) {
   return <p className="landing-kicker">{props.children}</p>;
 }
@@ -99,6 +117,9 @@ function HeroScene() {
     <div className="landing-cinematic-scene" aria-label="ShipWright logistics command scene">
       <span className="landing-scene-orb landing-scene-orb-primary" aria-hidden="true" />
       <span className="landing-scene-orb landing-scene-orb-secondary" aria-hidden="true" />
+      <span className="landing-signature-trail landing-signature-trail-commerce" aria-hidden="true" />
+      <span className="landing-signature-trail landing-signature-trail-command" aria-hidden="true" />
+      <span className="landing-signature-trail landing-signature-trail-proof" aria-hidden="true" />
       <div className="landing-city-grid" aria-hidden="true">
         <span className="landing-city-block landing-city-block-tall" />
         <span className="landing-city-block" />
@@ -135,6 +156,45 @@ function HeroScene() {
         <p>Delivery fulfilled with POD recorded.</p>
       </div>
     </div>
+  );
+}
+
+function SignatureMomentCard(props: { body: string; index: number; label: string; title: string }) {
+  return (
+    <article className="landing-signature-card">
+      <div className="landing-signature-card-visual" aria-hidden="true">
+        <span className="landing-signature-card-route" />
+        <span className="landing-signature-card-node landing-signature-card-node-start" />
+        <span className="landing-signature-card-node landing-signature-card-node-mid" />
+        <span className="landing-signature-card-node landing-signature-card-node-end" />
+        <span className="landing-signature-card-proof">{String(props.index + 1).padStart(2, "0")}</span>
+      </div>
+      <div>
+        <span>{props.title}</span>
+        <h3>{props.label}</h3>
+        <p>{props.body}</p>
+      </div>
+    </article>
+  );
+}
+
+function SignatureSystemSection() {
+  return (
+    <section className="landing-signature-section" aria-label="ShipWright visual signature system">
+      <div className="landing-section-lead landing-signature-lead">
+        <EditorialEyebrow>ShipWright signature</EditorialEyebrow>
+        <h2>Route light, command signals, and proof markers.</h2>
+        <p>
+          The product language follows the operating loop: commerce enters the network, dispatch coordinates movement,
+          and proof closes the fulfilment record.
+        </p>
+      </div>
+      <div className="landing-signature-grid">
+        {signatureMoments.map((moment, index) => (
+          <SignatureMomentCard key={moment.label} {...moment} index={index} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -262,6 +322,8 @@ export default function HomePage() {
 
       <AtmosphereScene />
 
+      <SignatureSystemSection />
+
       <section className="landing-statement-section" id="story">
         <p>Local delivery is not a dashboard problem.</p>
         <h2>It is a choreography problem: customer demand, merchant readiness, courier movement, payment state, and operator judgement all have to stay aligned.</h2>
@@ -384,7 +446,12 @@ export default function HomePage() {
       <footer className="site-footer landing-footer landing-story-footer">
         <div className="footer-brand">
           <BrandLogo className="footer-brand-mark" href="/" mode="full" />
-          <p>Premium logistics command infrastructure for restaurants, retailers, operators, couriers, and platform teams.</p>
+          <p>Route intelligence for local commerce: order signal, dispatch movement, customer tracking, payment state, and proof-backed fulfilment.</p>
+        </div>
+        <div className="landing-footer-route" aria-hidden="true">
+          <span />
+          <span />
+          <span />
         </div>
         <div className="landing-footer-signal" aria-hidden="true">
           <span />
