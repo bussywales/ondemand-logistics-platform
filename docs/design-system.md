@@ -228,6 +228,7 @@ Rules:
 - do not use crypto/neon/gaming aesthetics
 - do not import marketing gradients into internal command surfaces
 - colour should support meaning and atmosphere, not replace product clarity
+- public navigation can use soft mega menus to communicate platform depth, but internal app navigation should remain compact and task-first
 
 ## Anti-Patterns
 - a dashboard grid where every card has equal weight

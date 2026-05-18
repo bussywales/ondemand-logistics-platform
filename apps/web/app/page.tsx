@@ -108,6 +108,213 @@ const signatureMoments = [
   }
 ];
 
+const platformMenu = [
+  {
+    description: "Restaurant setup, menu readiness, paid orders, and fulfilment context.",
+    href: "#platform",
+    icon: "restaurant",
+    title: "Merchant Operations"
+  },
+  {
+    description: "Jobs, dispatch attempts, driver assignment, and recovery state.",
+    href: "#platform",
+    icon: "queue",
+    title: "Dispatch & Jobs"
+  },
+  {
+    description: "Availability, offers, execution stages, and proof of delivery.",
+    href: "#platform",
+    icon: "driver",
+    title: "Courier Flow"
+  },
+  {
+    description: "Customer-safe order progress without fake live-map movement.",
+    href: "#platform",
+    icon: "route",
+    title: "Customer Tracking"
+  },
+  {
+    description: "Authorization, capture, risk, payout visibility, and order impact.",
+    href: "#platform",
+    icon: "payment",
+    title: "Payment Visibility"
+  },
+  {
+    description: "Cross-org command posture, incidents, readiness, and support oversight.",
+    href: "#platform",
+    icon: "document",
+    title: "Platform Oversight"
+  }
+] satisfies Array<{ description: string; href: string; icon: ShipWrightIconName; title: string }>;
+
+const solutionsMenu = [
+  {
+    description: "Paid menu ordering, delivery handoff, support context, and closeout evidence.",
+    href: "#operators",
+    icon: "restaurant",
+    title: "Restaurants"
+  },
+  {
+    description: "Local commerce fulfilment for operators who need delivery state visibility.",
+    href: "#operators",
+    icon: "menu",
+    title: "Local Retailers"
+  },
+  {
+    description: "Exception-first queues, recovery guidance, and human-approved controls.",
+    href: "#operators",
+    icon: "queue",
+    title: "Dispatch Operators"
+  },
+  {
+    description: "Structured offers, route stages, readiness signals, and POD.",
+    href: "#operators",
+    icon: "driver",
+    title: "Couriers"
+  },
+  {
+    description: "Validation gates, proof artifacts, playbooks, and controlled demo discipline.",
+    href: "/demo",
+    icon: "check",
+    title: "Pilot Teams"
+  }
+] satisfies Array<{ description: string; href: string; icon: ShipWrightIconName; title: string }>;
+
+const commandMenu = [
+  {
+    description: "A deterministic service-window summary of what needs attention.",
+    href: "#intelligence",
+    icon: "bell",
+    title: "Daily Briefing"
+  },
+  {
+    description: "Suggested recovery paths for failed dispatch and blocked courier assignment.",
+    href: "#intelligence",
+    icon: "retry",
+    title: "Recovery Suggestions"
+  },
+  {
+    description: "Delay detection, incident context, and operator-readable summaries.",
+    href: "#intelligence",
+    icon: "warning",
+    title: "Incident Intelligence"
+  },
+  {
+    description: "Closeout summaries for orders, deliveries, payments, and unresolved actions.",
+    href: "#intelligence",
+    icon: "timeline",
+    title: "End-of-Day Reports"
+  },
+  {
+    description: "No silent refunds, cancellations, assignments, messages, or incident closure.",
+    href: "#intelligence",
+    icon: "alert",
+    title: "Human-in-the-loop Controls"
+  }
+] satisfies Array<{ description: string; href: string; icon: ShipWrightIconName; title: string }>;
+
+const resourcesMenu = [
+  {
+    description: "Audience-specific route order, talk track, and proof-backed walkthrough.",
+    href: "/demo/investor",
+    icon: "document",
+    title: "Demo Walkthrough"
+  },
+  {
+    description: "Failed dispatch, no eligible driver, support, refund, and escalation guidance.",
+    href: "/help/pilot-operations",
+    icon: "warning",
+    title: "Pilot Playbooks"
+  },
+  {
+    description: "Release verification, paid-delivery proof, and browser smoke standards.",
+    href: "/demo",
+    icon: "check",
+    title: "Validation Standard"
+  },
+  {
+    description: "Artifacts for paid delivery, fulfilled order state, capture, and readiness.",
+    href: "#proof",
+    icon: "payment",
+    title: "Proof-Driven Operations"
+  },
+  {
+    description: "Clear boundaries for staging, tracking, email, payouts, and autonomy.",
+    href: "/demo",
+    icon: "alert",
+    title: "Known Limitations"
+  }
+] satisfies Array<{ description: string; href: string; icon: ShipWrightIconName; title: string }>;
+
+const platformPillars = [
+  {
+    description: "Branded menu ordering and customer checkout create real downstream fulfilment work.",
+    title: "Order intake"
+  },
+  {
+    description: "Jobs, dispatch attempts, driver assignment, and recovery posture stay visible.",
+    title: "Dispatch coordination"
+  },
+  {
+    description: "Courier availability, offers, execution stages, and POD keep delivery legible.",
+    title: "Courier execution"
+  },
+  {
+    description: "Customer tracking, proof markers, and timelines close the service loop.",
+    title: "Tracking and proof"
+  },
+  {
+    description: "Payment authorization, capture, and risk connect directly to order state.",
+    title: "Payment-state visibility"
+  },
+  {
+    description: "Briefings, suggestions, incident summaries, reports, and oversight stay human-approved.",
+    title: "Command intelligence"
+  },
+  {
+    description: "Platform admins see cross-org posture, driver readiness, and intervention context.",
+    title: "Admin oversight"
+  },
+  {
+    description: "Validation, artifacts, playbooks, and controlled session discipline support pilots.",
+    title: "Pilot closeout"
+  }
+];
+
+function LandingMegaMenu(props: {
+  items: Array<{ description: string; href: string; icon: ShipWrightIconName; title: string }>;
+  label: string;
+  summary: string;
+}) {
+  return (
+    <details className="landing-mega-menu">
+      <summary>
+        <span>{props.label}</span>
+        <ShipWrightIcon name="arrow" size={14} />
+      </summary>
+      <div className="landing-mega-panel">
+        <div className="landing-mega-intro">
+          <span>{props.label}</span>
+          <p>{props.summary}</p>
+        </div>
+        <div className="landing-mega-grid">
+          {props.items.map((item) => (
+            <a className="landing-mega-item" href={item.href} key={item.title}>
+              <span className="landing-mega-icon">
+                <ShipWrightIcon name={item.icon} size={18} />
+              </span>
+              <span>
+                <strong>{item.title}</strong>
+                <small>{item.description}</small>
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function EditorialEyebrow(props: { children: string }) {
   return <p className="landing-kicker">{props.children}</p>;
 }
@@ -192,6 +399,30 @@ function SignatureSystemSection() {
       <div className="landing-signature-grid">
         {signatureMoments.map((moment, index) => (
           <SignatureMomentCard key={moment.label} {...moment} index={index} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PlatformEcosystemSection() {
+  return (
+    <section className="landing-platform-section" id="platform">
+      <div className="landing-section-lead landing-platform-lead">
+        <EditorialEyebrow>Platform ecosystem</EditorialEyebrow>
+        <h2>One connected operating layer for local commerce fulfilment.</h2>
+        <p>
+          ShipWright is more than a delivery dashboard. It is a staged platform spine for order intake, dispatch,
+          courier execution, tracking, payment visibility, command intelligence, admin oversight, and pilot closeout.
+        </p>
+      </div>
+      <div className="landing-platform-pillars">
+        {platformPillars.map((pillar, index) => (
+          <article key={pillar.title}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{pillar.title}</strong>
+            <p>{pillar.description}</p>
+          </article>
         ))}
       </div>
     </section>
@@ -285,13 +516,36 @@ export default function HomePage() {
     <main className="landing-page landing-page-premium landing-page-story">
       <header className="topbar landing-topbar landing-story-topbar">
         <BrandLogo href="/" />
-        <nav className="topnav landing-topnav" aria-label="Primary">
-          <a href="#story">Story</a>
-          <a href="#operators">Operators</a>
-          <a href="#intelligence">Intelligence</a>
-          <a href="#proof">Proof</a>
-          <Link href="/get-started">Get started</Link>
+        <nav className="topnav landing-topnav landing-platform-nav" aria-label="Primary">
+          <LandingMegaMenu
+            items={platformMenu}
+            label="Platform"
+            summary="The operational spine for paid ordering, dispatch, courier execution, tracking, payment state, and oversight."
+          />
+          <LandingMegaMenu
+            items={solutionsMenu}
+            label="Solutions"
+            summary="Focused workflows for the teams moving local commerce from checkout to proof."
+          />
+          <LandingMegaMenu
+            items={commandMenu}
+            label="Command Intelligence"
+            summary="Rules-based operations intelligence that supports human decisions without silent automation."
+          />
+          <LandingMegaMenu
+            items={resourcesMenu}
+            label="Resources"
+            summary="Demo material, validation discipline, playbooks, proof artifacts, and claims boundaries."
+          />
         </nav>
+        <div className="landing-nav-actions">
+          <Link className="landing-nav-link" href="/get-started">
+            Get started
+          </Link>
+          <Link className="landing-nav-cta" href="/get-started">
+            Start controlled pilot
+          </Link>
+        </div>
       </header>
 
       <section className="landing-story-hero">
@@ -323,6 +577,8 @@ export default function HomePage() {
       <AtmosphereScene />
 
       <SignatureSystemSection />
+
+      <PlatformEcosystemSection />
 
       <section className="landing-statement-section" id="story">
         <p>Local delivery is not a dashboard problem.</p>
