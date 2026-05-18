@@ -1159,6 +1159,96 @@ export const EndOfDayReportSchema = z.object({
 });
 export type EndOfDayReportDto = z.infer<typeof EndOfDayReportSchema>;
 
+export const SupportEscalationCategorySchema = z.enum([
+  "DISPATCH_FAILURE",
+  "PAYMENT_RISK",
+  "CUSTOMER_SUPPORT",
+  "MERCHANT_SUPPORT",
+  "COURIER_SUPPORT",
+  "REFUND_REVIEW",
+  "DELIVERY_DELAY",
+  "GENERAL"
+]);
+export type SupportEscalationCategory = z.infer<typeof SupportEscalationCategorySchema>;
+
+export const SupportEscalationStatusSchema = z.enum([
+  "OPEN",
+  "IN_REVIEW",
+  "WAITING_ON_CUSTOMER",
+  "WAITING_ON_MERCHANT",
+  "WAITING_ON_COURIER",
+  "RESOLVED",
+  "CANCELLED"
+]);
+export type SupportEscalationStatus = z.infer<typeof SupportEscalationStatusSchema>;
+
+export const SupportEscalationSeveritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
+export type SupportEscalationSeverity = z.infer<typeof SupportEscalationSeveritySchema>;
+
+export const SupportEscalationSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  orgName: z.string().nullable().optional(),
+  orderId: z.string().uuid().nullable(),
+  jobId: z.string().uuid().nullable(),
+  category: SupportEscalationCategorySchema,
+  status: SupportEscalationStatusSchema,
+  severity: SupportEscalationSeveritySchema,
+  title: z.string().min(3),
+  note: z.string().min(3),
+  followUpOwner: z.string().nullable(),
+  customerContactRequired: z.boolean(),
+  merchantContactRequired: z.boolean(),
+  courierContactRequired: z.boolean(),
+  createdBy: z.string().uuid().nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+  restaurantName: z.string().nullable().optional(),
+  customerName: z.string().nullable().optional()
+});
+export type SupportEscalationDto = z.infer<typeof SupportEscalationSchema>;
+
+export const CreateSupportEscalationSchema = z
+  .object({
+    orderId: z.string().uuid().nullable().optional(),
+    jobId: z.string().uuid().nullable().optional(),
+    category: SupportEscalationCategorySchema,
+    status: SupportEscalationStatusSchema.default("OPEN"),
+    severity: SupportEscalationSeveritySchema.default("MEDIUM"),
+    title: z.string().trim().min(3).max(160),
+    note: z.string().trim().min(3).max(2000),
+    followUpOwner: z.string().trim().min(2).max(120).nullable().optional(),
+    customerContactRequired: z.boolean().default(false),
+    merchantContactRequired: z.boolean().default(false),
+    courierContactRequired: z.boolean().default(false)
+  })
+  .refine((value) => Boolean(value.orderId || value.jobId), {
+    message: "support_escalation_requires_order_or_job",
+    path: ["orderId"]
+  });
+export type CreateSupportEscalationInput = z.infer<typeof CreateSupportEscalationSchema>;
+
+export const UpdateSupportEscalationSchema = z
+  .object({
+    status: SupportEscalationStatusSchema.optional(),
+    severity: SupportEscalationSeveritySchema.optional(),
+    title: z.string().trim().min(3).max(160).optional(),
+    note: z.string().trim().min(3).max(2000).optional(),
+    followUpOwner: z.string().trim().min(2).max(120).nullable().optional(),
+    customerContactRequired: z.boolean().optional(),
+    merchantContactRequired: z.boolean().optional(),
+    courierContactRequired: z.boolean().optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "support_escalation_update_required"
+  });
+export type UpdateSupportEscalationInput = z.infer<typeof UpdateSupportEscalationSchema>;
+
+export const SupportEscalationListSchema = z.object({
+  items: z.array(SupportEscalationSchema)
+});
+export type SupportEscalationListDto = z.infer<typeof SupportEscalationListSchema>;
+
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;
 

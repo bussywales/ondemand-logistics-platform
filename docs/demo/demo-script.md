@@ -91,10 +91,12 @@ Show:
 - risk state
 - customer total
 - platform fee / driver payout when available
+- order detail support and escalation log
 
 Say:
 - operators manage fulfilment and financial risk from one order surface
 - Command Intelligence highlights risk and recommended next steps, but operators remain responsible for acting
+- human support notes can be recorded against the order without sending messages or executing refunds automatically
 
 ### 6. Payment risk page
 Open:
@@ -187,10 +189,12 @@ Show:
 - grouped attention queue
 - incident intelligence
 - end-of-day closeout preview
+- read-only support escalation overview
 
 Say:
 - this is deterministic command intelligence for platform oversight
 - it helps admins spot which organisations need support without silently taking action
+- support escalation visibility is oversight-only for admins in this pass; business operators still own direct follow-up unless delegated
 
 ### 9B. Driver readiness
 Open:

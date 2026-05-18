@@ -174,6 +174,26 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "created_at",
       "updated_at"
     ]
+  },
+  support: {
+    support_escalations: [
+      "id",
+      "org_id",
+      "order_id",
+      "job_id",
+      "category",
+      "status",
+      "severity",
+      "title",
+      "note",
+      "follow_up_owner",
+      "customer_contact_required",
+      "merchant_contact_required",
+      "courier_contact_required",
+      "created_by",
+      "created_at",
+      "updated_at"
+    ]
   }
 } as const;
 

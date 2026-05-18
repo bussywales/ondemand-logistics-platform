@@ -38,6 +38,11 @@ import { DispatchRecoveryService } from "./briefing/dispatch-recovery.service.js
 import { IncidentIntelligenceService } from "./briefing/incident-intelligence.service.js";
 import { AdminReportsController, ReportsController } from "./reports/reports.controller.js";
 import { ReportsService } from "./reports/reports.service.js";
+import {
+  AdminSupportEscalationsController,
+  BusinessSupportEscalationsController
+} from "./support/support-escalations.controller.js";
+import { SupportEscalationsService } from "./support/support-escalations.service.js";
 
 @Module({
   imports: [],
@@ -53,6 +58,8 @@ import { ReportsService } from "./reports/reports.service.js";
     BriefingController,
     ReportsController,
     AdminReportsController,
+    BusinessSupportEscalationsController,
+    AdminSupportEscalationsController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -72,6 +79,7 @@ import { ReportsService } from "./reports/reports.service.js";
     NotificationsService,
     BriefingService,
     ReportsService,
+    SupportEscalationsService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,

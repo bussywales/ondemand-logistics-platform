@@ -11,13 +11,24 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { fetchTracking, getBusinessOrder, listBusinessOrders, listBusinessPayments } from "../_lib/api";
+import {
+  createBusinessSupportEscalation,
+  fetchTracking,
+  getBusinessOrder,
+  listBusinessOrders,
+  listBusinessPayments,
+  listBusinessSupportEscalations,
+  updateBusinessSupportEscalation
+} from "../_lib/api";
 import {
   formatCurrency,
   formatDateTime,
   type BusinessCustomerOrder,
   type BusinessPaymentSummary,
-  type BusinessSession
+  type BusinessSession,
+  type CreateSupportEscalationInput,
+  type SupportEscalation,
+  type SupportEscalationStatus
 } from "../_lib/product-state";
 import type { DispatchRecoverySuggestion, OperationalIncidentSummary } from "../_lib/product-state";
 import {
@@ -43,6 +54,7 @@ import {
 import { buildPublicTrackingHref, getCustomerTrackingTimelineEntry } from "../_lib/tracking-state";
 import { COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
 import { JobIncidentSummaryPanel } from "./product-shell/job-incident-summary-panel";
+import { SupportEscalationLog } from "./support-escalation-log";
 
 type OrderTrackingIntelligence = {
   assignedDriverName: string | null;
@@ -288,6 +300,10 @@ function DetailInsight(props: {
 type OrderDetailProps = {
   order: OrderFinancialView;
   tracking: OrderTrackingIntelligence | null;
+  supportEscalations?: SupportEscalation[];
+  supportSubmitting?: boolean;
+  onCreateSupportEscalation?: (input: CreateSupportEscalationInput) => Promise<void> | void;
+  onUpdateSupportEscalationStatus?: (id: string, status: SupportEscalationStatus) => Promise<void> | void;
 };
 
 function RecoverySuggestionPanel(props: { suggestion: DispatchRecoverySuggestion }) {
@@ -348,7 +364,14 @@ function trackingStateLabel(order: OrderFinancialView, tracking: OrderTrackingIn
   return "Awaiting tracking signal";
 }
 
-export function OrderDetail({ order, tracking }: OrderDetailProps) {
+export function OrderDetail({
+  order,
+  tracking,
+  supportEscalations = [],
+  supportSubmitting = false,
+  onCreateSupportEscalation = () => undefined,
+  onUpdateSupportEscalationStatus = () => undefined
+}: OrderDetailProps) {
   const decision = getOrderDecisionState(order);
   const riskReasons = getOrderFinancialRiskReasons(order);
   const fulfilled = isOrderFulfilled(order);
@@ -494,6 +517,16 @@ export function OrderDetail({ order, tracking }: OrderDetailProps) {
           </div>
         </section>
       ) : null}
+
+      <SupportEscalationLog
+        context="order"
+        items={supportEscalations}
+        jobId={order.job.id}
+        onCreate={onCreateSupportEscalation}
+        onUpdateStatus={onUpdateSupportEscalationStatus}
+        orderId={order.id}
+        submitting={supportSubmitting}
+      />
 
       <div className="orders-detail-grid">
         <section className="sw-operational-surface ops-section orders-detail-card">
@@ -741,6 +774,8 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   const [payments, setPayments] = useState<BusinessPaymentSummary[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<BusinessCustomerOrder | null>(null);
   const [selectedOrderTracking, setSelectedOrderTracking] = useState<OrderTrackingIntelligence | null>(null);
+  const [selectedOrderEscalations, setSelectedOrderEscalations] = useState<SupportEscalation[]>([]);
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(Boolean(orderId));
   const [error, setError] = useState<string | null>(null);
@@ -758,6 +793,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     if (!session || !orderId) {
       setSelectedOrder(null);
       setSelectedOrderTracking(null);
+      setSelectedOrderEscalations([]);
       return;
     }
 
@@ -832,13 +868,18 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setDetailLoading(true);
     setError(null);
     setSelectedOrderTracking(null);
+    setSelectedOrderEscalations([]);
 
     try {
       const order = await getBusinessOrder(currentSession, id);
-      const paymentItems = await listBusinessPayments(currentSession);
+      const [paymentItems, escalationItems] = await Promise.all([
+        listBusinessPayments(currentSession),
+        listBusinessSupportEscalations(currentSession, { orderId: id })
+      ]);
       const tracking = await fetchTracking(currentSession, order.job.id).catch(() => null);
       setSelectedOrder(order);
       setPayments(paymentItems);
+      setSelectedOrderEscalations(escalationItems);
       setOrders((current) => [order, ...current.filter((item) => item.id !== order.id)]);
 
       setSelectedOrderTracking(
@@ -853,8 +894,49 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load customer order.");
       setSelectedOrderTracking(null);
+      setSelectedOrderEscalations([]);
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  async function handleCreateSupportEscalation(input: CreateSupportEscalationInput) {
+    if (!session || !selectedOrder) {
+      return;
+    }
+
+    setSupportSubmitting(true);
+    setError(null);
+
+    try {
+      const created = await createBusinessSupportEscalation(session, {
+        ...input,
+        orderId: selectedOrder.id,
+        jobId: selectedOrder.job.id
+      });
+      setSelectedOrderEscalations((current) => [created, ...current]);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to save support escalation.");
+    } finally {
+      setSupportSubmitting(false);
+    }
+  }
+
+  async function handleUpdateSupportEscalationStatus(id: string, nextStatus: SupportEscalationStatus) {
+    if (!session) {
+      return;
+    }
+
+    setSupportSubmitting(true);
+    setError(null);
+
+    try {
+      const updated = await updateBusinessSupportEscalation(session, id, { status: nextStatus });
+      setSelectedOrderEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to update support escalation.");
+    } finally {
+      setSupportSubmitting(false);
     }
   }
 
@@ -863,6 +945,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setOrders([]);
     setPayments([]);
     setSelectedOrder(null);
+    setSelectedOrderEscalations([]);
     router.push("/get-started");
   }
 
@@ -1091,7 +1174,14 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
               <p className="sw-empty-copy">Fetching customer order detail and linked delivery state.</p>
             </section>
           ) : selectedOrderView ? (
-            <OrderDetail order={selectedOrderView} tracking={selectedOrderTracking} />
+            <OrderDetail
+              onCreateSupportEscalation={handleCreateSupportEscalation}
+              onUpdateSupportEscalationStatus={handleUpdateSupportEscalationStatus}
+              order={selectedOrderView}
+              supportEscalations={selectedOrderEscalations}
+              supportSubmitting={supportSubmitting}
+              tracking={selectedOrderTracking}
+            />
           ) : (
             <section className="sw-empty-state orders-empty-state">
               <strong className="sw-empty-title">Order not found</strong>

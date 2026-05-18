@@ -12,12 +12,13 @@ It is not currently positioned as an open public pilot or unattended production 
 - payment and payout are visibility-first, not full settlement automation
 - tracking is progress/status based, not live map movement
 - courier compliance ownership still needs a live operating owner outside the staging fixture model
+- support/escalation logging is human-entered audit context; it does not send customer, merchant, or courier messages
 - proof artifacts are local generated evidence unless explicitly exported or shared
 
 ## Additional caveats
 - authenticated operator, driver, and admin flows still depend on seeded staging accounts
 - fallback and escalation paths are documented, but still require human operators to execute them well
-- customer/operator tracking v1 is not yet strong enough to remove manual support dependence
+- customer/operator tracking and support logs reduce ambiguity, but do not remove manual support dependence
 - reconciliation follow-up remains partly manual
 - design-system migration is ongoing and not every shell is equally mature
 

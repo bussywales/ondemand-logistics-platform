@@ -8,9 +8,15 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
-import { formatDateTime, type BusinessSession, type DailyBriefing, type DailyBriefingItem, type EndOfDayReport } from "../_lib/product-state";
+import {
+  type BusinessSession,
+  type DailyBriefing,
+  type DailyBriefingItem,
+  type EndOfDayReport,
+  type SupportEscalation
+} from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { COMMAND_INTELLIGENCE_EXPLAINER, COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
 
@@ -177,6 +183,7 @@ export function AdminCommandView(props: {
   report: EndOfDayReport;
   selectedDate: string;
   session: BusinessSession;
+  supportEscalations: SupportEscalation[];
 }) {
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(() => new Set());
   const [incidentListExpanded, setIncidentListExpanded] = useState(false);
@@ -202,6 +209,8 @@ export function AdminCommandView(props: {
   const currentOrgReportHref = props.session.context.currentOrg
     ? `/app/reports/end-of-day?date=${encodeURIComponent(props.selectedDate)}`
     : null;
+  const openSupportItems = props.supportEscalations.filter((item) => !["RESOLVED", "CANCELLED"].includes(item.status));
+  const highSeveritySupportItems = openSupportItems.filter((item) => item.severity === "HIGH" || item.severity === "CRITICAL");
 
   return (
     <section className="ops-stack admin-command-stack">
@@ -224,10 +233,58 @@ export function AdminCommandView(props: {
           <CountCard copy="Delayed or stale delivery incidents currently detected." label="Delay incidents" tone={props.report.incidentsSummary.delayIncidents ? "warning" : "info"} value={props.report.incidentsSummary.delayIncidents} />
           <CountCard copy="Commercial follow-up items affecting delivery or closeout." label="Payment risks" tone={props.report.incidentsSummary.paymentRisks ? "danger" : "info"} value={props.report.incidentsSummary.paymentRisks} />
           <CountCard copy="Operator-approved follow-up items remaining for closeout." label="Unresolved actions" tone={props.report.unresolvedCount ? "warning" : "success"} value={props.report.unresolvedCount} />
+          <CountCard copy="Human support records that remain open or in review." label="Open escalations" tone={openSupportItems.length ? "warning" : "success"} value={openSupportItems.length} />
         </div>
       </section>
 
       <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_EXPLAINER} />
+
+      <section className="sw-supporting-surface admin-command-section admin-support-escalation-strip">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Support escalation overview</p>
+            <h2>Open human follow-up records</h2>
+            <p className="ops-detail-note">Read-only cross-org view. Admins can monitor severity and ownership, but business operators still own direct follow-up unless explicitly delegated.</p>
+          </div>
+          <span className={`sw-badge ${highSeveritySupportItems.length ? "sw-badge--warning" : "sw-badge--success"}`}>
+            {highSeveritySupportItems.length} high severity
+          </span>
+        </div>
+
+        {openSupportItems.length ? (
+          <div className="admin-command-list">
+            {openSupportItems.slice(0, 6).map((item) => (
+              <article className="sw-list-row admin-command-report-action" key={item.id}>
+                <div>
+                  <div className="admin-command-item-meta">
+                    <span className={`sw-badge ${item.severity === "CRITICAL" || item.severity === "HIGH" ? "sw-badge--warning" : "sw-badge--info"}`}>{item.severity.toLowerCase()}</span>
+                    <span>{item.status.replaceAll("_", " ").toLowerCase()}</span>
+                    <span>{item.orgName ?? "Unknown organisation"}</span>
+                    {item.restaurantName ? <span>{item.restaurantName}</span> : null}
+                  </div>
+                  <strong>{item.title}</strong>
+                  <p>{item.note}</p>
+                  <div className="briefing-evidence-row">
+                    {item.customerName ? <span>{item.customerName}</span> : null}
+                    {item.orderId ? <span>Order {item.orderId.slice(0, 8).toUpperCase()}</span> : null}
+                    {item.jobId ? <span>Job {item.jobId.slice(0, 8).toUpperCase()}</span> : null}
+                    {item.followUpOwner ? <span>Owner: {item.followUpOwner}</span> : <span>No owner assigned</span>}
+                  </div>
+                </div>
+                <span className="sw-badge sw-badge--neutral">{item.category.replaceAll("_", " ")}</span>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="sw-empty-state admin-empty-state">
+            <span className="empty-state-icon" aria-hidden="true">
+              <ShipWrightIcon name="check" />
+            </span>
+            <strong className="sw-empty-title">No open support escalations</strong>
+            <p className="sw-empty-copy">Human follow-up records are clear across monitored organisations.</p>
+          </div>
+        )}
+      </section>
 
       <section className="sw-operational-surface admin-command-section">
         <div className="sw-card-header admin-section-header">
@@ -483,7 +540,8 @@ export function AdminCommandView(props: {
 async function loadAdminCommandData(session: BusinessSession, date: string) {
   return Promise.all([
     getAdminDailyBriefing(session),
-    getAdminEndOfDayReport(session, date)
+    getAdminEndOfDayReport(session, date),
+    listAdminSupportEscalations(session)
   ]);
 }
 
@@ -492,6 +550,7 @@ export function AdminCommandShell() {
   const { status, session, error, refreshBusinessSession, signOut } = useBusinessAuth();
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [report, setReport] = useState<EndOfDayReport | null>(null);
+  const [supportEscalations, setSupportEscalations] = useState<SupportEscalation[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -513,13 +572,14 @@ export function AdminCommandShell() {
     setLoadError(null);
 
     void loadAdminCommandData(session, selectedDate)
-      .then(([nextBriefing, nextReport]) => {
+      .then(([nextBriefing, nextReport, nextSupportEscalations]) => {
         if (!active) {
           return;
         }
 
         setBriefing(nextBriefing);
         setReport(nextReport);
+        setSupportEscalations(nextSupportEscalations);
       })
       .catch((issue) => {
         if (!active) {
@@ -549,9 +609,10 @@ export function AdminCommandShell() {
     setLoadError(null);
 
     try {
-      const [nextBriefing, nextReport] = await loadAdminCommandData(nextSession, selectedDate);
+      const [nextBriefing, nextReport, nextSupportEscalations] = await loadAdminCommandData(nextSession, selectedDate);
       setBriefing(nextBriefing);
       setReport(nextReport);
+      setSupportEscalations(nextSupportEscalations);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
     } finally {
@@ -670,6 +731,7 @@ export function AdminCommandShell() {
           report={report}
           selectedDate={selectedDate}
           session={session}
+          supportEscalations={supportEscalations}
         />
       ) : null}
     </main>

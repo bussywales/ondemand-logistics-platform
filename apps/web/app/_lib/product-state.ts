@@ -551,6 +551,76 @@ export type EndOfDayReport = {
   guidance: string;
 };
 
+export type SupportEscalationCategory =
+  | "DISPATCH_FAILURE"
+  | "PAYMENT_RISK"
+  | "CUSTOMER_SUPPORT"
+  | "MERCHANT_SUPPORT"
+  | "COURIER_SUPPORT"
+  | "REFUND_REVIEW"
+  | "DELIVERY_DELAY"
+  | "GENERAL";
+export type SupportEscalationStatus =
+  | "OPEN"
+  | "IN_REVIEW"
+  | "WAITING_ON_CUSTOMER"
+  | "WAITING_ON_MERCHANT"
+  | "WAITING_ON_COURIER"
+  | "RESOLVED"
+  | "CANCELLED";
+export type SupportEscalationSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export type SupportEscalation = {
+  id: string;
+  orgId: string;
+  orgName?: string | null;
+  orderId: string | null;
+  jobId: string | null;
+  category: SupportEscalationCategory;
+  status: SupportEscalationStatus;
+  severity: SupportEscalationSeverity;
+  title: string;
+  note: string;
+  followUpOwner: string | null;
+  customerContactRequired: boolean;
+  merchantContactRequired: boolean;
+  courierContactRequired: boolean;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  restaurantName?: string | null;
+  customerName?: string | null;
+};
+
+export type SupportEscalationList = {
+  items: SupportEscalation[];
+};
+
+export type CreateSupportEscalationInput = {
+  orderId?: string | null;
+  jobId?: string | null;
+  category: SupportEscalationCategory;
+  status?: SupportEscalationStatus;
+  severity: SupportEscalationSeverity;
+  title: string;
+  note: string;
+  followUpOwner?: string | null;
+  customerContactRequired?: boolean;
+  merchantContactRequired?: boolean;
+  courierContactRequired?: boolean;
+};
+
+export type UpdateSupportEscalationInput = Partial<{
+  status: SupportEscalationStatus;
+  severity: SupportEscalationSeverity;
+  title: string;
+  note: string;
+  followUpOwner: string | null;
+  customerContactRequired: boolean;
+  merchantContactRequired: boolean;
+  courierContactRequired: boolean;
+}>;
+
 export type BusinessPaymentSummary = {
   id: string;
   orderId: string;

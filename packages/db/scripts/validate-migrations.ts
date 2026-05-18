@@ -18,7 +18,8 @@ const requiredTables = [
   "job_offers",
   "job_events",
   "audit_log",
-  "outbox_messages"
+  "outbox_messages",
+  "support_escalations"
 ];
 
 if (files.length < 2) {

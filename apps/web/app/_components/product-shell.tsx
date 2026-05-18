@@ -19,15 +19,18 @@ import { WorkspaceNav } from "./workspace-nav";
 import {
   authorizePayment,
   cancelJob,
+  createBusinessSupportEscalation,
   createLiveJob,
   getDriverAssignmentIneligibility,
   getBusinessDailyBriefing,
   getLiveJob,
+  listBusinessSupportEscalations,
   listBusinessOrders,
   listEligibleDrivers,
   listLiveJobs,
   reassignDriver,
-  retryDispatch
+  retryDispatch,
+  updateBusinessSupportEscalation
 } from "../_lib/api";
 import {
   filterEligibleDrivers,
@@ -40,8 +43,11 @@ import {
   type BusinessCustomerOrder,
   type DailyBriefing,
   type BusinessSession,
+  type CreateSupportEscalationInput,
   type DeliveryFormInput,
   type EligibleDriver,
+  type SupportEscalation,
+  type SupportEscalationStatus,
   type VehicleType
 } from "../_lib/product-state";
 
@@ -68,6 +74,7 @@ export function ProductShell(props: ProductShellProps) {
   const [jobs, setJobs] = useState<AppJob[]>([]);
   const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
+  const [selectedJobEscalations, setSelectedJobEscalations] = useState<SupportEscalation[]>([]);
   const [dailyBriefing, setDailyBriefing] = useState<DailyBriefing | null>(null);
   const [briefingError, setBriefingError] = useState<string | null>(null);
   const [deliveryForm, setDeliveryForm] = useState<DeliveryFormInput>(defaultForm);
@@ -84,6 +91,7 @@ export function ProductShell(props: ProductShellProps) {
   const [driverAssignmentError, setDriverAssignmentError] = useState<DriverAssignmentFailureModel | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("Operator cancelled");
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
 
   useEffect(() => {
     if (!session) {
@@ -96,6 +104,7 @@ export function ProductShell(props: ProductShellProps) {
   useEffect(() => {
     if (!props.jobId || !session) {
       setSelectedJob(null);
+      setSelectedJobEscalations([]);
       return;
     }
 
@@ -178,13 +187,57 @@ export function ProductShell(props: ProductShellProps) {
 
   async function refreshLiveJob(jobId: string, currentSession: BusinessSession) {
     try {
-      const job = await getLiveJob(currentSession, jobId);
+      const [job, escalationItems] = await Promise.all([
+        getLiveJob(currentSession, jobId),
+        listBusinessSupportEscalations(currentSession, { jobId })
+      ]);
       setSelectedJob(job);
+      setSelectedJobEscalations(escalationItems);
       setJobs((current) =>
         [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       );
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load job.");
+      setSelectedJobEscalations([]);
+    }
+  }
+
+  async function handleCreateSupportEscalation(input: CreateSupportEscalationInput) {
+    if (!session || !selectedJob) {
+      return;
+    }
+
+    setSupportSubmitting(true);
+    setError(null);
+
+    try {
+      const created = await createBusinessSupportEscalation(session, {
+        ...input,
+        jobId: selectedJob.id
+      });
+      setSelectedJobEscalations((current) => [created, ...current]);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to save support escalation.");
+    } finally {
+      setSupportSubmitting(false);
+    }
+  }
+
+  async function handleUpdateSupportEscalationStatus(id: string, nextStatus: SupportEscalationStatus) {
+    if (!session) {
+      return;
+    }
+
+    setSupportSubmitting(true);
+    setError(null);
+
+    try {
+      const updated = await updateBusinessSupportEscalation(session, id, { status: nextStatus });
+      setSelectedJobEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Unable to update support escalation.");
+    } finally {
+      setSupportSubmitting(false);
     }
   }
 
@@ -361,6 +414,7 @@ export function ProductShell(props: ProductShellProps) {
     setDailyBriefing(null);
     setBriefingError(null);
     setSelectedJob(null);
+    setSelectedJobEscalations([]);
     router.push("/get-started");
   }
 
@@ -540,9 +594,13 @@ export function ProductShell(props: ProductShellProps) {
                 }
                 onResetCollectedPaymentMethod={() => setCollectedPaymentMethod(null)}
                 onRetryDispatch={(nextJob) => void handleRetryDispatch(nextJob)}
+                onCreateSupportEscalation={handleCreateSupportEscalation}
+                onUpdateSupportEscalationStatus={handleUpdateSupportEscalationStatus}
                 paymentSubmitting={paymentSubmitting}
                 selectedDriverId={selectedDriverId}
                 session={session}
+                supportEscalations={selectedJobEscalations}
+                supportSubmitting={supportSubmitting}
               />
             ) : (
               <div className="sw-empty-state">

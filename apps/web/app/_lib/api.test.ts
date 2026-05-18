@@ -4,6 +4,7 @@ import {
   acceptDriverOffer,
   authorizePayment,
   createProofOfDelivery,
+  createBusinessSupportEscalation,
   createRestaurant,
   getAdminDailyBriefing,
   getAdminEndOfDayReport,
@@ -23,11 +24,14 @@ import {
   listBusinessNotifications,
   listBusinessOrders,
   listBusinessPayments,
+  listBusinessSupportEscalations,
+  listAdminSupportEscalations,
   listDriverOffers,
   markAllBusinessNotificationsRead,
   markBusinessNotificationRead,
   rejectDriverOffer,
   transitionDriverJob,
+  updateBusinessSupportEscalation,
   updateDriverAvailability
 } from './api';
 import type { BusinessSession } from './product-state';
@@ -969,5 +973,69 @@ describe('authorizePayment', () => {
         coordinates: null
       })
     ).resolves.toMatchObject({ recipientName: 'Taylor' });
+  });
+
+  it('lists and mutates business support escalations with idempotency headers', async () => {
+    const escalation = {
+      id: '2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b',
+      orgId: '07ce83ef-3d05-4f78-9f5f-a21191f2d07e',
+      orgName: 'Pilot Org',
+      orderId: '11111111-1111-4111-8111-111111111111',
+      jobId: '33333333-3333-4333-8333-333333333333',
+      category: 'DELIVERY_DELAY',
+      status: 'OPEN',
+      severity: 'HIGH',
+      title: 'Delay follow-up',
+      note: 'Customer asked for a status update.',
+      followUpOwner: null,
+      customerContactRequired: true,
+      merchantContactRequired: false,
+      courierContactRequired: true,
+      createdBy: session.userId,
+      createdAt: '2026-05-18T10:00:00.000Z',
+      updatedAt: '2026-05-18T10:00:00.000Z',
+      restaurantName: 'Pilot Kitchen',
+      customerName: 'Ada Customer'
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [escalation] }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(escalation) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ ...escalation, status: 'RESOLVED' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listBusinessSupportEscalations(session, { orderId: escalation.orderId })).resolves.toHaveLength(1);
+    await createBusinessSupportEscalation(session, {
+      orderId: escalation.orderId,
+      category: 'DELIVERY_DELAY',
+      severity: 'HIGH',
+      title: 'Delay follow-up',
+      note: 'Customer asked for a status update.',
+      customerContactRequired: true
+    });
+    await updateBusinessSupportEscalation(session, escalation.id, { status: 'RESOLVED' });
+
+    const [listUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(listUrl).toContain('/v1/business/support/escalations?orderId=11111111-1111-4111-8111-111111111111');
+    const [, createInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(createInit.method).toBe('POST');
+    expect(String(createInit.headers && (createInit.headers as Record<string, string>)['Idempotency-Key'])).toContain('support-escalation');
+    const [, updateInit] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(updateInit.method).toBe('PATCH');
+    expect(String(updateInit.headers && (updateInit.headers as Record<string, string>)['Idempotency-Key'])).toContain('support-escalation-update');
+  });
+
+  it('lists admin support escalations from the admin endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({ items: [] })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listAdminSupportEscalations(session, { severity: 'HIGH' })).resolves.toEqual([]);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/admin/support/escalations?severity=HIGH');
+    expect(init.method).toBe('GET');
   });
 });

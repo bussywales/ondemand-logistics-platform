@@ -70,6 +70,8 @@ Authenticated routes:
 
 - `/app`
 - `/app/orders`
+- `/app/orders/[latestOrderId]`
+- `/app/jobs/[latestJobId]`
 - `/app/payments`
 - `/app/reports/end-of-day`
 - `/admin`
@@ -129,6 +131,7 @@ Playwright artifacts remain local and ignored:
 - Browser smoke should stay green after UI, auth, routing, or command-surface changes.
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
 - Public smoke should not require authentication.
+- Release readiness must include support/escalation schema dependencies because order, job, and admin command surfaces depend on them.
 - Proof artifacts remain uncommitted unless intentionally exported.
 - Any staging-only credential changes stay in local env files or the staging secret manager, never in Git.
 - Staging validation should use deterministic staged fixtures and smoke users, not personal accounts.

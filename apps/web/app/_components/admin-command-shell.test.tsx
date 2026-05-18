@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AdminCommandView } from "./admin-command-shell";
-import type { BusinessSession, DailyBriefing, EndOfDayReport } from "../_lib/product-state";
+import type { BusinessSession, DailyBriefing, EndOfDayReport, SupportEscalation } from "../_lib/product-state";
 
 const session: BusinessSession = {
   accessToken: "access-token",
@@ -219,10 +219,34 @@ const report: EndOfDayReport = {
     "This report summarises operational signals. Operators remain responsible for recovery, refunds, cancellations, and customer communications."
 };
 
+const supportEscalations: SupportEscalation[] = [
+  {
+    id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+    orgId: "org-1",
+    orgName: "Pilot Org",
+    orderId: "11111111-1111-4111-8111-111111111111",
+    jobId: "33333333-3333-4333-8333-333333333333",
+    category: "DELIVERY_DELAY",
+    status: "OPEN",
+    severity: "HIGH",
+    title: "Customer delay follow-up",
+    note: "Customer needs a human status update.",
+    followUpOwner: "Ops lead",
+    customerContactRequired: true,
+    merchantContactRequired: false,
+    courierContactRequired: true,
+    createdBy: "user-1",
+    createdAt: "2026-05-04T08:00:00.000Z",
+    updatedAt: "2026-05-04T08:00:00.000Z",
+    restaurantName: "Pilot Kitchen",
+    customerName: "Ada Customer"
+  }
+];
+
 describe("AdminCommandView", () => {
   it("renders cross-org command intelligence with human approval note", () => {
     const markup = renderToStaticMarkup(
-      <AdminCommandView briefing={briefing} report={report} selectedDate="2026-05-04" session={session} />
+      <AdminCommandView briefing={briefing} report={report} selectedDate="2026-05-04" session={session} supportEscalations={supportEscalations} />
     );
 
     expect(markup).toContain("2 organisations need attention");
@@ -231,12 +255,14 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Second Org");
     expect(markup).toContain("Platform admins remain responsible for recovery oversight");
     expect(markup).toContain("Draft only — review before sending");
+    expect(markup).toContain("Support escalation overview");
+    expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });
 
   it("does not render unsafe business deep links when org context is unavailable", () => {
     const markup = renderToStaticMarkup(
-      <AdminCommandView briefing={briefing} report={report} selectedDate="2026-05-04" session={session} />
+      <AdminCommandView briefing={briefing} report={report} selectedDate="2026-05-04" session={session} supportEscalations={supportEscalations} />
     );
 
     expect(markup).toContain("Business workspace link unavailable without org context.");
@@ -250,6 +276,7 @@ describe("AdminCommandView", () => {
         report={{ ...report, unresolvedCount: 0, incidentsSummary: { ...report.incidentsSummary, dispatchFailed: 0, delayIncidents: 0, paymentRisks: 0, unresolvedRecommendations: 0 }, unresolvedActions: [] }}
         selectedDate="2026-05-04"
         session={session}
+        supportEscalations={[]}
       />
     );
 

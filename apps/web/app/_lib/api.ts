@@ -11,6 +11,7 @@ import type {
   EndOfDayReport,
   DispatchRecoverySuggestion,
   OperationalIncidentSummary,
+  CreateSupportEscalationInput,
   BusinessNotification,
   BusinessNotificationList,
   BusinessCustomerOrder,
@@ -19,6 +20,9 @@ import type {
   BusinessSession,
   CustomerOrderSubmission,
   PublicOrderTracking,
+  SupportEscalation,
+  SupportEscalationList,
+  UpdateSupportEscalationInput,
   DriverAvailabilityStatus,
   EligibleDriver,
   EligibleDriverSuitabilityFlag,
@@ -148,6 +152,8 @@ type BusinessPaymentListResponse = {
 };
 type DailyBriefingResponse = DailyBriefing;
 type EndOfDayReportResponse = EndOfDayReport;
+type SupportEscalationListResponse = SupportEscalationList;
+type SupportEscalationResponse = SupportEscalation;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
@@ -550,6 +556,92 @@ export async function getBusinessOrder(session: BusinessSession, orderId: string
   return apiFetch<BusinessCustomerOrderResponse>(session, `/v1/business/orders/${orderId}`, {
     method: "GET"
   });
+}
+
+function buildSupportEscalationsQuery(filters?: {
+  orderId?: string;
+  jobId?: string;
+  status?: string;
+  category?: string;
+  severity?: string;
+}) {
+  const params = new URLSearchParams();
+  if (filters?.orderId) params.set("orderId", filters.orderId);
+  if (filters?.jobId) params.set("jobId", filters.jobId);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.severity) params.set("severity", filters.severity);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function listBusinessSupportEscalations(
+  session: BusinessSession,
+  filters?: {
+    orderId?: string;
+    jobId?: string;
+    status?: string;
+    category?: string;
+    severity?: string;
+  }
+): Promise<SupportEscalation[]> {
+  const payload = await apiFetch<SupportEscalationListResponse>(
+    session,
+    `/v1/business/support/escalations${buildSupportEscalationsQuery(filters)}`,
+    { method: "GET" }
+  );
+
+  return payload.items;
+}
+
+export async function createBusinessSupportEscalation(
+  session: BusinessSession,
+  input: CreateSupportEscalationInput
+): Promise<SupportEscalation> {
+  return apiFetch<SupportEscalationResponse>(session, "/v1/business/support/escalations", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-support-escalation`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateBusinessSupportEscalation(
+  session: BusinessSession,
+  escalationId: string,
+  input: UpdateSupportEscalationInput
+): Promise<SupportEscalation> {
+  return apiFetch<SupportEscalationResponse>(
+    session,
+    `/v1/business/support/escalations/${encodeURIComponent(escalationId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-support-escalation-update`
+      },
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export async function listAdminSupportEscalations(
+  session: BusinessSession,
+  filters?: {
+    orderId?: string;
+    jobId?: string;
+    status?: string;
+    category?: string;
+    severity?: string;
+  }
+): Promise<SupportEscalation[]> {
+  const payload = await apiFetch<SupportEscalationListResponse>(
+    session,
+    `/v1/admin/support/escalations${buildSupportEscalationsQuery(filters)}`,
+    { method: "GET" }
+  );
+
+  return payload.items;
 }
 
 export async function getPublicOrderTracking(orderId: string): Promise<PublicOrderTracking> {

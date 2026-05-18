@@ -15,6 +15,7 @@ import {
   CreateJobRequestSchema,
   CreateProofOfDeliverySchema,
   CreateQuoteSchema,
+  CreateSupportEscalationSchema,
   CustomerOrderStatusSchema,
   EligibleDriverListSchema,
   JobPaymentSummarySchema,
@@ -23,6 +24,7 @@ import {
   PaginatedJobsSchema,
   PaymentStatusSchema,
   ProofOfDeliveryUploadUrlResponseSchema,
+  SupportEscalationListSchema,
   SubmitCustomerOrderResponseSchema,
   SubmitCustomerOrderSchema
 } from "./index.js";
@@ -768,5 +770,46 @@ describe("read models", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+
+  it("parses support escalation list payloads", () => {
+    const parsed = SupportEscalationListSchema.safeParse({
+      items: [
+        {
+          id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          orgId: "07ce83ef-3d05-4f78-9f5f-a21191f2d07e",
+          orgName: "Pilot Org",
+          orderId: "11111111-1111-4111-8111-111111111111",
+          jobId: "33333333-3333-4333-8333-333333333333",
+          category: "DELIVERY_DELAY",
+          status: "OPEN",
+          severity: "HIGH",
+          title: "Customer delay follow-up",
+          note: "Customer called after the job stopped progressing.",
+          followUpOwner: "Ops lead",
+          customerContactRequired: true,
+          merchantContactRequired: false,
+          courierContactRequired: true,
+          createdBy: "9d90d9cb-aaed-494e-aebf-d0f02b9618fe",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          restaurantName: "Pilot Kitchen",
+          customerName: "Ada Customer"
+        }
+      ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("requires support escalations to reference an order or job", () => {
+    const parsed = CreateSupportEscalationSchema.safeParse({
+      category: "CUSTOMER_SUPPORT",
+      severity: "MEDIUM",
+      title: "Customer support note",
+      note: "Customer asked for a delivery status update."
+    });
+
+    expect(parsed.success).toBe(false);
   });
 });

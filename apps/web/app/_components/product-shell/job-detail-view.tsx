@@ -1,5 +1,12 @@
 import { isStripeFrontendConfigured, type CollectedPaymentMethod } from "../payment-method-form";
-import type { AppJob, BusinessSession, EligibleDriver } from "../../_lib/product-state";
+import type {
+  AppJob,
+  BusinessSession,
+  CreateSupportEscalationInput,
+  EligibleDriver,
+  SupportEscalation,
+  SupportEscalationStatus
+} from "../../_lib/product-state";
 import type { DriverAssignmentFailureModel } from "../../_lib/driver-assignment";
 import { getDispatchIntelligence } from "../../_lib/dispatch-intelligence";
 import { DispatchTimelinePanel } from "./dispatch-timeline-panel";
@@ -8,6 +15,7 @@ import { JobDecisionSurface } from "./job-decision-surface";
 import { JobRouteAndDriverPanel } from "./job-route-and-driver-panel";
 import { OperatorControlsPanel } from "./operator-controls-panel";
 import { PaymentStatusPanel } from "./payment-status-panel";
+import { SupportEscalationLog } from "../support-escalation-log";
 
 type JobDetailViewProps = {
   actionSubmitting: boolean;
@@ -31,9 +39,13 @@ type JobDetailViewProps = {
   onOpenOrRefreshDriverPicker: () => void;
   onResetCollectedPaymentMethod: () => void;
   onRetryDispatch: (job: AppJob) => void;
+  onCreateSupportEscalation: (input: CreateSupportEscalationInput) => Promise<void> | void;
+  onUpdateSupportEscalationStatus: (id: string, status: SupportEscalationStatus) => Promise<void> | void;
   paymentSubmitting: boolean;
   selectedDriverId: string | null;
   session: BusinessSession;
+  supportEscalations: SupportEscalation[];
+  supportSubmitting: boolean;
 };
 
 export function JobDetailView(props: JobDetailViewProps) {
@@ -49,6 +61,14 @@ export function JobDetailView(props: JobDetailViewProps) {
         onRetryDispatch={props.onRetryDispatch}
       />
       <JobIncidentSummaryPanel incidentSummary={props.job.incidentSummary} />
+      <SupportEscalationLog
+        context="job"
+        items={props.supportEscalations}
+        jobId={props.job.id}
+        onCreate={props.onCreateSupportEscalation}
+        onUpdateStatus={props.onUpdateSupportEscalationStatus}
+        submitting={props.supportSubmitting}
+      />
       <JobRouteAndDriverPanel job={props.job} />
       <DispatchTimelinePanel job={props.job} />
       <PaymentStatusPanel

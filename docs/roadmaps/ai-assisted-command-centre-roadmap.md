@@ -67,6 +67,7 @@ These are already present in the product or staging proof loop and form the base
 - notifications
 - admin control plane
 - public tracking
+- support and escalation logging for order/job follow-up
 - release verification and proof archive
 - pilot playbooks
 - controlled demo/tester runbooks
@@ -152,6 +153,12 @@ Suggest:
 - whether refund review is likely needed
 - who should own the escalation
 - which evidence is missing before a decision is made
+
+Support & Escalation Logging v1 is the first non-AI foundation for this:
+- operators can record human follow-up against orders and jobs
+- admins can review open cross-org escalations from command intelligence
+- records capture category, status, severity, owner, contact flags, and notes
+- no customer message, refund, cancellation, or courier decision is executed from the log
 
 ### Manual override recommendations
 When an operator is about to retry dispatch, reassign, or cancel, AI should summarise:
@@ -320,6 +327,7 @@ Current tranche status:
 - v1C delay detection and incident summary drafts: implemented as deterministic rules
 - v1D end-of-day operations report: implemented as deterministic closeout reporting
 - Tranche 2B admin-native command intelligence: implemented as cross-org deterministic oversight for platform admins
+- Support & Escalation Logging v1: implemented as human-entered order/job follow-up records with admin read-only oversight
 
 Packaging rule for Command Intelligence v1:
 - position these surfaces as one assistive operations layer
