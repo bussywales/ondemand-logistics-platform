@@ -344,6 +344,9 @@ describe("admin schemas", () => {
         activeJobs: 2,
         fulfilledOrders: 1,
         paymentRisks: 2,
+        openSupportEscalations: 1,
+        highCriticalSupportEscalations: 1,
+        oldestOpenSupportEscalationAgeMinutes: 42,
         availableDrivers: null
       },
       recommendations: [
@@ -395,6 +398,8 @@ describe("admin schemas", () => {
         delayIncidents: 1,
         paymentRisks: 2,
         driverFollowUpIncidents: 1,
+        openSupportEscalations: 1,
+        highCriticalSupportEscalations: 1,
         unresolvedRecommendations: 2
       },
       unresolvedActions: [

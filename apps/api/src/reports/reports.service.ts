@@ -10,7 +10,9 @@ import {
   type EndOfDayReportScope,
   type JobStatus,
   type PaymentStatus,
-  type PayoutLedgerStatus
+  type PayoutLedgerStatus,
+  type SupportEscalationSeverity,
+  type SupportEscalationStatus
 } from "@shipwright/contracts";
 import { toIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
@@ -37,6 +39,22 @@ type ReportRow = {
   restaurant_name: string;
 };
 
+type SupportReportRow = {
+  id: string;
+  org_id: string | null;
+  org_name: string | null;
+  order_id: string | null;
+  job_id: string | null;
+  status: SupportEscalationStatus;
+  severity: SupportEscalationSeverity;
+  title: string;
+  note: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+  restaurant_name: string | null;
+  customer_name: string | null;
+};
+
 type ReportCategory =
   | "dispatch_failed"
   | "payment_failed"
@@ -59,6 +77,13 @@ const ASSIGNED_THRESHOLD_MINUTES = 20;
 const EN_ROUTE_THRESHOLD_MINUTES = 30;
 const MAX_ACTIONS = 8;
 const MAX_EVIDENCE = 8;
+const UNRESOLVED_SUPPORT_STATUSES: SupportEscalationStatus[] = [
+  "OPEN",
+  "IN_REVIEW",
+  "WAITING_ON_CUSTOMER",
+  "WAITING_ON_MERCHANT",
+  "WAITING_ON_COURIER"
+];
 const GUIDANCE =
   "This report summarises operational signals. Operators remain responsible for recovery, refunds, cancellations, and customer communications.";
 
@@ -253,11 +278,58 @@ function buildEvidenceLink(row: ReportRow, category: ReportCategory): EndOfDayEv
   };
 }
 
+function buildSupportAction(row: SupportReportRow): EndOfDayActionItemDto | null {
+  const entityId = row.order_id ?? row.job_id;
+  if (!entityId) {
+    return null;
+  }
+
+  const entityType = row.order_id ? "order" : "job";
+  const href = row.order_id ? `/app/orders/${row.order_id}` : `/app/jobs/${row.job_id}`;
+
+  return {
+    id: `action:support:${row.id}`,
+    type: "REVIEW_SUPPORT_ESCALATION",
+    severity: row.severity === "CRITICAL" ? "danger" : "warning",
+    label: "Review support escalation",
+    summary: `${row.title} remains ${row.status.toLowerCase().replaceAll("_", " ")}${row.customer_name ? ` for ${row.customer_name}` : ""}.`,
+    href,
+    entityType,
+    entityId,
+    orderId: row.order_id,
+    jobId: row.job_id,
+    paymentId: null
+  };
+}
+
+function buildSupportEvidenceLink(row: SupportReportRow): EndOfDayEvidenceLinkDto | null {
+  const entityId = row.order_id ?? row.job_id;
+  if (!entityId) {
+    return null;
+  }
+
+  const entityType = row.order_id ? "order" : "job";
+  const href = row.order_id ? `/app/orders/${row.order_id}` : `/app/jobs/${row.job_id}`;
+
+  return {
+    id: `evidence:support:${row.id}`,
+    label: `Support ${row.id.slice(0, 8).toUpperCase()}`,
+    summary: `${row.restaurant_name ?? row.org_name ?? "Support"} · ${row.severity.toLowerCase()} ${row.status.toLowerCase().replaceAll("_", " ")}`,
+    href,
+    entityType,
+    entityId,
+    orderId: row.order_id,
+    jobId: row.job_id,
+    paymentId: null
+  };
+}
+
 export function buildEndOfDayReport(
   rows: ReportRow[],
   scope: EndOfDayReportScope,
   date: EndOfDayReportDate,
-  now = new Date()
+  now = new Date(),
+  supportRows: SupportReportRow[] = []
 ): EndOfDayReportDto {
   const categories = rows
     .map((row) => ({ row, category: getReportCategory(row, now) }))
@@ -267,19 +339,23 @@ export function buildEndOfDayReport(
     new Map(
       categories
         .flatMap(({ row, category }) => buildAction(row, category))
+        .concat(supportRows.map(buildSupportAction).filter((item): item is EndOfDayActionItemDto => item !== null))
         .map((item) => [item.id, item] as const)
     ).values()
   ).slice(0, MAX_ACTIONS);
 
   const evidenceLinks = Array.from(
-    new Map(categories.map(({ row, category }) => {
-      const item = buildEvidenceLink(row, category);
-      return [item.id, item] as const;
-    })).values()
+    new Map(
+      categories
+        .map(({ row, category }) => buildEvidenceLink(row, category))
+        .concat(supportRows.map(buildSupportEvidenceLink).filter((item): item is EndOfDayEvidenceLinkDto => item !== null))
+        .map((item) => [item.id, item] as const)
+    ).values()
   ).slice(0, MAX_EVIDENCE);
 
   const fulfilledOrders = rows.filter((row) => row.order_status === "FULFILLED").length;
   const unresolvedCount = unresolvedActions.length;
+  const highCriticalSupportEscalations = supportRows.filter((row) => row.severity === "HIGH" || row.severity === "CRITICAL").length;
 
   return EndOfDayReportSchema.parse({
     scope,
@@ -291,8 +367,8 @@ export function buildEndOfDayReport(
         : "No unresolved items today",
     summary:
       unresolvedCount > 0
-        ? "Dispatch, payment, delay, and payout signals are summarised here for closeout review."
-        : "The day closed without unresolved dispatch, payment, or delay follow-up items.",
+        ? "Dispatch, payment, delay, support, and payout signals are summarised here for closeout review."
+        : "The day closed without unresolved dispatch, payment, delay, or support follow-up items.",
     unresolvedCount,
     operatingSummary: {
       ordersReceived: rows.length,
@@ -316,6 +392,8 @@ export function buildEndOfDayReport(
       delayIncidents: rows.filter((row) => isDelayedJob(row, now)).length,
       paymentRisks: rows.filter((row) => isPaymentRisk(row)).length,
       driverFollowUpIncidents: getDriverFollowUpIncidentCount(rows, now),
+      openSupportEscalations: supportRows.length,
+      highCriticalSupportEscalations,
       unresolvedRecommendations: unresolvedCount
     },
     unresolvedActions,
@@ -343,14 +421,20 @@ export class ReportsService {
 
   async getBusinessEndOfDayReport(userId: string, date?: string) {
     const targetDate = normalizeDateInput(date);
-    const result = await this.pg.query<ReportRow>(this.buildEndOfDayQuery(true), [userId, targetDate]);
-    return buildEndOfDayReport(result.rows, "business", targetDate);
+    const [result, supportResult] = await Promise.all([
+      this.pg.query<ReportRow>(this.buildEndOfDayQuery(true), [userId, targetDate]),
+      this.pg.query<SupportReportRow>(this.buildSupportEscalationsQuery(true), [userId, targetDate])
+    ]);
+    return buildEndOfDayReport(result.rows, "business", targetDate, new Date(), supportResult.rows);
   }
 
   async getAdminEndOfDayReport(date?: string) {
     const targetDate = normalizeDateInput(date);
-    const result = await this.pg.query<ReportRow>(this.buildEndOfDayQuery(false), [targetDate]);
-    return buildEndOfDayReport(result.rows, "admin", targetDate);
+    const [result, supportResult] = await Promise.all([
+      this.pg.query<ReportRow>(this.buildEndOfDayQuery(false), [targetDate]),
+      this.pg.query<SupportReportRow>(this.buildSupportEscalationsQuery(false), [targetDate])
+    ]);
+    return buildEndOfDayReport(result.rows, "admin", targetDate, new Date(), supportResult.rows);
   }
 
   private buildEndOfDayQuery(scopeToMemberships: boolean) {
@@ -393,6 +477,45 @@ export class ReportsService {
         )
       ` : ""}
       order by o.created_at desc
+    `;
+  }
+
+  private buildSupportEscalationsQuery(scopeToMemberships: boolean) {
+    return `
+      select
+        se.id,
+        se.org_id,
+        org.name as org_name,
+        coalesce(order_from_escalation.id, order_from_job.id) as order_id,
+        se.job_id,
+        se.status::text as status,
+        se.severity::text as severity,
+        se.title,
+        se.note,
+        se.created_at,
+        se.updated_at,
+        restaurant.name as restaurant_name,
+        coalesce(order_from_escalation.customer_name, order_from_job.customer_name) as customer_name
+      from public.support_escalations se
+      left join public.orgs org on org.id = se.org_id
+      left join public.customer_orders order_from_escalation on order_from_escalation.id = se.order_id
+      left join public.jobs job_from_escalation on job_from_escalation.id = se.job_id
+      left join public.customer_orders order_from_job on order_from_job.job_id = job_from_escalation.id
+      left join public.restaurants restaurant on restaurant.id = coalesce(order_from_escalation.restaurant_id, order_from_job.restaurant_id)
+      where se.status::text = any(array[${UNRESOLVED_SUPPORT_STATUSES.map((status) => `'${status}'`).join(", ")}])
+        and se.created_at::date <= $${scopeToMemberships ? "2" : "1"}::date
+      ${scopeToMemberships ? `
+        and exists (
+          select 1
+          from public.org_memberships m
+          where m.org_id = se.org_id
+            and m.user_id = $1
+            and m.is_active = true
+            and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+        )
+      ` : ""}
+      order by se.created_at asc
+      limit 100
     `;
   }
 }

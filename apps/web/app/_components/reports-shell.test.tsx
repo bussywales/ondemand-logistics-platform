@@ -33,6 +33,8 @@ const reportWithFollowUp: EndOfDayReport = {
     delayIncidents: 1,
     paymentRisks: 2,
     driverFollowUpIncidents: 0,
+    openSupportEscalations: 1,
+    highCriticalSupportEscalations: 1,
     unresolvedRecommendations: 2
   },
   unresolvedActions: [
@@ -61,6 +63,19 @@ const reportWithFollowUp: EndOfDayReport = {
       orderId: "order-2",
       jobId: "job-2",
       paymentId: "payment-2"
+    },
+    {
+      id: "action-3",
+      type: "REVIEW_SUPPORT_ESCALATION",
+      severity: "warning",
+      label: "Review support escalation",
+      summary: "Customer follow-up remains open.",
+      href: "/app/orders/order-3",
+      entityType: "order",
+      entityId: "order-3",
+      orderId: "order-3",
+      jobId: "job-3",
+      paymentId: null
     }
   ],
   evidenceLinks: [
@@ -83,8 +98,14 @@ const reportWithFollowUp: EndOfDayReport = {
 const clearReport: EndOfDayReport = {
   ...reportWithFollowUp,
   headline: "No unresolved items today",
-  summary: "The day closed without unresolved dispatch, payment, or delay follow-up items.",
+  summary: "The day closed without unresolved dispatch, payment, delay, or support follow-up items.",
   unresolvedCount: 0,
+  incidentsSummary: {
+    ...reportWithFollowUp.incidentsSummary,
+    openSupportEscalations: 0,
+    highCriticalSupportEscalations: 0,
+    unresolvedRecommendations: 0
+  },
   unresolvedActions: []
 };
 
@@ -96,6 +117,8 @@ describe("ReportsShell", () => {
     expect(markup).toContain("Command Intelligence");
     expect(markup).toContain("Retry dispatch");
     expect(markup).toContain("Review payment risk");
+    expect(markup).toContain("Review support escalation");
+    expect(markup).toContain("Support follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
     expect(markup).toContain("href=\"/app/payments\"");
     expect(markup).toContain("Based on current operational signals. Review before acting. Human approval required.");
@@ -107,6 +130,7 @@ describe("ReportsShell", () => {
 
     expect(markup).toContain("No unresolved items today");
     expect(markup).toContain("Open orders");
+    expect(markup).toContain("support follow-up items");
     expect(markup).toContain("href=\"/app/orders\"");
   });
 
@@ -114,6 +138,6 @@ describe("ReportsShell", () => {
     const markup = renderToStaticMarkup(<EndOfDayReportEmptyState />);
 
     expect(markup).toContain("No unresolved items today");
-    expect(markup).toContain("The day closed without unresolved dispatch, payment, or delay follow-up items.");
+    expect(markup).toContain("The day closed without unresolved dispatch, payment, delay, or support follow-up items.");
   });
 });

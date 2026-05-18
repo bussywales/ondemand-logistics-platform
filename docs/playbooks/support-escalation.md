@@ -8,6 +8,7 @@
 - Admin shows broader platform risk.
 - Payment, job, notification, or driver state appears internally inconsistent.
 - The order or job detail support log shows an unresolved escalation, missing owner, or waiting-on-party status.
+- Daily briefing or end-of-day report shows `Human follow-up open` or `Review support escalation`.
 
 ## Immediate operator action
 1. Stop repeating the same mutation without new evidence.
@@ -26,6 +27,7 @@
 - Capture overview state, intervention queue item, order state, job state, payment state, and any outbox anomaly.
 - Confirm whether this is isolated or cross-org.
 - Check `/admin/command` for open or high-severity support escalations across organisations.
+- Confirm whether the escalation is already counted in daily briefing or end-of-day closeout before creating duplicate follow-up.
 
 ## When to cancel/refund
 - Only after the escalation owner confirms recovery is no longer appropriate.
@@ -49,5 +51,6 @@
 ## Product controls available
 - Business operators can create and update support/escalation records from order and job detail pages.
 - Platform admins can review open cross-org escalation records from Admin Command Intelligence.
+- Daily briefing and end-of-day report include unresolved support records as operator follow-up actions.
 - There is no delete endpoint in v1.
 - The log does not send messages, refund, cancel, assign drivers, or close incidents automatically.

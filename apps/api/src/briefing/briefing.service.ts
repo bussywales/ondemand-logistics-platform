@@ -10,7 +10,9 @@ import {
   type DailyBriefingScope,
   type JobStatus,
   type PaymentStatus,
-  type PayoutLedgerStatus
+  type PayoutLedgerStatus,
+  type SupportEscalationSeverity,
+  type SupportEscalationStatus
 } from "@shipwright/contracts";
 import { toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
@@ -41,8 +43,26 @@ type BriefingRow = {
   restaurant_slug: string;
 };
 
+type SupportPostureRow = {
+  id: string;
+  org_id: string | null;
+  org_name: string | null;
+  order_id: string | null;
+  job_id: string | null;
+  status: SupportEscalationStatus;
+  severity: SupportEscalationSeverity;
+  title: string;
+  note: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+  restaurant_name: string | null;
+  customer_name: string | null;
+};
+
+type OperationalBriefingCategory = Exclude<DailyBriefingItemCategory, "support_follow_up">;
+
 type DailyBriefingCategoryConfig = {
-  category: DailyBriefingItemCategory;
+  category: OperationalBriefingCategory;
   severity: DailyBriefingItemDto["severity"];
   title: string;
   entityType: DailyBriefingEntityType;
@@ -66,6 +86,13 @@ const ASSIGNED_THRESHOLD_MINUTES = 20;
 const EN_ROUTE_THRESHOLD_MINUTES = 30;
 const MAX_CRITICAL_ITEMS = 5;
 const MAX_RECOMMENDATIONS = 5;
+const UNRESOLVED_SUPPORT_STATUSES: SupportEscalationStatus[] = [
+  "OPEN",
+  "IN_REVIEW",
+  "WAITING_ON_CUSTOMER",
+  "WAITING_ON_MERCHANT",
+  "WAITING_ON_COURIER"
+];
 const GUIDANCE =
   "This briefing is based on current ShipWright operational signals. Human approval is required for all recovery actions.";
 
@@ -98,7 +125,7 @@ function isPaymentRisk(row: BriefingRow) {
   return row.job_status === "DELIVERED" && row.payment_status === "CAPTURED" && row.payout_status === null;
 }
 
-function getBriefingCategory(row: BriefingRow, now: Date): DailyBriefingItemCategory | null {
+function getBriefingCategory(row: BriefingRow, now: Date): OperationalBriefingCategory | null {
   if (row.job_status === "DISPATCH_FAILED") {
     return "dispatch_failed";
   }
@@ -129,7 +156,7 @@ function getBriefingCategory(row: BriefingRow, now: Date): DailyBriefingItemCate
   return null;
 }
 
-const CATEGORY_CONFIG: Record<DailyBriefingItemCategory, DailyBriefingCategoryConfig> = {
+const CATEGORY_CONFIG: Record<OperationalBriefingCategory, DailyBriefingCategoryConfig> = {
   dispatch_failed: {
     category: "dispatch_failed",
     severity: "danger",
@@ -183,6 +210,15 @@ const CATEGORY_CONFIG: Record<DailyBriefingItemCategory, DailyBriefingCategoryCo
 };
 
 export function buildDailyBriefing(rows: BriefingRow[], scope: DailyBriefingScope, now = new Date()): DailyBriefingDto {
+  return buildDailyBriefingWithSupport(rows, [], scope, now);
+}
+
+export function buildDailyBriefingWithSupport(
+  rows: BriefingRow[],
+  supportRows: SupportPostureRow[],
+  scope: DailyBriefingScope,
+  now = new Date()
+): DailyBriefingDto {
   const criticalItems: DailyBriefingItemDto[] = [];
   for (const row of rows) {
     const category = getBriefingCategory(row, now);
@@ -224,6 +260,44 @@ export function buildDailyBriefing(rows: BriefingRow[], scope: DailyBriefingScop
     });
   }
 
+  const openSupportEscalations = supportRows.length;
+  const highCriticalSupportEscalations = supportRows.filter((row) => row.severity === "HIGH" || row.severity === "CRITICAL").length;
+  const oldestSupportRow = supportRows
+    .slice()
+    .sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime())[0] ?? null;
+  const oldestOpenSupportEscalationAgeMinutes = oldestSupportRow ? minutesBetween(now, toIsoDateTime(oldestSupportRow.created_at)) : null;
+
+  if (oldestSupportRow) {
+    const entityType: DailyBriefingEntityType = oldestSupportRow.order_id ? "order" : "job";
+    const entityId = oldestSupportRow.order_id ?? oldestSupportRow.job_id!;
+    const href = oldestSupportRow.order_id ? `/app/orders/${oldestSupportRow.order_id}` : `/app/jobs/${oldestSupportRow.job_id}`;
+    const supportAge = oldestOpenSupportEscalationAgeMinutes ?? 0;
+
+    criticalItems.push({
+      id: `support_follow_up:${oldestSupportRow.id}`,
+      category: "support_follow_up",
+      severity: highCriticalSupportEscalations > 0 ? "danger" : "warning",
+      title: "Human follow-up open",
+      summary: `${openSupportEscalations} support or escalation record${openSupportEscalations === 1 ? "" : "s"} ${openSupportEscalations === 1 ? "needs" : "need"} operator review.`,
+      reason: "Support or escalation records need operator review.",
+      entityType,
+      entityId,
+      orderId: oldestSupportRow.order_id,
+      jobId: oldestSupportRow.job_id,
+      paymentId: null,
+      orgId: oldestSupportRow.org_id,
+      orgName: oldestSupportRow.org_name,
+      restaurantName: oldestSupportRow.restaurant_name,
+      customerName: oldestSupportRow.customer_name,
+      orderStatus: null,
+      jobStatus: null,
+      paymentStatus: null,
+      detectedAt: toIsoDateTime(oldestSupportRow.created_at),
+      ageMinutes: supportAge,
+      href
+    });
+  }
+
   criticalItems
     .sort((left, right) => {
       const severityWeight = { danger: 0, warning: 1, success: 2 };
@@ -238,7 +312,15 @@ export function buildDailyBriefing(rows: BriefingRow[], scope: DailyBriefingScop
 
   const recommendations: DailyBriefingRecommendationDto[] = criticalItems.map((item) => {
     const action =
-      item.category === "dispatch_failed"
+      item.category === "support_follow_up"
+        ? {
+            label: "Review support follow-up",
+            summary: "Open the linked order or job and update the support log.",
+            href: item.href,
+            entityType: item.entityType,
+            entityId: item.entityId
+          }
+        : item.category === "dispatch_failed"
         ? {
             label: "Retry or reassign dispatch",
             summary: "Open the job, retry dispatch, or manually assign a courier after reviewing eligibility.",
@@ -296,6 +378,9 @@ export function buildDailyBriefing(rows: BriefingRow[], scope: DailyBriefingScop
     activeJobs: rows.filter((row) => isActiveJob(row.job_status)).length,
     fulfilledOrders: rows.filter((row) => row.order_status === "FULFILLED" && isToday(toIsoDateTime(row.order_updated_at), now)).length,
     paymentRisks: rows.filter((row) => isPaymentRisk(row)).length,
+    openSupportEscalations,
+    highCriticalSupportEscalations,
+    oldestOpenSupportEscalationAgeMinutes,
     availableDrivers: null
   };
 
@@ -303,8 +388,8 @@ export function buildDailyBriefing(rows: BriefingRow[], scope: DailyBriefingScop
   const headline = attentionCount === 0 ? "Operations look clear" : `${attentionCount} item${attentionCount === 1 ? "" : "s"} need attention before service`;
   const summary =
     attentionCount === 0
-      ? "No current dispatch, payment, or delivery signals require immediate operator intervention."
-      : "Review dispatch, payment, and delivery exceptions before expanding service volume.";
+      ? "No current dispatch, payment, delivery, or support signals require immediate operator intervention."
+      : "Review dispatch, payment, delivery, and support follow-up exceptions before expanding service volume.";
 
   return DailyBriefingSchema.parse({
     scope,
@@ -328,13 +413,19 @@ export class BriefingService {
   ) {}
 
   async getBusinessDailyBriefing(userId: string) {
-    const result = await this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(true), [userId]);
-    return this.enrichIntelligence(buildDailyBriefing(result.rows, "business"), userId, false);
+    const [result, supportResult] = await Promise.all([
+      this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(true), [userId]),
+      this.pg.query<SupportPostureRow>(this.buildSupportEscalationsQuery(true), [userId])
+    ]);
+    return this.enrichIntelligence(buildDailyBriefingWithSupport(result.rows, supportResult.rows, "business"), userId, false);
   }
 
   async getAdminDailyBriefing() {
-    const result = await this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(false));
-    return this.enrichIntelligence(buildDailyBriefing(result.rows, "admin"), null, true);
+    const [result, supportResult] = await Promise.all([
+      this.pg.query<BriefingRow>(this.buildDailyBriefingQuery(false)),
+      this.pg.query<SupportPostureRow>(this.buildSupportEscalationsQuery(false))
+    ]);
+    return this.enrichIntelligence(buildDailyBriefingWithSupport(result.rows, supportResult.rows, "admin"), null, true);
   }
 
   private async enrichIntelligence(
@@ -348,7 +439,7 @@ export class BriefingService {
 
     const criticalItems = await Promise.all(
       briefing.criticalItems.map(async (item) => {
-        if (!item.jobId) {
+        if (!item.jobId || item.category === "support_follow_up") {
           return item;
         }
 
@@ -422,5 +513,43 @@ export class BriefingService {
       ${whereClause}
       order by greatest(o.updated_at, j.updated_at, p.updated_at) desc
       limit 100`;
+  }
+
+  private buildSupportEscalationsQuery(scopeToMemberships: boolean) {
+    const whereClause = scopeToMemberships
+      ? `and exists (
+           select 1
+           from public.org_memberships m
+           where m.org_id = se.org_id
+             and m.user_id = $1
+             and m.is_active = true
+             and m.role in ('BUSINESS_OPERATOR', 'ADMIN')
+         )`
+      : "";
+
+    return `select
+        se.id,
+        se.org_id,
+        org.name as org_name,
+        coalesce(order_from_escalation.id, order_from_job.id) as order_id,
+        se.job_id,
+        se.status::text as status,
+        se.severity::text as severity,
+        se.title,
+        se.note,
+        se.created_at,
+        se.updated_at,
+        restaurant.name as restaurant_name,
+        coalesce(order_from_escalation.customer_name, order_from_job.customer_name) as customer_name
+      from public.support_escalations se
+      left join public.orgs org on org.id = se.org_id
+      left join public.customer_orders order_from_escalation on order_from_escalation.id = se.order_id
+      left join public.jobs job_from_escalation on job_from_escalation.id = se.job_id
+      left join public.customer_orders order_from_job on order_from_job.job_id = job_from_escalation.id
+      left join public.restaurants restaurant on restaurant.id = coalesce(order_from_escalation.restaurant_id, order_from_job.restaurant_id)
+      where se.status::text = any(array[${UNRESOLVED_SUPPORT_STATUSES.map((status) => `'${status}'`).join(", ")}])
+      ${whereClause}
+      order by se.created_at asc
+      limit 50`;
   }
 }

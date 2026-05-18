@@ -99,10 +99,11 @@ A start-of-shift briefing summarising:
 - dispatch failures
 - delayed orders
 - high-risk payment states
+- open support escalations requiring human follow-up
 - drivers currently unavailable or unreliable
 - unresolved incidents from the previous shift
 
-Daily Operator Briefing v1 should be deterministic and rules-based, not LLM-generated. It should behave as a human-readable operating brief built from current platform signals, with explicit evidence and operator review links.
+Daily Operator Briefing v1 is deterministic and rules-based, not LLM-generated. It behaves as a human-readable operating brief built from current platform signals, with explicit evidence and operator review links. Support escalation posture is now included as human follow-up, not as automated resolution.
 
 ### Failed dispatch recovery suggestions
 For `DISPATCH_FAILED` or slow-dispatch jobs, AI should suggest:
@@ -328,6 +329,7 @@ Current tranche status:
 - v1D end-of-day operations report: implemented as deterministic closeout reporting
 - Tranche 2B admin-native command intelligence: implemented as cross-org deterministic oversight for platform admins
 - Support & Escalation Logging v1: implemented as human-entered order/job follow-up records with admin read-only oversight
+- Operational Maturity Tranche 1: unresolved support escalation posture is integrated into daily briefing, admin command summary, and end-of-day closeout actions
 
 Packaging rule for Command Intelligence v1:
 - position these surfaces as one assistive operations layer

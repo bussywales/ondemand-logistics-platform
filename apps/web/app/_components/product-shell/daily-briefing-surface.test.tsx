@@ -92,6 +92,9 @@ const attentionBriefing: DailyBriefing = {
     activeJobs: 2,
     fulfilledOrders: 1,
     paymentRisks: 1,
+    openSupportEscalations: 1,
+    highCriticalSupportEscalations: 0,
+    oldestOpenSupportEscalationAgeMinutes: 32,
     availableDrivers: null
   },
   recommendations: [
@@ -134,6 +137,7 @@ describe("DailyBriefingSurface", () => {
     expect(markup).toContain('href="/app/jobs"');
     expect(markup).toContain("Human approval is required for all recovery actions.");
     expect(markup).toContain("Recommended next step");
+    expect(markup).toContain("Support follow-up");
     expect(markup).toContain("Next action: Retry Dispatch");
     expect(markup).toContain("It does not take recovery actions automatically.");
     expect(markup).not.toContain("Dispatch failed and remains unresolved");
@@ -144,6 +148,7 @@ describe("DailyBriefingSurface", () => {
 
     expect(markup).toContain("Operations look clear");
     expect(markup).toContain("No immediate recovery actions are queued.");
+    expect(markup).toContain("support signals are clear");
     expect(markup).toContain("Human approval is required for all recovery actions.");
     expect(markup).toContain("It does not take recovery actions automatically.");
     expect(markup).not.toContain("AI-generated");

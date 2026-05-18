@@ -81,6 +81,8 @@ function toReadableIssue(category: DailyBriefingItem["category"]) {
       return "Payment risk";
     case "stale_job":
       return "Delay incident";
+    case "support_follow_up":
+      return "Human follow-up";
   }
 }
 
@@ -99,6 +101,10 @@ function buildRecommendedNextStep(item: DailyBriefingItem) {
 
   if (item.category === "payment_failed" || item.category === "delivered_uncaptured") {
     return "Review payment risk";
+  }
+
+  if (item.category === "support_follow_up") {
+    return "Open the linked order or job and update the support log";
   }
 
   if (item.category === "dispatch_failed") {
@@ -210,8 +216,8 @@ export function AdminCommandView(props: {
   const currentOrgReportHref = props.session.context.currentOrg
     ? `/app/reports/end-of-day?date=${encodeURIComponent(props.selectedDate)}`
     : null;
+  const supportPosture = props.briefing.operatingState;
   const openSupportItems = props.supportEscalations.filter((item) => !["RESOLVED", "CANCELLED"].includes(item.status));
-  const highSeveritySupportItems = openSupportItems.filter((item) => item.severity === "HIGH" || item.severity === "CRITICAL");
 
   return (
     <section className="ops-stack admin-command-stack">
@@ -234,7 +240,7 @@ export function AdminCommandView(props: {
           <CountCard copy="Delayed or stale delivery incidents currently detected." label="Delay incidents" tone={props.report.incidentsSummary.delayIncidents ? "warning" : "info"} value={props.report.incidentsSummary.delayIncidents} />
           <CountCard copy="Commercial follow-up items affecting delivery or closeout." label="Payment risks" tone={props.report.incidentsSummary.paymentRisks ? "danger" : "info"} value={props.report.incidentsSummary.paymentRisks} />
           <CountCard copy="Operator-approved follow-up items remaining for closeout." label="Unresolved actions" tone={props.report.unresolvedCount ? "warning" : "success"} value={props.report.unresolvedCount} />
-          <CountCard copy="Human support records that remain open or in review." label="Open escalations" tone={openSupportItems.length ? "warning" : "success"} value={openSupportItems.length} />
+          <CountCard copy="Human support records that remain open or in review." label="Support follow-up" tone={supportPosture.highCriticalSupportEscalations ? "warning" : supportPosture.openSupportEscalations ? "info" : "success"} value={supportPosture.openSupportEscalations} />
         </div>
       </section>
 
@@ -247,8 +253,8 @@ export function AdminCommandView(props: {
             <h2>Open human follow-up records</h2>
             <p className="ops-detail-note">Read-only cross-org view. Admins can monitor severity and ownership, but business operators still own direct follow-up unless explicitly delegated.</p>
           </div>
-          <span className={`sw-badge ${highSeveritySupportItems.length ? "sw-badge--warning" : "sw-badge--success"}`}>
-            {highSeveritySupportItems.length} high severity
+          <span className={`sw-badge ${supportPosture.highCriticalSupportEscalations ? "sw-badge--warning" : "sw-badge--success"}`}>
+            {supportPosture.highCriticalSupportEscalations} high severity
           </span>
         </div>
 

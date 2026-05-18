@@ -38,6 +38,10 @@ function buildBriefingNextAction(item: DailyBriefingItem) {
     return "Review payment risk";
   }
 
+  if (item.category === "support_follow_up") {
+    return "Update support log";
+  }
+
   if (item.category === "active_without_driver") {
     return "Assign driver";
   }
@@ -71,7 +75,12 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
   const signalItems = [
     { label: "Attention", value: props.briefing.attentionCount, tone: hasAttention ? "warning" : "success" },
     { label: "Active jobs", value: props.briefing.operatingState.activeJobs, tone: "info" },
-    { label: "Payment risks", value: props.briefing.operatingState.paymentRisks, tone: props.briefing.operatingState.paymentRisks ? "warning" : "success" }
+    { label: "Payment risks", value: props.briefing.operatingState.paymentRisks, tone: props.briefing.operatingState.paymentRisks ? "warning" : "success" },
+    {
+      label: "Support follow-up",
+      value: props.briefing.operatingState.openSupportEscalations,
+      tone: props.briefing.operatingState.highCriticalSupportEscalations ? "warning" : props.briefing.operatingState.openSupportEscalations ? "info" : "success"
+    }
   ];
 
   return (
@@ -107,10 +116,6 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
             <strong>{signal.value}</strong>
           </div>
         ))}
-        <div className="briefing-signal briefing-signal-neutral">
-          <span>Orders today</span>
-          <strong>{props.briefing.operatingState.ordersToday}</strong>
-        </div>
       </div>
 
       {hasAttention ? (
@@ -169,7 +174,7 @@ export function DailyBriefingSurface(props: { briefing: DailyBriefing | null; er
             <ShipWrightIcon name="check" />
           </span>
           <strong className="sw-empty-title">No immediate recovery actions are queued.</strong>
-          <p className="sw-empty-copy">Payment, dispatch, and fulfilment signals are clear right now. Continue using the workspace queues for normal monitoring.</p>
+          <p className="sw-empty-copy">Payment, dispatch, fulfilment, and support signals are clear right now. Continue using the workspace queues for normal monitoring.</p>
         </div>
       )}
       <CommandIntelligenceNote compact copy={`${props.briefing.guidance} ${COMMAND_INTELLIGENCE_EXPLAINER}`} />

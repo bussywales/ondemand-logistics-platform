@@ -332,7 +332,8 @@ export type DailyBriefingItemCategory =
   | "payment_failed"
   | "delivered_uncaptured"
   | "active_without_driver"
-  | "stale_job";
+  | "stale_job"
+  | "support_follow_up";
 export type DailyBriefingSeverity = "danger" | "warning" | "success";
 export type DailyBriefingEntityType = "order" | "job" | "payment";
 export type DispatchRecoveryIssueType =
@@ -459,6 +460,9 @@ export type DailyBriefingOperatingState = {
   activeJobs: number;
   fulfilledOrders: number;
   paymentRisks: number;
+  openSupportEscalations: number;
+  highCriticalSupportEscalations: number;
+  oldestOpenSupportEscalationAgeMinutes: number | null;
   availableDrivers: number | null;
 };
 
@@ -480,7 +484,8 @@ export type EndOfDayActionType =
   | "RETRY_DISPATCH"
   | "ASSIGN_DRIVER"
   | "CHECK_DELAYED_ORDER"
-  | "REVIEW_CUSTOMER_COMMUNICATION_DRAFT";
+  | "REVIEW_CUSTOMER_COMMUNICATION_DRAFT"
+  | "REVIEW_SUPPORT_ESCALATION";
 export type EndOfDayActionSeverity = "danger" | "warning" | "info";
 
 export type EndOfDayOperatingSummary = {
@@ -507,6 +512,8 @@ export type EndOfDayIncidentsSummary = {
   delayIncidents: number;
   paymentRisks: number;
   driverFollowUpIncidents: number;
+  openSupportEscalations: number;
+  highCriticalSupportEscalations: number;
   unresolvedRecommendations: number;
 };
 

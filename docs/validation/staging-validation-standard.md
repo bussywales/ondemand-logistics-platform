@@ -50,6 +50,7 @@ The paid-delivery proof must confirm:
 - final order status: `FULFILLED`
 - payment status: `CAPTURED`
 - notification outbox processed for the staged delivery flow
+- support escalation schema readiness remains available for command posture and closeout surfaces
 - release readiness checks green
 
 The release verification must confirm:

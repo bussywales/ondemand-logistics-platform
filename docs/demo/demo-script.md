@@ -131,11 +131,13 @@ Open:
 Show:
 - daily briefing
 - recovery suggestions
-- links to orders, jobs, payment risk, and end-of-day report
+- support follow-up posture
+- links to orders, jobs, payment risk, support logs, and end-of-day report
 
 Say:
 - Command Intelligence v1 is deterministic and based on current operational signals
 - it helps operators review recommendations, but does not take recovery actions automatically
+- unresolved support records now contribute to the same command posture as dispatch, payment, and delay risk
 
 ### 7. Notifications
 Open:
@@ -190,6 +192,7 @@ Show:
 - incident intelligence
 - end-of-day closeout preview
 - read-only support escalation overview
+- support escalation counts in the top command posture
 
 Say:
 - this is deterministic command intelligence for platform oversight

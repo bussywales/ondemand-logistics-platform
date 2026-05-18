@@ -328,6 +328,9 @@ describe('authorizePayment', () => {
             activeJobs: 2,
             fulfilledOrders: 1,
             paymentRisks: 1,
+            openSupportEscalations: 0,
+            highCriticalSupportEscalations: 0,
+            oldestOpenSupportEscalationAgeMinutes: null,
             availableDrivers: null
           },
           recommendations: [
@@ -390,6 +393,8 @@ describe('authorizePayment', () => {
             delayIncidents: 1,
             paymentRisks: 2,
             driverFollowUpIncidents: 1,
+            openSupportEscalations: 0,
+            highCriticalSupportEscalations: 0,
             unresolvedRecommendations: 2
           },
           unresolvedActions: [
@@ -660,6 +665,9 @@ describe('authorizePayment', () => {
             activeJobs: 2,
             fulfilledOrders: 1,
             paymentRisks: 1,
+            openSupportEscalations: 0,
+            highCriticalSupportEscalations: 0,
+            oldestOpenSupportEscalationAgeMinutes: null,
             availableDrivers: null
           },
           recommendations: [],
@@ -711,6 +719,8 @@ describe('authorizePayment', () => {
             delayIncidents: 0,
             paymentRisks: 0,
             driverFollowUpIncidents: 0,
+            openSupportEscalations: 0,
+            highCriticalSupportEscalations: 0,
             unresolvedRecommendations: 0
           },
           unresolvedActions: [],

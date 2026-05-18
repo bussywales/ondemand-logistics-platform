@@ -72,7 +72,7 @@ export function EndOfDayReportEmptyState() {
         <ShipWrightIcon name="check" />
       </span>
       <strong className="sw-empty-title">No unresolved items today</strong>
-      <p className="sw-empty-copy">The day closed without unresolved dispatch, payment, or delay follow-up items.</p>
+      <p className="sw-empty-copy">The day closed without unresolved dispatch, payment, delay, or support follow-up items.</p>
       <Link className="sw-button sw-button--secondary button button-secondary" href="/app/orders">
         <ShipWrightIcon name="arrow" />
         <span>Open orders</span>
@@ -175,6 +175,12 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
             tone={props.report.operatingSummary.dispatchFailures || props.report.operatingSummary.staleOrDelayedJobs ? "warning" : "success"}
             value={props.report.operatingSummary.dispatchFailures + props.report.operatingSummary.staleOrDelayedJobs}
           />
+          <SummaryItem
+            copy="Human support records still requiring closeout."
+            label="Support follow-up"
+            tone={props.report.incidentsSummary.highCriticalSupportEscalations ? "warning" : props.report.incidentsSummary.openSupportEscalations ? "info" : "success"}
+            value={props.report.incidentsSummary.openSupportEscalations}
+          />
         </div>
       </section>
 
@@ -207,6 +213,8 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
             <div><span>Delay incidents</span><strong>{props.report.incidentsSummary.delayIncidents}</strong></div>
             <div><span>Payment risks</span><strong>{props.report.incidentsSummary.paymentRisks}</strong></div>
             <div><span>Driver follow-up</span><strong>{props.report.incidentsSummary.driverFollowUpIncidents}</strong></div>
+            <div><span>Support follow-up</span><strong>{props.report.incidentsSummary.openSupportEscalations}</strong></div>
+            <div><span>High support severity</span><strong>{props.report.incidentsSummary.highCriticalSupportEscalations}</strong></div>
             <div><span>Unresolved recommendations</span><strong>{props.report.incidentsSummary.unresolvedRecommendations}</strong></div>
           </div>
         </section>

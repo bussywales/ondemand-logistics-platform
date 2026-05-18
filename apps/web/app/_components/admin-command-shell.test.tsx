@@ -162,6 +162,9 @@ const briefing: DailyBriefing = {
     activeJobs: 2,
     fulfilledOrders: 2,
     paymentRisks: 2,
+    openSupportEscalations: 1,
+    highCriticalSupportEscalations: 1,
+    oldestOpenSupportEscalationAgeMinutes: 10,
     availableDrivers: null
   },
   recommendations: [],
@@ -197,6 +200,8 @@ const report: EndOfDayReport = {
     delayIncidents: 1,
     paymentRisks: 2,
     driverFollowUpIncidents: 0,
+    openSupportEscalations: 1,
+    highCriticalSupportEscalations: 1,
     unresolvedRecommendations: 2
   },
   unresolvedActions: [
@@ -256,6 +261,8 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Platform admins remain responsible for recovery oversight");
     expect(markup).toContain("Draft only — review before sending");
     expect(markup).toContain("Support escalation overview");
+    expect(markup).toContain("Support follow-up");
+    expect(markup).toContain("1 high severity");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });
@@ -272,8 +279,19 @@ describe("AdminCommandView", () => {
   it("renders a clear state when there are no attention items", () => {
     const clearMarkup = renderToStaticMarkup(
       <AdminCommandView
-        briefing={{ ...briefing, attentionCount: 0, criticalItems: [], summary: "No current dispatch, payment, or delivery signals require immediate operator intervention." }}
-        report={{ ...report, unresolvedCount: 0, incidentsSummary: { ...report.incidentsSummary, dispatchFailed: 0, delayIncidents: 0, paymentRisks: 0, unresolvedRecommendations: 0 }, unresolvedActions: [] }}
+        briefing={{
+          ...briefing,
+          attentionCount: 0,
+          criticalItems: [],
+          summary: "No current dispatch, payment, delivery, or support signals require immediate operator intervention.",
+          operatingState: {
+            ...briefing.operatingState,
+            openSupportEscalations: 0,
+            highCriticalSupportEscalations: 0,
+            oldestOpenSupportEscalationAgeMinutes: null
+          }
+        }}
+        report={{ ...report, unresolvedCount: 0, incidentsSummary: { ...report.incidentsSummary, dispatchFailed: 0, delayIncidents: 0, paymentRisks: 0, openSupportEscalations: 0, highCriticalSupportEscalations: 0, unresolvedRecommendations: 0 }, unresolvedActions: [] }}
         selectedDate="2026-05-04"
         session={session}
         supportEscalations={[]}

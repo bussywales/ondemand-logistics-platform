@@ -76,6 +76,43 @@ describe("buildEndOfDayReport", () => {
     expect(report.operatingSummary.staleOrDelayedJobs).toBe(1);
     expect(report.unresolvedActions.some((item) => item.type === "ASSIGN_DRIVER")).toBe(true);
   });
+
+  it("includes unresolved support escalations in closeout actions", () => {
+    const report = buildEndOfDayReport([
+      {
+        ...baseRow,
+        order_status: "FULFILLED",
+        payment_status: "CAPTURED",
+        job_status: "DELIVERED",
+        payout_status: "READY",
+        order_updated_at: "2026-05-03T08:40:00.000Z",
+        payment_updated_at: "2026-05-03T08:40:00.000Z",
+        job_updated_at: "2026-05-03T08:40:00.000Z"
+      }
+    ], "business", "2026-05-03", now, [
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        org_id: baseRow.org_id,
+        org_name: baseRow.org_name,
+        order_id: baseRow.order_id,
+        job_id: baseRow.job_id,
+        status: "WAITING_ON_CUSTOMER",
+        severity: "CRITICAL",
+        title: "Customer follow-up required",
+        note: "Customer asked for an operator update.",
+        created_at: "2026-05-03T08:20:00.000Z",
+        updated_at: "2026-05-03T08:20:00.000Z",
+        restaurant_name: baseRow.restaurant_name,
+        customer_name: baseRow.customer_name
+      }
+    ]);
+
+    expect(report.unresolvedCount).toBe(1);
+    expect(report.unresolvedActions[0]?.type).toBe("REVIEW_SUPPORT_ESCALATION");
+    expect(report.unresolvedActions[0]?.severity).toBe("danger");
+    expect(report.incidentsSummary.openSupportEscalations).toBe(1);
+    expect(report.incidentsSummary.highCriticalSupportEscalations).toBe(1);
+  });
 });
 
 describe("ReportsService", () => {
@@ -90,6 +127,7 @@ describe("ReportsService", () => {
     const [sql, params] = pg.query.mock.calls[0] as [string, string[]];
     expect(sql).toContain("from public.org_memberships m");
     expect(params).toEqual(["user-1", "2026-05-03"]);
+    expect((pg.query.mock.calls[1] as [string, string[]])[0]).toContain("from public.support_escalations se");
   });
 
   it("keeps admin reports cross-org", async () => {
@@ -103,5 +141,6 @@ describe("ReportsService", () => {
     const [sql, params] = pg.query.mock.calls[0] as [string, string[]];
     expect(sql).not.toContain("from public.org_memberships m");
     expect(params).toEqual(["2026-05-03"]);
+    expect((pg.query.mock.calls[1] as [string, string[]])[0]).not.toContain("from public.org_memberships m");
   });
 });

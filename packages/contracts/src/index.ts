@@ -995,7 +995,8 @@ export const DailyBriefingItemCategorySchema = z.enum([
   "payment_failed",
   "delivered_uncaptured",
   "active_without_driver",
-  "stale_job"
+  "stale_job",
+  "support_follow_up"
 ]);
 export type DailyBriefingItemCategory = z.infer<typeof DailyBriefingItemCategorySchema>;
 
@@ -1050,6 +1051,9 @@ export const DailyBriefingOperatingStateSchema = z.object({
   activeJobs: z.number().int().nonnegative(),
   fulfilledOrders: z.number().int().nonnegative(),
   paymentRisks: z.number().int().nonnegative(),
+  openSupportEscalations: z.number().int().nonnegative(),
+  highCriticalSupportEscalations: z.number().int().nonnegative(),
+  oldestOpenSupportEscalationAgeMinutes: z.number().int().nonnegative().nullable(),
   availableDrivers: z.number().int().nonnegative().nullable()
 });
 export type DailyBriefingOperatingStateDto = z.infer<typeof DailyBriefingOperatingStateSchema>;
@@ -1078,7 +1082,8 @@ export const EndOfDayActionTypeSchema = z.enum([
   "RETRY_DISPATCH",
   "ASSIGN_DRIVER",
   "CHECK_DELAYED_ORDER",
-  "REVIEW_CUSTOMER_COMMUNICATION_DRAFT"
+  "REVIEW_CUSTOMER_COMMUNICATION_DRAFT",
+  "REVIEW_SUPPORT_ESCALATION"
 ]);
 export type EndOfDayActionType = z.infer<typeof EndOfDayActionTypeSchema>;
 
@@ -1111,6 +1116,8 @@ export const EndOfDayIncidentsSummarySchema = z.object({
   delayIncidents: z.number().int().nonnegative(),
   paymentRisks: z.number().int().nonnegative(),
   driverFollowUpIncidents: z.number().int().nonnegative(),
+  openSupportEscalations: z.number().int().nonnegative(),
+  highCriticalSupportEscalations: z.number().int().nonnegative(),
   unresolvedRecommendations: z.number().int().nonnegative()
 });
 export type EndOfDayIncidentsSummaryDto = z.infer<typeof EndOfDayIncidentsSummarySchema>;

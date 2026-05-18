@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BriefingService, buildDailyBriefing } from "./briefing.service.js";
+import { BriefingService, buildDailyBriefing, buildDailyBriefingWithSupport } from "./briefing.service.js";
 
 const baseRow = {
   org_id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
@@ -92,6 +92,47 @@ describe("buildDailyBriefing", () => {
     expect(briefing.headline).toBe("Operations look clear");
     expect(briefing.attentionCount).toBe(0);
     expect(briefing.criticalItems).toHaveLength(0);
+    expect(briefing.operatingState.openSupportEscalations).toBe(0);
+  });
+
+  it("includes unresolved support escalations in command posture", () => {
+    const briefing = buildDailyBriefingWithSupport([
+      {
+        ...baseRow,
+        order_status: "FULFILLED",
+        payment_status: "CAPTURED",
+        job_status: "DELIVERED",
+        payout_status: "READY",
+        order_updated_at: "2026-05-03T08:40:00.000Z",
+        payment_updated_at: "2026-05-03T08:40:00.000Z",
+        job_updated_at: "2026-05-03T08:40:00.000Z"
+      }
+    ], [
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        org_id: baseRow.org_id,
+        org_name: baseRow.org_name,
+        order_id: baseRow.order_id,
+        job_id: baseRow.job_id,
+        status: "OPEN",
+        severity: "HIGH",
+        title: "Customer needs follow-up",
+        note: "Customer asked for an operator update.",
+        created_at: "2026-05-03T08:20:00.000Z",
+        updated_at: "2026-05-03T08:20:00.000Z",
+        restaurant_name: baseRow.restaurant_name,
+        customer_name: baseRow.customer_name
+      }
+    ], "business", now);
+
+    expect(briefing.attentionCount).toBe(1);
+    expect(briefing.criticalItems[0]?.category).toBe("support_follow_up");
+    expect(briefing.criticalItems[0]?.title).toBe("Human follow-up open");
+    expect(briefing.criticalItems[0]?.href).toBe(`/app/orders/${baseRow.order_id}`);
+    expect(briefing.operatingState.openSupportEscalations).toBe(1);
+    expect(briefing.operatingState.highCriticalSupportEscalations).toBe(1);
+    expect(briefing.operatingState.oldestOpenSupportEscalationAgeMinutes).toBe(40);
+    expect(briefing.recommendations[0]?.label).toBe("Review support follow-up");
   });
 });
 
@@ -107,6 +148,8 @@ describe("BriefingService", () => {
     const [sql, params] = pg.query.mock.calls[0] as [string, string[]];
     expect(sql).toContain("from public.org_memberships m");
     expect(params).toEqual(["user-1"]);
+    expect((pg.query.mock.calls[1] as [string, string[]])[0]).toContain("from public.support_escalations se");
+    expect((pg.query.mock.calls[1] as [string, string[]])[0]).toContain("'WAITING_ON_COURIER'");
   });
 
   it("keeps admin briefings cross-org", async () => {
@@ -119,13 +162,16 @@ describe("BriefingService", () => {
 
     const [sql] = pg.query.mock.calls[0] as [string];
     expect(sql).not.toContain("from public.org_memberships m");
+    expect((pg.query.mock.calls[1] as [string])[0]).not.toContain("from public.org_memberships m");
   });
 
   it("attaches recovery suggestions to job-backed attention items", async () => {
     const pg = {
-      query: vi.fn().mockResolvedValue({
-        rows: [{ ...baseRow, job_status: "DISPATCH_FAILED", dispatch_failed_at: "2026-05-03T08:45:00.000Z" }]
-      })
+      query: vi.fn()
+        .mockResolvedValueOnce({
+          rows: [{ ...baseRow, job_status: "DISPATCH_FAILED", dispatch_failed_at: "2026-05-03T08:45:00.000Z" }]
+        })
+        .mockResolvedValueOnce({ rows: [] })
     };
     const recoveryService = {
       getBusinessRecoverySuggestion: vi.fn().mockResolvedValue({
