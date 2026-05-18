@@ -183,6 +183,7 @@ export function AdminCommandView(props: {
   report: EndOfDayReport;
   selectedDate: string;
   session: BusinessSession;
+  supportError?: string | null;
   supportEscalations: SupportEscalation[];
 }) {
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(() => new Set());
@@ -250,6 +251,12 @@ export function AdminCommandView(props: {
             {highSeveritySupportItems.length} high severity
           </span>
         </div>
+
+        {props.supportError ? (
+          <div className="form-error-banner support-escalation-error">
+            {props.supportError}
+          </div>
+        ) : null}
 
         {openSupportItems.length ? (
           <div className="admin-command-list">
@@ -538,11 +545,11 @@ export function AdminCommandView(props: {
 }
 
 async function loadAdminCommandData(session: BusinessSession, date: string) {
-  return Promise.all([
+  const [briefing, report] = await Promise.all([
     getAdminDailyBriefing(session),
-    getAdminEndOfDayReport(session, date),
-    listAdminSupportEscalations(session)
+    getAdminEndOfDayReport(session, date)
   ]);
+  return { briefing, report };
 }
 
 export function AdminCommandShell() {
@@ -551,6 +558,7 @@ export function AdminCommandShell() {
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [report, setReport] = useState<EndOfDayReport | null>(null);
   const [supportEscalations, setSupportEscalations] = useState<SupportEscalation[]>([]);
+  const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -570,15 +578,22 @@ export function AdminCommandShell() {
     let active = true;
     setLoading(true);
     setLoadError(null);
+    setSupportLogError(null);
 
-    void loadAdminCommandData(session, selectedDate)
-      .then(([nextBriefing, nextReport, nextSupportEscalations]) => {
+    void Promise.all([
+      loadAdminCommandData(session, selectedDate),
+      listAdminSupportEscalations(session).catch((issue) => {
+        setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
+        return [];
+      })
+    ])
+      .then(([commandData, nextSupportEscalations]) => {
         if (!active) {
           return;
         }
 
-        setBriefing(nextBriefing);
-        setReport(nextReport);
+        setBriefing(commandData.briefing);
+        setReport(commandData.report);
         setSupportEscalations(nextSupportEscalations);
       })
       .catch((issue) => {
@@ -607,11 +622,18 @@ export function AdminCommandShell() {
 
     setLoading(true);
     setLoadError(null);
+    setSupportLogError(null);
 
     try {
-      const [nextBriefing, nextReport, nextSupportEscalations] = await loadAdminCommandData(nextSession, selectedDate);
-      setBriefing(nextBriefing);
-      setReport(nextReport);
+      const [commandData, nextSupportEscalations] = await Promise.all([
+        loadAdminCommandData(nextSession, selectedDate),
+        listAdminSupportEscalations(nextSession).catch((issue) => {
+          setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
+          return [];
+        })
+      ]);
+      setBriefing(commandData.briefing);
+      setReport(commandData.report);
       setSupportEscalations(nextSupportEscalations);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
@@ -731,6 +753,7 @@ export function AdminCommandShell() {
           report={report}
           selectedDate={selectedDate}
           session={session}
+          supportError={supportLogError}
           supportEscalations={supportEscalations}
         />
       ) : null}

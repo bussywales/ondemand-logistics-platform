@@ -24,6 +24,7 @@ import {
   getDriverAssignmentIneligibility,
   getBusinessDailyBriefing,
   getLiveJob,
+  getUserFacingApiError,
   listBusinessSupportEscalations,
   listBusinessOrders,
   listEligibleDrivers,
@@ -75,6 +76,7 @@ export function ProductShell(props: ProductShellProps) {
   const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
   const [selectedJobEscalations, setSelectedJobEscalations] = useState<SupportEscalation[]>([]);
+  const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [dailyBriefing, setDailyBriefing] = useState<DailyBriefing | null>(null);
   const [briefingError, setBriefingError] = useState<string | null>(null);
   const [deliveryForm, setDeliveryForm] = useState<DeliveryFormInput>(defaultForm);
@@ -105,6 +107,7 @@ export function ProductShell(props: ProductShellProps) {
     if (!props.jobId || !session) {
       setSelectedJob(null);
       setSelectedJobEscalations([]);
+      setSupportLogError(null);
       return;
     }
 
@@ -187,9 +190,13 @@ export function ProductShell(props: ProductShellProps) {
 
   async function refreshLiveJob(jobId: string, currentSession: BusinessSession) {
     try {
+      setSupportLogError(null);
       const [job, escalationItems] = await Promise.all([
         getLiveJob(currentSession, jobId),
-        listBusinessSupportEscalations(currentSession, { jobId })
+        listBusinessSupportEscalations(currentSession, { jobId }).catch((issue) => {
+          setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
+          return [];
+        })
       ]);
       setSelectedJob(job);
       setSelectedJobEscalations(escalationItems);
@@ -217,7 +224,7 @@ export function ProductShell(props: ProductShellProps) {
       });
       setSelectedJobEscalations((current) => [created, ...current]);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to save support escalation.");
+      setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
       setSupportSubmitting(false);
     }
@@ -235,7 +242,7 @@ export function ProductShell(props: ProductShellProps) {
       const updated = await updateBusinessSupportEscalation(session, id, { status: nextStatus });
       setSelectedJobEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to update support escalation.");
+      setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
       setSupportSubmitting(false);
     }
@@ -415,6 +422,7 @@ export function ProductShell(props: ProductShellProps) {
     setBriefingError(null);
     setSelectedJob(null);
     setSelectedJobEscalations([]);
+    setSupportLogError(null);
     router.push("/get-started");
   }
 
@@ -600,6 +608,7 @@ export function ProductShell(props: ProductShellProps) {
                 selectedDriverId={selectedDriverId}
                 session={session}
                 supportEscalations={selectedJobEscalations}
+                supportError={supportLogError}
                 supportSubmitting={supportSubmitting}
               />
             ) : (

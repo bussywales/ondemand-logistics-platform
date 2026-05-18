@@ -45,6 +45,7 @@ type JobDetailViewProps = {
   selectedDriverId: string | null;
   session: BusinessSession;
   supportEscalations: SupportEscalation[];
+  supportError?: string | null;
   supportSubmitting: boolean;
 };
 
@@ -63,6 +64,7 @@ export function JobDetailView(props: JobDetailViewProps) {
       <JobIncidentSummaryPanel incidentSummary={props.job.incidentSummary} />
       <SupportEscalationLog
         context="job"
+        error={props.supportError}
         items={props.supportEscalations}
         jobId={props.job.id}
         onCreate={props.onCreateSupportEscalation}

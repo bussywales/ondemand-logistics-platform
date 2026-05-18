@@ -15,6 +15,7 @@ import {
   createBusinessSupportEscalation,
   fetchTracking,
   getBusinessOrder,
+  getUserFacingApiError,
   listBusinessOrders,
   listBusinessPayments,
   listBusinessSupportEscalations,
@@ -301,6 +302,7 @@ type OrderDetailProps = {
   order: OrderFinancialView;
   tracking: OrderTrackingIntelligence | null;
   supportEscalations?: SupportEscalation[];
+  supportError?: string | null;
   supportSubmitting?: boolean;
   onCreateSupportEscalation?: (input: CreateSupportEscalationInput) => Promise<void> | void;
   onUpdateSupportEscalationStatus?: (id: string, status: SupportEscalationStatus) => Promise<void> | void;
@@ -368,6 +370,7 @@ export function OrderDetail({
   order,
   tracking,
   supportEscalations = [],
+  supportError = null,
   supportSubmitting = false,
   onCreateSupportEscalation = () => undefined,
   onUpdateSupportEscalationStatus = () => undefined
@@ -520,6 +523,7 @@ export function OrderDetail({
 
       <SupportEscalationLog
         context="order"
+        error={supportError}
         items={supportEscalations}
         jobId={order.job.id}
         onCreate={onCreateSupportEscalation}
@@ -775,6 +779,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   const [selectedOrder, setSelectedOrder] = useState<BusinessCustomerOrder | null>(null);
   const [selectedOrderTracking, setSelectedOrderTracking] = useState<OrderTrackingIntelligence | null>(null);
   const [selectedOrderEscalations, setSelectedOrderEscalations] = useState<SupportEscalation[]>([]);
+  const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [supportSubmitting, setSupportSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(Boolean(orderId));
@@ -794,6 +799,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
       setSelectedOrder(null);
       setSelectedOrderTracking(null);
       setSelectedOrderEscalations([]);
+      setSupportLogError(null);
       return;
     }
 
@@ -869,12 +875,16 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setError(null);
     setSelectedOrderTracking(null);
     setSelectedOrderEscalations([]);
+    setSupportLogError(null);
 
     try {
       const order = await getBusinessOrder(currentSession, id);
       const [paymentItems, escalationItems] = await Promise.all([
         listBusinessPayments(currentSession),
-        listBusinessSupportEscalations(currentSession, { orderId: id })
+        listBusinessSupportEscalations(currentSession, { orderId: id }).catch((issue) => {
+          setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
+          return [];
+        })
       ]);
       const tracking = await fetchTracking(currentSession, order.job.id).catch(() => null);
       setSelectedOrder(order);
@@ -916,7 +926,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
       });
       setSelectedOrderEscalations((current) => [created, ...current]);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to save support escalation.");
+      setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
       setSupportSubmitting(false);
     }
@@ -934,7 +944,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
       const updated = await updateBusinessSupportEscalation(session, id, { status: nextStatus });
       setSelectedOrderEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Unable to update support escalation.");
+      setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
       setSupportSubmitting(false);
     }
@@ -946,6 +956,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setPayments([]);
     setSelectedOrder(null);
     setSelectedOrderEscalations([]);
+    setSupportLogError(null);
     router.push("/get-started");
   }
 
@@ -1179,6 +1190,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
               onUpdateSupportEscalationStatus={handleUpdateSupportEscalationStatus}
               order={selectedOrderView}
               supportEscalations={selectedOrderEscalations}
+              supportError={supportLogError}
               supportSubmitting={supportSubmitting}
               tracking={selectedOrderTracking}
             />

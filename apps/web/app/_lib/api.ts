@@ -226,6 +226,10 @@ export function getUserFacingApiError(
       return fallbackMessage;
     }
 
+    if (error.message.startsWith("Cannot ")) {
+      return fallbackMessage;
+    }
+
     return error.message;
   }
 

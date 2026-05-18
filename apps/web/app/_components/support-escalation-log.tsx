@@ -78,6 +78,7 @@ function statusBadgeClass(value: SupportEscalationStatus) {
 
 export function SupportEscalationLog(props: {
   context: "order" | "job";
+  error?: string | null;
   items: SupportEscalation[];
   orderId?: string;
   jobId?: string;
@@ -129,6 +130,12 @@ export function SupportEscalationLog(props: {
         </div>
         <span className="sw-badge sw-badge--neutral">Human approval required</span>
       </div>
+
+      {props.error ? (
+        <div className="form-error-banner support-escalation-error">
+          {props.error}
+        </div>
+      ) : null}
 
       {props.items.length ? (
         <div className="support-escalation-list">
