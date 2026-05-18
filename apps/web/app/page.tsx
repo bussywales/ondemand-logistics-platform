@@ -221,16 +221,10 @@ const resourcesMenu = [
     title: "Demo Walkthrough"
   },
   {
-    description: "Failed dispatch, no eligible driver, support, refund, and escalation guidance.",
-    href: "/help/pilot-operations",
-    icon: "warning",
-    title: "Pilot Playbooks"
-  },
-  {
-    description: "Release verification, paid-delivery proof, and browser smoke standards.",
-    href: "/demo",
-    icon: "check",
-    title: "Validation Standard"
+    description: "Start with a guided staging session and proof-backed operating walkthrough.",
+    href: "/demo/request",
+    icon: "route",
+    title: "Controlled Pilot"
   },
   {
     description: "Artifacts for paid delivery, fulfilled order state, capture, and readiness.",
@@ -239,12 +233,51 @@ const resourcesMenu = [
     title: "Proof-Driven Operations"
   },
   {
+    description: "Release verification, paid-delivery proof, and browser smoke standards.",
+    href: "/demo",
+    icon: "check",
+    title: "Validation Standard"
+  },
+  {
+    description: "Failed dispatch, no eligible driver, support, refund, and escalation guidance.",
+    href: "/help/pilot-operations",
+    icon: "warning",
+    title: "Pilot Playbooks"
+  },
+  {
     description: "Clear boundaries for staging, tracking, email, payouts, and autonomy.",
     href: "/demo",
     icon: "alert",
     title: "Known Limitations"
   }
 ] satisfies Array<{ description: string; href: string; icon: ShipWrightIconName; title: string }>;
+
+const conversionPaths = [
+  {
+    audience: "Restaurants and local retailers",
+    body: "See how a paid order moves from public menu to dispatch, customer tracking, payment capture, and proof-backed fulfilment.",
+    cta: "Start controlled pilot",
+    href: "/demo/request",
+    tone: "commerce",
+    value: "Pilot merchant"
+  },
+  {
+    audience: "Operators and platform teams",
+    body: "Walk through order queues, job detail, payment risk, command intelligence, admin oversight, and courier readiness.",
+    cta: "Request guided demo",
+    href: "/demo/request",
+    tone: "command",
+    value: "Operator/platform"
+  },
+  {
+    audience: "Investors and partners",
+    body: "Review the connected Stage 1 loop, validation gates, proof artifacts, and the human-in-the-loop command centre roadmap.",
+    cta: "View demo walkthrough",
+    href: "/demo/investor",
+    tone: "proof",
+    value: "Investor/partner"
+  }
+];
 
 const platformPillars = [
   {
@@ -429,6 +462,38 @@ function PlatformEcosystemSection() {
   );
 }
 
+function ConversionSection() {
+  return (
+    <section className="landing-conversion-section" id="pilot">
+      <div className="landing-conversion-copy">
+        <EditorialEyebrow>Controlled pilot entry</EditorialEyebrow>
+        <h2>See ShipWright in a live operations walkthrough.</h2>
+        <p>
+          Start with a focused staging session: release verification, paid-delivery proof, browser smoke, customer
+          tracking, command intelligence, and human-approved recovery paths.
+        </p>
+      </div>
+      <div className="landing-conversion-grid">
+        {conversionPaths.map((path) => (
+          <article className={`landing-conversion-card landing-conversion-card-${path.tone}`} key={path.audience}>
+            <span>{path.value}</span>
+            <h3>{path.audience}</h3>
+            <p>{path.body}</p>
+            <Link className="landing-conversion-link" href={path.href}>
+              {path.cta}
+              <ShipWrightIcon name="arrow" size={16} />
+            </Link>
+          </article>
+        ))}
+      </div>
+      <div className="landing-conversion-proof">
+        <span>Proof posture</span>
+        <p>Release verification, paid-delivery proof, browser smoke, and human-in-the-loop Command Intelligence are part of the demo standard.</p>
+      </div>
+    </section>
+  );
+}
+
 function OrchestrationScene() {
   return (
     <div className="landing-orchestration-visual" aria-label="Commerce orchestration visual">
@@ -542,7 +607,7 @@ export default function HomePage() {
           <Link className="landing-nav-link" href="/get-started">
             Get started
           </Link>
-          <Link className="landing-nav-cta" href="/get-started">
+          <Link className="landing-nav-cta" href="/demo/request">
             Start controlled pilot
           </Link>
         </div>
@@ -557,11 +622,11 @@ export default function HomePage() {
             assistive operations intelligence into one calm command centre.
           </p>
           <div className="landing-hero-actions">
-            <Link className="button button-primary landing-button-primary" href="/get-started">
+            <Link className="button button-primary landing-button-primary" href="/demo/request">
               Start a controlled pilot
             </Link>
             <Link className="button button-secondary landing-button-secondary" href="/demo/investor">
-              View investor demo
+              View demo walkthrough
             </Link>
           </div>
         </div>
@@ -680,6 +745,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <ConversionSection />
+
       <section className="landing-final-scene">
         <div>
           <EditorialEyebrow>ShipWright</EditorialEyebrow>
@@ -690,11 +757,11 @@ export default function HomePage() {
           </p>
         </div>
         <div className="landing-cta-row">
-          <Link className="button button-primary landing-button-primary" href="/get-started">
-            Prepare a pilot
+          <Link className="button button-primary landing-button-primary" href="/demo/request">
+            Start controlled pilot
           </Link>
-          <Link className="button button-secondary landing-button-secondary" href="/contact">
-            Talk to us
+          <Link className="button button-secondary landing-button-secondary" href="/demo/investor">
+            View demo walkthrough
           </Link>
         </div>
       </section>
@@ -718,6 +785,7 @@ export default function HomePage() {
           <Link href="/get-started">Get started</Link>
           <Link href="/demo">Demo</Link>
           <Link href="/demo/investor">Investor demo</Link>
+          <Link href="/demo/request">Request demo</Link>
           <Link href="/contact">Contact</Link>
         </nav>
       </footer>

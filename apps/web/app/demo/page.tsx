@@ -6,7 +6,10 @@ export default function DemoPage() {
     <PlaceholderPage
       actions={
         <>
-          <Link className="button button-primary" href="/demo/investor">
+          <Link className="button button-primary" href="/demo/request">
+            Request controlled pilot
+          </Link>
+          <Link className="button button-secondary" href="/demo/investor">
             Open investor demo
           </Link>
           <Link className="button button-secondary" href="/restaurants/pilot-kitchen-1777370757">
