@@ -5,6 +5,11 @@ ShipWright's public brand system should feel like premium logistics infrastructu
 
 This system exists to prevent future marketing work from drifting into generic SaaS cards, decorative gradients, or dashboard-heavy visuals.
 
+Related direction:
+
+- `docs/brand-world.md` defines the emotional world, audience feelings, and visual metaphors.
+- `docs/landing-page-art-direction.md` translates the brand world into landing-page composition and future hero concepts.
+
 ## Visual World
 ShipWright's recognisable visual language is built around five motifs:
 
@@ -32,6 +37,34 @@ Use these scene concepts for future public landing visuals:
 | Proof captured / fulfilment complete | POD, capture, fulfilled state, closeout evidence | Green proof marker, quiet completion signal |
 | Platform command oversight | Cross-org posture and readiness | Dark or white oversight card, restrained signal count |
 
+## Illustration System
+ShipWright illustration should be dimensional, atmospheric, and operationally specific. It should show the product's operating loop without becoming a literal screenshot or a fake live map.
+
+Preferred formats:
+
+- SVG-native hero and section assets.
+- CSS-native supporting atmosphere.
+- Small proprietary markers for commerce, command, courier, proof, and oversight.
+- Composable route-light layers that can appear in hero, mega menu, footer, and proof sections.
+
+Preferred visual ingredients:
+
+- Soft city-grid perspective.
+- Curved route trails.
+- Floating signal fragments.
+- Proof stamps and closeout ticks.
+- Ambient urban light.
+- Subtle depth blur and shadow.
+
+Do not use:
+
+- Generic SaaS vector people.
+- Flat delivery clipart.
+- Cartoon scooters.
+- Fake ETA/location visuals.
+- Dense dashboard screenshot walls.
+- Neon, cyberpunk, or crypto-style lighting.
+
 ## Colour Atmosphere
 Use colour as atmosphere and meaning, not decoration:
 
@@ -43,6 +76,30 @@ Use colour as atmosphere and meaning, not decoration:
 
 Avoid saturated full-page gradients, neon glows, crypto/gaming colours, and loud alert washes.
 
+Colour should increase only at meaningful operating moments:
+
+- Order entering the network.
+- Dispatch coordination.
+- Courier movement.
+- Proof and closeout.
+- Platform oversight.
+
+Most page surfaces should stay white, off-white, pale grey-blue, or warm ivory so the brand feels premium instead of decorative.
+
+## Typography Personality
+Typography should feel editorial and confident, but it should not carry the entire brand identity.
+
+Rules:
+
+- Use large hero type sparingly.
+- Let visual scenes carry emotional weight.
+- Use generous line-height and restrained line length.
+- Prefer medium and semibold weights outside major hero moments.
+- Avoid repeated oversized headings in every section.
+- Section typography should vary rhythmically so the page feels curated rather than templated.
+
+Typography should dominate only when the section is an editorial statement. In visual sections, typography should support the scene.
+
 ## Composition Rules
 - One major visual anchor per section.
 - Typography supports the scene; it should not be the only source of impact.
@@ -50,6 +107,24 @@ Avoid saturated full-page gradients, neon glows, crypto/gaming colours, and loud
 - Prefer rows, editorial moments, and visual scenes over equal-weight card grids.
 - Do not rely on product screenshots as the whole brand system.
 - Internal operational UI must stay calmer and more task-first than the public landing page.
+
+## Hero Exploration Directions
+Future hero work should explore multiple art-directed compositions before more implementation polishing.
+
+### Route Orchestration
+A perspective city grid with an amber commerce node, blue command node, moving courier marker, and green proof destination. This is the most infrastructure-led direction.
+
+### Commerce Movement
+A warmer merchant-to-customer scene that shows local commerce moving through a structured route. This is the most merchant-friendly direction.
+
+### Calm Command Centre
+A sparse command scene where daily briefing, recovery suggestion, incident summary, and proof state appear as floating signals around one route-light spine. This is the most operator-led direction.
+
+### City-Grid Intelligence
+An abstract overhead urban system with soft route trails and platform oversight markers. This is the most platform-company direction.
+
+### Fulfilment Lifecycle
+A cinematic sequence of order, authorisation, dispatch, pickup, drop-off, capture, proof, and report. This is the most proof-led direction.
 
 ## Depth And Glow Rules
 - Use soft blur and route-light glows sparingly.
@@ -61,6 +136,27 @@ Avoid saturated full-page gradients, neon glows, crypto/gaming colours, and loud
 - Hover movement should be subtle: small lift, soft glow, no bounce.
 - No heavy animation libraries for brand atmosphere.
 - Motion should support operational movement and sequence, not visual novelty.
+- Route-light motion may gently draw, pulse, or progress when future motion is added.
+- Mega menus should open softly and feel layered, not like basic dropdowns.
+- Respect reduced-motion settings.
+
+## Mega Menu Art Direction
+Public mega menus should communicate platform maturity, not just provide links.
+
+They should include:
+
+- A short editorial intro.
+- Soft layered surface treatment.
+- Small route-light visual anchors.
+- Commerce, command, and proof node cues.
+- Clear grouping without enterprise clutter.
+
+They should not include:
+
+- Dark menu panels.
+- Dense link lists.
+- Dashboard screenshots.
+- Decorative icons without meaning.
 
 ## What Not To Build
 - Generic SaaS vector illustrations.
