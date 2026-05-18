@@ -11,12 +11,13 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { listBusinessOrders, listBusinessPayments } from "../_lib/api";
+import { getBusinessPilotStatus, listBusinessOrders, listBusinessPayments } from "../_lib/api";
 import {
   formatCurrency,
   formatDateTime,
   type BusinessCustomerOrder,
   type BusinessPaymentSummary,
+  type BusinessPilotStatus,
   type BusinessSession
 } from "../_lib/product-state";
 import {
@@ -36,6 +37,7 @@ import {
   withOrderFinancials
 } from "../_lib/orders-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
+import { PilotGuardrailBanner } from "./pilot-guardrail";
 
 function statusTone(status: string) {
   if (["PAYMENT_FAILED", "FAILED", "CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED", "DISPATCH_FAILED"].includes(status)) {
@@ -214,7 +216,11 @@ function buildOrderViews(
 }
 
 async function loadPaymentRiskData(currentSession: BusinessSession) {
-  return Promise.all([listBusinessOrders(currentSession), listBusinessPayments(currentSession)]);
+  return Promise.all([
+    listBusinessOrders(currentSession),
+    listBusinessPayments(currentSession),
+    getBusinessPilotStatus(currentSession).catch(() => null)
+  ]);
 }
 
 export function PaymentsShell() {
@@ -222,6 +228,7 @@ export function PaymentsShell() {
   const { status, session, error, refreshBusinessSession, signOut } = useBusinessAuth();
   const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [payments, setPayments] = useState<BusinessPaymentSummary[]>([]);
+  const [pilotStatus, setPilotStatus] = useState<BusinessPilotStatus | null>(null);
   const [filter, setFilter] = useState<PaymentRiskFilterKey>("needs-action");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -243,13 +250,14 @@ export function PaymentsShell() {
     setLoadError(null);
 
     void loadPaymentRiskData(session)
-      .then(([nextOrders, nextPayments]) => {
+      .then(([nextOrders, nextPayments, nextPilotStatus]) => {
         if (!active) {
           return;
         }
 
         setOrders(nextOrders);
         setPayments(nextPayments);
+        setPilotStatus(nextPilotStatus);
       })
       .catch((issue) => {
         if (active) {
@@ -283,6 +291,7 @@ export function PaymentsShell() {
     await signOut();
     setOrders([]);
     setPayments([]);
+    setPilotStatus(null);
     router.push("/get-started");
   }
 
@@ -340,9 +349,10 @@ export function PaymentsShell() {
                   setLoading(true);
                   setLoadError(null);
                   return loadPaymentRiskData(nextSession)
-                    .then(([nextOrders, nextPayments]) => {
+                    .then(([nextOrders, nextPayments, nextPilotStatus]) => {
                       setOrders(nextOrders);
                       setPayments(nextPayments);
+                      setPilotStatus(nextPilotStatus);
                     })
                     .catch((issue) => {
                       setLoadError(issue instanceof Error ? issue.message : "Unable to load payment risk.");
@@ -417,6 +427,8 @@ export function PaymentsShell() {
         </aside>
 
         <div className="ops-main">
+          <PilotGuardrailBanner canManagePilots={Boolean(session.context.platformAdmin)} compact pilotStatus={pilotStatus} />
+
           {loadError ? (
             <section className="sw-empty-state payments-empty-state payments-empty-state-danger">
               <span className="empty-state-icon" aria-hidden="true">

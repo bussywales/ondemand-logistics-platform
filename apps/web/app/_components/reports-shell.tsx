@@ -11,10 +11,11 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getBusinessEndOfDayReport, getUserFacingApiError } from "../_lib/api";
-import { formatDateTime, type BusinessSession, type EndOfDayActionItem, type EndOfDayEvidenceLink, type EndOfDayReport } from "../_lib/product-state";
+import { getBusinessEndOfDayReport, getBusinessPilotStatus, getUserFacingApiError } from "../_lib/api";
+import { formatDateTime, type BusinessPilotStatus, type BusinessSession, type EndOfDayActionItem, type EndOfDayEvidenceLink, type EndOfDayReport } from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { COMMAND_INTELLIGENCE_EXPLAINER, COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
+import { PilotGuardrailBanner } from "./pilot-guardrail";
 
 const REPORT_DATA_UNAVAILABLE_MESSAGE = "Report data unavailable. Refresh or contact support.";
 
@@ -271,13 +272,17 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
 }
 
 async function loadEndOfDayReport(session: BusinessSession, date: string) {
-  return getBusinessEndOfDayReport(session, date);
+  return Promise.all([
+    getBusinessEndOfDayReport(session, date),
+    getBusinessPilotStatus(session).catch(() => null)
+  ]);
 }
 
 export function ReportsShell(props: { initialDate?: string }) {
   const router = useRouter();
   const { status, session, error, refreshBusinessSession, signOut } = useBusinessAuth();
   const [report, setReport] = useState<EndOfDayReport | null>(null);
+  const [pilotStatus, setPilotStatus] = useState<BusinessPilotStatus | null>(null);
   const [selectedDate, setSelectedDate] = useState(props.initialDate ?? new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -299,9 +304,10 @@ export function ReportsShell(props: { initialDate?: string }) {
     setLoadError(null);
 
     void loadEndOfDayReport(session, selectedDate)
-      .then((nextReport) => {
+      .then(([nextReport, nextPilotStatus]) => {
         if (active) {
           setReport(nextReport);
+          setPilotStatus(nextPilotStatus);
         }
       })
       .catch((issue) => {
@@ -326,6 +332,7 @@ export function ReportsShell(props: { initialDate?: string }) {
   async function handleSignOut() {
     await signOut();
     setReport(null);
+    setPilotStatus(null);
     router.push("/get-started");
   }
 
@@ -339,8 +346,9 @@ export function ReportsShell(props: { initialDate?: string }) {
     setLoadError(null);
 
     try {
-      const nextReport = await loadEndOfDayReport(nextSession, selectedDate);
+      const [nextReport, nextPilotStatus] = await loadEndOfDayReport(nextSession, selectedDate);
       setReport(nextReport);
+      setPilotStatus(nextPilotStatus);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, REPORT_DATA_UNAVAILABLE_MESSAGE));
     } finally {
@@ -476,6 +484,8 @@ export function ReportsShell(props: { initialDate?: string }) {
         </aside>
 
         <div className="ops-main">
+          <PilotGuardrailBanner canManagePilots={Boolean(session.context.platformAdmin)} compact pilotStatus={pilotStatus} />
+
           {loadError ? (
             <section className="sw-empty-state reports-empty-state reports-empty-state-danger">
               <span className="empty-state-icon" aria-hidden="true">

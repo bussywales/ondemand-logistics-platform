@@ -15,6 +15,7 @@ import {
   createBusinessSupportEscalation,
   fetchTracking,
   getBusinessOrder,
+  getBusinessPilotStatus,
   getUserFacingApiError,
   listBusinessOrders,
   listBusinessPayments,
@@ -26,6 +27,7 @@ import {
   formatDateTime,
   type BusinessCustomerOrder,
   type BusinessPaymentSummary,
+  type BusinessPilotStatus,
   type BusinessSession,
   type CreateSupportEscalationInput,
   type SupportEscalation,
@@ -55,6 +57,7 @@ import {
 import { buildPublicTrackingHref, getCustomerTrackingTimelineEntry } from "../_lib/tracking-state";
 import { COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
 import { JobIncidentSummaryPanel } from "./product-shell/job-incident-summary-panel";
+import { PilotGuardrailBanner } from "./pilot-guardrail";
 import { SupportEscalationLog } from "./support-escalation-log";
 
 type OrderTrackingIntelligence = {
@@ -779,6 +782,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   const [selectedOrder, setSelectedOrder] = useState<BusinessCustomerOrder | null>(null);
   const [selectedOrderTracking, setSelectedOrderTracking] = useState<OrderTrackingIntelligence | null>(null);
   const [selectedOrderEscalations, setSelectedOrderEscalations] = useState<SupportEscalation[]>([]);
+  const [pilotStatus, setPilotStatus] = useState<BusinessPilotStatus | null>(null);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [supportSubmitting, setSupportSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -857,12 +861,14 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setError(null);
 
     try {
-      const [orderItems, paymentItems] = await Promise.all([
+      const [orderItems, paymentItems, nextPilotStatus] = await Promise.all([
         listBusinessOrders(currentSession),
-        listBusinessPayments(currentSession)
+        listBusinessPayments(currentSession),
+        getBusinessPilotStatus(currentSession).catch(() => null)
       ]);
       setOrders(orderItems);
       setPayments(paymentItems);
+      setPilotStatus(nextPilotStatus);
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load customer orders.");
     } finally {
@@ -879,16 +885,18 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
 
     try {
       const order = await getBusinessOrder(currentSession, id);
-      const [paymentItems, escalationItems] = await Promise.all([
+      const [paymentItems, escalationItems, nextPilotStatus] = await Promise.all([
         listBusinessPayments(currentSession),
         listBusinessSupportEscalations(currentSession, { orderId: id }).catch((issue) => {
           setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
           return [];
-        })
+        }),
+        getBusinessPilotStatus(currentSession).catch(() => null)
       ]);
       const tracking = await fetchTracking(currentSession, order.job.id).catch(() => null);
       setSelectedOrder(order);
       setPayments(paymentItems);
+      setPilotStatus(nextPilotStatus);
       setSelectedOrderEscalations(escalationItems);
       setOrders((current) => [order, ...current.filter((item) => item.id !== order.id)]);
 
@@ -955,6 +963,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setOrders([]);
     setPayments([]);
     setSelectedOrder(null);
+    setPilotStatus(null);
     setSelectedOrderEscalations([]);
     setSupportLogError(null);
     router.push("/get-started");
@@ -1097,6 +1106,8 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
         </aside>
 
         <div className="ops-main">
+          <PilotGuardrailBanner canManagePilots={Boolean(session.context.platformAdmin)} compact pilotStatus={pilotStatus} />
+
           {!detailMode ? (
             <section className="ops-stack orders-stack">
               <section className={`sw-command-surface orders-command-surface ${orderSummary.dispatchFailed > 0 || orderSummary.paymentRisk > 0 ? "orders-command-surface-alert" : ""}`}>

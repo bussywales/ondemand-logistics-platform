@@ -10,6 +10,7 @@ import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
 import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
+import { getPilotGuardrailState } from "../_lib/pilot-guardrails";
 import {
   type BusinessSession,
   type DailyBriefing,
@@ -220,9 +221,12 @@ export function AdminCommandView(props: {
     : null;
   const supportPosture = props.briefing.operatingState;
   const openSupportItems = props.supportEscalations.filter((item) => !["RESOLVED", "CANCELLED"].includes(item.status));
-  const activePilots = props.pilots.filter((pilot) => pilot.status === "ACTIVE").length;
-  const pausedPilots = props.pilots.filter((pilot) => pilot.status === "PAUSED").length;
-  const notRehearsalReadyPilots = props.pilots.filter((pilot) => !["REHEARSAL_READY", "PILOT_READY"].includes(pilot.readinessStage)).length;
+  const activeControlledPilots = props.pilots.filter((pilot) => pilot.mode === "CONTROLLED_PILOT" && pilot.status === "ACTIVE").length;
+  const liveReadyPilots = props.pilots.filter((pilot) => pilot.mode === "LIVE_READY" && pilot.readinessStage === "PILOT_READY").length;
+  const pilotGuardrailGaps = props.pilots.filter((pilot) => {
+    const state = getPilotGuardrailState({ workspace: pilot, checks: [], guidance: "" });
+    return state.guardrailLevel === "PAUSED" || state.guardrailLevel === "WARNING";
+  }).length;
 
   return (
     <section className="ops-stack admin-command-stack">
@@ -247,8 +251,9 @@ export function AdminCommandView(props: {
           <CountCard copy="Operator-approved follow-up items remaining for closeout." label="Unresolved actions" tone={props.report.unresolvedCount ? "warning" : "success"} value={props.report.unresolvedCount} />
           <CountCard copy="Human support records that remain open or in review." label="Support follow-up" tone={supportPosture.highCriticalSupportEscalations ? "warning" : supportPosture.openSupportEscalations ? "info" : "success"} value={supportPosture.openSupportEscalations} />
           <CountCard copy="Pilot profiles tracked for controlled operations." label="Pilot workspaces" tone={props.pilots.length ? "info" : "success"} value={props.pilots.length} />
-          <CountCard copy="Pilot workspaces currently active." label="Active pilots" tone={activePilots ? "info" : "success"} value={activePilots} />
-          <CountCard copy="Paused or not rehearsal-ready workspaces need review." label="Pilot readiness gaps" tone={pausedPilots || notRehearsalReadyPilots ? "warning" : "success"} value={pausedPilots + notRehearsalReadyPilots} />
+          <CountCard copy="Controlled pilot workspaces currently active." label="Active controlled pilots" tone={activeControlledPilots ? "info" : "success"} value={activeControlledPilots} />
+          <CountCard copy="Workspaces marked live-ready with pilot-ready evidence." label="Live-ready pilots" tone={liveReadyPilots ? "success" : "info"} value={liveReadyPilots} />
+          <CountCard copy="Paused or not rehearsal-ready workspaces need review." label="Pilot guardrail gaps" tone={pilotGuardrailGaps ? "warning" : "success"} value={pilotGuardrailGaps} />
         </div>
       </section>
 

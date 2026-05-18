@@ -116,6 +116,11 @@ Current baseline after browser smoke credential seeding:
 - authenticated business workspace, admin command, and driver routes are covered by Playwright smoke when staging smoke credentials are configured
 - staging-ready feature work should use `docs/validation/staging-validation-standard.md` as the required quality gate
 
+Pilot guardrail posture after Operational Maturity Tranche 3:
+- business surfaces show soft pilot guardrails for demo, internal test, controlled pilot, paused, and live-ready workspace states
+- `/admin/pilots` remains the admin-led source of truth for pilot mode, readiness stage, owners, and checklist evidence
+- guardrails warn, explain, and guide operators, but do not block ordering, dispatch, payment review, reporting, or driver workflows in v1
+
 ### Structurally checked in this pass
 The following screens were checked through current route/component structure, successful builds/tests, and shell composition rather than a live authenticated browser session in this pass:
 - `/app`
@@ -154,6 +159,7 @@ These are operationally manual by design or by current Stage 1 scope.
 - named support/escalation owner during pilot windows
 - named courier/compliance owner during pilot windows
 - named restaurant contact and operating hours owner
+- platform admin owner for pilot profile mode, readiness stage, and guardrail review
 
 ### Tester handling
 Controlled testers can proceed only if:

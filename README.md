@@ -155,6 +155,6 @@ Before a demo, record the latest proof order/job/payment/POD ids and keep the la
 - tracking is status/progress based, not live-map movement or guaranteed ETA tracking
 - payout and reconciliation surfaces are visibility-first, not full Stripe Connect settlement automation
 - courier readiness is read-only; approval and compliance ownership remain human operational responsibilities
-- pilot management is read-only context for business workspaces and admin-led review for platform admins; it does not automatically block workflows in v1
+- pilot management and guardrails are soft, non-blocking context for business workspaces and admin-led review for platform admins; they warn before wrong-readiness workflows but do not disable operations in v1
 - Resend-backed external email delivery is intentionally parked until a verified sender/domain is available
 - design-system migration and legacy `globals.css` reduction remain incremental, not finished

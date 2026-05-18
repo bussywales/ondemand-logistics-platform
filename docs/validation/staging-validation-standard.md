@@ -52,6 +52,7 @@ The paid-delivery proof must confirm:
 - notification outbox processed for the staged delivery flow
 - support escalation schema readiness remains available for command posture and closeout surfaces
 - pilot workspace schema readiness remains available for admin-led pilot mode, readiness, owner, and checklist tracking
+- pilot guardrail surfaces remain non-blocking and visible on business/admin pilot routes when a pilot profile is configured
 - release readiness checks green
 
 The release verification must confirm:

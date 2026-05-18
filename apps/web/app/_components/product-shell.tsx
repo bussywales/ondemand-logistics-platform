@@ -14,6 +14,7 @@ import { JobDetailView } from "./product-shell/job-detail-view";
 import { JobsListView } from "./product-shell/jobs-list-view";
 import { isCompletedToday } from "./product-shell/shared";
 import { ProductUpdateAnnouncement } from "./product-updates";
+import { PilotGuardrailBanner } from "./pilot-guardrail";
 import { ShipWrightIcon } from "./shipwright-icon";
 import { WorkspaceNav } from "./workspace-nav";
 import {
@@ -551,6 +552,11 @@ export function ProductShell(props: ProductShellProps) {
 
         <div className="ops-main">
           {error ? <div className="form-error-banner">{error}</div> : null}
+          <PilotGuardrailBanner
+            canManagePilots={Boolean(session.context.platformAdmin)}
+            compact={props.view !== "home"}
+            pilotStatus={pilotStatus}
+          />
 
           {props.view === "home" ? (
             <WorkspaceDashboard
@@ -561,7 +567,6 @@ export function ProductShell(props: ProductShellProps) {
               briefingError={briefingError}
               onRefresh={() => void handleRefresh()}
               onRetryDispatch={(nextJob) => void handleRetryDispatch(nextJob)}
-              pilotStatus={pilotStatus}
               recentOrders={recentOrders}
               workspaceSummary={workspaceSummary}
             />

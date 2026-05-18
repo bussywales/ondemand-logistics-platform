@@ -112,8 +112,9 @@ Recommended order:
 12. show the admin control plane
 13. show admin command intelligence
 14. show pilot management mode, readiness stage, owners, and checklist evidence
-15. show help and pilot playbooks
-16. close by referencing the proof artifacts and current known limitations
+15. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
+16. show help and pilot playbooks
+17. close by referencing the proof artifacts and current known limitations
 
 Audience-specific walkthroughs:
 - use `investor-walkthrough.md` for investor or strategic partner sessions
@@ -138,6 +139,7 @@ Do not claim:
 - broad compliance completeness for live courier operations
 - settlement or reconciliation automation beyond the current visibility surfaces
 - pilot mode as an automatic operating control; it is a human-reviewed readiness layer in v1
+- pilot guardrails as hard enforcement; they are soft warnings in v1
 
 When Command Intelligence is shown, describe it as:
 - deterministic

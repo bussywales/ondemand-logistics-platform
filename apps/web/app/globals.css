@@ -12703,3 +12703,75 @@ select:hover,
     text-align: left;
   }
 }
+
+.pilot-guardrail {
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--surface) 94%, var(--sw-command-blue) 6%);
+  border: 1px solid color-mix(in srgb, var(--line) 86%, var(--sw-command-blue) 14%);
+  border-left: 3px solid color-mix(in srgb, var(--sw-command-blue) 58%, var(--line));
+  border-radius: var(--sw-radius-lg);
+  box-shadow: var(--sw-shadow-subtle, 0 18px 50px rgba(18, 30, 45, 0.07));
+  display: flex;
+  gap: var(--sw-space-4);
+  justify-content: space-between;
+  margin-bottom: var(--sw-space-4);
+  padding: var(--sw-space-4);
+}
+
+.pilot-guardrail-warning {
+  background: color-mix(in srgb, var(--surface) 94%, var(--sw-warning, #d89b22) 6%);
+  border-color: color-mix(in srgb, var(--line) 78%, var(--sw-warning, #d89b22) 22%);
+  border-left-color: color-mix(in srgb, var(--sw-warning, #d89b22) 68%, var(--line));
+}
+
+.pilot-guardrail-paused {
+  background: color-mix(in srgb, var(--surface) 96%, var(--sw-danger, #b5534b) 4%);
+  border-color: color-mix(in srgb, var(--line) 78%, var(--sw-danger, #b5534b) 22%);
+  border-left-color: color-mix(in srgb, var(--sw-danger, #b5534b) 62%, var(--line));
+}
+
+.pilot-guardrail-ready {
+  background: color-mix(in srgb, var(--surface) 96%, var(--sw-success, #4f8b6b) 4%);
+  border-color: color-mix(in srgb, var(--line) 82%, var(--sw-success, #4f8b6b) 18%);
+  border-left-color: color-mix(in srgb, var(--sw-success, #4f8b6b) 62%, var(--line));
+}
+
+.pilot-guardrail-compact {
+  padding: var(--sw-space-3) var(--sw-space-4);
+}
+
+.pilot-guardrail-copy {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--sw-space-3);
+  min-width: 0;
+}
+
+.pilot-guardrail-copy h2 {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  margin: var(--sw-space-2) 0 var(--sw-space-1);
+}
+
+.pilot-guardrail-copy p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.pilot-guardrail-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-2);
+  justify-content: flex-end;
+}
+
+@media (max-width: 820px) {
+  .pilot-guardrail {
+    flex-direction: column;
+  }
+
+  .pilot-guardrail-actions {
+    justify-content: flex-start;
+  }
+}

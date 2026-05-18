@@ -38,7 +38,6 @@ type WorkspaceDashboardProps = {
   briefingError: string | null;
   onRefresh: () => void;
   onRetryDispatch: (job: AppJob) => void;
-  pilotStatus: BusinessPilotStatus | null;
   recentOrders: BusinessCustomerOrder[];
   workspaceSummary: WorkspaceSummary;
 };
@@ -367,7 +366,6 @@ export function WorkspaceDashboard(props: WorkspaceDashboardProps) {
         attentionCount={props.attentionJobs.length}
         onRefresh={props.onRefresh}
       />
-      <PilotStatusSurface pilotStatus={props.pilotStatus} />
       <DailyBriefingSurface briefing={props.briefing} error={props.briefingError} />
       <MetricSignalGrid attentionCount={props.attentionJobs.length} workspaceSummary={props.workspaceSummary} />
       <RecentOrdersSurface recentOrders={props.recentOrders} />

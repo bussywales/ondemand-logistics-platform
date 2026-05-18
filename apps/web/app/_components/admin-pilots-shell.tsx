@@ -15,6 +15,7 @@ import {
   updateAdminPilot,
   updateAdminPilotCheck
 } from "../_lib/api";
+import { getPilotGuardrailState, pilotGuardrailBadgeClass } from "../_lib/pilot-guardrails";
 import type {
   BusinessSession,
   PilotReadinessCheck,
@@ -210,16 +211,20 @@ function PilotForm(props: {
 }
 
 export function PilotRow(props: { pilot: PilotWorkspace; active: boolean; onSelect: (pilot: PilotWorkspace) => void }) {
+  const guardrail = getPilotGuardrailState({ workspace: props.pilot, checks: [], guidance: "" }, { canManagePilots: true });
+
   return (
     <button className={`sw-list-row admin-pilot-row ${props.active ? "admin-pilot-row-active" : ""}`} onClick={() => props.onSelect(props.pilot)} type="button">
       <div>
         <div className="briefing-evidence-row">
+          <span className={`sw-badge ${pilotGuardrailBadgeClass(guardrail.guardrailLevel)}`}>{guardrail.badgeCopy}</span>
           <span className={`sw-badge ${badgeClass(props.pilot.mode)}`}>{formatLabel(props.pilot.mode)}</span>
           <span className={`sw-badge ${badgeClass(props.pilot.status)}`}>{formatLabel(props.pilot.status)}</span>
           <span>{completionCopy(props.pilot)}</span>
         </div>
         <strong>{props.pilot.orgName ?? props.pilot.orgId}</strong>
         <p>{formatLabel(props.pilot.readinessStage)} · owner {props.pilot.pilotOwner ?? "unassigned"}</p>
+        <p className="ops-detail-note">Guardrail: {guardrail.recommendedAction}</p>
       </div>
       <div className="admin-pilot-row-posture">
         <span>{props.pilot.posture.activeJobs} active jobs</span>
@@ -289,6 +294,7 @@ export function AdminPilotsShell() {
     total: pilots.length,
     active: pilots.filter((pilot) => pilot.status === "ACTIVE").length,
     paused: pilots.filter((pilot) => pilot.status === "PAUSED").length,
+    liveReady: pilots.filter((pilot) => pilot.mode === "LIVE_READY" && pilot.readinessStage === "PILOT_READY").length,
     notRehearsalReady: pilots.filter((pilot) => !["REHEARSAL_READY", "PILOT_READY"].includes(pilot.readinessStage)).length
   }), [pilots]);
 
@@ -411,6 +417,7 @@ export function AdminPilotsShell() {
         </div>
         <div className="admin-command-page-counts">
           <div className="sw-metric-card sw-supporting-surface admin-command-metric-card"><span className="sw-metric-label">Active pilots</span><strong className="sw-metric-value">{summary.active}</strong></div>
+          <div className="sw-metric-card sw-supporting-surface admin-command-metric-card"><span className="sw-metric-label">Live-ready</span><strong className="sw-metric-value">{summary.liveReady}</strong></div>
           <div className="sw-metric-card sw-supporting-surface admin-command-metric-card"><span className="sw-metric-label">Paused pilots</span><strong className="sw-metric-value">{summary.paused}</strong></div>
           <div className="sw-metric-card sw-supporting-surface admin-command-metric-card"><span className="sw-metric-label">Not rehearsal-ready</span><strong className="sw-metric-value">{summary.notRehearsalReady}</strong></div>
         </div>

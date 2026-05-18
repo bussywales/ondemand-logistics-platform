@@ -298,6 +298,7 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Support follow-up");
     expect(markup).toContain("1 high severity");
     expect(markup).toContain("Pilot workspaces");
+    expect(markup).toContain("Pilot guardrail gaps");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });

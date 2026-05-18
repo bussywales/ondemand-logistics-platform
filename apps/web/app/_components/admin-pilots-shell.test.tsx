@@ -36,6 +36,7 @@ describe("PilotRow", () => {
     expect(markup).toContain("Controlled Pilot");
     expect(markup).toContain("Active");
     expect(markup).toContain("8/10 checks clear");
+    expect(markup).toContain("Guardrail:");
     expect(markup).toContain("2 active jobs");
     expect(markup).toContain("1 support");
     expect(markup).not.toContain("score");

@@ -86,6 +86,8 @@ Business:
 - `/app/restaurant`
 - `/app/notifications`
 
+Confirm the business guardrail strip is visible on `/app`, orders, jobs, payment risk, and end-of-day report surfaces when a pilot profile is configured.
+
 Admin and driver:
 - `/admin`
 - `/admin/command`
@@ -120,6 +122,7 @@ Be ready to explain:
 - staging-only status
 - browser payment surface vs proof harness payment execution
 - pilot workspace mode/status/readiness are admin-reviewed context signals, not automatic workflow gates
+- pilot guardrails warn, explain, and guide; they do not block workflows in v1
 - Resend parked pending verified sender/domain
 - no autonomous AI actions
 - status-based tracking, not live map tracking
