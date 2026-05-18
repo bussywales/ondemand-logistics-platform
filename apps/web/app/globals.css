@@ -10764,6 +10764,7 @@ select:hover,
   gap: clamp(2rem, 6vw, 5rem);
   align-items: center;
   margin-inline: calc((100vw - min(1280px, calc(100vw - 2.5rem))) / -2);
+  margin-top: clamp(2.5rem, 5vw, 4.5rem);
   padding: clamp(4.5rem, 9vw, 7.5rem) max(1.25rem, calc((100vw - 1280px) / 2));
   overflow: hidden;
 }
@@ -12336,10 +12337,15 @@ select:hover,
 
 .landing-signature-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  grid-auto-rows: 1fr;
 }
 
 .landing-signature-card {
+  display: flex;
+  flex-direction: column;
   grid-column: span 2;
+  height: 100%;
   overflow: hidden;
   transition:
     border-color 180ms ease,
@@ -12354,10 +12360,29 @@ select:hover,
   margin-top: 0;
 }
 
+.landing-signature-card:nth-child(2),
+.landing-signature-card:nth-child(3) {
+  margin-top: 0;
+}
+
 .landing-signature-card:hover {
   border-color: rgba(66, 125, 160, 0.16);
   box-shadow: 0 30px 86px rgba(10, 16, 23, 0.09);
   transform: translateY(-3px);
+}
+
+.landing-signature-card .landing-signature-card-visual {
+  flex: 0 0 auto;
+}
+
+.landing-signature-card > div:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.landing-signature-card > div:last-child p {
+  margin-top: auto;
 }
 
 .landing-signature-card-visual::before {
@@ -12463,10 +12488,15 @@ select:hover,
   .landing-signature-card:nth-child(4),
   .landing-signature-card:nth-child(5) {
     grid-column: auto;
+    height: auto;
   }
 }
 
 @media (max-width: 760px) {
+  .landing-atmosphere-section {
+    margin-top: clamp(1.75rem, 9vw, 3rem);
+  }
+
   .landing-story-hero h1 {
     font-size: clamp(3.05rem, 14vw, 4.9rem);
     letter-spacing: -0.062em;
