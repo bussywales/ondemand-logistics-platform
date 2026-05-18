@@ -1166,6 +1166,134 @@ export const EndOfDayReportSchema = z.object({
 });
 export type EndOfDayReportDto = z.infer<typeof EndOfDayReportSchema>;
 
+export const PilotWorkspaceModeSchema = z.enum(["DEMO", "CONTROLLED_PILOT", "INTERNAL_TEST", "LIVE_READY"]);
+export type PilotWorkspaceMode = z.infer<typeof PilotWorkspaceModeSchema>;
+
+export const PilotWorkspaceStatusSchema = z.enum([
+  "DRAFT",
+  "ONBOARDING",
+  "READY_FOR_REHEARSAL",
+  "IN_REHEARSAL",
+  "PAUSED",
+  "ACTIVE",
+  "CLOSED"
+]);
+export type PilotWorkspaceStatus = z.infer<typeof PilotWorkspaceStatusSchema>;
+
+export const PilotReadinessStageSchema = z.enum([
+  "NOT_STARTED",
+  "MERCHANT_SETUP",
+  "COURIER_SETUP",
+  "PAYMENT_CHECKS",
+  "SUPPORT_OWNERS_ASSIGNED",
+  "REHEARSAL_READY",
+  "PILOT_READY"
+]);
+export type PilotReadinessStage = z.infer<typeof PilotReadinessStageSchema>;
+
+export const PilotReadinessCheckKeySchema = z.enum([
+  "merchant_profile_ready",
+  "menu_ready",
+  "courier_pool_ready",
+  "payment_flow_verified",
+  "support_owner_assigned",
+  "escalation_playbook_reviewed",
+  "tracking_route_verified",
+  "paid_delivery_proof_current",
+  "browser_smoke_current",
+  "known_limitations_reviewed"
+]);
+export type PilotReadinessCheckKey = z.infer<typeof PilotReadinessCheckKeySchema>;
+
+export const PilotReadinessCheckStatusSchema = z.enum(["NOT_STARTED", "IN_PROGRESS", "PASSED", "BLOCKED", "WAIVED"]);
+export type PilotReadinessCheckStatus = z.infer<typeof PilotReadinessCheckStatusSchema>;
+
+export const PilotPostureCountsSchema = z.object({
+  activeJobs: z.number().int().nonnegative(),
+  unresolvedSupportEscalations: z.number().int().nonnegative(),
+  paymentRisks: z.number().int().nonnegative(),
+  readyCouriers: z.number().int().nonnegative()
+});
+export type PilotPostureCountsDto = z.infer<typeof PilotPostureCountsSchema>;
+
+export const PilotWorkspaceSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  orgName: z.string().nullable(),
+  mode: PilotWorkspaceModeSchema,
+  status: PilotWorkspaceStatusSchema,
+  readinessStage: PilotReadinessStageSchema,
+  pilotOwner: z.string().nullable(),
+  supportOwner: z.string().nullable(),
+  courierOwner: z.string().nullable(),
+  paymentOwner: z.string().nullable(),
+  goLiveTargetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  notes: z.string().nullable(),
+  checklistTotal: z.number().int().nonnegative(),
+  checklistPassed: z.number().int().nonnegative(),
+  posture: PilotPostureCountsSchema,
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type PilotWorkspaceDto = z.infer<typeof PilotWorkspaceSchema>;
+
+export const PilotWorkspaceListSchema = z.object({
+  items: z.array(PilotWorkspaceSchema)
+});
+export type PilotWorkspaceListDto = z.infer<typeof PilotWorkspaceListSchema>;
+
+export const CreatePilotWorkspaceSchema = z.object({
+  orgId: z.string().uuid(),
+  mode: PilotWorkspaceModeSchema.default("DEMO"),
+  status: PilotWorkspaceStatusSchema.default("DRAFT"),
+  readinessStage: PilotReadinessStageSchema.default("NOT_STARTED"),
+  pilotOwner: z.string().trim().min(1).nullable().optional(),
+  supportOwner: z.string().trim().min(1).nullable().optional(),
+  courierOwner: z.string().trim().min(1).nullable().optional(),
+  paymentOwner: z.string().trim().min(1).nullable().optional(),
+  goLiveTargetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  notes: z.string().trim().min(1).nullable().optional()
+});
+export type CreatePilotWorkspaceInput = z.infer<typeof CreatePilotWorkspaceSchema>;
+
+export const UpdatePilotWorkspaceSchema = CreatePilotWorkspaceSchema.omit({ orgId: true }).partial().refine(
+  (value) => Object.keys(value).length > 0,
+  { message: "pilot_workspace_update_requires_fields" }
+);
+export type UpdatePilotWorkspaceInput = z.infer<typeof UpdatePilotWorkspaceSchema>;
+
+export const PilotReadinessCheckSchema = z.object({
+  id: z.string().uuid(),
+  pilotWorkspaceId: z.string().uuid(),
+  key: PilotReadinessCheckKeySchema,
+  label: z.string().min(2),
+  status: PilotReadinessCheckStatusSchema,
+  evidence: z.string().nullable(),
+  updatedBy: z.string().uuid().nullable(),
+  updatedAt: IsoDateTimeSchema
+});
+export type PilotReadinessCheckDto = z.infer<typeof PilotReadinessCheckSchema>;
+
+export const PilotReadinessCheckListSchema = z.object({
+  items: z.array(PilotReadinessCheckSchema)
+});
+export type PilotReadinessCheckListDto = z.infer<typeof PilotReadinessCheckListSchema>;
+
+export const UpdatePilotReadinessCheckSchema = z
+  .object({
+    status: PilotReadinessCheckStatusSchema.optional(),
+    evidence: z.string().trim().min(1).nullable().optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: "pilot_readiness_check_update_requires_fields" });
+export type UpdatePilotReadinessCheckInput = z.infer<typeof UpdatePilotReadinessCheckSchema>;
+
+export const BusinessPilotStatusSchema = z.object({
+  workspace: PilotWorkspaceSchema.nullable(),
+  checks: z.array(PilotReadinessCheckSchema),
+  guidance: z.string().min(2)
+});
+export type BusinessPilotStatusDto = z.infer<typeof BusinessPilotStatusSchema>;
+
 export const SupportEscalationCategorySchema = z.enum([
   "DISPATCH_FAILURE",
   "PAYMENT_RISK",

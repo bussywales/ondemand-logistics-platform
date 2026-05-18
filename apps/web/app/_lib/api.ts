@@ -12,16 +12,24 @@ import type {
   DispatchRecoverySuggestion,
   OperationalIncidentSummary,
   CreateSupportEscalationInput,
+  CreatePilotWorkspaceInput,
   BusinessNotification,
   BusinessNotificationList,
   BusinessCustomerOrder,
   BusinessCustomerOrderList,
+  BusinessPilotStatus,
   BusinessPaymentSummary,
   BusinessSession,
   CustomerOrderSubmission,
   PublicOrderTracking,
   SupportEscalation,
   SupportEscalationList,
+  PilotReadinessCheck,
+  PilotReadinessCheckList,
+  PilotWorkspace,
+  PilotWorkspaceList,
+  UpdatePilotReadinessCheckInput,
+  UpdatePilotWorkspaceInput,
   UpdateSupportEscalationInput,
   DriverAvailabilityStatus,
   EligibleDriver,
@@ -154,6 +162,11 @@ type DailyBriefingResponse = DailyBriefing;
 type EndOfDayReportResponse = EndOfDayReport;
 type SupportEscalationListResponse = SupportEscalationList;
 type SupportEscalationResponse = SupportEscalation;
+type PilotWorkspaceListResponse = PilotWorkspaceList;
+type PilotWorkspaceResponse = PilotWorkspace;
+type PilotReadinessCheckListResponse = PilotReadinessCheckList;
+type PilotReadinessCheckResponse = PilotReadinessCheck;
+type BusinessPilotStatusResponse = BusinessPilotStatus;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
@@ -560,6 +573,53 @@ export async function getBusinessOrder(session: BusinessSession, orderId: string
   return apiFetch<BusinessCustomerOrderResponse>(session, `/v1/business/orders/${orderId}`, {
     method: "GET"
   });
+}
+
+export async function listAdminPilots(session: BusinessSession): Promise<PilotWorkspace[]> {
+  const payload = await apiFetch<PilotWorkspaceListResponse>(session, "/v1/admin/pilots", { method: "GET" });
+  return payload.items;
+}
+
+export async function createAdminPilot(
+  session: BusinessSession,
+  input: CreatePilotWorkspaceInput
+): Promise<PilotWorkspace> {
+  return apiFetch<PilotWorkspaceResponse>(session, "/v1/admin/pilots", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateAdminPilot(
+  session: BusinessSession,
+  id: string,
+  input: UpdatePilotWorkspaceInput
+): Promise<PilotWorkspace> {
+  return apiFetch<PilotWorkspaceResponse>(session, `/v1/admin/pilots/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function listAdminPilotChecks(session: BusinessSession, id: string): Promise<PilotReadinessCheck[]> {
+  const payload = await apiFetch<PilotReadinessCheckListResponse>(session, `/v1/admin/pilots/${id}/checks`, { method: "GET" });
+  return payload.items;
+}
+
+export async function updateAdminPilotCheck(
+  session: BusinessSession,
+  id: string,
+  checkId: string,
+  input: UpdatePilotReadinessCheckInput
+): Promise<PilotReadinessCheck> {
+  return apiFetch<PilotReadinessCheckResponse>(session, `/v1/admin/pilots/${id}/checks/${checkId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function getBusinessPilotStatus(session: BusinessSession): Promise<BusinessPilotStatus> {
+  return apiFetch<BusinessPilotStatusResponse>(session, "/v1/business/pilot-status", { method: "GET" });
 }
 
 function buildSupportEscalationsQuery(filters?: {

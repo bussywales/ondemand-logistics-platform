@@ -67,7 +67,9 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     ["public", "outbox_messages"],
     ["public", "customer_orders"],
     ["public", "job_dispatch_attempts"],
-    ["public", "support_escalations"]
+    ["public", "support_escalations"],
+    ["public", "pilot_workspaces"],
+    ["public", "pilot_readiness_checks"]
   ] as const) {
     const exists = await tableExists(client, schema, table);
     items.push({

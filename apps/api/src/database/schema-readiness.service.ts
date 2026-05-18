@@ -194,6 +194,33 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "created_at",
       "updated_at"
     ]
+  },
+  pilots: {
+    pilot_workspaces: [
+      "id",
+      "org_id",
+      "mode",
+      "status",
+      "readiness_stage",
+      "pilot_owner",
+      "support_owner",
+      "courier_owner",
+      "payment_owner",
+      "go_live_target_date",
+      "notes",
+      "created_at",
+      "updated_at"
+    ],
+    pilot_readiness_checks: [
+      "id",
+      "pilot_workspace_id",
+      "key",
+      "label",
+      "status",
+      "evidence",
+      "updated_by",
+      "updated_at"
+    ]
   }
 } as const;
 

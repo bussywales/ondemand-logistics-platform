@@ -7,6 +7,7 @@ import {
   DailyBriefingSchema,
   EndOfDayReportSchema,
   OperationalIncidentSummarySchema,
+  BusinessPilotStatusSchema,
   BusinessNotificationReadAllSchema,
   BusinessNotificationReadSchema,
   BusinessNotificationListSchema,
@@ -16,6 +17,7 @@ import {
   CreateProofOfDeliverySchema,
   CreateQuoteSchema,
   CreateSupportEscalationSchema,
+  CreatePilotWorkspaceSchema,
   CustomerOrderStatusSchema,
   EligibleDriverListSchema,
   JobPaymentSummarySchema,
@@ -23,6 +25,8 @@ import {
   JobStatusSchema,
   PaginatedJobsSchema,
   PaymentStatusSchema,
+  PilotReadinessCheckListSchema,
+  PilotWorkspaceListSchema,
   ProofOfDeliveryUploadUrlResponseSchema,
   SupportEscalationListSchema,
   SubmitCustomerOrderResponseSchema,
@@ -435,6 +439,52 @@ describe("admin schemas", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+
+  it("parses pilot workspace and readiness payloads", () => {
+    const workspace = {
+      id: "4cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      orgId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      orgName: "Pilot Org",
+      mode: "CONTROLLED_PILOT",
+      status: "ACTIVE",
+      readinessStage: "REHEARSAL_READY",
+      pilotOwner: "Ops lead",
+      supportOwner: "Support lead",
+      courierOwner: "Courier lead",
+      paymentOwner: "Finance lead",
+      goLiveTargetDate: "2026-05-30",
+      notes: "Controlled pilot rehearsal.",
+      checklistTotal: 10,
+      checklistPassed: 8,
+      posture: {
+        activeJobs: 2,
+        unresolvedSupportEscalations: 1,
+        paymentRisks: 1,
+        readyCouriers: 3
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    const check = {
+      id: "5cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      pilotWorkspaceId: workspace.id,
+      key: "payment_flow_verified",
+      label: "Payment flow verified",
+      status: "PASSED",
+      evidence: "Paid delivery proof current.",
+      updatedBy: null,
+      updatedAt: new Date().toISOString()
+    };
+
+    expect(CreatePilotWorkspaceSchema.safeParse({ orgId: workspace.orgId }).success).toBe(true);
+    expect(PilotWorkspaceListSchema.safeParse({ items: [workspace] }).success).toBe(true);
+    expect(PilotReadinessCheckListSchema.safeParse({ items: [check] }).success).toBe(true);
+    expect(BusinessPilotStatusSchema.safeParse({
+      workspace,
+      checks: [check],
+      guidance: "Pilot mode is informational in v1."
+    }).success).toBe(true);
   });
 });
 

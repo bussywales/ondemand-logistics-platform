@@ -558,6 +558,97 @@ export type EndOfDayReport = {
   guidance: string;
 };
 
+export type PilotWorkspaceMode = "DEMO" | "CONTROLLED_PILOT" | "INTERNAL_TEST" | "LIVE_READY";
+export type PilotWorkspaceStatus =
+  | "DRAFT"
+  | "ONBOARDING"
+  | "READY_FOR_REHEARSAL"
+  | "IN_REHEARSAL"
+  | "PAUSED"
+  | "ACTIVE"
+  | "CLOSED";
+export type PilotReadinessStage =
+  | "NOT_STARTED"
+  | "MERCHANT_SETUP"
+  | "COURIER_SETUP"
+  | "PAYMENT_CHECKS"
+  | "SUPPORT_OWNERS_ASSIGNED"
+  | "REHEARSAL_READY"
+  | "PILOT_READY";
+export type PilotReadinessCheckStatus = "NOT_STARTED" | "IN_PROGRESS" | "PASSED" | "BLOCKED" | "WAIVED";
+
+export type PilotPostureCounts = {
+  activeJobs: number;
+  unresolvedSupportEscalations: number;
+  paymentRisks: number;
+  readyCouriers: number;
+};
+
+export type PilotWorkspace = {
+  id: string;
+  orgId: string;
+  orgName: string | null;
+  mode: PilotWorkspaceMode;
+  status: PilotWorkspaceStatus;
+  readinessStage: PilotReadinessStage;
+  pilotOwner: string | null;
+  supportOwner: string | null;
+  courierOwner: string | null;
+  paymentOwner: string | null;
+  goLiveTargetDate: string | null;
+  notes: string | null;
+  checklistTotal: number;
+  checklistPassed: number;
+  posture: PilotPostureCounts;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PilotWorkspaceList = {
+  items: PilotWorkspace[];
+};
+
+export type CreatePilotWorkspaceInput = {
+  orgId: string;
+  mode?: PilotWorkspaceMode;
+  status?: PilotWorkspaceStatus;
+  readinessStage?: PilotReadinessStage;
+  pilotOwner?: string | null;
+  supportOwner?: string | null;
+  courierOwner?: string | null;
+  paymentOwner?: string | null;
+  goLiveTargetDate?: string | null;
+  notes?: string | null;
+};
+
+export type UpdatePilotWorkspaceInput = Partial<Omit<CreatePilotWorkspaceInput, "orgId">>;
+
+export type PilotReadinessCheck = {
+  id: string;
+  pilotWorkspaceId: string;
+  key: string;
+  label: string;
+  status: PilotReadinessCheckStatus;
+  evidence: string | null;
+  updatedBy: string | null;
+  updatedAt: string;
+};
+
+export type PilotReadinessCheckList = {
+  items: PilotReadinessCheck[];
+};
+
+export type UpdatePilotReadinessCheckInput = Partial<{
+  status: PilotReadinessCheckStatus;
+  evidence: string | null;
+}>;
+
+export type BusinessPilotStatus = {
+  workspace: PilotWorkspace | null;
+  checks: PilotReadinessCheck[];
+  guidance: string;
+};
+
 export type SupportEscalationCategory =
   | "DISPATCH_FAILURE"
   | "PAYMENT_RISK"

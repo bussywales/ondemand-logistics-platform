@@ -89,6 +89,7 @@ Business:
 Admin and driver:
 - `/admin`
 - `/admin/command`
+- `/admin/pilots`
 - `/admin/drivers`
 - `/driver`
 
@@ -118,6 +119,7 @@ Have `docs/demo/demo-known-limitations-talk-track.md` open for Q&A.
 Be ready to explain:
 - staging-only status
 - browser payment surface vs proof harness payment execution
+- pilot workspace mode/status/readiness are admin-reviewed context signals, not automatic workflow gates
 - Resend parked pending verified sender/domain
 - no autonomous AI actions
 - status-based tracking, not live map tracking

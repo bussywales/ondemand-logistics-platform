@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AdminCommandView } from "./admin-command-shell";
-import type { BusinessSession, DailyBriefing, EndOfDayReport, SupportEscalation } from "../_lib/product-state";
+import type { BusinessSession, DailyBriefing, EndOfDayReport, PilotWorkspace, SupportEscalation } from "../_lib/product-state";
 
 const session: BusinessSession = {
   accessToken: "access-token",
@@ -248,10 +248,44 @@ const supportEscalations: SupportEscalation[] = [
   }
 ];
 
+const pilotWorkspaces: PilotWorkspace[] = [
+  {
+    id: "4cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+    orgId: "org-1",
+    orgName: "Pilot Org",
+    mode: "CONTROLLED_PILOT",
+    status: "ACTIVE",
+    readinessStage: "REHEARSAL_READY",
+    pilotOwner: "Ops lead",
+    supportOwner: "Support lead",
+    courierOwner: "Courier lead",
+    paymentOwner: "Finance lead",
+    goLiveTargetDate: "2026-05-30",
+    notes: "Controlled rehearsal workspace.",
+    checklistTotal: 10,
+    checklistPassed: 8,
+    posture: {
+      activeJobs: 1,
+      unresolvedSupportEscalations: 1,
+      paymentRisks: 1,
+      readyCouriers: 1
+    },
+    createdAt: "2026-05-04T08:00:00.000Z",
+    updatedAt: "2026-05-04T08:00:00.000Z"
+  }
+];
+
 describe("AdminCommandView", () => {
   it("renders cross-org command intelligence with human approval note", () => {
     const markup = renderToStaticMarkup(
-      <AdminCommandView briefing={briefing} report={report} selectedDate="2026-05-04" session={session} supportEscalations={supportEscalations} />
+      <AdminCommandView
+        briefing={briefing}
+        pilots={pilotWorkspaces}
+        report={report}
+        selectedDate="2026-05-04"
+        session={session}
+        supportEscalations={supportEscalations}
+      />
     );
 
     expect(markup).toContain("2 organisations need attention");
@@ -263,13 +297,21 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Support escalation overview");
     expect(markup).toContain("Support follow-up");
     expect(markup).toContain("1 high severity");
+    expect(markup).toContain("Pilot workspaces");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });
 
   it("does not render unsafe business deep links when org context is unavailable", () => {
     const markup = renderToStaticMarkup(
-      <AdminCommandView briefing={briefing} report={report} selectedDate="2026-05-04" session={session} supportEscalations={supportEscalations} />
+      <AdminCommandView
+        briefing={briefing}
+        pilots={pilotWorkspaces}
+        report={report}
+        selectedDate="2026-05-04"
+        session={session}
+        supportEscalations={supportEscalations}
+      />
     );
 
     expect(markup).toContain("Business workspace link unavailable without org context.");
@@ -294,6 +336,7 @@ describe("AdminCommandView", () => {
         report={{ ...report, unresolvedCount: 0, incidentsSummary: { ...report.incidentsSummary, dispatchFailed: 0, delayIncidents: 0, paymentRisks: 0, openSupportEscalations: 0, highCriticalSupportEscalations: 0, unresolvedRecommendations: 0 }, unresolvedActions: [] }}
         selectedDate="2026-05-04"
         session={session}
+        pilots={[]}
         supportEscalations={[]}
       />
     );

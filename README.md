@@ -45,6 +45,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Business orders: `/app/orders`
 - Driver execution route: `/driver`
 - Admin control plane: `/admin`
+- Admin pilot management: `/admin/pilots`
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
 
@@ -94,6 +95,7 @@ See the full migration history in:
 - `packages/db/migrations`
 
 Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, and platform admin support.
+Pilot management schema now tracks workspace mode, readiness stage, owners, readiness checklist evidence, and posture counts for admin-led controlled pilot review.
 
 ## Strategic direction
 - current state: operational delivery and dispatch foundations
@@ -153,5 +155,6 @@ Before a demo, record the latest proof order/job/payment/POD ids and keep the la
 - tracking is status/progress based, not live-map movement or guaranteed ETA tracking
 - payout and reconciliation surfaces are visibility-first, not full Stripe Connect settlement automation
 - courier readiness is read-only; approval and compliance ownership remain human operational responsibilities
+- pilot management is read-only context for business workspaces and admin-led review for platform admins; it does not automatically block workflows in v1
 - Resend-backed external email delivery is intentionally parked until a verified sender/domain is available
 - design-system migration and legacy `globals.css` reduction remain incremental, not finished

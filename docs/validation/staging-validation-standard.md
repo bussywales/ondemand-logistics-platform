@@ -51,6 +51,7 @@ The paid-delivery proof must confirm:
 - payment status: `CAPTURED`
 - notification outbox processed for the staged delivery flow
 - support escalation schema readiness remains available for command posture and closeout surfaces
+- pilot workspace schema readiness remains available for admin-led pilot mode, readiness, owner, and checklist tracking
 - release readiness checks green
 
 The release verification must confirm:
@@ -77,6 +78,7 @@ Authenticated routes:
 - `/app/reports/end-of-day`
 - `/admin`
 - `/admin/command`
+- `/admin/pilots`
 - `/admin/drivers`
 - `/driver`
 

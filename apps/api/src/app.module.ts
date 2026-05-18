@@ -43,6 +43,8 @@ import {
   BusinessSupportEscalationsController
 } from "./support/support-escalations.controller.js";
 import { SupportEscalationsService } from "./support/support-escalations.service.js";
+import { AdminPilotsController, BusinessPilotStatusController } from "./pilots/pilots.controller.js";
+import { PilotsService } from "./pilots/pilots.service.js";
 
 @Module({
   imports: [],
@@ -60,6 +62,8 @@ import { SupportEscalationsService } from "./support/support-escalations.service
     AdminReportsController,
     BusinessSupportEscalationsController,
     AdminSupportEscalationsController,
+    AdminPilotsController,
+    BusinessPilotStatusController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -80,6 +84,7 @@ import { SupportEscalationsService } from "./support/support-escalations.service
     BriefingService,
     ReportsService,
     SupportEscalationsService,
+    PilotsService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,

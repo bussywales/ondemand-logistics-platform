@@ -13,6 +13,7 @@ It is not currently positioned as an open public pilot or unattended production 
 - tracking is progress/status based, not live map movement
 - courier compliance ownership still needs a live operating owner outside the staging fixture model
 - support/escalation logging is human-entered audit context; it does not send customer, merchant, or courier messages
+- pilot workspace mode and readiness stage are admin-reviewed context signals in v1; they do not automatically disable ordering, dispatch, payment, or driver workflows
 - proof artifacts are local generated evidence unless explicitly exported or shared
 
 ## Additional caveats

@@ -36,6 +36,7 @@ Core routes:
 - restaurant setup: `https://ondemand-logistics-platform-web.vercel.app/app/restaurant`
 - driver route: `https://ondemand-logistics-platform-web.vercel.app/driver`
 - admin control plane: `https://ondemand-logistics-platform-web.vercel.app/admin`
+- pilot management: `https://ondemand-logistics-platform-web.vercel.app/admin/pilots`
 - help: `https://ondemand-logistics-platform-web.vercel.app/help`
 
 API and health:
@@ -110,8 +111,9 @@ Recommended order:
 11. show the driver execution route
 12. show the admin control plane
 13. show admin command intelligence
-14. show help and pilot playbooks
-15. close by referencing the proof artifacts and current known limitations
+14. show pilot management mode, readiness stage, owners, and checklist evidence
+15. show help and pilot playbooks
+16. close by referencing the proof artifacts and current known limitations
 
 Audience-specific walkthroughs:
 - use `investor-walkthrough.md` for investor or strategic partner sessions
@@ -135,6 +137,7 @@ Do not claim:
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - broad compliance completeness for live courier operations
 - settlement or reconciliation automation beyond the current visibility surfaces
+- pilot mode as an automatic operating control; it is a human-reviewed readiness layer in v1
 
 When Command Intelligence is shown, describe it as:
 - deterministic

@@ -1,6 +1,7 @@
+import React from "react";
 import Link from "next/link";
 import { ShipWrightIcon } from "../shipwright-icon";
-import { formatCurrency, formatDateTime, type AppJob, type BusinessCustomerOrder, type DailyBriefing } from "../../_lib/product-state";
+import { formatCurrency, formatDateTime, type AppJob, type BusinessCustomerOrder, type BusinessPilotStatus, type DailyBriefing } from "../../_lib/product-state";
 import { getDispatchIntelligence, getJobShortId } from "../../_lib/dispatch-intelligence";
 import { DailyBriefingSurface } from "./daily-briefing-surface";
 import {
@@ -37,6 +38,7 @@ type WorkspaceDashboardProps = {
   briefingError: string | null;
   onRefresh: () => void;
   onRetryDispatch: (job: AppJob) => void;
+  pilotStatus: BusinessPilotStatus | null;
   recentOrders: BusinessCustomerOrder[];
   workspaceSummary: WorkspaceSummary;
 };
@@ -122,6 +124,43 @@ export function MetricSignalGrid(props: { attentionCount: number; workspaceSumma
         <strong className="sw-metric-value">{workspaceSummary.completedToday}</strong>
         <p className="sw-metric-copy">Closed delivery records for this workspace.</p>
       </div>
+    </section>
+  );
+}
+
+export function PilotStatusSurface(props: { pilotStatus: BusinessPilotStatus | null }) {
+  const workspace = props.pilotStatus?.workspace ?? null;
+
+  if (!workspace) {
+    return null;
+  }
+
+  const modeLabel = workspace.mode.toLowerCase().replaceAll("_", " ");
+  const statusLabel = workspace.status.toLowerCase().replaceAll("_", " ");
+  const readinessLabel = workspace.readinessStage.toLowerCase().replaceAll("_", " ");
+
+  return (
+    <section className="sw-supporting-surface pilot-status-surface">
+      <div className="sw-card-header">
+        <SectionTitle
+          eyebrow="Pilot posture"
+          icon="queue"
+          note="Informational only. This does not block workspace actions in v1."
+          title={workspace.mode === "DEMO" ? "Demo workspace" : "Controlled pilot mode"}
+        />
+        <span className="sw-badge sw-badge--info">{modeLabel}</span>
+      </div>
+      <div className="briefing-evidence-row">
+        <span>Status {statusLabel}</span>
+        <span>Readiness {readinessLabel}</span>
+        <span>{workspace.checklistPassed}/{workspace.checklistTotal} checks clear</span>
+      </div>
+      <div className="briefing-evidence-row">
+        {workspace.supportOwner ? <span>Support: {workspace.supportOwner}</span> : <span>Support owner unassigned</span>}
+        {workspace.courierOwner ? <span>Courier: {workspace.courierOwner}</span> : <span>Courier owner unassigned</span>}
+        {workspace.paymentOwner ? <span>Payment: {workspace.paymentOwner}</span> : <span>Payment owner unassigned</span>}
+      </div>
+      <p className="ops-detail-note">{props.pilotStatus?.guidance}</p>
     </section>
   );
 }
@@ -328,6 +367,7 @@ export function WorkspaceDashboard(props: WorkspaceDashboardProps) {
         attentionCount={props.attentionJobs.length}
         onRefresh={props.onRefresh}
       />
+      <PilotStatusSurface pilotStatus={props.pilotStatus} />
       <DailyBriefingSurface briefing={props.briefing} error={props.briefingError} />
       <MetricSignalGrid attentionCount={props.attentionJobs.length} workspaceSummary={props.workspaceSummary} />
       <RecentOrdersSurface recentOrders={props.recentOrders} />

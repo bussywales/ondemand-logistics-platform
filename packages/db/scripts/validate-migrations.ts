@@ -19,7 +19,9 @@ const requiredTables = [
   "job_events",
   "audit_log",
   "outbox_messages",
-  "support_escalations"
+  "support_escalations",
+  "pilot_workspaces",
+  "pilot_readiness_checks"
 ];
 
 if (files.length < 2) {

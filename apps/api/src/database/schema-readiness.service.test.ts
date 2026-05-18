@@ -245,6 +245,25 @@ describe("SchemaReadinessService", () => {
     } satisfies Partial<SchemaCompatibilityError>);
   });
 
+  it("fails when pilot workspace readiness tables are missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows().filter((row) => row.table_name !== "pilot_workspaces")
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter((row) => row.table_name !== "pilot_workspaces")
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.pilot_workspaces (table missing)"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
+
   it("queries post-0011 release-critical tables during readiness checks", async () => {
     const query = vi
       .fn()

@@ -23,6 +23,7 @@ import {
   createLiveJob,
   getDriverAssignmentIneligibility,
   getBusinessDailyBriefing,
+  getBusinessPilotStatus,
   getLiveJob,
   getUserFacingApiError,
   listBusinessSupportEscalations,
@@ -42,6 +43,7 @@ import { getDispatchIntelligence, shouldShowInReviewQueue, sortReviewQueue } fro
 import {
   type AppJob,
   type BusinessCustomerOrder,
+  type BusinessPilotStatus,
   type DailyBriefing,
   type BusinessSession,
   type CreateSupportEscalationInput,
@@ -79,6 +81,7 @@ export function ProductShell(props: ProductShellProps) {
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [dailyBriefing, setDailyBriefing] = useState<DailyBriefing | null>(null);
   const [briefingError, setBriefingError] = useState<string | null>(null);
+  const [pilotStatus, setPilotStatus] = useState<BusinessPilotStatus | null>(null);
   const [deliveryForm, setDeliveryForm] = useState<DeliveryFormInput>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -167,7 +170,7 @@ export function ProductShell(props: ProductShellProps) {
 
   async function refreshJobs(currentSession: NonNullable<typeof session>) {
     try {
-      const [liveJobs, nextBriefing] = await Promise.all([
+      const [liveJobs, nextBriefing, nextPilotStatus] = await Promise.all([
         listLiveJobs(currentSession),
         getBusinessDailyBriefing(currentSession)
           .then((briefing) => {
@@ -177,10 +180,12 @@ export function ProductShell(props: ProductShellProps) {
           .catch((issue) => {
             setBriefingError(issue instanceof Error ? issue.message : "Unable to load daily briefing.");
             return null;
-          })
+          }),
+        getBusinessPilotStatus(currentSession).catch(() => null)
       ]);
       setJobs(liveJobs);
       setDailyBriefing(nextBriefing);
+      setPilotStatus(nextPilotStatus);
       const customerOrders = await listBusinessOrders(currentSession).catch(() => []);
       setOrders(customerOrders);
     } catch (issue) {
@@ -556,6 +561,7 @@ export function ProductShell(props: ProductShellProps) {
               briefingError={briefingError}
               onRefresh={() => void handleRefresh()}
               onRetryDispatch={(nextJob) => void handleRetryDispatch(nextJob)}
+              pilotStatus={pilotStatus}
               recentOrders={recentOrders}
               workspaceSummary={workspaceSummary}
             />

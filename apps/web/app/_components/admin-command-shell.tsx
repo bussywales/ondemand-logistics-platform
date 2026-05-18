@@ -8,13 +8,14 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminSupportEscalations } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
 import {
   type BusinessSession,
   type DailyBriefing,
   type DailyBriefingItem,
   type EndOfDayReport,
+  type PilotWorkspace,
   type SupportEscalation
 } from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
@@ -186,6 +187,7 @@ function WorkspaceLink(props: {
 
 export function AdminCommandView(props: {
   briefing: DailyBriefing;
+  pilots: PilotWorkspace[];
   report: EndOfDayReport;
   selectedDate: string;
   session: BusinessSession;
@@ -218,6 +220,9 @@ export function AdminCommandView(props: {
     : null;
   const supportPosture = props.briefing.operatingState;
   const openSupportItems = props.supportEscalations.filter((item) => !["RESOLVED", "CANCELLED"].includes(item.status));
+  const activePilots = props.pilots.filter((pilot) => pilot.status === "ACTIVE").length;
+  const pausedPilots = props.pilots.filter((pilot) => pilot.status === "PAUSED").length;
+  const notRehearsalReadyPilots = props.pilots.filter((pilot) => !["REHEARSAL_READY", "PILOT_READY"].includes(pilot.readinessStage)).length;
 
   return (
     <section className="ops-stack admin-command-stack">
@@ -241,6 +246,9 @@ export function AdminCommandView(props: {
           <CountCard copy="Commercial follow-up items affecting delivery or closeout." label="Payment risks" tone={props.report.incidentsSummary.paymentRisks ? "danger" : "info"} value={props.report.incidentsSummary.paymentRisks} />
           <CountCard copy="Operator-approved follow-up items remaining for closeout." label="Unresolved actions" tone={props.report.unresolvedCount ? "warning" : "success"} value={props.report.unresolvedCount} />
           <CountCard copy="Human support records that remain open or in review." label="Support follow-up" tone={supportPosture.highCriticalSupportEscalations ? "warning" : supportPosture.openSupportEscalations ? "info" : "success"} value={supportPosture.openSupportEscalations} />
+          <CountCard copy="Pilot profiles tracked for controlled operations." label="Pilot workspaces" tone={props.pilots.length ? "info" : "success"} value={props.pilots.length} />
+          <CountCard copy="Pilot workspaces currently active." label="Active pilots" tone={activePilots ? "info" : "success"} value={activePilots} />
+          <CountCard copy="Paused or not rehearsal-ready workspaces need review." label="Pilot readiness gaps" tone={pausedPilots || notRehearsalReadyPilots ? "warning" : "success"} value={pausedPilots + notRehearsalReadyPilots} />
         </div>
       </section>
 
@@ -563,6 +571,7 @@ export function AdminCommandShell() {
   const { status, session, error, refreshBusinessSession, signOut } = useBusinessAuth();
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [report, setReport] = useState<EndOfDayReport | null>(null);
+  const [pilots, setPilots] = useState<PilotWorkspace[]>([]);
   const [supportEscalations, setSupportEscalations] = useState<SupportEscalation[]>([]);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -588,18 +597,20 @@ export function AdminCommandShell() {
 
     void Promise.all([
       loadAdminCommandData(session, selectedDate),
+      listAdminPilots(session).catch(() => []),
       listAdminSupportEscalations(session).catch((issue) => {
         setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
         return [];
       })
     ])
-      .then(([commandData, nextSupportEscalations]) => {
+      .then(([commandData, nextPilots, nextSupportEscalations]) => {
         if (!active) {
           return;
         }
 
         setBriefing(commandData.briefing);
         setReport(commandData.report);
+        setPilots(nextPilots);
         setSupportEscalations(nextSupportEscalations);
       })
       .catch((issue) => {
@@ -631,8 +642,9 @@ export function AdminCommandShell() {
     setSupportLogError(null);
 
     try {
-      const [commandData, nextSupportEscalations] = await Promise.all([
+      const [commandData, nextPilots, nextSupportEscalations] = await Promise.all([
         loadAdminCommandData(nextSession, selectedDate),
+        listAdminPilots(nextSession).catch(() => []),
         listAdminSupportEscalations(nextSession).catch((issue) => {
           setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
           return [];
@@ -640,6 +652,7 @@ export function AdminCommandShell() {
       ]);
       setBriefing(commandData.briefing);
       setReport(commandData.report);
+      setPilots(nextPilots);
       setSupportEscalations(nextSupportEscalations);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
@@ -756,6 +769,7 @@ export function AdminCommandShell() {
       {briefing && report ? (
         <AdminCommandView
           briefing={briefing}
+          pilots={pilots}
           report={report}
           selectedDate={selectedDate}
           session={session}
