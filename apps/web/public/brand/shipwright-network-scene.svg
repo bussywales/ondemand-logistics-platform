@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 720" role="img" aria-labelledby="title desc">
+  <title id="title">ShipWright route intelligence scene</title>
+  <desc id="desc">An abstract premium logistics scene showing commerce, dispatch, courier movement, proof markers, and platform oversight.</desc>
+  <defs>
+    <linearGradient id="surface" x1="102" y1="62" x2="814" y2="656" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset=".52" stop-color="#f4f8fb"/>
+      <stop offset="1" stop-color="#eef5f0"/>
+    </linearGradient>
+    <linearGradient id="route" x1="126" y1="510" x2="775" y2="194" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d99a4a"/>
+      <stop offset=".48" stop-color="#427da0"/>
+      <stop offset="1" stop-color="#6f9b79"/>
+    </linearGradient>
+    <radialGradient id="amberGlow" cx="0" cy="0" r="1" gradientTransform="matrix(170 0 0 170 206 508)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d99a4a" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#d99a4a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueGlow" cx="0" cy="0" r="1" gradientTransform="matrix(210 0 0 210 522 324)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#427da0" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#427da0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="proofGlow" cx="0" cy="0" r="1" gradientTransform="matrix(160 0 0 160 742 204)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6f9b79" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#6f9b79" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#0b1522" flood-opacity=".14"/>
+    </filter>
+    <filter id="smallShadow" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#0b1522" flood-opacity=".12"/>
+    </filter>
+    <clipPath id="sceneClip">
+      <rect x="58" y="44" width="804" height="632" rx="56"/>
+    </clipPath>
+  </defs>
+
+  <rect x="58" y="44" width="804" height="632" rx="56" fill="url(#surface)"/>
+  <g clip-path="url(#sceneClip)">
+    <rect x="58" y="44" width="804" height="632" fill="url(#amberGlow)"/>
+    <rect x="58" y="44" width="804" height="632" fill="url(#blueGlow)"/>
+    <rect x="58" y="44" width="804" height="632" fill="url(#proofGlow)"/>
+
+    <g opacity=".45" transform="translate(134 120) rotate(-16 326 242)">
+      <path d="M12 126h654M-24 214h654M-62 302h654M78 20v390M182 0v420M286-18v438M390-36v438M494-54v438M598-72v438" stroke="#7d8a98" stroke-opacity=".16" stroke-width="1.2"/>
+      <rect x="76" y="82" width="120" height="70" rx="18" fill="#fff" fill-opacity=".58" stroke="#0b1522" stroke-opacity=".08"/>
+      <rect x="226" y="158" width="164" height="84" rx="22" fill="#fff" fill-opacity=".5" stroke="#0b1522" stroke-opacity=".07"/>
+      <rect x="448" y="92" width="134" height="102" rx="24" fill="#fff" fill-opacity=".5" stroke="#0b1522" stroke-opacity=".07"/>
+      <rect x="136" y="286" width="184" height="92" rx="24" fill="#fff" fill-opacity=".44" stroke="#0b1522" stroke-opacity=".06"/>
+      <rect x="382" y="284" width="152" height="76" rx="22" fill="#fff" fill-opacity=".42" stroke="#0b1522" stroke-opacity=".06"/>
+    </g>
+
+    <path d="M154 508C232 422 300 474 374 396C454 312 498 248 600 280C672 302 704 242 766 192" fill="none" stroke="#fff" stroke-opacity=".78" stroke-width="26" stroke-linecap="round"/>
+    <path d="M154 508C232 422 300 474 374 396C454 312 498 248 600 280C672 302 704 242 766 192" fill="none" stroke="url(#route)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M154 508C232 422 300 474 374 396C454 312 498 248 600 280C672 302 704 242 766 192" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="2 19"/>
+
+    <g filter="url(#smallShadow)">
+      <circle cx="154" cy="508" r="27" fill="#fff"/>
+      <circle cx="154" cy="508" r="13" fill="#d99a4a"/>
+      <circle cx="466" cy="318" r="30" fill="#fff"/>
+      <circle cx="466" cy="318" r="14" fill="#427da0"/>
+      <circle cx="766" cy="192" r="27" fill="#fff"/>
+      <path d="m754 192 8 8 17-20" fill="none" stroke="#6f9b79" stroke-linecap="round" stroke-linejoin="round" stroke-width="7"/>
+    </g>
+
+    <g filter="url(#smallShadow)">
+      <rect x="108" y="438" width="168" height="72" rx="22" fill="#fff" fill-opacity=".9"/>
+      <text x="132" y="468" fill="#7b8795" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing=".9">COMMERCE</text>
+      <text x="132" y="492" fill="#152232" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Order enters</text>
+
+      <rect x="374" y="230" width="204" height="82" rx="24" fill="#fff" fill-opacity=".92"/>
+      <text x="400" y="262" fill="#7b8795" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing=".9">COMMAND</text>
+      <text x="400" y="288" fill="#152232" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700">Dispatch coordinates</text>
+
+      <rect x="650" y="132" width="148" height="74" rx="22" fill="#fff" fill-opacity=".9"/>
+      <text x="674" y="162" fill="#7b8795" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing=".9">PROOF</text>
+      <text x="674" y="186" fill="#152232" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Loop closes</text>
+    </g>
+
+    <g filter="url(#smallShadow)" transform="translate(548 392)">
+      <rect width="176" height="84" rx="26" fill="#101a27" fill-opacity=".92"/>
+      <circle cx="42" cy="42" r="20" fill="#fff" fill-opacity=".12"/>
+      <path d="M34 43h17M43 34v17" stroke="#fff" stroke-linecap="round" stroke-width="3"/>
+      <text x="76" y="37" fill="#a8b6c7" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing=".7">OVERSIGHT</text>
+      <text x="76" y="60" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">2 risks visible</text>
+    </g>
+
+    <g opacity=".7">
+      <path d="M304 552c42 22 88 23 137 2M632 112c30-20 62-28 96-24M206 250c48-36 102-47 161-32" fill="none" stroke="#d99a4a" stroke-linecap="round" stroke-opacity=".24" stroke-width="4"/>
+      <circle cx="310" cy="552" r="3" fill="#d99a4a"/>
+      <circle cx="436" cy="554" r="3" fill="#6f9b79"/>
+      <circle cx="632" cy="112" r="3" fill="#427da0"/>
+      <circle cx="728" cy="88" r="3" fill="#6f9b79"/>
+    </g>
+  </g>
+  <rect x="58" y="44" width="804" height="632" rx="56" fill="none" stroke="#0b1522" stroke-opacity=".08"/>
+</svg>

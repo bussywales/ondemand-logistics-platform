@@ -105,6 +105,16 @@ const signatureMoments = [
     label: "Proof closes the loop",
     title: "Proof signal",
     body: "Delivery, POD, capture, fulfilment, and closeout evidence converge into one operating record."
+  },
+  {
+    label: "Courier execution in motion",
+    title: "Movement signal",
+    body: "Courier readiness, offer state, route stage, and handoff context stay legible without pretending to be a live map."
+  },
+  {
+    label: "Platform command oversight",
+    title: "Oversight signal",
+    body: "Cross-org posture, incidents, closeout summaries, and readiness checks give operators a calmer way to see risk."
   }
 ];
 
@@ -329,6 +339,12 @@ function LandingMegaMenu(props: {
         <div className="landing-mega-intro">
           <span>{props.label}</span>
           <p>{props.summary}</p>
+          <div className="landing-mega-art" aria-hidden="true">
+            <span className="landing-mega-art-route" />
+            <span className="landing-mega-art-node landing-mega-art-node-commerce" />
+            <span className="landing-mega-art-node landing-mega-art-node-command" />
+            <span className="landing-mega-art-node landing-mega-art-node-proof" />
+          </div>
         </div>
         <div className="landing-mega-grid">
           {props.items.map((item) => (
@@ -360,6 +376,12 @@ function HeroScene() {
       <span className="landing-signature-trail landing-signature-trail-commerce" aria-hidden="true" />
       <span className="landing-signature-trail landing-signature-trail-command" aria-hidden="true" />
       <span className="landing-signature-trail landing-signature-trail-proof" aria-hidden="true" />
+      <img
+        alt=""
+        aria-hidden="true"
+        className="landing-hero-art"
+        src="/brand/shipwright-network-scene.svg"
+      />
       <div className="landing-city-grid" aria-hidden="true">
         <span className="landing-city-block landing-city-block-tall" />
         <span className="landing-city-block" />

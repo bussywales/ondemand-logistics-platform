@@ -214,6 +214,8 @@ When building or updating command-intelligence surfaces:
 ## Public Landing Visual Signature
 The public landing page may use a more atmospheric brand layer than the internal operations app.
 
+Detailed art-direction rules and implemented public brand assets are documented in `docs/brand-art-direction.md`.
+
 Use ShipWright-native motifs:
 - route-light trails for delivery movement
 - commerce amber for order/customer activity
