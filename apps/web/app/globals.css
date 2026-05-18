@@ -12194,27 +12194,47 @@ select:hover,
 
 /* Landing brand art direction system */
 .landing-story-hero {
-  grid-template-columns: minmax(0, 0.78fr) minmax(500px, 1.22fr);
+  grid-template-columns: minmax(0, 0.72fr) minmax(540px, 1.28fr);
   align-items: center;
+  column-gap: clamp(2.2rem, 5vw, 5.8rem);
 }
 
 .landing-story-hero h1 {
-  max-width: 10.25ch;
-  font-size: clamp(3.85rem, 8.4vw, 7.35rem);
-  letter-spacing: -0.078em;
-  line-height: 0.87;
+  max-width: 10.8ch;
+  font-size: clamp(3.55rem, 7.6vw, 6.8rem);
+  letter-spacing: -0.07em;
+  line-height: 0.9;
 }
 
 .landing-story-hero-copy {
-  max-width: 700px;
+  max-width: 660px;
+  gap: 1.35rem;
+}
+
+.landing-route-trail,
+.landing-commerce-node,
+.landing-proof-marker {
+  pointer-events: none;
+}
+
+.landing-route-trail {
+  display: block;
+}
+
+.landing-commerce-node,
+.landing-proof-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .landing-cinematic-scene {
-  min-height: clamp(540px, 58vw, 760px);
+  min-height: clamp(560px, 60vw, 790px);
   border-color: rgba(10, 16, 23, 0.075);
   background:
-    radial-gradient(circle at 22% 82%, rgba(217, 154, 74, 0.13), transparent 22rem),
-    radial-gradient(circle at 82% 18%, rgba(66, 125, 160, 0.14), transparent 23rem),
+    radial-gradient(circle at 20% 78%, rgba(217, 154, 74, 0.16), transparent 23rem),
+    radial-gradient(circle at 78% 16%, rgba(66, 125, 160, 0.16), transparent 25rem),
+    radial-gradient(circle at 70% 70%, rgba(111, 155, 121, 0.12), transparent 20rem),
     linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(250, 247, 241, 0.9)),
     #f4f1ea;
   box-shadow:
@@ -12224,13 +12244,13 @@ select:hover,
 
 .landing-hero-art {
   position: absolute;
-  inset: 3.5% 2%;
+  inset: 1.5% -1.5%;
   z-index: 2;
-  width: 96%;
-  height: 93%;
+  width: 103%;
+  height: 96%;
   object-fit: contain;
   pointer-events: none;
-  filter: drop-shadow(0 32px 64px rgba(10, 16, 23, 0.12));
+  filter: drop-shadow(0 34px 72px rgba(10, 16, 23, 0.14));
 }
 
 .landing-cinematic-scene .landing-city-grid {
@@ -12242,6 +12262,45 @@ select:hover,
 .landing-cinematic-scene .landing-route-thread {
   opacity: 0;
   pointer-events: none;
+}
+
+.landing-route-trail-hero {
+  position: absolute;
+  left: 15%;
+  right: 14%;
+  top: 57%;
+  z-index: 3;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(217, 154, 74, 0), rgba(217, 154, 74, 0.46), rgba(66, 125, 160, 0.34), rgba(111, 155, 121, 0));
+  filter: blur(0.2px);
+  opacity: 0.48;
+  transform: rotate(-18deg);
+}
+
+.landing-commerce-node-hero,
+.landing-proof-marker-hero {
+  position: absolute;
+  z-index: 3;
+  width: 0.82rem;
+  height: 0.82rem;
+  border: 3px solid rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  box-shadow:
+    0 14px 28px rgba(10, 16, 23, 0.12),
+    0 0 28px rgba(255, 255, 255, 0.48);
+}
+
+.landing-commerce-node-hero {
+  left: 17.5%;
+  bottom: 27%;
+  background: var(--sw-commerce-amber, #d99a4a);
+}
+
+.landing-proof-marker-hero {
+  right: 18%;
+  top: 24%;
+  background: var(--sw-proof-green, #6f9b79);
 }
 
 .landing-cinematic-scene .landing-signature-trail,
@@ -12256,13 +12315,13 @@ select:hover,
 }
 
 .landing-floating-card-command {
-  top: 7%;
-  left: 5%;
+  top: 6%;
+  left: 6%;
 }
 
 .landing-floating-card-proof {
-  right: 5%;
-  bottom: 11%;
+  right: 5.5%;
+  bottom: 10%;
 }
 
 .landing-scene-signal-order {
@@ -12409,17 +12468,18 @@ select:hover,
 
 @media (max-width: 760px) {
   .landing-story-hero h1 {
-    font-size: clamp(3.4rem, 16vw, 5.5rem);
+    font-size: clamp(3.05rem, 14vw, 4.9rem);
+    letter-spacing: -0.062em;
   }
 
   .landing-cinematic-scene {
-    min-height: 520px;
+    min-height: 500px;
   }
 
   .landing-hero-art {
-    inset: 1% -8%;
-    width: 116%;
-    height: 88%;
+    inset: 4% -15%;
+    width: 130%;
+    height: 80%;
   }
 
   .landing-floating-card-command,
@@ -12437,7 +12497,10 @@ select:hover,
   }
 
   .landing-scene-signal-order,
-  .landing-scene-signal-driver {
+  .landing-scene-signal-driver,
+  .landing-route-trail-hero,
+  .landing-commerce-node-hero,
+  .landing-proof-marker-hero {
     display: none;
   }
 

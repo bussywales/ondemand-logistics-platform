@@ -37,6 +37,23 @@ Use these scene concepts for future public landing visuals:
 | Proof captured / fulfilment complete | POD, capture, fulfilled state, closeout evidence | Green proof marker, quiet completion signal |
 | Platform command oversight | Cross-org posture and readiness | Dark or white oversight card, restrained signal count |
 
+## Canonical Landing Direction
+The canonical public landing hero direction is now `Route Orchestration`.
+
+Brand spine:
+
+1. Order enters the network.
+2. Route intelligence coordinates movement.
+3. Proof closes the loop.
+
+Supporting visual roles:
+
+- `Route Orchestration` is the hero composition.
+- `City-Grid Intelligence` is the background atmosphere.
+- `Proof and Accountability` is the closing visual language.
+
+Future landing-page visual work should extend this spine rather than introduce unrelated metaphors.
+
 ## Illustration System
 ShipWright illustration should be dimensional, atmospheric, and operationally specific. It should show the product's operating loop without becoming a literal screenshot or a fake live map.
 
@@ -109,10 +126,10 @@ Typography should dominate only when the section is an editorial statement. In v
 - Internal operational UI must stay calmer and more task-first than the public landing page.
 
 ## Hero Exploration Directions
-Future hero work should explore multiple art-directed compositions before more implementation polishing.
+Route Orchestration is the selected canonical direction. The remaining concepts are secondary lenses, not competing hero directions.
 
 ### Route Orchestration
-A perspective city grid with an amber commerce node, blue command node, moving courier marker, and green proof destination. This is the most infrastructure-led direction.
+A perspective city grid with an amber commerce node, blue command node, moving courier marker, and green proof destination. This is the canonical hero direction and should anchor the brand system.
 
 ### Commerce Movement
 A warmer merchant-to-customer scene that shows local commerce moving through a structured route. This is the most merchant-friendly direction.

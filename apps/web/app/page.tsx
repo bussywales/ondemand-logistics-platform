@@ -340,10 +340,10 @@ function LandingMegaMenu(props: {
           <span>{props.label}</span>
           <p>{props.summary}</p>
           <div className="landing-mega-art" aria-hidden="true">
-            <span className="landing-mega-art-route" />
-            <span className="landing-mega-art-node landing-mega-art-node-commerce" />
-            <span className="landing-mega-art-node landing-mega-art-node-command" />
-            <span className="landing-mega-art-node landing-mega-art-node-proof" />
+            <RouteTrail className="landing-mega-art-route" />
+            <CommerceNode className="landing-mega-art-node landing-mega-art-node-commerce" />
+            <CommerceNode className="landing-mega-art-node landing-mega-art-node-command" />
+            <ProofMarker className="landing-mega-art-node landing-mega-art-node-proof" />
           </div>
         </div>
         <div className="landing-mega-grid">
@@ -368,7 +368,50 @@ function EditorialEyebrow(props: { children: string }) {
   return <p className="landing-kicker">{props.children}</p>;
 }
 
-function HeroScene() {
+function RouteTrail(props: { className?: string }) {
+  return <span className={["landing-route-trail", props.className].filter(Boolean).join(" ")} aria-hidden="true" />;
+}
+
+function CommerceNode(props: { className?: string; label?: string }) {
+  return (
+    <span className={["landing-commerce-node", props.className].filter(Boolean).join(" ")} aria-hidden="true">
+      {props.label}
+    </span>
+  );
+}
+
+function ProofMarker(props: { children?: string; className?: string }) {
+  return (
+    <span className={["landing-proof-marker", props.className].filter(Boolean).join(" ")} aria-hidden="true">
+      {props.children}
+    </span>
+  );
+}
+
+function CityGridAtmosphere(props: { className?: string }) {
+  return (
+    <div className={["landing-city-grid", props.className].filter(Boolean).join(" ")} aria-hidden="true">
+      <span className="landing-city-block landing-city-block-tall" />
+      <span className="landing-city-block" />
+      <span className="landing-city-block landing-city-block-wide" />
+      <span className="landing-city-block" />
+      <span className="landing-city-block landing-city-block-low" />
+      <span className="landing-city-block landing-city-block-wide" />
+    </div>
+  );
+}
+
+function CommandSignalCard(props: { body: string; className?: string; eyebrow: string; title: string }) {
+  return (
+    <div className={["landing-floating-card", props.className].filter(Boolean).join(" ")}>
+      <span>{props.eyebrow}</span>
+      <strong>{props.title}</strong>
+      <p>{props.body}</p>
+    </div>
+  );
+}
+
+function RouteOrchestrationScene() {
   return (
     <div className="landing-cinematic-scene" aria-label="ShipWright logistics command scene">
       <span className="landing-scene-orb landing-scene-orb-primary" aria-hidden="true" />
@@ -382,14 +425,10 @@ function HeroScene() {
         className="landing-hero-art"
         src="/brand/shipwright-network-scene.svg"
       />
-      <div className="landing-city-grid" aria-hidden="true">
-        <span className="landing-city-block landing-city-block-tall" />
-        <span className="landing-city-block" />
-        <span className="landing-city-block landing-city-block-wide" />
-        <span className="landing-city-block" />
-        <span className="landing-city-block landing-city-block-low" />
-        <span className="landing-city-block landing-city-block-wide" />
-      </div>
+      <CityGridAtmosphere className="landing-city-grid-hero" />
+      <RouteTrail className="landing-route-trail-hero" />
+      <CommerceNode className="landing-commerce-node-hero" />
+      <ProofMarker className="landing-proof-marker-hero" />
       <div className="landing-route-thread" aria-hidden="true">
         <span className="landing-route-pin landing-route-pin-start">Kitchen</span>
         <span className="landing-route-arc" />
@@ -407,16 +446,18 @@ function HeroScene() {
         <span>Courier matched</span>
         <strong>Bike · 1.8 mi</strong>
       </div>
-      <div className="landing-floating-card landing-floating-card-command">
-        <span>Command Intelligence</span>
-        <strong>2 items need review</strong>
-        <p>Dispatch delay detected. Operator approval required.</p>
-      </div>
-      <div className="landing-floating-card landing-floating-card-proof">
-        <span>Proof state</span>
-        <strong>Payment captured</strong>
-        <p>Delivery fulfilled with POD recorded.</p>
-      </div>
+      <CommandSignalCard
+        body="Route intelligence is watching the flow. Operator approval required."
+        className="landing-floating-card-command"
+        eyebrow="Command Intelligence"
+        title="2 signals need review"
+      />
+      <CommandSignalCard
+        body="Delivery, POD, and capture close the fulfilment record."
+        className="landing-floating-card-proof"
+        eyebrow="Proof state"
+        title="Loop closes cleanly"
+      />
     </div>
   );
 }
@@ -425,11 +466,11 @@ function SignatureMomentCard(props: { body: string; index: number; label: string
   return (
     <article className="landing-signature-card">
       <div className="landing-signature-card-visual" aria-hidden="true">
-        <span className="landing-signature-card-route" />
-        <span className="landing-signature-card-node landing-signature-card-node-start" />
-        <span className="landing-signature-card-node landing-signature-card-node-mid" />
-        <span className="landing-signature-card-node landing-signature-card-node-end" />
-        <span className="landing-signature-card-proof">{String(props.index + 1).padStart(2, "0")}</span>
+        <RouteTrail className="landing-signature-card-route" />
+        <CommerceNode className="landing-signature-card-node landing-signature-card-node-start" />
+        <CommerceNode className="landing-signature-card-node landing-signature-card-node-mid" />
+        <CommerceNode className="landing-signature-card-node landing-signature-card-node-end" />
+        <ProofMarker className="landing-signature-card-proof">{String(props.index + 1).padStart(2, "0")}</ProofMarker>
       </div>
       <div>
         <span>{props.title}</span>
@@ -523,9 +564,9 @@ function OrchestrationScene() {
         <span className="landing-orchestration-lane landing-orchestration-lane-one" />
         <span className="landing-orchestration-lane landing-orchestration-lane-two" />
         <span className="landing-orchestration-lane landing-orchestration-lane-three" />
-        <span className="landing-orchestration-node landing-orchestration-node-order">Order</span>
-        <span className="landing-orchestration-node landing-orchestration-node-dispatch">Dispatch</span>
-        <span className="landing-orchestration-node landing-orchestration-node-proof">Proof</span>
+        <CommerceNode className="landing-orchestration-node landing-orchestration-node-order" label="Order" />
+        <CommerceNode className="landing-orchestration-node landing-orchestration-node-dispatch" label="Dispatch" />
+        <ProofMarker className="landing-orchestration-node landing-orchestration-node-proof">Proof</ProofMarker>
       </div>
       <div className="landing-orchestration-signals">
         {orchestrationSignals.map((item) => (
@@ -549,7 +590,7 @@ function AtmosphereScene() {
       <div className="landing-atmosphere-visual" aria-hidden="true">
         <span className="landing-atmosphere-glow landing-atmosphere-glow-amber" />
         <span className="landing-atmosphere-glow landing-atmosphere-glow-blue" />
-        <span className="landing-atmosphere-route" />
+        <RouteTrail className="landing-atmosphere-route" />
         <div className="landing-atmosphere-points">
           {atmosphereSignals.map((signal) => (
             <span key={signal}>{signal}</span>
@@ -567,9 +608,9 @@ function MovementScene() {
         <span className="landing-map-road landing-map-road-one" />
         <span className="landing-map-road landing-map-road-two" />
         <span className="landing-map-road landing-map-road-three" />
-        <span className="landing-map-node landing-map-node-merchant" />
-        <span className="landing-map-node landing-map-node-driver" />
-        <span className="landing-map-node landing-map-node-customer" />
+        <CommerceNode className="landing-map-node landing-map-node-merchant" />
+        <CommerceNode className="landing-map-node landing-map-node-driver" />
+        <ProofMarker className="landing-map-node landing-map-node-customer" />
       </div>
       <div className="landing-movement-caption">
         <span>Service window</span>
@@ -652,7 +693,7 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-        <HeroScene />
+        <RouteOrchestrationScene />
       </section>
 
       <section className="landing-proof-marquee" aria-label="Operational proof points">

@@ -81,6 +81,10 @@ Frame the ecosystem as:
 Each pillar should explain its role in the operating loop.
 
 ## Hero Exploration Concepts
+Decision: `Route Orchestration` is the canonical hero direction.
+
+The landing page should use City-Grid Intelligence as atmospheric support and Proof and Accountability as the closing visual language. Other concepts remain useful section lenses, but they should not compete with the hero direction.
+
 ### Concept 1: Route Orchestration
 Visual composition:
 
@@ -99,6 +103,7 @@ Emotional approach:
 Best for:
 
 - Investor and platform positioning.
+- Canonical public landing hero.
 
 ### Concept 2: Commerce Movement
 Visual composition:
@@ -307,6 +312,8 @@ Interaction:
 - Mobile nav should simplify rather than force desktop mega-menu behavior.
 
 ## Implementation Notes For Later Phases
+- Preserve the canonical spine: order enters the network, route intelligence coordinates movement, proof closes the loop.
+- Reuse landing-only primitives such as `RouteOrchestrationScene`, `CityGridAtmosphere`, `RouteTrail`, `CommerceNode`, `CommandSignalCard`, and `ProofMarker` before creating new one-off visual markup.
 - Build 2-4 more SVG-native scene assets before another major landing redesign.
 - Decide whether the hero should use one large asset or a sequence of composable SVG layers.
 - Consider a small proprietary marker/icon set for commerce, command, courier, proof, and oversight.
@@ -316,6 +323,6 @@ Interaction:
 ## Open Creative Questions
 - Should ShipWright commission bespoke illustration assets or continue building SVG-native compositions in-repo?
 - Should the public site include more human presence, or stay abstract and infrastructure-led?
-- Which hero concept should become the canonical brand direction?
+- How far should secondary pages adopt the canonical Route Orchestration visual system?
 - Should demo conversion pages share the same art world or stay more functional?
 - How cinematic can the landing page become before it feels less like serious software?
