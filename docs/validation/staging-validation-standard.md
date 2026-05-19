@@ -54,6 +54,7 @@ The paid-delivery proof must confirm:
 - support escalation event history remains append-only and available to order/job support timelines
 - pilot workspace schema readiness remains available for admin-led pilot mode, readiness, owner, and checklist tracking
 - pilot guardrail surfaces remain non-blocking and visible on business/admin pilot routes when a pilot profile is configured
+- pilot rehearsal cockpit remains read-only and shows validation posture as unknown unless evidence is recorded through pilot checks
 - release readiness checks green
 
 The release verification must confirm:
@@ -81,6 +82,7 @@ Authenticated routes:
 - `/admin`
 - `/admin/command`
 - `/admin/pilots`
+- `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`
 - `/driver`
 
@@ -138,6 +140,7 @@ Playwright artifacts remain local and ignored:
 - Public smoke should not require authentication.
 - Release readiness must include support/escalation schema dependencies because order, job, admin command, closeout, and support history surfaces depend on them.
 - Support history events must be system-created from support create/update operations; new work must not add manual event creation or deletion paths.
+- Rehearsal cockpit should not execute release verification, paid-delivery proof, browser smoke, or destructive pilot controls from the UI in v1.
 - Proof artifacts remain uncommitted unless intentionally exported.
 - Any staging-only credential changes stay in local env files or the staging secret manager, never in Git.
 - Staging validation should use deterministic staged fixtures and smoke users, not personal accounts.

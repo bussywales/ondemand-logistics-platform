@@ -446,12 +446,17 @@ export function AdminPilotsShell() {
         <div className="sw-stack">
           <PilotForm disabled={submitting} onError={setLoadError} onSaved={(pilot) => void handleSaved(pilot)} selectedPilot={selectedPilot} session={session} />
           <section className="sw-supporting-surface admin-section">
-            <div className="sw-card-header admin-section-header">
-              <div>
-                <p className="eyebrow">Readiness checklist</p>
-                <h2>{selectedPilot?.orgName ?? "Checklist"}</h2>
-              </div>
+          <div className="sw-card-header admin-section-header">
+            <div>
+              <p className="eyebrow">Readiness checklist</p>
+              <h2>{selectedPilot?.orgName ?? "Checklist"}</h2>
             </div>
+            {selectedPilot ? (
+              <Link className="sw-button sw-button--secondary button button-secondary" href={`/admin/pilots/${selectedPilot.id}/rehearsal`}>
+                Rehearsal cockpit
+              </Link>
+            ) : null}
+          </div>
             <ChecklistEditor checks={checks} disabled={submitting} onUpdate={(check, statusValue, evidence) => void handleUpdateCheck(check, statusValue, evidence)} />
           </section>
         </div>

@@ -28,6 +28,7 @@ import type {
   SupportEscalationList,
   PilotReadinessCheck,
   PilotReadinessCheckList,
+  PilotRehearsalSummary,
   PilotWorkspace,
   PilotWorkspaceList,
   UpdatePilotReadinessCheckInput,
@@ -169,6 +170,7 @@ type PilotWorkspaceListResponse = PilotWorkspaceList;
 type PilotWorkspaceResponse = PilotWorkspace;
 type PilotReadinessCheckListResponse = PilotReadinessCheckList;
 type PilotReadinessCheckResponse = PilotReadinessCheck;
+type PilotRehearsalSummaryResponse = PilotRehearsalSummary;
 type BusinessPilotStatusResponse = BusinessPilotStatus;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
@@ -607,6 +609,10 @@ export async function updateAdminPilot(
 export async function listAdminPilotChecks(session: BusinessSession, id: string): Promise<PilotReadinessCheck[]> {
   const payload = await apiFetch<PilotReadinessCheckListResponse>(session, `/v1/admin/pilots/${id}/checks`, { method: "GET" });
   return payload.items;
+}
+
+export async function getAdminPilotRehearsal(session: BusinessSession, id: string): Promise<PilotRehearsalSummary> {
+  return apiFetch<PilotRehearsalSummaryResponse>(session, `/v1/admin/pilots/${id}/rehearsal`, { method: "GET" });
 }
 
 export async function updateAdminPilotCheck(

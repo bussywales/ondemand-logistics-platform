@@ -40,6 +40,16 @@ const checkRow = {
   updated_at: "2026-05-04T08:10:00.000Z"
 };
 
+function checkWith(key: string, status: string, idSuffix: string) {
+  return {
+    ...checkRow,
+    id: `33333333-3333-4333-8333-3333333333${idSuffix}`,
+    key,
+    label: key.replaceAll("_", " "),
+    status
+  };
+}
+
 function createPg(...responses: Array<{ rows: unknown[] }>) {
   return {
     query: vi.fn().mockImplementation(() => {
@@ -119,5 +129,53 @@ describe("PilotsService", () => {
     expect(result.workspace).toBeNull();
     expect(result.checks).toEqual([]);
     expect(result.guidance).toContain("No pilot profile");
+  });
+
+  it("returns a blocked rehearsal summary when high severity support is open", async () => {
+    const pg = createPg(
+      { rows: [workspaceRow] },
+      { rows: [] },
+      { rows: [checkWith("paid_delivery_proof_current", "PASSED", "01"), checkWith("browser_smoke_current", "PASSED", "02")] },
+      { rows: [{ unresolved_support_escalations: "2", high_critical_support_escalations: "1" }] }
+    );
+    const service = new PilotsService(pg as never);
+
+    const result = await service.getAdminPilotRehearsal(PILOT_ID);
+
+    expect(result.recommendation).toBe("BLOCKED");
+    expect(result.operationalPosture.highCriticalSupportEscalations).toBe(1);
+    expect(result.recommendedNextActions).toContain("Resolve high or critical support escalations before rehearsal.");
+  });
+
+  it("returns needs review when proof and smoke readiness checks are not current", async () => {
+    const pg = createPg(
+      { rows: [{ ...workspaceRow, checklist_total: "2", checklist_passed: "1" }] },
+      { rows: [] },
+      { rows: [checkWith("paid_delivery_proof_current", "PASSED", "01"), checkWith("browser_smoke_current", "NOT_STARTED", "02")] },
+      { rows: [{ unresolved_support_escalations: "0", high_critical_support_escalations: "0" }] }
+    );
+    const service = new PilotsService(pg as never);
+
+    const result = await service.getAdminPilotRehearsal(PILOT_ID);
+
+    expect(result.recommendation).toBe("NEEDS_REVIEW");
+    expect(result.validationPosture.browserSmoke.status).toBe("UNKNOWN");
+    expect(result.recommendedNextActions).toContain("Run release verification, paid-delivery proof, and browser smoke before rehearsal.");
+  });
+
+  it("returns ready for rehearsal when checks pass and no blockers remain", async () => {
+    const pg = createPg(
+      { rows: [{ ...workspaceRow, checklist_total: "2", checklist_passed: "2", unresolved_support_escalations: "0", payment_risks: "0" }] },
+      { rows: [] },
+      { rows: [checkWith("paid_delivery_proof_current", "PASSED", "01"), checkWith("browser_smoke_current", "PASSED", "02")] },
+      { rows: [{ unresolved_support_escalations: "0", high_critical_support_escalations: "0" }] }
+    );
+    const service = new PilotsService(pg as never);
+
+    const result = await service.getAdminPilotRehearsal(PILOT_ID);
+
+    expect(result.recommendation).toBe("READY_FOR_REHEARSAL");
+    expect(result.checklistSummary.passed).toBe(2);
+    expect(result.operationalPosture.unresolvedSupportEscalations).toBe(0);
   });
 });

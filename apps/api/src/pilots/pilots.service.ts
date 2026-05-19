@@ -4,13 +4,16 @@ import {
   CreatePilotWorkspaceSchema,
   PilotReadinessCheckListSchema,
   PilotReadinessCheckSchema,
+  PilotRehearsalSummarySchema,
   PilotWorkspaceListSchema,
   PilotWorkspaceSchema,
   UpdatePilotReadinessCheckSchema,
   UpdatePilotWorkspaceSchema,
   type BusinessPilotStatusDto,
+  type PilotGuardrailLevel,
   type PilotReadinessCheckDto,
   type PilotReadinessCheckKey,
+  type PilotRehearsalRecommendation,
   type PilotWorkspaceDto,
 } from "@shipwright/contracts";
 import { toIsoDateTime } from "../database/mapper.js";
@@ -61,6 +64,11 @@ type PilotReadinessCheckRow = {
   evidence: string | null;
   updated_by: string | null;
   updated_at: string | Date;
+};
+
+type SupportPostureRow = {
+  unresolved_support_escalations: number | string;
+  high_critical_support_escalations: number | string;
 };
 
 function numberValue(value: number | string) {
@@ -116,6 +124,142 @@ function mapPilotReadinessCheck(row: PilotReadinessCheckRow): PilotReadinessChec
     evidence: row.evidence,
     updatedBy: row.updated_by,
     updatedAt: toIsoDateTime(row.updated_at)
+  });
+}
+
+function isRehearsalReady(workspace: PilotWorkspaceDto) {
+  return workspace.readinessStage === "REHEARSAL_READY" || workspace.readinessStage === "PILOT_READY";
+}
+
+function buildGuardrailState(workspace: PilotWorkspaceDto): {
+  level: PilotGuardrailLevel;
+  title: string;
+  message: string;
+  recommendedAction: string;
+  badgeCopy: string;
+} {
+  if (workspace.status === "PAUSED") {
+    return {
+      level: "PAUSED",
+      title: "Pilot workspace paused",
+      message: "This workspace is paused for pilot operations. Rehearsal can only proceed after a platform admin reviews the pilot profile.",
+      recommendedAction: "Review pilot status, readiness checks, and owner coverage before resuming rehearsal.",
+      badgeCopy: "Paused"
+    };
+  }
+
+  if (workspace.mode === "DEMO") {
+    return {
+      level: "INFO",
+      title: "Demo workspace",
+      message: "This workspace is intended for guided demos and proof-backed walkthroughs.",
+      recommendedAction: "Keep activity controlled and run validation commands before presenting.",
+      badgeCopy: "Demo workspace"
+    };
+  }
+
+  if (workspace.mode === "INTERNAL_TEST") {
+    return {
+      level: workspace.status === "ACTIVE" || workspace.status === "IN_REHEARSAL" ? "CAUTION" : "INFO",
+      title: "Internal test workspace",
+      message: "This workspace can exercise workflows but should not be presented as open pilot readiness.",
+      recommendedAction: "Keep tests bounded and record issues before moving to controlled pilot mode.",
+      badgeCopy: "Internal test"
+    };
+  }
+
+  if (workspace.mode === "CONTROLLED_PILOT") {
+    if (!isRehearsalReady(workspace)) {
+      return {
+        level: "WARNING",
+        title: "Pilot readiness review needed",
+        message: "This controlled pilot workspace has not reached rehearsal-ready or pilot-ready stage.",
+        recommendedAction: "Complete the readiness checklist before rehearsal.",
+        badgeCopy: "Controlled pilot"
+      };
+    }
+
+    return {
+      level: "CAUTION",
+      title: "Controlled pilot mode",
+      message: "This workspace can be rehearsed under human-reviewed controlled-pilot discipline.",
+      recommendedAction: "Confirm validation gates, owners, support posture, and known limitations before rehearsal.",
+      badgeCopy: "Controlled pilot"
+    };
+  }
+
+  if (workspace.mode === "LIVE_READY" && workspace.readinessStage === "PILOT_READY") {
+    return {
+      level: "READY",
+      title: "Live-ready workspace",
+      message: "This workspace is marked live-ready by platform admins.",
+      recommendedAction: "Proceed only after current validation gates and owner coverage are confirmed.",
+      badgeCopy: "Live-ready"
+    };
+  }
+
+  return {
+    level: "WARNING",
+    title: "Live-ready review needed",
+    message: "This workspace is marked live-ready mode but has not reached pilot-ready stage.",
+    recommendedAction: "Review the pilot checklist before rehearsal or live operations.",
+    badgeCopy: "Live-ready review"
+  };
+}
+
+function summariseChecks(checks: PilotReadinessCheckDto[]) {
+  return {
+    total: checks.length,
+    passed: checks.filter((check) => check.status === "PASSED").length,
+    blocked: checks.filter((check) => check.status === "BLOCKED").length,
+    inProgress: checks.filter((check) => check.status === "IN_PROGRESS").length,
+    waived: checks.filter((check) => check.status === "WAIVED").length,
+    notStarted: checks.filter((check) => check.status === "NOT_STARTED").length
+  };
+}
+
+function buildUnknownValidationPosture() {
+  return {
+    releaseVerification: {
+      status: "UNKNOWN" as const,
+      label: "Release verification",
+      summary: "Run pnpm release:verify-staging before rehearsal.",
+      evidenceAt: null
+    },
+    paidDeliveryProof: {
+      status: "UNKNOWN" as const,
+      label: "Paid delivery proof",
+      summary: "Run pnpm proof:staging-paid-delivery before rehearsal.",
+      evidenceAt: null
+    },
+    browserSmoke: {
+      status: "UNKNOWN" as const,
+      label: "Browser smoke",
+      summary: "Run pnpm --filter @shipwright/web test:smoke before rehearsal.",
+      evidenceAt: null
+    }
+  };
+}
+
+function buildRecommendation(
+  workspace: PilotWorkspaceDto,
+  checklist: ReturnType<typeof summariseChecks>,
+  highCriticalSupportEscalations: number,
+  validationChecklistClear: boolean
+): PilotRehearsalRecommendation {
+  if (!workspace || checklist.total === 0) return "UNKNOWN";
+  if (workspace.status === "PAUSED" || checklist.blocked > 0 || highCriticalSupportEscalations > 0) return "BLOCKED";
+  if (!isRehearsalReady(workspace)) return "NEEDS_REVIEW";
+  if (checklist.passed + checklist.waived < checklist.total) return "NEEDS_REVIEW";
+  if (!validationChecklistClear) return "NEEDS_REVIEW";
+  return "READY_FOR_REHEARSAL";
+}
+
+function validationChecklistClear(checks: PilotReadinessCheckDto[]) {
+  const statusByKey = new Map(checks.map((check) => [check.key, check.status]));
+  return ["paid_delivery_proof_current", "browser_smoke_current"].every((key) => {
+    const status = statusByKey.get(key as PilotReadinessCheckKey);
+    return status === "PASSED" || status === "WAIVED";
   });
 }
 
@@ -223,6 +367,66 @@ export class PilotsService {
     return PilotReadinessCheckListSchema.parse({ items: result.rows.map(mapPilotReadinessCheck) });
   }
 
+  async getAdminPilotRehearsal(pilotId: string) {
+    const workspace = await this.getAdminPilotById(pilotId);
+    await this.ensureDefaultChecks(pilotId);
+    const checksResult = await this.pg.query<PilotReadinessCheckRow>(
+      `${this.checksSelectSql()} where c.pilot_workspace_id = $1 order by c.updated_at desc`,
+      [pilotId]
+    );
+    const supportResult = await this.pg.query<SupportPostureRow>(
+      `select
+         count(*) filter (
+           where se.status in ('OPEN', 'IN_REVIEW', 'WAITING_ON_CUSTOMER', 'WAITING_ON_MERCHANT', 'WAITING_ON_COURIER')
+         ) as unresolved_support_escalations,
+         count(*) filter (
+           where se.status in ('OPEN', 'IN_REVIEW', 'WAITING_ON_CUSTOMER', 'WAITING_ON_MERCHANT', 'WAITING_ON_COURIER')
+             and se.severity in ('HIGH', 'CRITICAL')
+         ) as high_critical_support_escalations
+       from public.support_escalations se
+       where se.org_id = $1`,
+      [workspace.orgId]
+    );
+
+    const checks = checksResult.rows.map(mapPilotReadinessCheck);
+    const checklistSummary = summariseChecks(checks);
+    const supportPosture = supportResult.rows[0] ?? {
+      unresolved_support_escalations: workspace.posture.unresolvedSupportEscalations,
+      high_critical_support_escalations: 0
+    };
+    const highCriticalSupportEscalations = numberValue(supportPosture.high_critical_support_escalations);
+    const unresolvedSupportEscalations = numberValue(supportPosture.unresolved_support_escalations);
+    const validationPosture = buildUnknownValidationPosture();
+    const validationChecksClear = validationChecklistClear(checks);
+    const recommendation = buildRecommendation(workspace, checklistSummary, highCriticalSupportEscalations, validationChecksClear);
+    const nextActions = this.buildRehearsalNextActions({
+      workspace,
+      checklistSummary,
+      highCriticalSupportEscalations,
+      unresolvedSupportEscalations,
+      validationUnknown: !validationChecksClear
+    });
+
+    return PilotRehearsalSummarySchema.parse({
+      workspace,
+      guardrailState: buildGuardrailState(workspace),
+      checks,
+      checklistSummary,
+      operationalPosture: {
+        activeJobs: workspace.posture.activeJobs,
+        unresolvedSupportEscalations,
+        highCriticalSupportEscalations,
+        openPaymentRisks: workspace.posture.paymentRisks,
+        readyCouriers: workspace.posture.readyCouriers
+      },
+      validationPosture,
+      recommendation,
+      recommendedNextActions: nextActions,
+      guidance:
+        "This cockpit summarises pilot readiness signals. Platform admins remain responsible for rehearsal approval, validation commands, support follow-up, and known-limitations review."
+    });
+  }
+
   async updateAdminPilotCheck(userId: string, pilotId: string, checkId: string, rawInput: unknown) {
     const input = UpdatePilotReadinessCheckSchema.parse(rawInput);
     const assignments: string[] = ["updated_by = $3", "updated_at = now()"];
@@ -320,6 +524,50 @@ export class PilotsService {
        on conflict (pilot_workspace_id, key) do nothing`,
       [pilotWorkspaceId, JSON.stringify(DEFAULT_CHECKS)]
     );
+  }
+
+  private buildRehearsalNextActions(input: {
+    workspace: PilotWorkspaceDto;
+    checklistSummary: ReturnType<typeof summariseChecks>;
+    highCriticalSupportEscalations: number;
+    unresolvedSupportEscalations: number;
+    validationUnknown: boolean;
+  }) {
+    const actions: string[] = [];
+
+    if (input.workspace.status === "PAUSED") {
+      actions.push("Resume or update the paused pilot profile before rehearsal.");
+    }
+
+    if (!isRehearsalReady(input.workspace)) {
+      actions.push("Move the pilot to rehearsal-ready or pilot-ready stage after checklist review.");
+    }
+
+    if (input.checklistSummary.blocked > 0) {
+      actions.push("Update blocked readiness checks with evidence or owner notes.");
+    }
+
+    if (input.checklistSummary.passed + input.checklistSummary.waived < input.checklistSummary.total) {
+      actions.push("Complete or waive remaining readiness checks before rehearsal.");
+    }
+
+    if (input.highCriticalSupportEscalations > 0) {
+      actions.push("Resolve high or critical support escalations before rehearsal.");
+    } else if (input.unresolvedSupportEscalations > 0) {
+      actions.push("Review open support escalations and confirm follow-up owners.");
+    }
+
+    if (!input.workspace.pilotOwner || !input.workspace.supportOwner || !input.workspace.courierOwner || !input.workspace.paymentOwner) {
+      actions.push("Confirm pilot, support, courier, and payment owners.");
+    }
+
+    if (input.validationUnknown) {
+      actions.push("Run release verification, paid-delivery proof, and browser smoke before rehearsal.");
+    }
+
+    actions.push("Review known limitations and demo reset checklist with the rehearsal owner.");
+
+    return Array.from(new Set(actions));
   }
 
   private workspaceSelectSql() {

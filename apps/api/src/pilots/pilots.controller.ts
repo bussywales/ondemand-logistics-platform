@@ -24,6 +24,11 @@ export class AdminPilotsController {
     return this.pilots.updateAdminPilot(id, body);
   }
 
+  @Get(":id/rehearsal")
+  getPilotRehearsal(@Param("id") id: string) {
+    return this.pilots.getAdminPilotRehearsal(id);
+  }
+
   @Get(":id/checks")
   listPilotChecks(@Param("id") id: string) {
     return this.pilots.listAdminPilotChecks(id);

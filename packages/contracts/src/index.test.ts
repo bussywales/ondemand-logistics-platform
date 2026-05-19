@@ -26,6 +26,7 @@ import {
   PaginatedJobsSchema,
   PaymentStatusSchema,
   PilotReadinessCheckListSchema,
+  PilotRehearsalSummarySchema,
   PilotWorkspaceListSchema,
   ProofOfDeliveryUploadUrlResponseSchema,
   SupportEscalationEventListSchema,
@@ -487,6 +488,55 @@ describe("admin schemas", () => {
       workspace,
       checks: [check],
       guidance: "Pilot mode is informational in v1."
+    }).success).toBe(true);
+    expect(PilotRehearsalSummarySchema.safeParse({
+      workspace,
+      guardrailState: {
+        level: "CAUTION",
+        title: "Controlled pilot mode",
+        message: "Human-reviewed readiness is required before rehearsal.",
+        recommendedAction: "Review validation commands before the rehearsal.",
+        badgeCopy: "Controlled pilot"
+      },
+      checks: [check],
+      checklistSummary: {
+        total: 10,
+        passed: 8,
+        blocked: 0,
+        inProgress: 1,
+        waived: 0,
+        notStarted: 1
+      },
+      operationalPosture: {
+        activeJobs: 2,
+        unresolvedSupportEscalations: 1,
+        highCriticalSupportEscalations: 0,
+        openPaymentRisks: 1,
+        readyCouriers: 3
+      },
+      validationPosture: {
+        releaseVerification: {
+          status: "UNKNOWN",
+          label: "Release verification",
+          summary: "Run pnpm release:verify-staging before rehearsal.",
+          evidenceAt: null
+        },
+        paidDeliveryProof: {
+          status: "UNKNOWN",
+          label: "Paid delivery proof",
+          summary: "Run pnpm proof:staging-paid-delivery before rehearsal.",
+          evidenceAt: null
+        },
+        browserSmoke: {
+          status: "UNKNOWN",
+          label: "Browser smoke",
+          summary: "Run pnpm --filter @shipwright/web test:smoke before rehearsal.",
+          evidenceAt: null
+        }
+      },
+      recommendation: "NEEDS_REVIEW",
+      recommendedNextActions: ["Run validation commands before rehearsal."],
+      guidance: "Human review is required before any pilot rehearsal."
     }).success).toBe(true);
   });
 });

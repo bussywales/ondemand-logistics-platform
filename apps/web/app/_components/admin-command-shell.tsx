@@ -260,6 +260,45 @@ export function AdminCommandView(props: {
 
       <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_EXPLAINER} />
 
+      <section className="sw-supporting-surface admin-command-section">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Pilot rehearsal</p>
+            <h2>Rehearsal cockpit links</h2>
+            <p className="ops-detail-note">Open a pilot-specific readiness cockpit before controlled demos or rehearsal windows.</p>
+          </div>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/pilots">Manage pilots</Link>
+        </div>
+        {props.pilots.length ? (
+          <div className="admin-command-list">
+            {props.pilots.slice(0, 4).map((pilot) => {
+              const state = getPilotGuardrailState({ workspace: pilot, checks: [], guidance: "" }, { canManagePilots: true });
+              return (
+                <article className="sw-list-row admin-command-report-action" key={pilot.id}>
+                  <div>
+                    <div className="admin-command-item-meta">
+                      <span className="sw-badge sw-badge--info">{pilot.mode.replaceAll("_", " ").toLowerCase()}</span>
+                      <span>{pilot.status.replaceAll("_", " ").toLowerCase()}</span>
+                      <span>{pilot.checklistPassed}/{pilot.checklistTotal} checks clear</span>
+                    </div>
+                    <strong>{pilot.orgName ?? pilot.orgId}</strong>
+                    <p>{state.recommendedAction}</p>
+                  </div>
+                  <Link className="sw-button sw-button--secondary button button-secondary" href={`/admin/pilots/${pilot.id}/rehearsal`}>
+                    Open cockpit
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="sw-empty-state admin-empty-state">
+            <strong className="sw-empty-title">No pilot profiles configured</strong>
+            <p className="sw-empty-copy">Create a pilot profile before using rehearsal readiness workflows.</p>
+          </div>
+        )}
+      </section>
+
       <section className="sw-supporting-surface admin-command-section admin-support-escalation-strip">
         <div className="sw-card-header admin-section-header">
           <div>

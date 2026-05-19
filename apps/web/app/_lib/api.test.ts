@@ -8,6 +8,7 @@ import {
   createRestaurant,
   getAdminDailyBriefing,
   getAdminEndOfDayReport,
+  getAdminPilotRehearsal,
   getBusinessDailyBriefing,
   getBusinessEndOfDayReport,
   getDriverAssignmentIneligibility,
@@ -596,6 +597,67 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/admin/drivers/readiness');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(readiness[0]?.readinessStatus).toBe('READY');
+  });
+
+  it('reads an admin pilot rehearsal cockpit summary', async () => {
+    const pilotId = '4cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          workspace: {
+            id: pilotId,
+            orgId: '2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b',
+            orgName: 'Pilot Org',
+            mode: 'CONTROLLED_PILOT',
+            status: 'ACTIVE',
+            readinessStage: 'REHEARSAL_READY',
+            pilotOwner: 'Ops lead',
+            supportOwner: 'Support lead',
+            courierOwner: 'Courier lead',
+            paymentOwner: 'Finance lead',
+            goLiveTargetDate: '2026-05-30',
+            notes: 'Controlled rehearsal.',
+            checklistTotal: 10,
+            checklistPassed: 8,
+            posture: { activeJobs: 1, unresolvedSupportEscalations: 0, paymentRisks: 0, readyCouriers: 2 },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          guardrailState: {
+            level: 'CAUTION',
+            title: 'Controlled pilot mode',
+            message: 'Human-reviewed readiness is required before rehearsal.',
+            recommendedAction: 'Confirm validation gates before rehearsal.',
+            badgeCopy: 'Controlled pilot'
+          },
+          checks: [],
+          checklistSummary: { total: 10, passed: 8, blocked: 0, inProgress: 1, waived: 0, notStarted: 1 },
+          operationalPosture: {
+            activeJobs: 1,
+            unresolvedSupportEscalations: 0,
+            highCriticalSupportEscalations: 0,
+            openPaymentRisks: 0,
+            readyCouriers: 2
+          },
+          validationPosture: {
+            releaseVerification: { status: 'UNKNOWN', label: 'Release verification', summary: 'Run release verification.', evidenceAt: null },
+            paidDeliveryProof: { status: 'UNKNOWN', label: 'Paid delivery proof', summary: 'Run paid-delivery proof.', evidenceAt: null },
+            browserSmoke: { status: 'UNKNOWN', label: 'Browser smoke', summary: 'Run browser smoke.', evidenceAt: null }
+          },
+          recommendation: 'NEEDS_REVIEW',
+          recommendedNextActions: ['Run validation commands before rehearsal.'],
+          guidance: 'Human review is required before rehearsal.'
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const rehearsal = await getAdminPilotRehearsal(session, pilotId);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain(`/v1/admin/pilots/${pilotId}/rehearsal`);
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(rehearsal.recommendation).toBe('NEEDS_REVIEW');
   });
 
   it('reads business notifications with bearer auth', async () => {

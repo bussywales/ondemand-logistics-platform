@@ -1295,6 +1295,71 @@ export const BusinessPilotStatusSchema = z.object({
 });
 export type BusinessPilotStatusDto = z.infer<typeof BusinessPilotStatusSchema>;
 
+export const PilotGuardrailLevelSchema = z.enum(["INFO", "CAUTION", "WARNING", "PAUSED", "READY"]);
+export type PilotGuardrailLevel = z.infer<typeof PilotGuardrailLevelSchema>;
+
+export const PilotRehearsalRecommendationSchema = z.enum(["READY_FOR_REHEARSAL", "NEEDS_REVIEW", "BLOCKED", "UNKNOWN"]);
+export type PilotRehearsalRecommendation = z.infer<typeof PilotRehearsalRecommendationSchema>;
+
+export const PilotRehearsalValidationStatusSchema = z.enum(["UNKNOWN", "PASSED", "FAILED", "SKIPPED"]);
+export type PilotRehearsalValidationStatus = z.infer<typeof PilotRehearsalValidationStatusSchema>;
+
+export const PilotRehearsalGuardrailSchema = z.object({
+  level: PilotGuardrailLevelSchema,
+  title: z.string().min(2),
+  message: z.string().min(2),
+  recommendedAction: z.string().min(2),
+  badgeCopy: z.string().min(2)
+});
+export type PilotRehearsalGuardrailDto = z.infer<typeof PilotRehearsalGuardrailSchema>;
+
+export const PilotRehearsalChecklistSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  passed: z.number().int().nonnegative(),
+  blocked: z.number().int().nonnegative(),
+  inProgress: z.number().int().nonnegative(),
+  waived: z.number().int().nonnegative(),
+  notStarted: z.number().int().nonnegative()
+});
+export type PilotRehearsalChecklistSummaryDto = z.infer<typeof PilotRehearsalChecklistSummarySchema>;
+
+export const PilotRehearsalOperationalPostureSchema = z.object({
+  activeJobs: z.number().int().nonnegative(),
+  unresolvedSupportEscalations: z.number().int().nonnegative(),
+  highCriticalSupportEscalations: z.number().int().nonnegative(),
+  openPaymentRisks: z.number().int().nonnegative(),
+  readyCouriers: z.number().int().nonnegative()
+});
+export type PilotRehearsalOperationalPostureDto = z.infer<typeof PilotRehearsalOperationalPostureSchema>;
+
+export const PilotRehearsalValidationSignalSchema = z.object({
+  status: PilotRehearsalValidationStatusSchema,
+  label: z.string().min(2),
+  summary: z.string().min(2),
+  evidenceAt: IsoDateTimeSchema.nullable()
+});
+export type PilotRehearsalValidationSignalDto = z.infer<typeof PilotRehearsalValidationSignalSchema>;
+
+export const PilotRehearsalValidationPostureSchema = z.object({
+  releaseVerification: PilotRehearsalValidationSignalSchema,
+  paidDeliveryProof: PilotRehearsalValidationSignalSchema,
+  browserSmoke: PilotRehearsalValidationSignalSchema
+});
+export type PilotRehearsalValidationPostureDto = z.infer<typeof PilotRehearsalValidationPostureSchema>;
+
+export const PilotRehearsalSummarySchema = z.object({
+  workspace: PilotWorkspaceSchema,
+  guardrailState: PilotRehearsalGuardrailSchema,
+  checks: z.array(PilotReadinessCheckSchema),
+  checklistSummary: PilotRehearsalChecklistSummarySchema,
+  operationalPosture: PilotRehearsalOperationalPostureSchema,
+  validationPosture: PilotRehearsalValidationPostureSchema,
+  recommendation: PilotRehearsalRecommendationSchema,
+  recommendedNextActions: z.array(z.string().min(2)),
+  guidance: z.string().min(2)
+});
+export type PilotRehearsalSummaryDto = z.infer<typeof PilotRehearsalSummarySchema>;
+
 export const SupportEscalationCategorySchema = z.enum([
   "DISPATCH_FAILURE",
   "PAYMENT_RISK",

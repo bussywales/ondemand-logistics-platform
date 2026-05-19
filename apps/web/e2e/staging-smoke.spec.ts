@@ -143,6 +143,11 @@ test('authenticated admin routes smoke', async ({ page }) => {
   await assertProtectedRouteLoads(page, '/admin');
   await assertProtectedRouteLoads(page, '/admin/command');
   await assertProtectedRouteLoads(page, '/admin/pilots');
+  const rehearsalLink = page.locator('a[href*="/admin/pilots/"][href$="/rehearsal"]').first();
+  if (await rehearsalLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await rehearsalLink.click();
+    await assertProtectedRouteLoads(page, page.url());
+  }
   await assertProtectedRouteLoads(page, '/admin/drivers');
 });
 

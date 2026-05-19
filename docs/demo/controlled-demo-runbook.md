@@ -37,6 +37,7 @@ Core routes:
 - driver route: `https://ondemand-logistics-platform-web.vercel.app/driver`
 - admin control plane: `https://ondemand-logistics-platform-web.vercel.app/admin`
 - pilot management: `https://ondemand-logistics-platform-web.vercel.app/admin/pilots`
+- pilot rehearsal cockpit pattern: `https://ondemand-logistics-platform-web.vercel.app/admin/pilots/<pilotId>/rehearsal`
 - help: `https://ondemand-logistics-platform-web.vercel.app/help`
 
 API and health:
@@ -112,9 +113,10 @@ Recommended order:
 12. show the admin control plane
 13. show admin command intelligence
 14. show pilot management mode, readiness stage, owners, and checklist evidence
-15. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
-16. show help and pilot playbooks
-17. close by referencing the proof artifacts and current known limitations
+15. open the selected pilot rehearsal cockpit and confirm readiness recommendation, validation unknown copy, operational posture, and recommended next actions
+16. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
+17. show help and pilot playbooks
+18. close by referencing the proof artifacts and current known limitations
 
 Audience-specific walkthroughs:
 - use `investor-walkthrough.md` for investor or strategic partner sessions
@@ -140,6 +142,7 @@ Do not claim:
 - settlement or reconciliation automation beyond the current visibility surfaces
 - pilot mode as an automatic operating control; it is a human-reviewed readiness layer in v1
 - pilot guardrails as hard enforcement; they are soft warnings in v1
+- the rehearsal cockpit as proof execution; it is a read-only readiness cockpit and validation commands still run outside the UI
 
 When Command Intelligence is shown, describe it as:
 - deterministic

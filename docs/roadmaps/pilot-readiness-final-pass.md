@@ -222,10 +222,12 @@ The following is reasonable now:
 - tightly managed staging testers
 - controlled restaurant walkthroughs
 - proof-based rehearsal of the full operating loop
+- admin-reviewed rehearsal cockpit checks for the selected pilot workspace
 
 Conditions:
 - use seeded staging fixtures
 - use the documented proof and release commands
+- review `/admin/pilots/[pilotId]/rehearsal` before observers join
 - keep support staff present
 - treat playbooks as live operating instructions
 - avoid claiming production-grade autonomy or unattended pilot readiness
@@ -237,7 +239,7 @@ Recommended supporting docs for these sessions:
 - `docs/demo/known-limitations.md`
 
 ## Recommended next pilot actions
-1. Rehearse one full browser-led demo using the latest proof order plus `/track/[orderId]`, `/app/orders`, `/app/payments`, `/driver`, and `/admin`.
+1. Rehearse one full browser-led demo using the latest proof order plus `/track/[orderId]`, `/app/orders`, `/app/payments`, `/driver`, `/admin`, and `/admin/pilots/[pilotId]/rehearsal`.
 2. Run the full validation standard in `docs/validation/staging-validation-standard.md` immediately before any investor or pilot-facing session.
 3. Assign named owners for:
    - incident command

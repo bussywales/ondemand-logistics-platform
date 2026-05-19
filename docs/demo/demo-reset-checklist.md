@@ -92,8 +92,15 @@ Admin and driver:
 - `/admin`
 - `/admin/command`
 - `/admin/pilots`
+- `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`
 - `/driver`
+
+For the selected pilot profile, open the rehearsal cockpit and confirm:
+- recommendation is not `BLOCKED`
+- blocked checks are either cleared or owned
+- high/critical support escalations are resolved or explicitly deferred by the demo owner
+- validation posture is understood as command-run evidence, not UI-executed proof
 
 ## 5. Prepare Browser State
 Before the session:
@@ -122,6 +129,7 @@ Be ready to explain:
 - staging-only status
 - browser payment surface vs proof harness payment execution
 - pilot workspace mode/status/readiness are admin-reviewed context signals, not automatic workflow gates
+- rehearsal cockpit is read-only and does not run proof commands from the browser
 - pilot guardrails warn, explain, and guide; they do not block workflows in v1
 - Resend parked pending verified sender/domain
 - no autonomous AI actions
@@ -136,5 +144,6 @@ Before any demo, the minimum standard is:
 - `pnpm proof:staging-paid-delivery` passed
 - `pnpm --filter @shipwright/web test:smoke` passed
 - latest proof IDs recorded
+- rehearsal cockpit reviewed for the selected pilot workspace
 - staging routes checked
 - known limitations ready to explain

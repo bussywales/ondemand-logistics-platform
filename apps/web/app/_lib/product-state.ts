@@ -650,6 +650,52 @@ export type BusinessPilotStatus = {
   guidance: string;
 };
 
+export type PilotGuardrailLevel = "INFO" | "CAUTION" | "WARNING" | "PAUSED" | "READY";
+export type PilotRehearsalRecommendation = "READY_FOR_REHEARSAL" | "NEEDS_REVIEW" | "BLOCKED" | "UNKNOWN";
+export type PilotRehearsalValidationStatus = "UNKNOWN" | "PASSED" | "FAILED" | "SKIPPED";
+
+export type PilotRehearsalSummary = {
+  workspace: PilotWorkspace;
+  guardrailState: {
+    level: PilotGuardrailLevel;
+    title: string;
+    message: string;
+    recommendedAction: string;
+    badgeCopy: string;
+  };
+  checks: PilotReadinessCheck[];
+  checklistSummary: {
+    total: number;
+    passed: number;
+    blocked: number;
+    inProgress: number;
+    waived: number;
+    notStarted: number;
+  };
+  operationalPosture: {
+    activeJobs: number;
+    unresolvedSupportEscalations: number;
+    highCriticalSupportEscalations: number;
+    openPaymentRisks: number;
+    readyCouriers: number;
+  };
+  validationPosture: {
+    releaseVerification: PilotRehearsalValidationSignal;
+    paidDeliveryProof: PilotRehearsalValidationSignal;
+    browserSmoke: PilotRehearsalValidationSignal;
+  };
+  recommendation: PilotRehearsalRecommendation;
+  recommendedNextActions: string[];
+  guidance: string;
+};
+
+export type PilotRehearsalValidationSignal = {
+  status: PilotRehearsalValidationStatus;
+  label: string;
+  summary: string;
+  evidenceAt: string | null;
+};
+
 export type SupportEscalationCategory =
   | "DISPATCH_FAILURE"
   | "PAYMENT_RISK"
