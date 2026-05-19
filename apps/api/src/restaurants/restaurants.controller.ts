@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
 import { Public } from "../security/public.decorator.js";
@@ -66,6 +66,16 @@ export class RestaurantsController {
     }
 
     return result.body;
+  }
+
+  @Patch(":restaurantId/menu-items/:itemId")
+  async updateMenuItem(
+    @Param("restaurantId") restaurantId: string,
+    @Param("itemId") itemId: string,
+    @Body() body: unknown,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.restaurantsService.updateMenuItem(restaurantId, itemId, body, user.id);
   }
 
   @Get(":restaurantId/menu")

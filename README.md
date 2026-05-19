@@ -109,7 +109,7 @@ The schema has moved well beyond the original foundations migrations.
 See the full migration history in:
 - `packages/db/migrations`
 
-Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, and platform admin support.
+Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, platform admin support, and identity/team management.
 Pilot management schema now tracks workspace mode, readiness stage, owners, readiness checklist evidence, and posture counts for admin-led controlled pilot review.
 
 ## Strategic direction
@@ -153,7 +153,7 @@ pnpm --filter @shipwright/web test:smoke
 Before a demo, record the latest proof order/job/payment/POD ids and keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available.
 
 ## Roadmaps
-- `docs/roadmaps/shipwright-roadmap.md` - canonical roadmap order across pilot readiness, What’s New discipline, IAM, driver fleets, commercial conversion, and brand work
+- `docs/roadmaps/shipwright-roadmap.md` - canonical roadmap order across pilot readiness, What’s New discipline, IAM, merchant menu operations, driver fleets, commercial conversion, and brand work
 - `docs/roadmaps/fleet-roadmap.md` - legacy roadmap filename for the core ShipWright delivery plan
 - `docs/roadmaps/fleet-scope-cut-matrix.md` - build, buy, manual, and defer decisions by stage
 - `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution status and priorities
@@ -166,8 +166,9 @@ Next execution sequence:
 1. Pilot Rehearsal Cockpit
 2. What’s New + release discipline
 3. Platform Identity & Access Management v1
-4. Driver Fleet Organisations
-5. Lead capture/commercial conversion backend
+4. Merchant Menu Editing / Price Update
+5. Driver Fleet Organisations
+6. Lead capture/commercial conversion backend
 
 ## Design authority
 - `docs/design/fleet-ux-authority-brief.md` - legacy filename for ShipWright UX posture and rules

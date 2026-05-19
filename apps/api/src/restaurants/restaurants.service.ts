@@ -22,6 +22,7 @@ import {
   RestaurantSchema,
   SubmitCustomerOrderResponseSchema,
   SubmitCustomerOrderSchema,
+  UpdateMenuItemSchema,
   type MenuCategoryDto,
   type MenuItemDto,
   type PaymentDto,
@@ -496,6 +497,86 @@ export class RestaurantsService {
 
     this.logger.info({ actor_id: userId, restaurant_id: restaurantId, replay: result.replay }, "menu_item_created");
     return result;
+  }
+
+  async updateMenuItem(restaurantId: string, itemId: string, input: unknown, userId: string): Promise<MenuItemDto> {
+    const parsed = UpdateMenuItemSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_menu_item_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
+    if (parsed.data.categoryId) {
+      const categoryResult = await this.pg.query<{ id: string }>(
+        `select id
+         from public.menu_categories
+         where id = $1 and restaurant_id = $2`,
+        [parsed.data.categoryId, restaurantId]
+      );
+
+      if (categoryResult.rowCount !== 1) {
+        throw new NotFoundException("menu_category_not_found");
+      }
+    }
+
+    const existingResult = await this.pg.query<MenuItemRow>(
+      `select id, restaurant_id, category_id, name, description, price_cents, currency, is_active, sort_order, created_at, updated_at
+       from public.menu_items
+       where id = $1 and restaurant_id = $2`,
+      [itemId, restaurantId]
+    );
+    const existing = existingResult.rows[0];
+    if (!existing) {
+      throw new NotFoundException("menu_item_not_found");
+    }
+
+    const next = {
+      categoryId: parsed.data.categoryId ?? existing.category_id,
+      name: parsed.data.name ?? existing.name,
+      description: Object.prototype.hasOwnProperty.call(parsed.data, "description")
+        ? (parsed.data.description ?? null)
+        : existing.description,
+      priceCents: parsed.data.priceCents ?? toInteger(existing.price_cents, "menu_item.price_cents"),
+      sortOrder: parsed.data.sortOrder ?? toInteger(existing.sort_order, "menu_item.sort_order"),
+      isActive: parsed.data.isActive ?? existing.is_active
+    };
+
+    const result = await this.pg.query<MenuItemRow>(
+      `update public.menu_items
+       set category_id = $3,
+           name = $4,
+           description = $5,
+           price_cents = $6,
+           sort_order = $7,
+           is_active = $8,
+           updated_at = now()
+       where id = $1
+         and restaurant_id = $2
+       returning id, restaurant_id, category_id, name, description, price_cents, currency, is_active, sort_order, created_at, updated_at`,
+      [itemId, restaurantId, next.categoryId, next.name, next.description, next.priceCents, next.sortOrder, next.isActive]
+    );
+    const updated = result.rows[0];
+
+    await this.pg.query(
+      `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
+       values ($1, $2, $3, 'menu_item', $4, 'menu_item_updated', $5::jsonb)`,
+      [
+        randomUUID(),
+        userId,
+        restaurant.org_id,
+        itemId,
+        JSON.stringify({
+          restaurantId,
+          changedFields: Object.keys(parsed.data)
+        })
+      ]
+    );
+
+    this.logger.info({ actor_id: userId, restaurant_id: restaurantId, item_id: itemId }, "menu_item_updated");
+    return this.mapItem(updated);
   }
 
   async getRestaurantMenu(restaurantId: string, userId: string): Promise<RestaurantMenuDto> {

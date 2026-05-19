@@ -12,9 +12,10 @@ Current staging-ready validation standard:
 
 Current roadmap alignment:
 - `docs/roadmaps/shipwright-roadmap.md`
-- next execution sequence is Pilot Rehearsal Cockpit, What’s New discipline, Platform Identity & Access Management v1, Driver Fleet Organisations, then lead capture/commercial conversion backend
+- next execution sequence is Pilot Rehearsal Cockpit, What’s New discipline, Platform Identity & Access Management v1, Merchant Menu Editing / Price Update, Driver Fleet Organisations, then lead capture/commercial conversion backend
 - Platform Identity & Access Management is important, but it should not interrupt pilot rehearsal, guardrail, support, validation, or closeout work
 - Platform Identity & Access Management v1 now provides admin user/org visibility, org membership management, business team settings, non-destructive membership deactivation, and access-change audit records
+- Merchant Menu Editing / Price Update is now a merchant-ops readiness item because pilot restaurants must be able to correct menu prices without recreating items.
 
 ## Latest evidence used
 - release verification artifact:
@@ -268,7 +269,7 @@ Recommended supporting docs for these sessions:
    - `/admin`
    using the seeded staging accounts before any controlled tester window.
 7. Keep outbound email as non-blocking until a verified Resend sender/domain exists, then run a separate proof for external delivery.
-8. Start Platform Identity & Access Management v1 only after the rehearsal cockpit and communication discipline are stable.
+8. Keep merchant menu editing in the pilot-readiness path: restaurants must be able to update item prices and orderable state before controlled live use.
 
 ## Final readiness call
 **Ready now:** controlled demos and tightly managed internal testers on staging.

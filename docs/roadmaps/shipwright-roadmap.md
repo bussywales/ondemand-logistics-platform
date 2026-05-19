@@ -8,6 +8,7 @@ Use this document when deciding what to build next. Do not let new platform work
 ## Current Product Posture
 ShipWright is a Stage 1 controlled-pilot logistics command centre with:
 - public restaurant ordering
+- merchant menu editing and price updates
 - customer tracking
 - business orders, jobs, payment risk, and reporting surfaces
 - driver execution and proof of delivery
@@ -39,8 +40,9 @@ The current product is ready for controlled demos and tightly managed staging te
 1. Pilot Rehearsal Cockpit
 2. What’s New + release discipline
 3. Platform Identity & Access Management v1
-4. Driver Fleet Organisations
-5. Lead capture/commercial conversion backend
+4. Merchant Menu Editing / Price Update
+5. Driver Fleet Organisations
+6. Lead capture/commercial conversion backend
 
 ## Workstream 1: Pilot Rehearsal Cockpit
 Status: Complete for read-only v1, continue hardening through staging rehearsal.
@@ -151,7 +153,27 @@ Constraints:
 - every access mutation needs auditability
 - no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
 
-## Workstream 4: Driver Fleet Organisations
+## Workstream 4: Merchant Menu Editing / Price Update
+Status: Implemented as a priority merchant-ops fix after IAM v1.
+
+Goal:
+Make restaurant menu management complete enough for controlled pilots by allowing authorised business users to update existing menu item details, especially price.
+
+Implemented scope:
+- business operators can edit menu item name, description, price, section, display order, and orderable state from `/app/restaurant`
+- backend exposes a scoped menu item update endpoint
+- menu item price validation requires positive integer pence values
+- item and category updates remain scoped to the operator restaurant/org
+- public restaurant menus read updated menu item data after refresh
+- menu item updates write audit records with changed field names
+
+Constraints:
+- no destructive menu deletion in this pass
+- no bulk import/export yet
+- no historical menu price ledger yet
+- no public checkout behaviour change beyond reading the updated menu data
+
+## Workstream 5: Driver Fleet Organisations
 Status: Planned after IAM v1 establishes organisation, membership, and role primitives.
 
 Goal:
@@ -171,7 +193,7 @@ Constraints:
 - no silent driver assignment autonomy
 - keep compliance and approval human-reviewed
 
-## Workstream 5: Operational Maturity Continuation
+## Workstream 6: Operational Maturity Continuation
 Status: Continue in parallel only where it strengthens pilot readiness.
 
 Active foundations:
@@ -192,7 +214,7 @@ Constraints:
 - no destructive reset tools without explicit confirmation, audit, and staging-first proof
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
-## Workstream 6: Commercial Conversion Layer
+## Workstream 7: Commercial Conversion Layer
 Status: Planned after IAM and fleet organisation sequencing is clear, unless needed for an immediate demo commitment.
 
 Scope:
@@ -211,7 +233,7 @@ Constraints:
 - do not imply CRM/email automation is live until it is wired and verified
 - do not expose internal docs or proof artifacts publicly without review
 
-## Workstream 7: Brand/Product Marketing
+## Workstream 8: Brand/Product Marketing
 Status: Pause broad redesign work for now.
 
 Continue only where needed:

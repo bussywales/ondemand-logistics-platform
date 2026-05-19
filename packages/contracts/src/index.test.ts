@@ -37,6 +37,7 @@ import {
   SubmitCustomerOrderResponseSchema,
   SubmitCustomerOrderSchema,
   UpdateMembershipSchema,
+  UpdateMenuItemSchema,
   UpdateSupportEscalationSchema
 } from "./index.js";
 
@@ -152,6 +153,24 @@ describe("Business onboarding schemas", () => {
 
     expect(parsed.success).toBe(true);
     expect(parsed.success && parsed.data.platformAdmin).toBe(true);
+  });
+});
+
+describe("Menu item schemas", () => {
+  it("parses safe menu item price updates", () => {
+    const parsed = UpdateMenuItemSchema.safeParse({
+      name: "Chicken wrap",
+      description: "Fresh and hot",
+      priceCents: 1499,
+      isActive: true
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects invalid or empty menu item updates", () => {
+    expect(UpdateMenuItemSchema.safeParse({ priceCents: 0 }).success).toBe(false);
+    expect(UpdateMenuItemSchema.safeParse({}).success).toBe(false);
   });
 });
 

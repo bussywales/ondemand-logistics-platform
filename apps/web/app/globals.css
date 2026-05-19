@@ -2226,6 +2226,28 @@ h3 {
   white-space: nowrap;
 }
 
+.merchant-menu-item-actions {
+  align-items: end;
+}
+
+.merchant-menu-edit-form {
+  display: grid;
+  gap: 0.9rem;
+  width: 100%;
+}
+
+.merchant-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.merchant-checkbox input {
+  width: auto;
+}
+
 .merchant-menu-item strong {
   color: #10201b;
 }

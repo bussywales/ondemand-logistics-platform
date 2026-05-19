@@ -40,6 +40,7 @@ import {
   rejectDriverOffer,
   transitionDriverJob,
   updateAdminOrgMembership,
+  updateMenuItem,
   updateBusinessTeamMembership,
   updateBusinessSupportEscalation,
   updateDriverAvailability
@@ -182,6 +183,38 @@ describe('authorizePayment', () => {
 
     expect(menu.restaurant.slug).toBe('pilot-kitchen');
     expect(menu.categories).toEqual([]);
+  });
+
+  it('patches menu item details through the business restaurant endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          id: 'item-1',
+          restaurantId: 'restaurant-1',
+          categoryId: 'category-1',
+          name: 'Chicken Wrap Meal',
+          description: 'Fresh and hot',
+          priceCents: 1499,
+          currency: 'GBP',
+          isActive: true,
+          sortOrder: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const item = await updateMenuItem(session, 'restaurant-1', 'item-1', {
+      name: 'Chicken Wrap Meal',
+      priceCents: 1499
+    });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-items/item-1');
+    expect(init.method).toBe('PATCH');
+    expect(init.body).toBe(JSON.stringify({ name: 'Chicken Wrap Meal', priceCents: 1499 }));
+    expect(item.priceCents).toBe(1499);
   });
 
   it('reads a public restaurant menu by slug without bearer auth', async () => {

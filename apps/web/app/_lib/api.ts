@@ -510,6 +510,29 @@ export async function createMenuItem(
   });
 }
 
+export async function updateMenuItem(
+  session: BusinessSession,
+  restaurantId: string,
+  itemId: string,
+  input: {
+    categoryId?: string;
+    name?: string;
+    description?: string | null;
+    priceCents?: number;
+    sortOrder?: number;
+    isActive?: boolean;
+  }
+) {
+  return apiFetch<MenuItemResponse>(
+    session,
+    `/v1/business/restaurants/${restaurantId}/menu-items/${itemId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
 export async function getRestaurantMenu(session: BusinessSession, restaurantId: string): Promise<RestaurantMenu> {
   return apiFetch<RestaurantMenuResponse>(session, `/v1/business/restaurants/${restaurantId}/menu`, {
     method: "GET"

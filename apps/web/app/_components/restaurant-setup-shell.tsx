@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "./brand-logo";
@@ -13,12 +14,14 @@ import {
   createMenuItem,
   createRestaurant,
   getRestaurantMenu,
-  listRestaurants
+  listRestaurants,
+  updateMenuItem
 } from "../_lib/api";
 import {
   formatCurrency,
   formatDateTime,
   type BusinessSession,
+  type MenuItemSummary,
   type RestaurantMenu,
   type RestaurantSummary
 } from "../_lib/product-state";
@@ -65,6 +68,10 @@ function mapMenuWriteError(error: unknown, fallback: string) {
     return "Select an active category before adding this item.";
   }
 
+  if (error.message === "invalid_menu_item_payload") {
+    return "Enter a valid item name and a positive price before saving.";
+  }
+
   if (/^Request failed with status \d+$/.test(error.message)) {
     return fallback;
   }
@@ -100,6 +107,149 @@ function readinessLabel(hasRestaurant: boolean, hasCategory: boolean, hasItem: b
   return "Review the menu and open the customer route.";
 }
 
+type MenuItemEditForm = {
+  categoryId: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+function menuItemToEditForm(item: MenuItemSummary): MenuItemEditForm {
+  return {
+    categoryId: item.categoryId,
+    name: item.name,
+    description: item.description ?? "",
+    priceCents: item.priceCents,
+    sortOrder: item.sortOrder,
+    isActive: item.isActive
+  };
+}
+
+export function EditableMenuItemRow({
+  categories,
+  editForm,
+  item,
+  isEditing,
+  saving,
+  onCancel,
+  onChange,
+  onSave,
+  onStartEdit
+}: {
+  categories: RestaurantMenu["categories"];
+  editForm: MenuItemEditForm | null;
+  item: MenuItemSummary;
+  isEditing: boolean;
+  saving: boolean;
+  onCancel: () => void;
+  onChange: (form: MenuItemEditForm) => void;
+  onSave: (event: React.FormEvent<HTMLFormElement>) => void;
+  onStartEdit: (item: MenuItemSummary) => void;
+}) {
+  return (
+    <article className="merchant-menu-item">
+      {isEditing && editForm ? (
+        <form className="merchant-menu-edit-form" onSubmit={onSave}>
+          <div className="merchant-form-split">
+            <label>
+              <span>Item name</span>
+              <input
+                disabled={saving}
+                onChange={(event) => onChange({ ...editForm, name: event.target.value })}
+                value={editForm.name}
+              />
+            </label>
+            <label>
+              <span>Price in pence</span>
+              <input
+                disabled={saving}
+                min="1"
+                onChange={(event) => onChange({ ...editForm, priceCents: Number(event.target.value) })}
+                step="1"
+                type="number"
+                value={editForm.priceCents}
+              />
+            </label>
+          </div>
+          <label>
+            <span>Description</span>
+            <textarea
+              disabled={saving}
+              onChange={(event) => onChange({ ...editForm, description: event.target.value })}
+              rows={3}
+              value={editForm.description}
+            />
+          </label>
+          <div className="merchant-form-split">
+            <label>
+              <span>Section</span>
+              <select
+                disabled={saving}
+                onChange={(event) => onChange({ ...editForm, categoryId: event.target.value })}
+                value={editForm.categoryId}
+              >
+                {categories.map((menuCategory) => (
+                  <option key={menuCategory.id} value={menuCategory.id}>
+                    {menuCategory.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Display order</span>
+              <input
+                disabled={saving}
+                min="0"
+                onChange={(event) => onChange({ ...editForm, sortOrder: Number(event.target.value) })}
+                step="1"
+                type="number"
+                value={editForm.sortOrder}
+              />
+            </label>
+          </div>
+          <label className="merchant-checkbox">
+            <input
+              checked={editForm.isActive}
+              disabled={saving}
+              onChange={(event) => onChange({ ...editForm, isActive: event.target.checked })}
+              type="checkbox"
+            />
+            <span>Orderable on the public menu</span>
+          </label>
+          <div className="merchant-actions">
+            <button
+              className="button button-primary"
+              disabled={saving || !editForm.name.trim() || editForm.priceCents < 1}
+              type="submit"
+            >
+              {saving ? "Saving..." : "Save item"}
+            </button>
+            <button className="button button-secondary" disabled={saving} onClick={onCancel} type="button">
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div>
+            <strong>{item.name}</strong>
+            <p>{item.description ?? "No description yet"}</p>
+          </div>
+          <div className="merchant-menu-item-actions">
+            <strong>{formatCurrency(item.priceCents, item.currency)}</strong>
+            <span>{item.isActive ? "Orderable" : "Hidden"}</span>
+            <button className="button button-secondary" onClick={() => onStartEdit(item)} type="button">
+              Edit
+            </button>
+          </div>
+        </>
+      )}
+    </article>
+  );
+}
+
 export function RestaurantSetupShell() {
   const { status, session, signOut, refreshBusinessSession } = useBusinessAuth();
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
@@ -111,6 +261,9 @@ export function RestaurantSetupShell() {
   const [restaurantSubmitting, setRestaurantSubmitting] = useState(false);
   const [categorySubmitting, setCategorySubmitting] = useState(false);
   const [itemSubmitting, setItemSubmitting] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingSubmitting, setEditingSubmitting] = useState(false);
+  const [editForm, setEditForm] = useState<MenuItemEditForm | null>(null);
   const [restaurantForm, setRestaurantForm] = useState({ name: "", slug: "", slugManuallyEdited: false });
   const [categoryForm, setCategoryForm] = useState({ name: "", sortOrder: 0 });
   const [itemForm, setItemForm] = useState({
@@ -292,6 +445,44 @@ export function RestaurantSetupShell() {
       setError(mapMenuWriteError(issue, "Unable to add the menu item. Check the item details and try again."));
     } finally {
       setItemSubmitting(false);
+    }
+  }
+
+  function handleStartEditItem(item: MenuItemSummary) {
+    setEditingItemId(item.id);
+    setEditForm(menuItemToEditForm(item));
+    setError(null);
+  }
+
+  function handleCancelEditItem() {
+    setEditingItemId(null);
+    setEditForm(null);
+  }
+
+  async function handleUpdateItem(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session || !selectedRestaurantId || !editingItemId || !editForm) {
+      return;
+    }
+
+    setEditingSubmitting(true);
+    setError(null);
+
+    try {
+      await updateMenuItem(session, selectedRestaurantId, editingItemId, {
+        categoryId: editForm.categoryId,
+        name: editForm.name.trim(),
+        description: editForm.description.trim() || null,
+        priceCents: editForm.priceCents,
+        sortOrder: editForm.sortOrder,
+        isActive: editForm.isActive
+      });
+      handleCancelEditItem();
+      await loadMenu(session, selectedRestaurantId);
+    } catch (issue) {
+      setError(mapMenuWriteError(issue, "Unable to update the menu item. Check the item details and try again."));
+    } finally {
+      setEditingSubmitting(false);
     }
   }
 
@@ -775,16 +966,18 @@ export function RestaurantSetupShell() {
                     ) : (
                       <div className="merchant-menu-items">
                         {category.items.map((item) => (
-                          <article className="merchant-menu-item" key={item.id}>
-                            <div>
-                              <strong>{item.name}</strong>
-                              <p>{item.description ?? "No description yet"}</p>
-                            </div>
-                            <div>
-                              <strong>{formatCurrency(item.priceCents, item.currency)}</strong>
-                              <span>{item.isActive ? "Orderable" : "Hidden"}</span>
-                            </div>
-                          </article>
+                          <EditableMenuItemRow
+                            categories={menu.categories}
+                            editForm={editForm}
+                            isEditing={editingItemId === item.id}
+                            item={item}
+                            key={item.id}
+                            onCancel={handleCancelEditItem}
+                            onChange={setEditForm}
+                            onSave={handleUpdateItem}
+                            onStartEdit={handleStartEditItem}
+                            saving={editingSubmitting}
+                          />
                         ))}
                       </div>
                     )}

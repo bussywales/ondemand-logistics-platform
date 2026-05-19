@@ -711,6 +711,20 @@ export const CreateMenuItemSchema = z.object({
 });
 export type CreateMenuItemInput = z.infer<typeof CreateMenuItemSchema>;
 
+export const UpdateMenuItemSchema = z
+  .object({
+    categoryId: z.string().uuid().optional(),
+    name: z.string().min(2).max(160).optional(),
+    description: z.string().min(2).max(1000).nullable().optional(),
+    priceCents: z.number().int().positive().optional(),
+    sortOrder: z.number().int().min(0).optional(),
+    isActive: z.boolean().optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "at_least_one_menu_item_field_required"
+  });
+export type UpdateMenuItemInput = z.infer<typeof UpdateMenuItemSchema>;
+
 export const MenuItemSchema = z.object({
   id: z.string().uuid(),
   restaurantId: z.string().uuid(),

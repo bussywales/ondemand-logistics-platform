@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { RestaurantsService } from "./restaurants.service.js";
 
@@ -448,6 +448,59 @@ describe("RestaurantsService", () => {
         categoryId: CATEGORY_ID,
         currency: "GBP"
       })
+    );
+  });
+
+  it("updates a menu item price under the current restaurant", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [itemRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [itemRow({ name: "Chicken Wrap Meal", price_cents: 1499, updated_at: new Date().toISOString() })]
+        })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.updateMenuItem(
+      RESTAURANT_ID,
+      ITEM_ID,
+      {
+        name: "Chicken Wrap Meal",
+        priceCents: 1499
+      },
+      USER_ID
+    );
+
+    expect(result.priceCents).toBe(1499);
+    expect(result.name).toBe("Chicken Wrap Meal");
+    expect(pg.query.mock.calls[2]?.[0]).toContain("update public.menu_items");
+    expect(pg.query.mock.calls[3]?.[0]).toContain("insert into public.audit_log");
+  });
+
+  it("rejects invalid menu item prices", async () => {
+    const service = new RestaurantsService({ query: vi.fn() } as never, {} as never);
+
+    await expect(service.updateMenuItem(RESTAURANT_ID, ITEM_ID, { priceCents: 0 }, USER_ID)).rejects.toThrow(
+      UnprocessableEntityException
+    );
+  });
+
+  it("rejects cross-restaurant menu item updates", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+
+    await expect(service.updateMenuItem(RESTAURANT_ID, ITEM_ID, { priceCents: 1499 }, USER_ID)).rejects.toThrow(
+      new NotFoundException("menu_item_not_found")
     );
   });
 
