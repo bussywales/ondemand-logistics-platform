@@ -69,11 +69,19 @@ Do not merge or mark staging-ready when:
 - release verification fails
 - paid-delivery proof fails
 - Playwright smoke fails with configured smoke credentials
+- a major user-visible feature ships without a `/app/updates`, `/driver/updates`, or `/admin/updates` What’s New entry, unless the release notes explain why no entry is needed
 - readiness is missing a critical schema dependency introduced by the change
 - a new route bypasses auth, org, driver, or platform-admin role boundaries
 - `internal_server_error` appears on staging command surfaces
 
 See the full rule set in `docs/validation/staging-validation-standard.md`.
+
+## 3.7) What’s New checkpoint
+For every major user-visible delivery:
+- add or update a short operator-facing What’s New entry in `apps/web/app/_content/product-updates.ts`
+- include a title, concise summary, audience, release date/version when used, and CTA link when relevant
+- verify the entry appears on the relevant `/app/updates`, `/driver/updates`, or `/admin/updates` feed
+- if no What’s New entry is needed, record the reason in the release notes
 
 ## 4) What the command runs
 1. `GET /healthz`

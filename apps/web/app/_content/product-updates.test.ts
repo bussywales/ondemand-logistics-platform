@@ -17,6 +17,12 @@ describe("product updates content", () => {
   it("includes the current key product updates", () => {
     expect(productUpdates.map((update) => update.id)).toEqual(
       expect.arrayContaining([
+        "pilot-workspaces-live",
+        "pilot-guardrails-operations",
+        "support-escalation-logging",
+        "support-escalation-audit-history",
+        "admin-command-intelligence-expanded",
+        "landing-page-demo-request-path",
         "paid-delivery-loop-proven",
         "business-orders-queue",
         "driver-execution-page",

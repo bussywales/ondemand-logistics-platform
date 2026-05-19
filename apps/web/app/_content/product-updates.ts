@@ -12,7 +12,75 @@ export type ProductUpdate = {
   ctaHref?: string;
 };
 
+// Major user-visible deliveries should add a short operator-facing entry here.
+// Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
+  {
+    id: "pilot-workspaces-live",
+    title: "Pilot workspaces are live",
+    summary: "Admins can now track pilot mode, readiness stage, owners, and checklist progress before rehearsal or live operation.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app", "/admin", "/admin/pilots"],
+    releasedAt: "2026-05-19T10:00:00.000Z",
+    version: "v1.6",
+    ctaLabel: "Review pilots",
+    ctaHref: "/admin/pilots"
+  },
+  {
+    id: "pilot-guardrails-operations",
+    title: "Pilot guardrails now appear across operations",
+    summary: "Workspaces now show demo, internal test, controlled pilot, paused, or live-ready posture so operators understand context before acting.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app", "/app/orders", "/app/jobs", "/app/payments", "/app/reports/end-of-day", "/admin/pilots"],
+    releasedAt: "2026-05-19T09:45:00.000Z",
+    version: "v1.6",
+    ctaLabel: "Open workspace",
+    ctaHref: "/app"
+  },
+  {
+    id: "support-escalation-logging",
+    title: "Support escalation logging is available",
+    summary: "Operators can record human follow-up on orders and jobs, including category, severity, owner, contact needs, and current status.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/orders", "/app/jobs", "/admin/command"],
+    releasedAt: "2026-05-19T09:30:00.000Z",
+    version: "v1.5",
+    ctaLabel: "Open orders",
+    ctaHref: "/app/orders"
+  },
+  {
+    id: "support-escalation-audit-history",
+    title: "Support escalation history is now auditable",
+    summary: "Support records now keep append-only history for status, owner, contact flag, resolution, cancellation, and reopening changes.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/orders", "/app/jobs", "/admin/command"],
+    releasedAt: "2026-05-19T09:15:00.000Z",
+    version: "v1.5",
+    ctaLabel: "Review jobs",
+    ctaHref: "/app/jobs"
+  },
+  {
+    id: "admin-command-intelligence-expanded",
+    title: "Admin command intelligence expanded",
+    summary: "Platform admins now get a broader cross-org view of pilot posture, support follow-up, courier readiness, incidents, and closeout signals.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin", "/admin/command"],
+    releasedAt: "2026-05-19T09:00:00.000Z",
+    version: "v1.4",
+    ctaLabel: "Open admin command",
+    ctaHref: "/admin/command"
+  },
+  {
+    id: "landing-page-demo-request-path",
+    title: "Demo request path added to the public site",
+    summary: "The public landing page now includes platform navigation and controlled pilot or demo request pathways for merchants, operators, and investors.",
+    audience: ["business", "platform_admin", "customer"],
+    routeContext: ["/app/updates", "/admin/updates"],
+    releasedAt: "2026-05-19T08:45:00.000Z",
+    version: "v1.4",
+    ctaLabel: "View public site",
+    ctaHref: "/"
+  },
   {
     id: "paid-delivery-loop-proven",
     title: "Full paid delivery loop proven",

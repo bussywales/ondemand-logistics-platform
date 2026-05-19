@@ -49,6 +49,19 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
 
+## What’s New Entries
+Product update entries live in:
+- `apps/web/app/_content/product-updates.ts`
+
+For major user-visible delivery work, add a concise operator-facing entry with:
+- title
+- short summary
+- audience
+- release date/version when used
+- CTA label and link when relevant
+
+If no What’s New entry is needed, note the reason in the release notes.
+
 ## Key commands
 ```bash
 pnpm release:verify-staging

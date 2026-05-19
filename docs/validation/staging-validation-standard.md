@@ -31,6 +31,7 @@ Also record:
 - latest job id
 - latest payment id
 - latest POD id, if present
+- What’s New checked for major user-visible changes
 - staging routes checked for the intended audience
 
 Use `docs/demo/demo-reset-checklist.md` to prepare accounts, browser state, fallback routes, and known limitation talk tracks.
@@ -134,6 +135,7 @@ Playwright artifacts remain local and ignored:
 
 ## Validation Rules
 - New features must not bypass proof gates.
+- Major user-visible features should update `apps/web/app/_content/product-updates.ts`; if no What’s New entry is needed, document why in the release notes.
 - Readiness checks must expand when new release-critical schema dependencies are added.
 - Browser smoke should stay green after UI, auth, routing, or command-surface changes.
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
@@ -153,6 +155,7 @@ Do not merge or mark staging-ready if any of the following are true:
 - `pnpm --filter @shipwright/web test:smoke` fails with configured smoke credentials.
 - Web or API tests fail.
 - `pnpm typecheck` fails.
+- What’s New was not checked for a major user-visible feature and the release notes do not explain the omission.
 - A new release-critical schema dependency is missing from readiness or release verification.
 - A new authenticated route bypasses auth, org, driver, or platform-admin boundaries.
 - `internal_server_error` appears on staging command surfaces such as `/app`, `/app/orders`, `/app/payments`, `/app/reports/end-of-day`, `/admin`, `/admin/command`, `/admin/drivers`, or `/driver`.
