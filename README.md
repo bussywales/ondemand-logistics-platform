@@ -151,6 +151,7 @@ pnpm --filter @shipwright/web test:smoke
 Before a demo, record the latest proof order/job/payment/POD ids and keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available.
 
 ## Roadmaps
+- `docs/roadmaps/shipwright-roadmap.md` - canonical roadmap order across pilot readiness, What’s New discipline, IAM, driver fleets, commercial conversion, and brand work
 - `docs/roadmaps/fleet-roadmap.md` - legacy roadmap filename for the core ShipWright delivery plan
 - `docs/roadmaps/fleet-scope-cut-matrix.md` - build, buy, manual, and defer decisions by stage
 - `docs/roadmaps/fleet-pilot-working-plan.md` - Stage 1 execution status and priorities
@@ -158,6 +159,13 @@ Before a demo, record the latest proof order/job/payment/POD ids and keep the la
 - `docs/roadmaps/fleet-pilot-gap-review.md` - current repo-to-plan gap review
 - `docs/roadmaps/ai-assisted-command-centre-roadmap.md` - AI-assisted command-centre direction and implementation phases
 - `docs/roadmaps/fleet-stage1-execution-tranche-01.md` - earlier Stage 1 tranche reference
+
+Next execution sequence:
+1. Pilot Rehearsal Cockpit
+2. What’s New + release discipline
+3. Platform Identity & Access Management v1
+4. Driver Fleet Organisations
+5. Lead capture/commercial conversion backend
 
 ## Design authority
 - `docs/design/fleet-ux-authority-brief.md` - legacy filename for ShipWright UX posture and rules

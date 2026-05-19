@@ -10,6 +10,11 @@ This pass reflects the latest verified staging evidence, current repo implementa
 Current staging-ready validation standard:
 - `docs/validation/staging-validation-standard.md`
 
+Current roadmap alignment:
+- `docs/roadmaps/shipwright-roadmap.md`
+- next execution sequence is Pilot Rehearsal Cockpit, What’s New discipline, Platform Identity & Access Management v1, Driver Fleet Organisations, then lead capture/commercial conversion backend
+- Platform Identity & Access Management is important, but it should not interrupt pilot rehearsal, guardrail, support, validation, or closeout work
+
 ## Latest evidence used
 - release verification artifact:
   - `docs/proofs/release-verify-20260502T202910Z.json`
@@ -241,24 +246,26 @@ Recommended supporting docs for these sessions:
 ## Recommended next pilot actions
 1. Rehearse one full browser-led demo using the latest proof order plus `/track/[orderId]`, `/app/orders`, `/app/payments`, `/driver`, `/admin`, and `/admin/pilots/[pilotId]/rehearsal`.
 2. Run the full validation standard in `docs/validation/staging-validation-standard.md` immediately before any investor or pilot-facing session.
-3. Assign named owners for:
+3. Confirm What’s New entries are current for major user-visible delivery before the rehearsal.
+4. Assign named owners for:
    - incident command
    - customer support
    - restaurant escalation
    - courier escalation
    - payment/refund decisions
-4. Rehearse the playbooks in `docs/playbooks/` against at least:
+5. Rehearse the playbooks in `docs/playbooks/` against at least:
    - failed dispatch
    - no eligible driver
    - payment authorised but delivery blocked
    - driver no-show
-5. Repeat authenticated browser verification of:
+6. Repeat authenticated browser verification of:
    - `/app/notifications`
    - `/app/orders`
    - `/driver`
    - `/admin`
    using the seeded staging accounts before any controlled tester window.
-6. Keep outbound email as non-blocking until a verified Resend sender/domain exists, then run a separate proof for external delivery.
+7. Keep outbound email as non-blocking until a verified Resend sender/domain exists, then run a separate proof for external delivery.
+8. Start Platform Identity & Access Management v1 only after the rehearsal cockpit and communication discipline are stable.
 
 ## Final readiness call
 **Ready now:** controlled demos and tightly managed internal testers on staging.

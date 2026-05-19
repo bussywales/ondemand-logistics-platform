@@ -14,6 +14,7 @@ Use it to:
 - keep staging proof and demo claims tied to actual repo evidence
 
 This document must stay aligned with:
+- `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/shipwright-roadmap.md`
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/fleet-roadmap.md`
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/fleet-scope-cut-matrix.md`
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/fleet-pilot-readiness-checklist.md`
@@ -48,7 +49,10 @@ Live/staging repo evidence includes:
 - admin control plane
 - persistent in-app business notifications
 - help centre and product updates surfaces
+- support escalation logging, closeout workflow, and append-only support audit history
+- pilot workspace management, pilot guardrails, and admin rehearsal cockpit
 - staging release verification and proof archive
+- Playwright browser smoke testing and staging validation standard
 
 Reference evidence:
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/staging-paid-delivery-proof.md`
@@ -56,18 +60,17 @@ Reference evidence:
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/proofs/`
 
 ## Strategic next direction
-After Stage 1 operational foundations, ShipWright should evolve into an AI-assisted logistics command centre.
+After Stage 1 operational foundations, ShipWright should evolve into an AI-assisted logistics command centre with stronger platform access controls.
 
 Near-term direction:
-- Daily Operator Briefing v1 should ship first as a deterministic, rules-based command surface with explicit human approval requirements.
-- operator briefings
-- failed dispatch recovery suggestions
-- delay detection
-- AI-generated incident summaries
-- end-of-day operations reporting
-- pilot readiness command dashboard
+- finish Pilot Rehearsal Cockpit validation and smoke coverage
+- keep What’s New entries current for major user-visible deliveries
+- build Platform Identity & Access Management v1 without interrupting pilot-readiness hardening
+- then build Driver Fleet Organisations on top of the IAM model
+- continue commercial conversion backend only after the pilot/IAM path is clear
 
-Reference roadmap:
+Reference roadmaps:
+- `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/shipwright-roadmap.md`
 - `/Users/olubusayoadewale/Coding Projects/shipwright/docs/roadmaps/ai-assisted-command-centre-roadmap.md`
 
 ## Workstreams
@@ -209,14 +212,13 @@ Reference roadmap:
   - this remains an ongoing control discipline, not a one-time finished task
 
 ## Priority order for execution
-1. Finish the pilot merchant/menu/ordering surface polish
-2. Keep checkout/payment and fulfilled-order proof stable
-3. Keep courier execution proof stable while clarifying real pilot compliance ownership
-4. Close customer/operator tracking v1 gaps
-5. Write fallback, escalation, and reconciliation playbooks
-6. Continue release reliability discipline without letting it replace product work
-7. Instrument the operational spine for assistive intelligence
-8. Build Tranche 2A: Command Intelligence v1, starting with the deterministic Daily Operator Briefing
+1. Finish Pilot Rehearsal Cockpit as the active pilot-readiness workstream.
+2. Keep What’s New and release communication discipline current.
+3. Build Platform Identity & Access Management v1.
+4. Build Driver Fleet Organisations on top of the IAM model.
+5. Continue operational maturity: support history, resolution closeout, pilot guardrails, closeout reporting, and reset tools.
+6. Build lead capture/commercial conversion backend.
+7. Resume only targeted brand/product marketing work: brand assets, motion pass, mobile polish, and real product screenshots.
 
 ## Explicitly manual for Pilot MVP
 These can remain manual in Stage 1 if ownership is explicit:
@@ -290,10 +292,15 @@ Use these statuses only:
 | Courier offer, accept, and delivery flow | In progress | repeat staged proof and maintain driver execution quality |
 | Dispatch and order-state operations | In progress | finish tracking visibility and fallback handling |
 | Basic customer and restaurant visibility | In progress | close tracking v1 and keep order notifications verified |
-| Pilot operations and manual fallback processes | At risk | write fallback, escalation, and reconciliation playbooks |
-| Release reliability and platform hardening | In progress | keep `/readyz`, schema verification, and proof archive current |
+| Pilot operations and manual fallback processes | In progress | rehearse playbooks, support closeout, guardrails, and rehearsal cockpit |
+| Release reliability and platform hardening | In progress | keep `/readyz`, schema verification, proof archive, and browser smoke current |
 | Command intelligence instrumentation | In progress | capture timestamps, overrides, incident tags, and offer outcomes consistently |
-| Tranche 2A: Command Intelligence v1 | Not started | ship operator briefing, dispatch recovery suggestions, delay detection, incident summaries, EOD report, and readiness dashboard |
+| Tranche 2A: Command Intelligence v1 | Complete | keep deterministic briefing, recovery, delay, incident, and EOD surfaces human-reviewed |
+| Operational maturity continuation | In progress | support history, closeout, guardrails, rehearsal cockpit, and reset tools |
+| Platform Identity & Access Management v1 | Not started | design users, orgs, memberships, roles, profiles, invites, and access audit trail |
+| Driver Fleet Organisations | Not started | add driver company org type, fleet roles, fleet readiness, and managed courier pools after IAM |
+| Commercial conversion backend | Not started | persist demo requests, lead capture, admin lead view, and safe email/webhook handoff |
+| Brand/product marketing | Deferred | pause broad redesign; continue only assets, motion, mobile polish, and real screenshots |
 
 ## Change control
 - this working plan must stay aligned with the roadmap package

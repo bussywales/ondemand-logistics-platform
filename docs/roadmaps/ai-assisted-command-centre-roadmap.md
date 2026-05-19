@@ -14,6 +14,16 @@ The direction is deliberate:
 
 This is not a gimmick-AI roadmap. It is an operations-intelligence roadmap built on top of the operational foundations already present in ShipWright.
 
+Canonical roadmap reference:
+- `docs/roadmaps/shipwright-roadmap.md`
+
+Current sequencing note:
+- finish Pilot Rehearsal Cockpit and What’s New release discipline first
+- then build Platform Identity & Access Management v1
+- then build Driver Fleet Organisations
+- then continue commercial conversion backend work
+- do not let IAM or brand work interrupt pilot-readiness hardening
+
 ## Revised Product Positioning
 ### Current positioning
 ShipWright today is a Stage 1 logistics operations product with:
@@ -68,6 +78,9 @@ These are already present in the product or staging proof loop and form the base
 - admin control plane
 - public tracking
 - support and escalation logging for order/job follow-up
+- support closeout workflow and append-only support audit history
+- pilot workspace management, guardrails, and rehearsal cockpit
+- Playwright smoke testing and staging validation standard
 - release verification and proof archive
 - pilot playbooks
 - controlled demo/tester runbooks
@@ -332,6 +345,15 @@ Current tranche status:
 - Operational Maturity Tranche 1: unresolved support escalation posture is integrated into daily briefing, admin command summary, and end-of-day closeout actions
 - Operational Maturity Tranche 4: support escalation records now support human-reviewed resolution notes, final actions, closeout reasons, resolved timestamps, and resolved-by metadata
 - Operational Maturity Tranche 2: pilot management layer tracks demo/internal/controlled-pilot/live-ready workspace mode, readiness stage, owners, checklist evidence, and pilot posture without blocking workflows in v1
+- Operational Maturity Tranche 3: pilot guardrails show demo, internal-test, controlled-pilot, paused, and live-ready posture without blocking workflows in v1
+- Operational Maturity Tranche 5: support escalation audit history is append-only and visible on order/job support timelines
+- Operational Maturity Tranche 6: pilot rehearsal cockpit summarises checklist, proof/smoke posture, guardrails, support posture, and next actions for admins
+- Product communication discipline: What’s New entries are now required for major user-visible delivery unless release notes explain why not
+
+Next adjacent platform work:
+- Platform Identity & Access Management v1 should follow the active pilot-readiness sequence
+- IAM should model identity, membership, role, and profile as separate concepts
+- IAM should strengthen access boundaries for future command intelligence, support operations, and driver fleet organisations
 
 Packaging rule for Command Intelligence v1:
 - position these surfaces as one assistive operations layer
