@@ -48,6 +48,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin pilot management: `/admin/pilots`
 - Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
 - Admin driver fleet organisations: `/admin/fleets`
+- Fleet manager workspace: `/fleet`
 - Business team settings: `/app/settings/team`
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`

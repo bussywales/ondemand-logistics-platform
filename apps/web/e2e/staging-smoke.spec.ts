@@ -161,4 +161,5 @@ test('authenticated driver route smoke', async ({ page }) => {
   expect(signedIn, 'Driver smoke credentials should sign in when configured.').toBe(true);
 
   await assertProtectedRouteLoads(page, '/driver');
+  await assertProtectedRouteLoads(page, '/fleet');
 });

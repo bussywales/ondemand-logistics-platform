@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "fleet-manager-workspace",
+    title: "Fleet manager workspace is live",
+    summary: "Fleet owners, managers, dispatchers, and compliance leads can now review their courier pool and readiness from a dedicated fleet workspace.",
+    audience: ["driver", "platform_admin"],
+    routeContext: ["/fleet", "/admin/fleets", "/admin/drivers"],
+    releasedAt: "2026-05-19T14:00:00.000Z",
+    version: "v1.8",
+    ctaLabel: "Open fleet workspace",
+    ctaHref: "/fleet"
+  },
+  {
     id: "driver-fleet-organisations-v1",
     title: "Driver fleet organisations are available",
     summary: "Platform admins can now create driver-company groups, add existing couriers, and review fleet readiness without changing dispatch automation.",

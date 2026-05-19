@@ -90,6 +90,7 @@ Authenticated routes:
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`
+- `/fleet`
 - `/driver`
 
 Browser smoke must validate both unauthenticated and authenticated surfaces when smoke credentials are configured.
