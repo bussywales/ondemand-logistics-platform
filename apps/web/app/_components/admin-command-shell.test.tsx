@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AdminCommandView } from "./admin-command-shell";
-import type { BusinessSession, DailyBriefing, EndOfDayReport, PilotWorkspace, SupportEscalation } from "../_lib/product-state";
+import type { BusinessSession, DailyBriefing, DemoRequest, EndOfDayReport, PilotWorkspace, SupportEscalation } from "../_lib/product-state";
 
 const session: BusinessSession = {
   accessToken: "access-token",
@@ -281,11 +281,47 @@ const pilotWorkspaces: PilotWorkspace[] = [
   }
 ];
 
+const demoRequests: DemoRequest[] = [
+  {
+    id: "5cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+    name: "Ada Investor",
+    email: "investor@example.com",
+    organisation: "Signal Partners",
+    role: "Partner",
+    interestType: "INVESTOR_PARTNER",
+    message: "Requesting an investor walkthrough.",
+    source: "landing_page",
+    status: "NEW",
+    adminNote: null,
+    reviewedBy: null,
+    reviewedAt: null,
+    createdAt: "2026-05-04T07:50:00.000Z",
+    updatedAt: "2026-05-04T07:50:00.000Z"
+  },
+  {
+    id: "6cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+    name: "Ops Lead",
+    email: "ops@example.com",
+    organisation: "Local Ops",
+    role: "Operator",
+    interestType: "OPERATOR_PLATFORM",
+    message: null,
+    source: "landing_page",
+    status: "QUALIFIED",
+    adminNote: "Pilot follow-up needed.",
+    reviewedBy: "user-1",
+    reviewedAt: "2026-05-04T08:00:00.000Z",
+    createdAt: "2026-05-04T07:40:00.000Z",
+    updatedAt: "2026-05-04T08:00:00.000Z"
+  }
+];
+
 describe("AdminCommandView", () => {
   it("renders cross-org command intelligence with human approval note", () => {
     const markup = renderToStaticMarkup(
       <AdminCommandView
         briefing={briefing}
+        demoRequests={demoRequests}
         pilots={pilotWorkspaces}
         report={report}
         selectedDate="2026-05-04"
@@ -305,6 +341,9 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("1 high severity");
     expect(markup).toContain("Pilot workspaces");
     expect(markup).toContain("Pilot guardrail gaps");
+    expect(markup).toContain("Demo request follow-up");
+    expect(markup).toContain("New demo requests");
+    expect(markup).toContain("Review new commercial interest");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });
@@ -313,6 +352,7 @@ describe("AdminCommandView", () => {
     const markup = renderToStaticMarkup(
       <AdminCommandView
         briefing={briefing}
+        demoRequests={demoRequests}
         pilots={pilotWorkspaces}
         report={report}
         selectedDate="2026-05-04"
@@ -343,6 +383,7 @@ describe("AdminCommandView", () => {
         report={{ ...report, unresolvedCount: 0, incidentsSummary: { ...report.incidentsSummary, dispatchFailed: 0, delayIncidents: 0, paymentRisks: 0, openSupportEscalations: 0, highCriticalSupportEscalations: 0, unresolvedRecommendations: 0 }, unresolvedActions: [] }}
         selectedDate="2026-05-04"
         session={session}
+        demoRequests={[]}
         pilots={[]}
         supportEscalations={[]}
       />

@@ -10,7 +10,7 @@ import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { BrandLogo } from "./brand-logo";
 import { useBusinessAuth } from "./business-auth-provider";
 
-const FILTERS: Array<"ALL" | DemoRequestStatus> = ["ALL", "NEW", "CONTACTED", "QUALIFIED", "CLOSED", "SPAM"];
+const FILTERS: Array<"ALL" | DemoRequestStatus> = ["ALL", "NEW", "REVIEWED", "CONTACTED", "QUALIFIED", "CLOSED", "SPAM"];
 const STATUS_OPTIONS: DemoRequestStatus[] = ["NEW", "REVIEWED", "CONTACTED", "QUALIFIED", "CLOSED", "SPAM"];
 
 function formatLabel(value: string) {
@@ -38,6 +38,38 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+export function getDemoRequestNextAction(status: DemoRequestStatus) {
+  switch (status) {
+    case "NEW":
+      return "Review request";
+    case "REVIEWED":
+      return "Contact requester";
+    case "CONTACTED":
+      return "Qualify opportunity";
+    case "QUALIFIED":
+      return "Prepare pilot/investor follow-up";
+    case "CLOSED":
+    case "SPAM":
+      return "No action";
+  }
+}
+
+function getNextStatus(status: DemoRequestStatus): DemoRequestStatus | null {
+  switch (status) {
+    case "NEW":
+      return "REVIEWED";
+    case "REVIEWED":
+      return "CONTACTED";
+    case "CONTACTED":
+      return "QUALIFIED";
+    case "QUALIFIED":
+      return "CLOSED";
+    case "CLOSED":
+    case "SPAM":
+      return null;
+  }
+}
+
 function RequestRow(props: {
   request: DemoRequest;
   busy: boolean;
@@ -45,6 +77,7 @@ function RequestRow(props: {
 }) {
   const [status, setStatus] = useState<DemoRequestStatus>(props.request.status);
   const [note, setNote] = useState(props.request.adminNote ?? "");
+  const nextStatus = getNextStatus(props.request.status);
 
   useEffect(() => {
     setStatus(props.request.status);
@@ -64,7 +97,13 @@ function RequestRow(props: {
           {props.request.email} {props.request.organisation ? `· ${props.request.organisation}` : ""} {props.request.role ? `· ${props.request.role}` : ""}
         </p>
         {props.request.message ? <p>{props.request.message}</p> : <p className="ops-detail-note">No message provided.</p>}
-        {props.request.reviewedAt ? <p className="ops-detail-note">Reviewed {formatDate(props.request.reviewedAt)}</p> : null}
+        <p className="admin-command-recommendation">Next action: {getDemoRequestNextAction(props.request.status)}</p>
+        {props.request.reviewedAt ? (
+          <p className="ops-detail-note">
+            Reviewed {formatDate(props.request.reviewedAt)}
+            {props.request.reviewedBy ? ` by ${props.request.reviewedBy.slice(0, 8).toUpperCase()}` : ""}
+          </p>
+        ) : null}
       </div>
 
       <div className="support-escalation-form admin-demo-request-review">
@@ -88,6 +127,19 @@ function RequestRow(props: {
         >
           Save review
         </button>
+        {nextStatus ? (
+          <button
+            className="sw-button sw-button--secondary button button-secondary"
+            disabled={props.busy}
+            onClick={() => {
+              setStatus(nextStatus);
+              props.onUpdate(props.request.id, { status: nextStatus, adminNote: note.trim() || null });
+            }}
+            type="button"
+          >
+            Mark {formatLabel(nextStatus)}
+          </button>
+        ) : null}
       </div>
     </article>
   );

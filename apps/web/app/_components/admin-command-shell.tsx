@@ -8,13 +8,14 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminDemoRequests, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
 import { getPilotGuardrailState } from "../_lib/pilot-guardrails";
 import {
   type BusinessSession,
   type DailyBriefing,
   type DailyBriefingItem,
+  type DemoRequest,
   type EndOfDayReport,
   type PilotWorkspace,
   type SupportEscalation
@@ -128,6 +129,29 @@ function hasCommunicationDraft(item: DailyBriefingItem) {
   );
 }
 
+function minutesSince(value: string) {
+  return Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
+}
+
+function countDemoRequestsByStatus(requests: DemoRequest[]) {
+  return requests.reduce(
+    (acc, request) => {
+      acc.total += 1;
+      acc[request.status] = (acc[request.status] ?? 0) + 1;
+      return acc;
+    },
+    {
+      total: 0,
+      NEW: 0,
+      REVIEWED: 0,
+      CONTACTED: 0,
+      QUALIFIED: 0,
+      CLOSED: 0,
+      SPAM: 0
+    } as Record<DemoRequest["status"] | "total", number>
+  );
+}
+
 function groupAttentionItems(items: DailyBriefingItem[]) {
   const groups = new Map<string, AdminCommandGroup>();
 
@@ -192,6 +216,8 @@ export function AdminCommandView(props: {
   report: EndOfDayReport;
   selectedDate: string;
   session: BusinessSession;
+  demoRequests: DemoRequest[];
+  demoRequestsError?: string | null;
   supportError?: string | null;
   supportEscalations: SupportEscalation[];
 }) {
@@ -227,6 +253,12 @@ export function AdminCommandView(props: {
     const state = getPilotGuardrailState({ workspace: pilot, checks: [], guidance: "" });
     return state.guardrailLevel === "PAUSED" || state.guardrailLevel === "WARNING";
   }).length;
+  const demoRequestCounts = useMemo(() => countDemoRequestsByStatus(props.demoRequests), [props.demoRequests]);
+  const newDemoRequests = props.demoRequests.filter((request) => request.status === "NEW");
+  const oldestNewDemoRequestAge =
+    newDemoRequests.length > 0
+      ? Math.max(...newDemoRequests.map((request) => minutesSince(request.createdAt)))
+      : null;
 
   return (
     <section className="ops-stack admin-command-stack">
@@ -255,10 +287,48 @@ export function AdminCommandView(props: {
           <CountCard copy="Controlled pilot workspaces currently active." label="Active controlled pilots" tone={activeControlledPilots ? "info" : "success"} value={activeControlledPilots} />
           <CountCard copy="Workspaces marked live-ready with pilot-ready evidence." label="Live-ready pilots" tone={liveReadyPilots ? "success" : "info"} value={liveReadyPilots} />
           <CountCard copy="Paused or not rehearsal-ready workspaces need review." label="Pilot guardrail gaps" tone={pilotGuardrailGaps ? "warning" : "success"} value={pilotGuardrailGaps} />
+          <CountCard copy="Commercial intake requests waiting for platform review." label="New demo requests" tone={demoRequestCounts.NEW ? "info" : "success"} value={demoRequestCounts.NEW} />
+          <CountCard copy="Requests already contacted or qualified for follow-up." label="Follow-up in motion" tone={demoRequestCounts.CONTACTED + demoRequestCounts.QUALIFIED ? "info" : "success"} value={demoRequestCounts.CONTACTED + demoRequestCounts.QUALIFIED} />
         </div>
       </section>
 
       <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_EXPLAINER} />
+
+      <section className="sw-supporting-surface admin-command-section">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Commercial intake</p>
+            <h2>Demo request follow-up</h2>
+            <p className="ops-detail-note">New demo and controlled-pilot requests are persisted for platform admin review. No email, CRM, or outbound automation is triggered yet.</p>
+          </div>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
+            Open demo requests
+          </Link>
+        </div>
+        {props.demoRequestsError ? (
+          <div className="form-error-banner support-escalation-error">{props.demoRequestsError}</div>
+        ) : null}
+        <div className="admin-command-report-grid">
+          <div className="sw-operational-surface admin-command-report-card">
+            <p className="eyebrow">Request posture</p>
+            <div className="admin-command-stat-list">
+              <div><span>New</span><strong>{demoRequestCounts.NEW}</strong></div>
+              <div><span>Reviewed</span><strong>{demoRequestCounts.REVIEWED}</strong></div>
+              <div><span>Contacted</span><strong>{demoRequestCounts.CONTACTED}</strong></div>
+              <div><span>Qualified</span><strong>{demoRequestCounts.QUALIFIED}</strong></div>
+            </div>
+          </div>
+          <div className="sw-operational-surface admin-command-report-card">
+            <p className="eyebrow">Next action</p>
+            <strong>{demoRequestCounts.NEW ? "Review new commercial interest" : "No new demo request review needed"}</strong>
+            <p className="ops-detail-note">
+              {oldestNewDemoRequestAge == null
+                ? "The intake queue is clear for new requests."
+                : `Oldest new request is ${formatAgeMinutes(oldestNewDemoRequestAge)}.`}
+            </p>
+          </div>
+        </div>
+      </section>
 
       <section className="sw-supporting-surface admin-command-section">
         <div className="sw-card-header admin-section-header">
@@ -618,7 +688,9 @@ export function AdminCommandShell() {
   const [report, setReport] = useState<EndOfDayReport | null>(null);
   const [pilots, setPilots] = useState<PilotWorkspace[]>([]);
   const [supportEscalations, setSupportEscalations] = useState<SupportEscalation[]>([]);
+  const [demoRequests, setDemoRequests] = useState<DemoRequest[]>([]);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
+  const [demoRequestsError, setDemoRequestsError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -639,6 +711,7 @@ export function AdminCommandShell() {
     setLoading(true);
     setLoadError(null);
     setSupportLogError(null);
+    setDemoRequestsError(null);
 
     void Promise.all([
       loadAdminCommandData(session, selectedDate),
@@ -646,9 +719,13 @@ export function AdminCommandShell() {
       listAdminSupportEscalations(session).catch((issue) => {
         setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
         return [];
+      }),
+      listAdminDemoRequests(session).catch((issue) => {
+        setDemoRequestsError(getUserFacingApiError(issue, "Demo request posture unavailable. Refresh or contact support."));
+        return [];
       })
     ])
-      .then(([commandData, nextPilots, nextSupportEscalations]) => {
+      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests]) => {
         if (!active) {
           return;
         }
@@ -657,6 +734,7 @@ export function AdminCommandShell() {
         setReport(commandData.report);
         setPilots(nextPilots);
         setSupportEscalations(nextSupportEscalations);
+        setDemoRequests(nextDemoRequests);
       })
       .catch((issue) => {
         if (!active) {
@@ -685,13 +763,18 @@ export function AdminCommandShell() {
     setLoading(true);
     setLoadError(null);
     setSupportLogError(null);
+    setDemoRequestsError(null);
 
     try {
-      const [commandData, nextPilots, nextSupportEscalations] = await Promise.all([
+      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests] = await Promise.all([
         loadAdminCommandData(nextSession, selectedDate),
         listAdminPilots(nextSession).catch(() => []),
         listAdminSupportEscalations(nextSession).catch((issue) => {
           setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
+          return [];
+        }),
+        listAdminDemoRequests(nextSession).catch((issue) => {
+          setDemoRequestsError(getUserFacingApiError(issue, "Demo request posture unavailable. Refresh or contact support."));
           return [];
         })
       ]);
@@ -699,6 +782,7 @@ export function AdminCommandShell() {
       setReport(commandData.report);
       setPilots(nextPilots);
       setSupportEscalations(nextSupportEscalations);
+      setDemoRequests(nextDemoRequests);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
     } finally {
@@ -817,6 +901,8 @@ export function AdminCommandShell() {
       {briefing && report ? (
         <AdminCommandView
           briefing={briefing}
+          demoRequests={demoRequests}
+          demoRequestsError={demoRequestsError}
           pilots={pilots}
           report={report}
           selectedDate={selectedDate}

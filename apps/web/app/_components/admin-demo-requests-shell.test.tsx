@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { AdminDemoRequestsView } from "./admin-demo-requests-shell";
+import { AdminDemoRequestsView, getDemoRequestNextAction } from "./admin-demo-requests-shell";
 import type { DemoRequest } from "../_lib/product-state";
 
 const request: DemoRequest = {
@@ -38,6 +38,8 @@ describe("AdminDemoRequestsView", () => {
     expect(html).toContain("Ada Operator");
     expect(html).toContain("ada@example.com");
     expect(html).toContain("Pilot Merchant");
+    expect(html).toContain("Next action: Review request");
+    expect(html).toContain("Mark Reviewed");
     expect(html).toContain("Save review");
   });
 
@@ -55,5 +57,14 @@ describe("AdminDemoRequestsView", () => {
 
     expect(html).toContain("No demo requests in this view");
     expect(html).toContain("Public demo requests submitted through");
+  });
+
+  it("maps demo request statuses to next actions", () => {
+    expect(getDemoRequestNextAction("NEW")).toBe("Review request");
+    expect(getDemoRequestNextAction("REVIEWED")).toBe("Contact requester");
+    expect(getDemoRequestNextAction("CONTACTED")).toBe("Qualify opportunity");
+    expect(getDemoRequestNextAction("QUALIFIED")).toBe("Prepare pilot/investor follow-up");
+    expect(getDemoRequestNextAction("CLOSED")).toBe("No action");
+    expect(getDemoRequestNextAction("SPAM")).toBe("No action");
   });
 });

@@ -8,8 +8,8 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { AdminWorkspaceLink } from "./workspace-nav";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminOverview, listAdminJobs, listAdminOrders, listAdminOutbox, listAdminPayments } from "../_lib/api";
-import { formatCurrency, formatDateTime, type AdminInterventionItem, type AdminJobSummary, type AdminOrderSummary, type AdminOutboxItem, type AdminPaymentSummary } from "../_lib/product-state";
+import { getAdminOverview, listAdminDemoRequests, listAdminJobs, listAdminOrders, listAdminOutbox, listAdminPayments } from "../_lib/api";
+import { formatCurrency, formatDateTime, type AdminInterventionItem, type AdminJobSummary, type AdminOrderSummary, type AdminOutboxItem, type AdminPaymentSummary, type DemoRequest } from "../_lib/product-state";
 import {
   canOpenOrgConsole,
   type AdminInterventionFilter,
@@ -208,6 +208,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
   const [payments, setPayments] = useState<AdminPaymentSummary[]>([]);
   const [outbox, setOutbox] = useState<AdminOutboxItem[]>([]);
+  const [demoRequests, setDemoRequests] = useState<DemoRequest[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<AdminSection>("interventions");
@@ -241,9 +242,10 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
       listAdminJobs(session),
       listAdminOrders(session),
       listAdminPayments(session),
-      listAdminOutbox(session)
+      listAdminOutbox(session),
+      listAdminDemoRequests(session).catch(() => [])
     ])
-      .then(([nextOverview, nextJobs, nextOrders, nextPayments, nextOutbox]) => {
+      .then(([nextOverview, nextJobs, nextOrders, nextPayments, nextOutbox, nextDemoRequests]) => {
         if (!active) {
           return;
         }
@@ -253,6 +255,7 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
         setOrders(nextOrders);
         setPayments(nextPayments);
         setOutbox(nextOutbox);
+        setDemoRequests(nextDemoRequests);
       })
       .catch((issue) => {
         if (!active) {
@@ -285,6 +288,10 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
   const recentSkippedNotifications = useMemo(
     () => outbox.filter((item) => getOutboxBucket(item) === "skipped").length,
     [outbox]
+  );
+  const newDemoRequestCount = useMemo(
+    () => demoRequests.filter((request) => request.status === "NEW").length,
+    [demoRequests]
   );
   const sectionCounts = useMemo(
     () => ({
@@ -459,6 +466,26 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
         </div>
         <p className="ops-detail-note">
           Command Intelligence v1 is rules-based and human-in-the-loop. It helps operators spot risk, review recommendations, and close the day. It does not take recovery actions automatically.
+        </p>
+      </section>
+
+      <section className="sw-supporting-surface admin-section admin-command-intelligence-link">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Commercial intake</p>
+            <h2>{newDemoRequestCount ? `${newDemoRequestCount} new demo request${newDemoRequestCount === 1 ? "" : "s"}` : "Demo request queue clear"}</h2>
+          </div>
+          <div className="admin-section-actions">
+            <span className={`sw-badge ${newDemoRequestCount ? "sw-badge--info" : "sw-badge--success"}`}>
+              {newDemoRequestCount} new
+            </span>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
+              Review demo requests
+            </Link>
+          </div>
+        </div>
+        <p className="ops-detail-note">
+          Public pilot, operator, and investor requests are persisted for platform admin review. Follow-up remains human-led until email or CRM integration is added.
         </p>
       </section>
 

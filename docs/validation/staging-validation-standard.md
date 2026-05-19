@@ -58,6 +58,7 @@ The paid-delivery proof must confirm:
 - pilot rehearsal cockpit remains read-only and shows validation posture as unknown unless evidence is recorded through pilot checks
 - driver fleet organisation surfaces remain visibility-first and do not change dispatch preference, payout, billing, or courier suspension behavior
 - demo request persistence remains available for public commercial intake and platform-admin review
+- demo request creation records internal admin notification posture through `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` outbox events or an explicitly documented fallback
 - release readiness checks green
 
 The release verification must confirm:
@@ -97,7 +98,7 @@ Authenticated routes:
 
 Browser smoke must validate both unauthenticated and authenticated surfaces when smoke credentials are configured.
 
-Commercial intake smoke should also check `/demo/request` structurally when demo request capture changes. A staging verification may submit one non-sensitive test request and confirm it appears in `/admin/demo-requests`.
+Commercial intake smoke should also check `/demo/request` structurally when demo request capture changes. A staging verification may submit one non-sensitive test request and confirm it appears in `/admin/demo-requests` and is reflected in `/admin/command` commercial intake posture.
 
 ## Smoke Users
 Use dedicated staging-only smoke accounts. Document roles, not secrets:
@@ -153,6 +154,7 @@ Playwright artifacts remain local and ignored:
 - Browser smoke should stay green after UI, auth, routing, or command-surface changes.
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
 - Public smoke should not require authentication.
+- Demo request follow-up changes should keep `/admin/demo-requests` and `/admin/command` calm, admin-only, and free of CRM/email overclaims.
 - Release readiness must include support/escalation schema dependencies because order, job, admin command, closeout, and support history surfaces depend on them.
 - Support history events must be system-created from support create/update operations; new work must not add manual event creation or deletion paths.
 - Rehearsal cockpit should not execute release verification, paid-delivery proof, browser smoke, or destructive pilot controls from the UI in v1.

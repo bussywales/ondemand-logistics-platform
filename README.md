@@ -62,6 +62,13 @@ Public demo and controlled-pilot requests are captured through:
 
 Demo request capture is persistence-only in v1. It does not send email, sync a CRM, or promise automatic follow-up.
 
+Commercial intake v2 adds internal operational visibility:
+- new demo requests record an internal `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` outbox event
+- `/admin` and `/admin/command` surface new request posture for platform admins
+- `/admin/demo-requests` provides next-action guidance, reviewed metadata, status quick actions, and admin notes
+
+Outbound email, CRM sync, webhooks, and automated follow-up remain deferred.
+
 ## What’s New Entries
 Product update entries live in:
 - `apps/web/app/_content/product-updates.ts`

@@ -54,6 +54,7 @@ Configuration:
 - Authenticated workspace/admin/driver/fleet-manager smoke requires credentials and is skipped otherwise.
 - Admin browser smoke includes `/admin`, `/admin/command`, and `/admin/drivers`.
 - Admin browser smoke should include `/admin/demo-requests` when commercial intake changes.
+- Commercial intake changes should verify that a non-sensitive staging request appears in `/admin/demo-requests` and that `/admin/command` shows the demo request posture.
 - Fleet-manager browser smoke includes `/fleet` with a dedicated `FLEET_MANAGER` smoke account.
 - Required/used auth variables:
   - `SMOKE_BUSINESS_EMAIL`, `SMOKE_BUSINESS_PASSWORD`
@@ -95,8 +96,8 @@ For every major user-visible delivery:
    - `customer_orders`
    - `payments`
    - `jobs`
-   - `outbox_messages`
-   - `demo_requests`
+    - `outbox_messages`
+    - `demo_requests`
    - `customer_orders.status` supports `FULFILLED`
 4. optional business smoke when `SMOKE_BUSINESS_BEARER_TOKEN` is set:
    - `GET /v1/business/restaurants`
@@ -106,6 +107,7 @@ For every major user-visible delivery:
 6. optional admin smoke when `SMOKE_ADMIN_BEARER_TOKEN` is set:
    - `GET /v1/admin/overview`
 7. external notification status from recent audit signals
+   - commercial intake may record `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` as an internal outbox event; this does not imply outbound email delivery
 8. proof artifact write to `docs/proofs/release-verify-<timestamp>.json`
 9. release decision
 

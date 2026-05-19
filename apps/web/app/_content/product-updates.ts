@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "demo-request-follow-up-workflow",
+    title: "Demo request follow-up is now surfaced",
+    summary: "New public demo requests now create an internal admin signal and appear in Admin Command with next-action guidance for human follow-up.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin", "/admin/command", "/admin/demo-requests"],
+    releasedAt: "2026-05-19T22:30:00.000Z",
+    version: "v2.0",
+    ctaLabel: "Open demo requests",
+    ctaHref: "/admin/demo-requests"
+  },
+  {
     id: "demo-request-persistence",
     title: "Demo requests are now recorded",
     summary: "Public controlled-pilot and walkthrough requests are now persisted for platform admin review before any manual follow-up.",

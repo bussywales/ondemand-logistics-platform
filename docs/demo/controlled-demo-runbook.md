@@ -117,7 +117,7 @@ Recommended order:
 14. show pilot management mode, readiness stage, owners, and checklist evidence
 15. open the selected pilot rehearsal cockpit and confirm readiness recommendation, validation unknown copy, operational posture, and recommended next actions
 16. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
-17. show the public demo request form and `/admin/demo-requests`; explain that requests are persisted for human review, not emailed or CRM-synced yet
+17. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet
 18. show help and pilot playbooks
 19. close by referencing the proof artifacts and current known limitations
 
@@ -141,7 +141,7 @@ Do not claim:
 - autonomous end-of-day closeout or AI-led incident resolution
 - live-map courier movement
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
-- CRM, webhook, or email automation for demo requests
+- CRM, webhook, or email automation for demo requests; internal admin command/outbox visibility is available, but outbound follow-up remains manual
 - broad compliance completeness for live courier operations
 - settlement or reconciliation automation beyond the current visibility surfaces
 - pilot mode as an automatic operating control; it is a human-reviewed readiness layer in v1

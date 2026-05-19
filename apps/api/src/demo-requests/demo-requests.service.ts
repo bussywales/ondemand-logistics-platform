@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import type { PoolClient } from "pg";
 import { z } from "zod";
 import {
   CreateDemoRequestSchema,
@@ -59,6 +60,34 @@ function mapDemoRequest(row: DemoRequestRow): DemoRequestDto {
   });
 }
 
+async function enqueueAdminDemoRequestNotification(client: PoolClient, row: DemoRequestRow) {
+  await client.query(
+    `insert into public.outbox_messages (
+       aggregate_type,
+       aggregate_id,
+       event_type,
+       payload,
+       idempotency_key
+     )
+     values ($1, $2, $3, $4::jsonb, $5)
+     on conflict (event_type, idempotency_key) do nothing`,
+    [
+      "demo_request",
+      row.id,
+      "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+      JSON.stringify({
+        demoRequestId: row.id,
+        interestType: row.interest_type,
+        organisation: row.organisation,
+        requesterName: row.name,
+        requesterEmail: row.email,
+        createdAt: toIsoDateTime(row.created_at)
+      }),
+      `demo-request-created:${row.id}`
+    ]
+  );
+}
+
 @Injectable()
 export class DemoRequestsService {
   constructor(private readonly pg: PgService) {}
@@ -74,35 +103,39 @@ export class DemoRequestsService {
       throw new UnprocessableEntityException("demo_request_rejected");
     }
 
-    const result = await this.pg.query<DemoRequestRow>(
-      `insert into public.demo_requests (
-          name,
-          email,
-          organisation,
-          role,
-          interest_type,
-          message,
-          source
-       )
-       values ($1, $2, $3, $4, $5, $6, coalesce($7, 'landing_page'))
-       returning *`,
-      [
-        input.name.trim(),
-        input.email.trim().toLowerCase(),
-        nullableText(input.organisation),
-        nullableText(input.role),
-        input.interestType,
-        nullableText(input.message),
-        nullableText(input.source)
-      ]
-    );
+    return this.pg.withTransaction(async (client) => {
+      const result = await client.query<DemoRequestRow>(
+        `insert into public.demo_requests (
+            name,
+            email,
+            organisation,
+            role,
+            interest_type,
+            message,
+            source
+         )
+         values ($1, $2, $3, $4, $5, $6, coalesce($7, 'landing_page'))
+         returning *`,
+        [
+          input.name.trim(),
+          input.email.trim().toLowerCase(),
+          nullableText(input.organisation),
+          nullableText(input.role),
+          input.interestType,
+          nullableText(input.message),
+          nullableText(input.source)
+        ]
+      );
 
-    const row = result.rows[0];
-    if (!row) {
-      throw new UnprocessableEntityException("demo_request_create_failed");
-    }
+      const row = result.rows[0];
+      if (!row) {
+        throw new UnprocessableEntityException("demo_request_create_failed");
+      }
 
-    return mapDemoRequest(row);
+      await enqueueAdminDemoRequestNotification(client, row);
+
+      return mapDemoRequest(row);
+    });
   }
 
   async listAdminDemoRequests(rawQuery: Record<string, string | undefined>) {

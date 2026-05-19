@@ -22,15 +22,17 @@ const DEMO_ROW = {
 
 function createService(rows: unknown[] = [DEMO_ROW]) {
   const query = vi.fn().mockResolvedValue({ rows });
+  const withTransaction = vi.fn((callback) => callback({ query }));
   return {
     query,
-    service: new DemoRequestsService({ query } as never)
+    withTransaction,
+    service: new DemoRequestsService({ query, withTransaction } as never)
   };
 }
 
 describe("DemoRequestsService", () => {
   it("creates a public demo request", async () => {
-    const { query, service } = createService();
+    const { query, service, withTransaction } = createService();
 
     const result = await service.createDemoRequest({
       name: "Ada Operator",
@@ -43,7 +45,18 @@ describe("DemoRequestsService", () => {
 
     expect(result.email).toBe("ada@example.com");
     expect(result.status).toBe("NEW");
+    expect(withTransaction).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenCalledWith(expect.stringContaining("insert into public.demo_requests"), expect.arrayContaining(["ada@example.com"]));
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("insert into public.outbox_messages"),
+      expect.arrayContaining([
+        "demo_request",
+        DEMO_ROW.id,
+        "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+        expect.stringContaining('"demoRequestId"'),
+        `demo-request-created:${DEMO_ROW.id}`
+      ])
+    );
   });
 
   it("rejects invalid public demo request email", async () => {
