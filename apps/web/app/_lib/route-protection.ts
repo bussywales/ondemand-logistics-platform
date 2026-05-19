@@ -10,7 +10,13 @@ export function sanitizePostAuthDestination(value: string | null | undefined) {
   }
 
   const trimmed = value.trim();
-  if (!trimmed.startsWith('/app') && !trimmed.startsWith('/admin')) {
+  if (
+    !trimmed.startsWith('/app') &&
+    !trimmed.startsWith('/admin') &&
+    trimmed !== '/driver' &&
+    !trimmed.startsWith('/driver/') &&
+    trimmed !== '/fleet'
+  ) {
     return '/app';
   }
 

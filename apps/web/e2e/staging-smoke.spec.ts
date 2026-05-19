@@ -1,4 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
+import { buildAuthRedirectTarget } from '../app/_lib/route-protection';
 
 const PUBLIC_RESTAURANT_PATH = '/restaurants/pilot-kitchen-1777370757';
 const LATEST_ORDER_ID = process.env.SMOKE_LATEST_ORDER_ID || process.env.LATEST_ORDER_ID;
@@ -28,7 +29,8 @@ async function signInOperator(page: Page, credentials: { email: string; password
     return false;
   }
 
-  await page.goto(options?.returnTo ?? '/get-started', { waitUntil: 'domcontentloaded' });
+  const target = options?.returnTo ? buildAuthRedirectTarget({ pathname: options.returnTo }) : '/get-started';
+  await page.goto(target, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => undefined);
 
   const signInMode = page.getByRole('button', { name: /^sign in$/i }).first();

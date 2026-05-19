@@ -8,9 +8,11 @@ describe('route protection helpers', () => {
     expect(isProtectedAppPath('/get-started')).toBe(false);
   });
 
-  it('sanitizes post-auth destinations to protected app or admin routes', () => {
+  it('sanitizes post-auth destinations to protected workspace routes', () => {
     expect(sanitizePostAuthDestination('/app/jobs/123')).toBe('/app/jobs/123');
     expect(sanitizePostAuthDestination('/admin')).toBe('/admin');
+    expect(sanitizePostAuthDestination('/driver')).toBe('/driver');
+    expect(sanitizePostAuthDestination('/fleet')).toBe('/fleet');
     expect(sanitizePostAuthDestination('/contact')).toBe('/app');
     expect(sanitizePostAuthDestination(null)).toBe('/app');
   });
