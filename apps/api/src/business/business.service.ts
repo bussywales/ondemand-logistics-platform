@@ -233,6 +233,8 @@ export class BusinessService {
     );
 
     const memberships = await this.readBusinessMemberships(this.pg, user.id, hasOrgProfileColumns);
+    const hasNonBusinessWorkspaceAccess =
+      memberships.length > 0 ? false : await this.hasNonBusinessWorkspaceAccess(this.pg, user.id);
 
     const fallbackEmail = this.getUserEmail(user);
     const fallbackDisplayName = this.getUserDisplayName(user, fallbackEmail);
@@ -245,7 +247,8 @@ export class BusinessService {
     return this.mapContext(
       userRow,
       memberships,
-      isPlatformAdmin
+      isPlatformAdmin,
+      hasNonBusinessWorkspaceAccess
     );
   }
 
@@ -362,10 +365,31 @@ export class BusinessService {
     }));
   }
 
+  private async hasNonBusinessWorkspaceAccess(queryable: Queryable, userId: string) {
+    const result = await queryable.query<{ has_access: boolean }>(
+      `select exists (
+         select 1
+         from public.org_memberships m
+         join public.orgs o on o.id = m.org_id
+         where m.user_id = $1
+           and m.is_active = true
+           and (
+             (o.org_type = 'DRIVER_COMPANY' and m.role::text in ('FLEET_OWNER', 'FLEET_MANAGER', 'DISPATCHER', 'DRIVER', 'COMPLIANCE_MANAGER'))
+             or (o.org_type = 'INDEPENDENT_COURIER' and m.role::text = 'DRIVER')
+             or (o.org_type = 'SUPPORT_PARTNER' and m.role::text = 'SUPPORT_USER')
+           )
+       ) as has_access`,
+      [userId]
+    );
+
+    return Boolean(result.rows[0]?.has_access);
+  }
+
   private mapContext(
     user: UserRow,
     rows: Array<{ membership: MembershipRow; org: OrgRow }>,
-    platformAdmin = false
+    platformAdmin = false,
+    hasNonBusinessWorkspaceAccess = false
   ): BusinessContextDto {
     const memberships = rows.map((row) => ({
       membership: OrgMembershipSummarySchema.parse({
@@ -393,7 +417,7 @@ export class BusinessService {
       email: user.email,
       displayName: user.display_name,
       platformAdmin,
-      onboarded: memberships.length > 0 || platformAdmin,
+      onboarded: memberships.length > 0 || platformAdmin || hasNonBusinessWorkspaceAccess,
       currentOrg: memberships[0]?.org ?? null,
       memberships
     });

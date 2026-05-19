@@ -101,6 +101,7 @@ Use dedicated staging-only smoke accounts. Document roles, not secrets:
 - business smoke user: business operator for the staging demo org
 - admin smoke user: active platform admin
 - driver smoke user: active approved driver profile suitable for driver-route smoke
+- fleet manager smoke user: active `DRIVER_COMPANY` member with `FLEET_MANAGER` role for `/fleet`
 
 Required local environment variables for authenticated browser smoke:
 
@@ -111,6 +112,8 @@ SMOKE_ADMIN_EMAIL=
 SMOKE_ADMIN_PASSWORD=
 SMOKE_DRIVER_EMAIL=
 SMOKE_DRIVER_PASSWORD=
+SMOKE_FLEET_MANAGER_EMAIL=
+SMOKE_FLEET_MANAGER_PASSWORD=
 ```
 
 Supporting browser smoke env:

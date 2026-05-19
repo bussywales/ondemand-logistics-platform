@@ -92,7 +92,7 @@ Notes:
 - Tracking smoke needs an order id:
   - `SMOKE_LATEST_ORDER_ID` (preferred), or
   - `LATEST_ORDER_ID` fallback.
-- Authenticated workspace/admin/driver smoke checks require credentials and are skipped if missing.
+- Authenticated workspace/admin/driver/fleet-manager smoke checks require credentials and are skipped if missing.
 - Playwright artifacts are local test outputs and must not be committed:
   - `playwright-report`
   - `test-results`
@@ -101,6 +101,7 @@ Optional authenticated smoke env vars in the Playwright spec:
 - `SMOKE_BUSINESS_EMAIL`, `SMOKE_BUSINESS_PASSWORD`
 - `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`
 - `SMOKE_DRIVER_EMAIL`, `SMOKE_DRIVER_PASSWORD`
+- `SMOKE_FLEET_MANAGER_EMAIL`, `SMOKE_FLEET_MANAGER_PASSWORD`
 
 Global run env:
 - `STAGING_WEB_BASE_URL` (set to staging host for authenticated and public smoke routes)

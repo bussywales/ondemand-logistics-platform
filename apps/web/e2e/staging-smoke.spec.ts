@@ -18,12 +18,17 @@ const DRIVER_TEST_ACCOUNT = {
   password: process.env.SMOKE_DRIVER_PASSWORD || process.env.DRIVER_SMOKE_PASSWORD || ''
 };
 
-async function signInOperator(page: Page, credentials: { email: string; password: string }) {
+const FLEET_MANAGER_TEST_ACCOUNT = {
+  email: process.env.SMOKE_FLEET_MANAGER_EMAIL || '',
+  password: process.env.SMOKE_FLEET_MANAGER_PASSWORD || ''
+};
+
+async function signInOperator(page: Page, credentials: { email: string; password: string }, options?: { returnTo?: string }) {
   if (!credentials.email || !credentials.password) {
     return false;
   }
 
-  await page.goto('/get-started', { waitUntil: 'domcontentloaded' });
+  await page.goto(options?.returnTo ?? '/get-started', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => undefined);
 
   const signInMode = page.getByRole('button', { name: /^sign in$/i }).first();
@@ -157,9 +162,29 @@ test('authenticated admin routes smoke', async ({ page }) => {
 test('authenticated driver route smoke', async ({ page }) => {
   test.skip(!DRIVER_TEST_ACCOUNT.email || !DRIVER_TEST_ACCOUNT.password, 'Set SMOKE_DRIVER_EMAIL and SMOKE_DRIVER_PASSWORD for driver smoke.');
 
-  const signedIn = await signInOperator(page, DRIVER_TEST_ACCOUNT);
+  const signedIn = await signInOperator(page, DRIVER_TEST_ACCOUNT, { returnTo: '/driver' });
   expect(signedIn, 'Driver smoke credentials should sign in when configured.').toBe(true);
 
   await assertProtectedRouteLoads(page, '/driver');
+
+  const response = await page.goto('/fleet', { waitUntil: 'domcontentloaded' });
+  if (response) {
+    expect(response.status(), 'GET /fleet for ordinary driver').toBeLessThan(500);
+  }
+  await expect(page.getByRole('heading', { name: /fleet manager access required/i })).toBeVisible({ timeout: 12000 });
+});
+
+test('authenticated fleet manager workspace smoke', async ({ page }) => {
+  test.skip(
+    !FLEET_MANAGER_TEST_ACCOUNT.email || !FLEET_MANAGER_TEST_ACCOUNT.password,
+    'Set SMOKE_FLEET_MANAGER_EMAIL and SMOKE_FLEET_MANAGER_PASSWORD for dedicated fleet manager smoke.'
+  );
+
+  const signedIn = await signInOperator(page, FLEET_MANAGER_TEST_ACCOUNT, { returnTo: '/fleet' });
+  expect(signedIn, 'Fleet manager smoke credentials should sign in when configured.').toBe(true);
+
   await assertProtectedRouteLoads(page, '/fleet');
+  await expect(page.getByText(/Fleet readiness/i)).toBeVisible({ timeout: 12000 });
+  await expect(page.getByRole('heading', { name: /Fleet-managed couriers/i })).toBeVisible({ timeout: 12000 });
+  await expect(page.getByText(/No scoring, suspension, billing, payout, or dispatch preference automation/i)).toBeVisible();
 });

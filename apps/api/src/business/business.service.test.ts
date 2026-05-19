@@ -45,6 +45,9 @@ describe("BusinessService", () => {
           rowCount: 0,
           rows: []
         })
+        .mockResolvedValueOnce({
+          rows: [{ has_access: false }]
+        })
     };
 
     const service = new BusinessService(pg as never, createPlatformAdmins() as never);
@@ -55,6 +58,39 @@ describe("BusinessService", () => {
     expect(context.memberships).toHaveLength(0);
     expect(context.email).toBe("ops@example.com");
     expect(context.platformAdmin).toBe(false);
+  });
+
+  it("marks non-business fleet memberships as onboarded without assigning a business org", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [
+            { column_name: "contact_name" },
+            { column_name: "contact_email" },
+            { column_name: "contact_phone" },
+            { column_name: "operating_city" }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: USER_ID, email: "ops@example.com", display_name: "Fleet Manager" }]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 0,
+          rows: []
+        })
+        .mockResolvedValueOnce({
+          rows: [{ has_access: true }]
+        })
+    };
+
+    const service = new BusinessService(pg as never, createPlatformAdmins() as never);
+    const context = await service.getBusinessContext(createUser());
+
+    expect(context.onboarded).toBe(true);
+    expect(context.currentOrg).toBeNull();
+    expect(context.memberships).toHaveLength(0);
   });
 
   it("creates an org and operator membership for the authenticated user", async () => {
@@ -374,6 +410,9 @@ describe("BusinessService", () => {
         .mockResolvedValueOnce({
           rowCount: 0,
           rows: []
+        })
+        .mockResolvedValueOnce({
+          rows: [{ has_access: false }]
         })
     };
 

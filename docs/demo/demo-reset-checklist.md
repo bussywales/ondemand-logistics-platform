@@ -52,6 +52,7 @@ Confirm staging-only accounts are available without exposing passwords in notes:
 - business smoke user signs into `/app`
 - admin smoke user signs into `/admin`
 - driver smoke user signs into `/driver`
+- fleet manager smoke user signs into `/fleet`
 
 Confirm local `.env.smoke` includes required values for browser smoke where applicable:
 
@@ -62,6 +63,8 @@ SMOKE_ADMIN_EMAIL=
 SMOKE_ADMIN_PASSWORD=
 SMOKE_DRIVER_EMAIL=
 SMOKE_DRIVER_PASSWORD=
+SMOKE_FLEET_MANAGER_EMAIL=
+SMOKE_FLEET_MANAGER_PASSWORD=
 STAGING_WEB_BASE_URL=
 SMOKE_LATEST_ORDER_ID=
 ```

@@ -51,12 +51,14 @@ Configuration:
 - Public tracking smoke requires one of:
   - `SMOKE_LATEST_ORDER_ID`
   - `LATEST_ORDER_ID`
-- Authenticated workspace/admin/driver smoke requires credentials and is skipped otherwise.
+- Authenticated workspace/admin/driver/fleet-manager smoke requires credentials and is skipped otherwise.
 - Admin browser smoke includes `/admin`, `/admin/command`, and `/admin/drivers`.
+- Fleet-manager browser smoke includes `/fleet` with a dedicated `FLEET_MANAGER` smoke account.
 - Required/used auth variables:
   - `SMOKE_BUSINESS_EMAIL`, `SMOKE_BUSINESS_PASSWORD`
   - `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`
   - `SMOKE_DRIVER_EMAIL`, `SMOKE_DRIVER_PASSWORD`
+  - `SMOKE_FLEET_MANAGER_EMAIL`, `SMOKE_FLEET_MANAGER_PASSWORD`
 - Playwright artifacts are local-only and ignored:
   - `playwright-report`
   - `test-results`
