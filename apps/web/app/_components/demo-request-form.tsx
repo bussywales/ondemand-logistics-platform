@@ -15,6 +15,28 @@ const INTEREST_OPTIONS: Array<{ label: string; value: DemoRequestInterestType }>
 
 const MAILTO_FALLBACK = "mailto:hello@shipwright.local?subject=ShipWright%20controlled%20pilot%20request";
 
+export function normalizeDemoRequestInterest(value: string | null | undefined): DemoRequestInterestType {
+  const normalized = String(value ?? "").trim().toLowerCase();
+
+  if (["pilot", "pilot_merchant", "merchant", "restaurant", "retailer"].includes(normalized)) {
+    return "PILOT_MERCHANT";
+  }
+
+  if (["operator", "operator_platform", "platform", "dispatch"].includes(normalized)) {
+    return "OPERATOR_PLATFORM";
+  }
+
+  if (["investor", "partner", "investor_partner"].includes(normalized)) {
+    return "INVESTOR_PARTNER";
+  }
+
+  if (normalized === "other") {
+    return "OTHER";
+  }
+
+  return "PILOT_MERCHANT";
+}
+
 export function DemoRequestFeedback(props: { status: "success" | "error"; error?: string | null }) {
   if (props.status === "success") {
     return (
@@ -31,9 +53,10 @@ export function DemoRequestFeedback(props: { status: "success" | "error"; error?
   );
 }
 
-export function DemoRequestForm() {
+export function DemoRequestForm(props: { defaultInterestType?: DemoRequestInterestType } = {}) {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const defaultInterestType = props.defaultInterestType ?? "PILOT_MERCHANT";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,7 +108,7 @@ export function DemoRequestForm() {
       </div>
       <label>
         <span>Interest type</span>
-        <select name="interestType" defaultValue="PILOT_MERCHANT">
+        <select name="interestType" defaultValue={defaultInterestType}>
           {INTEREST_OPTIONS.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}

@@ -12599,6 +12599,394 @@ select:hover,
   }
 }
 
+/* Commercial Track v3: controlled pilot packages page. */
+.pricing-page {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 4rem;
+  color: #0f1720;
+}
+
+.pricing-topbar {
+  padding-bottom: clamp(2.4rem, 5vw, 4.5rem);
+}
+
+.pricing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(380px, 0.74fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: center;
+  padding: clamp(1rem, 3vw, 2rem) 0 clamp(4rem, 8vw, 6.5rem);
+}
+
+.pricing-hero-copy {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.pricing-hero-copy h1 {
+  max-width: 10.4ch;
+  color: #0a1017;
+  font-size: clamp(3.55rem, 8vw, 7rem);
+  font-weight: 620;
+  letter-spacing: -0.078em;
+  line-height: 0.88;
+}
+
+.pricing-hero-copy > p {
+  max-width: 720px;
+  color: #566273;
+  font-size: clamp(1.04rem, 1.5vw, 1.22rem);
+  line-height: 1.7;
+}
+
+.pricing-hero-actions,
+.pricing-final-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  padding-top: 0.35rem;
+}
+
+.pricing-hero-scene {
+  position: relative;
+  min-height: clamp(340px, 40vw, 500px);
+  overflow: hidden;
+  border: 1px solid rgba(10, 16, 23, 0.08);
+  border-radius: 44px;
+  background:
+    radial-gradient(circle at 22% 72%, rgba(217, 154, 74, 0.2), transparent 17rem),
+    radial-gradient(circle at 82% 24%, rgba(66, 125, 160, 0.18), transparent 19rem),
+    radial-gradient(circle at 70% 78%, rgba(111, 155, 121, 0.12), transparent 16rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.68), rgba(250, 247, 240, 0.94));
+  box-shadow: 0 34px 96px rgba(10, 16, 23, 0.1);
+}
+
+.pricing-route-line {
+  position: absolute;
+  left: 11%;
+  right: 12%;
+  top: 53%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(217, 154, 74, 0.1), rgba(217, 154, 74, 0.68), rgba(66, 125, 160, 0.6), rgba(111, 155, 121, 0.34));
+  box-shadow: 0 0 34px rgba(66, 125, 160, 0.18);
+  transform: rotate(-15deg);
+}
+
+.pricing-node {
+  position: absolute;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 4px solid rgba(255, 255, 255, 0.86);
+  border-radius: 999px;
+  box-shadow: 0 18px 42px rgba(10, 16, 23, 0.14);
+}
+
+.pricing-node-commerce {
+  left: 16%;
+  top: 56%;
+  background: var(--sw-commerce-amber, #d99a4a);
+}
+
+.pricing-node-command {
+  left: 51%;
+  top: 39%;
+  background: var(--sw-command-blue, #427da0);
+}
+
+.pricing-node-proof {
+  right: 17%;
+  top: 32%;
+  background: var(--sw-proof-green, #6f9b79);
+}
+
+.pricing-scene-card {
+  position: absolute;
+  display: grid;
+  gap: 0.25rem;
+  min-width: 11rem;
+  border: 1px solid rgba(10, 16, 23, 0.08);
+  border-radius: 22px;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 22px 58px rgba(10, 16, 23, 0.11);
+  backdrop-filter: blur(18px);
+}
+
+.pricing-scene-card span {
+  color: #758191;
+  font-size: 0.72rem;
+  font-weight: 740;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.pricing-scene-card strong {
+  color: #162331;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.pricing-scene-card-primary {
+  left: 7%;
+  top: 9%;
+}
+
+.pricing-scene-card-secondary {
+  right: 7%;
+  bottom: 9%;
+}
+
+.pricing-packages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 2.4vw, 1.45rem);
+}
+
+.pricing-package-card,
+.pricing-boundary-card,
+.pricing-final,
+.pricing-note,
+.pricing-faq {
+  border: 1px solid rgba(10, 16, 23, 0.08);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 28px 86px rgba(10, 16, 23, 0.07);
+}
+
+.pricing-package-card {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 1.2rem;
+  border-radius: 34px;
+  padding: clamp(1.1rem, 2.6vw, 1.55rem);
+}
+
+.pricing-package-card-commerce {
+  box-shadow:
+    inset 0 3px 0 rgba(217, 154, 74, 0.26),
+    0 28px 86px rgba(10, 16, 23, 0.07);
+}
+
+.pricing-package-card-command {
+  box-shadow:
+    inset 0 3px 0 rgba(66, 125, 160, 0.24),
+    0 28px 86px rgba(10, 16, 23, 0.07);
+}
+
+.pricing-package-card-proof {
+  box-shadow:
+    inset 0 3px 0 rgba(111, 155, 121, 0.24),
+    0 28px 86px rgba(10, 16, 23, 0.07);
+}
+
+.pricing-package-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.pricing-package-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 1px solid rgba(10, 16, 23, 0.08);
+  border-radius: 999px;
+  color: #244158;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.pricing-package-heading p,
+.pricing-note span {
+  color: #758191;
+  font-size: 0.72rem;
+  font-weight: 740;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.pricing-package-heading h2 {
+  margin-top: 0.35rem;
+  color: #101923;
+  font-size: clamp(1.45rem, 2.6vw, 2.05rem);
+  font-weight: 610;
+  letter-spacing: -0.048em;
+  line-height: 1.04;
+}
+
+.pricing-package-card ul,
+.pricing-boundary-card ul {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pricing-package-card li,
+.pricing-boundary-card li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: start;
+  color: #3f4d5c;
+  line-height: 1.45;
+}
+
+.pricing-package-card li .sw-icon,
+.pricing-boundary-card-included li .sw-icon {
+  color: var(--sw-proof-green, #6f9b79);
+}
+
+.pricing-boundary-card-limited li .sw-icon {
+  color: var(--sw-commerce-amber, #d99a4a);
+}
+
+.pricing-package-cta {
+  width: 100%;
+  margin-top: auto;
+}
+
+.pricing-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  margin: clamp(1.4rem, 3.5vw, 2.3rem) 0 clamp(4rem, 8vw, 6.5rem);
+  border-radius: 28px;
+  padding: 1rem 1.15rem;
+}
+
+.pricing-note p {
+  color: #314052;
+  line-height: 1.6;
+}
+
+.pricing-boundaries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2.4vw, 1.45rem);
+  margin-bottom: clamp(4rem, 8vw, 6.5rem);
+}
+
+.pricing-boundary-card {
+  display: grid;
+  gap: 1.15rem;
+  border-radius: 34px;
+  padding: clamp(1.1rem, 2.6vw, 1.55rem);
+}
+
+.pricing-boundary-card h2,
+.pricing-faq-lead h2,
+.pricing-final h2 {
+  color: #101923;
+  font-size: clamp(1.9rem, 4vw, 3.6rem);
+  font-weight: 610;
+  letter-spacing: -0.058em;
+  line-height: 1;
+}
+
+.pricing-faq {
+  display: grid;
+  grid-template-columns: minmax(0, 0.55fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  margin-bottom: clamp(4rem, 8vw, 6.5rem);
+  border-radius: 40px;
+  padding: clamp(1.2rem, 4vw, 2.2rem);
+}
+
+.pricing-faq-lead {
+  display: grid;
+  align-content: start;
+  gap: 0.85rem;
+}
+
+.pricing-faq-list {
+  display: grid;
+  gap: 0;
+}
+
+.pricing-faq-list article {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(10, 16, 23, 0.08);
+}
+
+.pricing-faq-list article:first-child {
+  padding-top: 0;
+}
+
+.pricing-faq-list article:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.pricing-faq-list h3 {
+  color: #152231;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+}
+
+.pricing-faq-list p,
+.pricing-final p {
+  color: #566273;
+  line-height: 1.65;
+}
+
+.pricing-final {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: end;
+  border-radius: 40px;
+  padding: clamp(1.2rem, 4vw, 2.2rem);
+  background:
+    radial-gradient(circle at 14% 22%, rgba(217, 154, 74, 0.12), transparent 17rem),
+    radial-gradient(circle at 80% 78%, rgba(66, 125, 160, 0.1), transparent 18rem),
+    rgba(255, 255, 255, 0.74);
+}
+
+.pricing-final > div:first-child {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 680px;
+}
+
+@media (max-width: 980px) {
+  .pricing-hero,
+  .pricing-packages,
+  .pricing-boundaries,
+  .pricing-faq,
+  .pricing-final {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-final {
+    align-items: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .pricing-page {
+    width: min(100% - 1.1rem, 1180px);
+  }
+
+  .pricing-hero-copy h1 {
+    font-size: clamp(3.05rem, 14vw, 4.9rem);
+    letter-spacing: -0.062em;
+  }
+
+  .pricing-note {
+    grid-template-columns: 1fr;
+  }
+}
+
 .support-escalation-log {
   display: grid;
   gap: 1.25rem;

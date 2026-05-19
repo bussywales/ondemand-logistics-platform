@@ -218,7 +218,7 @@ Constraints:
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
 ## Workstream 7: Commercial Conversion Layer
-Status: In progress. Demo request persistence, internal notification posture, and admin follow-up workflow are active.
+Status: In progress. Demo request persistence, internal notification posture, admin follow-up workflow, and controlled pilot package positioning are active.
 
 Scope:
 - real demo request persistence
@@ -230,11 +230,13 @@ Scope:
 
 Current posture:
 - public landing page includes a demo request path
+- `/pricing` explains controlled pilot packages for merchant, operator/platform, and investor/partner paths without public-price overclaiming
 - demo requests are persisted for platform admin review
 - new demo requests record internal outbox event `NOTIFY_ADMIN_DEMO_REQUEST_CREATED`
 - `/admin` and `/admin/command` surface new demo request counts and link to the review queue
 - `/admin/demo-requests` shows next-action guidance, reviewed metadata, status quick actions, and admin notes
-- email, CRM, webhook, analytics, and pricing-package workflows remain deferred
+- pricing CTAs preselect the correct demo request interest type
+- email, CRM, webhook, and analytics workflows remain deferred
 
 Constraints:
 - do not imply CRM/email automation is live until it is wired and verified

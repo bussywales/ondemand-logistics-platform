@@ -232,9 +232,15 @@ const resourcesMenu = [
   },
   {
     description: "Start with a guided staging session and proof-backed operating walkthrough.",
-    href: "/demo/request",
+    href: "/pricing",
     icon: "route",
     title: "Controlled Pilot"
+  },
+  {
+    description: "Controlled pilot packages for merchants, operators, investors, and partners.",
+    href: "/pricing",
+    icon: "payment",
+    title: "Pricing / Pilot Packages"
   },
   {
     description: "Artifacts for paid delivery, fulfilled order state, capture, and readiness.",
@@ -267,7 +273,7 @@ const conversionPaths = [
     audience: "Restaurants and local retailers",
     body: "See how a paid order moves from public menu to dispatch, customer tracking, payment capture, and proof-backed fulfilment.",
     cta: "Start controlled pilot",
-    href: "/demo/request",
+    href: "/demo/request?interest=pilot",
     tone: "commerce",
     value: "Pilot merchant"
   },
@@ -275,15 +281,15 @@ const conversionPaths = [
     audience: "Operators and platform teams",
     body: "Walk through order queues, job detail, payment risk, command intelligence, admin oversight, and courier readiness.",
     cta: "Request guided demo",
-    href: "/demo/request",
+    href: "/demo/request?interest=operator",
     tone: "command",
     value: "Operator/platform"
   },
   {
     audience: "Investors and partners",
     body: "Review the connected Stage 1 loop, validation gates, proof artifacts, and the human-in-the-loop command centre roadmap.",
-    cta: "View demo walkthrough",
-    href: "/demo/investor",
+    cta: "Request investor walkthrough",
+    href: "/demo/request?interest=investor",
     tone: "proof",
     value: "Investor/partner"
   }
@@ -685,7 +691,7 @@ export default function HomePage() {
             assistive operations intelligence into one calm command centre.
           </p>
           <div className="landing-hero-actions">
-            <Link className="button button-primary landing-button-primary" href="/demo/request">
+            <Link className="button button-primary landing-button-primary" href="/pricing">
               Start a controlled pilot
             </Link>
             <Link className="button button-secondary landing-button-secondary" href="/demo/investor">
@@ -848,6 +854,7 @@ export default function HomePage() {
           <Link href="/get-started">Get started</Link>
           <Link href="/demo">Demo</Link>
           <Link href="/demo/investor">Investor demo</Link>
+          <Link href="/pricing">Pricing</Link>
           <Link href="/demo/request">Request demo</Link>
           <Link href="/contact">Contact</Link>
         </nav>

@@ -38,6 +38,7 @@ Core routes:
 - admin control plane: `https://ondemand-logistics-platform-web.vercel.app/admin`
 - pilot management: `https://ondemand-logistics-platform-web.vercel.app/admin/pilots`
 - pilot rehearsal cockpit pattern: `https://ondemand-logistics-platform-web.vercel.app/admin/pilots/<pilotId>/rehearsal`
+- controlled pilot packages: `https://ondemand-logistics-platform-web.vercel.app/pricing`
 - demo request form: `https://ondemand-logistics-platform-web.vercel.app/demo/request`
 - demo request admin review: `https://ondemand-logistics-platform-web.vercel.app/admin/demo-requests`
 - help: `https://ondemand-logistics-platform-web.vercel.app/help`
@@ -117,9 +118,10 @@ Recommended order:
 14. show pilot management mode, readiness stage, owners, and checklist evidence
 15. open the selected pilot rehearsal cockpit and confirm readiness recommendation, validation unknown copy, operational posture, and recommended next actions
 16. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
-17. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet
-18. show help and pilot playbooks
-19. close by referencing the proof artifacts and current known limitations
+17. show `/pricing` as the controlled pilot package page; explain that ShipWright does not publish fake self-serve pricing and starts with fit review
+18. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet
+19. show help and pilot playbooks
+20. close by referencing the proof artifacts and current known limitations
 
 Audience-specific walkthroughs:
 - use `investor-walkthrough.md` for investor or strategic partner sessions
@@ -142,6 +144,7 @@ Do not claim:
 - live-map courier movement
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - CRM, webhook, or email automation for demo requests; internal admin command/outbox visibility is available, but outbound follow-up remains manual
+- public fixed-price packages; `/pricing` explains controlled pilot paths and pricing is discussed after fit review
 - broad compliance completeness for live courier operations
 - settlement or reconciliation automation beyond the current visibility surfaces
 - pilot mode as an automatic operating control; it is a human-reviewed readiness layer in v1

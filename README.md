@@ -56,9 +56,12 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 
 ## Commercial intake
 Public demo and controlled-pilot requests are captured through:
+- `/pricing`
 - `/demo/request`
 - API: `POST /v1/demo-requests`
 - admin review: `/admin/demo-requests`
+
+`/pricing` is positioned as **Controlled pilot packages**, not a public self-serve pricing table. It explains merchant, operator/platform, and investor/partner pilot paths without inventing public prices.
 
 Demo request capture is persistence-only in v1. It does not send email, sync a CRM, or promise automatic follow-up.
 

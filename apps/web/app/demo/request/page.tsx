@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "../../_components/brand-logo";
-import { DemoRequestForm } from "../../_components/demo-request-form";
+import { DemoRequestForm, normalizeDemoRequestInterest } from "../../_components/demo-request-form";
 import { ShipWrightIcon } from "../../_components/shipwright-icon";
 
 export const metadata: Metadata = {
@@ -9,7 +9,13 @@ export const metadata: Metadata = {
   description: "Request a controlled ShipWright pilot or guided operations walkthrough."
 };
 
-export default function DemoRequestPage() {
+export default async function DemoRequestPage(props: {
+  searchParams?: Promise<{ interest?: string | string[] }>;
+}) {
+  const searchParams = await props.searchParams;
+  const requestedInterest = Array.isArray(searchParams?.interest) ? searchParams?.interest[0] : searchParams?.interest;
+  const defaultInterestType = normalizeDemoRequestInterest(requestedInterest);
+
   return (
     <main className="demo-request-page">
       <header className="demo-request-hero">
@@ -40,7 +46,7 @@ export default function DemoRequestPage() {
       </header>
 
       <section className="demo-request-shell">
-        <DemoRequestForm />
+        <DemoRequestForm defaultInterestType={defaultInterestType} />
 
         <aside className="demo-request-aside">
           <p className="landing-kicker">What the walkthrough covers</p>
