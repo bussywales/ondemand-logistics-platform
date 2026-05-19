@@ -190,6 +190,11 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "customer_contact_required",
       "merchant_contact_required",
       "courier_contact_required",
+      "resolution_note",
+      "resolution_action",
+      "resolution_reason",
+      "resolved_by",
+      "resolved_at",
       "created_by",
       "created_at",
       "updated_at"

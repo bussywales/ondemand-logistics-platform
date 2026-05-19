@@ -6,8 +6,11 @@ import {
   type CreateSupportEscalationInput,
   type SupportEscalation,
   type SupportEscalationCategory,
+  type SupportEscalationResolutionAction,
+  type SupportEscalationResolutionReason,
   type SupportEscalationSeverity,
-  type SupportEscalationStatus
+  type SupportEscalationStatus,
+  type UpdateSupportEscalationInput
 } from "../_lib/product-state";
 import { formatDateTime } from "../_lib/product-state";
 import { ShipWrightIcon } from "./shipwright-icon";
@@ -38,6 +41,31 @@ const SEVERITY_OPTIONS: Array<{ value: SupportEscalationSeverity; label: string 
   { value: "MEDIUM", label: "Medium" },
   { value: "HIGH", label: "High" },
   { value: "CRITICAL", label: "Critical" }
+];
+
+const RESOLUTION_ACTION_OPTIONS: Array<{ value: SupportEscalationResolutionAction; label: string }> = [
+  { value: "CUSTOMER_UPDATED", label: "Customer updated" },
+  { value: "MERCHANT_UPDATED", label: "Merchant updated" },
+  { value: "COURIER_UPDATED", label: "Courier updated" },
+  { value: "DISPATCH_RETRIED", label: "Dispatch retried" },
+  { value: "DRIVER_REASSIGNED", label: "Driver reassigned" },
+  { value: "PAYMENT_REVIEWED", label: "Payment reviewed" },
+  { value: "REFUND_REVIEWED", label: "Refund reviewed" },
+  { value: "ORDER_CANCELLED_MANUALLY", label: "Order cancelled manually" },
+  { value: "NO_ACTION_REQUIRED", label: "No action required" },
+  { value: "OTHER", label: "Other" }
+];
+
+const RESOLUTION_REASON_OPTIONS: Array<{ value: SupportEscalationResolutionReason; label: string }> = [
+  { value: "CUSTOMER_CONFIRMED", label: "Customer confirmed" },
+  { value: "MERCHANT_CONFIRMED", label: "Merchant confirmed" },
+  { value: "COURIER_CONFIRMED", label: "Courier confirmed" },
+  { value: "DELIVERY_COMPLETED", label: "Delivery completed" },
+  { value: "PAYMENT_RISK_CLEARED", label: "Payment risk cleared" },
+  { value: "DUPLICATE_ESCALATION", label: "Duplicate escalation" },
+  { value: "TEST_OR_DEMO_RECORD", label: "Test or demo record" },
+  { value: "ESCALATED_OUTSIDE_SHIPWRIGHT", label: "Escalated outside ShipWright" },
+  { value: "OTHER", label: "Other" }
 ];
 
 function formatEnumLabel(value: string) {
@@ -76,6 +104,10 @@ function statusBadgeClass(value: SupportEscalationStatus) {
   return "sw-badge--info";
 }
 
+function isFinalStatus(value: SupportEscalationStatus) {
+  return value === "RESOLVED" || value === "CANCELLED";
+}
+
 export function SupportEscalationLog(props: {
   context: "order" | "job";
   error?: string | null;
@@ -84,7 +116,7 @@ export function SupportEscalationLog(props: {
   jobId?: string;
   submitting: boolean;
   onCreate: (input: CreateSupportEscalationInput) => Promise<void> | void;
-  onUpdateStatus: (id: string, status: SupportEscalationStatus) => Promise<void> | void;
+  onUpdateStatus: (id: string, input: UpdateSupportEscalationInput) => Promise<void> | void;
 }) {
   const [category, setCategory] = useState<SupportEscalationCategory>(props.context === "job" ? "DISPATCH_FAILURE" : "CUSTOMER_SUPPORT");
   const [severity, setSeverity] = useState<SupportEscalationSeverity>("MEDIUM");
@@ -95,6 +127,35 @@ export function SupportEscalationLog(props: {
   const [merchantContactRequired, setMerchantContactRequired] = useState(false);
   const [courierContactRequired, setCourierContactRequired] = useState(props.context === "job");
   const [statusById, setStatusById] = useState<Record<string, SupportEscalationStatus>>({});
+  const [resolutionNoteById, setResolutionNoteById] = useState<Record<string, string>>({});
+  const [resolutionActionById, setResolutionActionById] = useState<Record<string, SupportEscalationResolutionAction>>({});
+  const [resolutionReasonById, setResolutionReasonById] = useState<Record<string, SupportEscalationResolutionReason>>({});
+  const [resolutionErrorById, setResolutionErrorById] = useState<Record<string, string | null>>({});
+
+  async function handleUpdateStatus(item: SupportEscalation, selectedStatus: SupportEscalationStatus) {
+    if (!isFinalStatus(selectedStatus)) {
+      setResolutionErrorById((current) => ({ ...current, [item.id]: null }));
+      await props.onUpdateStatus(item.id, { status: selectedStatus });
+      return;
+    }
+
+    const resolutionNote = resolutionNoteById[item.id]?.trim() ?? "";
+    if (!resolutionNote) {
+      setResolutionErrorById((current) => ({
+        ...current,
+        [item.id]: "Resolution note is required before closing this support record."
+      }));
+      return;
+    }
+
+    setResolutionErrorById((current) => ({ ...current, [item.id]: null }));
+    await props.onUpdateStatus(item.id, {
+      status: selectedStatus,
+      resolutionNote,
+      resolutionAction: resolutionActionById[item.id] ?? "NO_ACTION_REQUIRED",
+      resolutionReason: resolutionReasonById[item.id] ?? "OTHER"
+    });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,8 +202,10 @@ export function SupportEscalationLog(props: {
         <div className="support-escalation-list">
           {props.items.map((item) => {
             const selectedStatus = statusById[item.id] ?? item.status;
+            const finalStatusSelected = isFinalStatus(selectedStatus);
+            const itemResolved = isFinalStatus(item.status);
             return (
-              <article className="sw-list-row support-escalation-row" key={item.id}>
+              <article className={`sw-list-row support-escalation-row${itemResolved ? " support-escalation-row-resolved" : ""}`} key={item.id}>
                 <div className="support-escalation-row-main">
                   <div className="support-escalation-row-meta">
                     <span className={`sw-badge ${severityBadgeClass(item.severity)}`}>{formatEnumLabel(item.severity)}</span>
@@ -152,6 +215,15 @@ export function SupportEscalationLog(props: {
                   </div>
                   <h3>{item.title}</h3>
                   <p>{item.note}</p>
+                  {item.resolvedAt ? (
+                    <div className="support-escalation-resolution-summary">
+                      <span className="sw-badge sw-badge--success">Closed out</span>
+                      <span>{formatDateTime(item.resolvedAt)}</span>
+                      {item.resolutionAction ? <span>Action: {formatEnumLabel(item.resolutionAction)}</span> : null}
+                      {item.resolutionReason ? <span>Reason: {formatEnumLabel(item.resolutionReason)}</span> : null}
+                      {item.resolutionNote ? <p>{item.resolutionNote}</p> : null}
+                    </div>
+                  ) : null}
                   <div className="briefing-evidence-row">
                     {item.followUpOwner ? <span>Owner: {item.followUpOwner}</span> : <span>No owner assigned</span>}
                     {item.customerContactRequired ? <span>Customer contact</span> : null}
@@ -172,10 +244,49 @@ export function SupportEscalationLog(props: {
                       ))}
                     </select>
                   </label>
+                  {finalStatusSelected ? (
+                    <div className="support-escalation-resolution-panel">
+                      <p className="ops-detail-note">Closeout is human-reviewed. Record what happened before marking this record final.</p>
+                      <label className="sw-field">
+                        <span className="sw-label">Resolution action</span>
+                        <select
+                          className="sw-input"
+                          onChange={(event) => setResolutionActionById((current) => ({ ...current, [item.id]: event.target.value as SupportEscalationResolutionAction }))}
+                          value={resolutionActionById[item.id] ?? item.resolutionAction ?? "NO_ACTION_REQUIRED"}
+                        >
+                          {RESOLUTION_ACTION_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="sw-field">
+                        <span className="sw-label">Resolution reason</span>
+                        <select
+                          className="sw-input"
+                          onChange={(event) => setResolutionReasonById((current) => ({ ...current, [item.id]: event.target.value as SupportEscalationResolutionReason }))}
+                          value={resolutionReasonById[item.id] ?? item.resolutionReason ?? "OTHER"}
+                        >
+                          {RESOLUTION_REASON_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="sw-field">
+                        <span className="sw-label">Resolution note</span>
+                        <textarea
+                          className="sw-input support-escalation-note"
+                          onChange={(event) => setResolutionNoteById((current) => ({ ...current, [item.id]: event.target.value }))}
+                          placeholder="Final action taken, who was updated, and why this can be closed."
+                          value={resolutionNoteById[item.id] ?? item.resolutionNote ?? ""}
+                        />
+                      </label>
+                      {resolutionErrorById[item.id] ? <p className="form-field-error">{resolutionErrorById[item.id]}</p> : null}
+                    </div>
+                  ) : null}
                   <button
                     className="sw-button sw-button--secondary button button-secondary"
                     disabled={props.submitting || selectedStatus === item.status}
-                    onClick={() => void props.onUpdateStatus(item.id, selectedStatus)}
+                    onClick={() => void handleUpdateStatus(item, selectedStatus)}
                     type="button"
                   >
                     Update

@@ -30,7 +30,8 @@ import {
   ProofOfDeliveryUploadUrlResponseSchema,
   SupportEscalationListSchema,
   SubmitCustomerOrderResponseSchema,
-  SubmitCustomerOrderSchema
+  SubmitCustomerOrderSchema,
+  UpdateSupportEscalationSchema
 } from "./index.js";
 
 describe("CreateQuoteSchema", () => {
@@ -404,7 +405,8 @@ describe("admin schemas", () => {
         driverFollowUpIncidents: 1,
         openSupportEscalations: 1,
         highCriticalSupportEscalations: 1,
-        unresolvedRecommendations: 2
+        supportClosedToday: 0,
+    unresolvedRecommendations: 2
       },
       unresolvedActions: [
         {
@@ -845,6 +847,11 @@ describe("read models", () => {
           customerContactRequired: true,
           merchantContactRequired: false,
           courierContactRequired: true,
+          resolutionNote: null,
+          resolutionAction: null,
+          resolutionReason: null,
+          resolvedBy: null,
+          resolvedAt: null,
           createdBy: "9d90d9cb-aaed-494e-aebf-d0f02b9618fe",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -852,6 +859,27 @@ describe("read models", () => {
           customerName: "Ada Customer"
         }
       ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("requires a resolution note when support escalations are closed", () => {
+    const parsed = UpdateSupportEscalationSchema.safeParse({
+      status: "RESOLVED",
+      resolutionAction: "CUSTOMER_UPDATED",
+      resolutionReason: "CUSTOMER_CONFIRMED"
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("parses support escalation closeout updates", () => {
+    const parsed = UpdateSupportEscalationSchema.safeParse({
+      status: "RESOLVED",
+      resolutionNote: "Customer confirmed the delivery issue is resolved.",
+      resolutionAction: "CUSTOMER_UPDATED",
+      resolutionReason: "CUSTOMER_CONFIRMED"
     });
 
     expect(parsed.success).toBe(true);

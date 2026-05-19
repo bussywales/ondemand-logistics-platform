@@ -514,6 +514,7 @@ export type EndOfDayIncidentsSummary = {
   driverFollowUpIncidents: number;
   openSupportEscalations: number;
   highCriticalSupportEscalations: number;
+  supportClosedToday: number;
   unresolvedRecommendations: number;
 };
 
@@ -667,6 +668,27 @@ export type SupportEscalationStatus =
   | "RESOLVED"
   | "CANCELLED";
 export type SupportEscalationSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type SupportEscalationResolutionAction =
+  | "CUSTOMER_UPDATED"
+  | "MERCHANT_UPDATED"
+  | "COURIER_UPDATED"
+  | "DISPATCH_RETRIED"
+  | "DRIVER_REASSIGNED"
+  | "PAYMENT_REVIEWED"
+  | "REFUND_REVIEWED"
+  | "ORDER_CANCELLED_MANUALLY"
+  | "NO_ACTION_REQUIRED"
+  | "OTHER";
+export type SupportEscalationResolutionReason =
+  | "CUSTOMER_CONFIRMED"
+  | "MERCHANT_CONFIRMED"
+  | "COURIER_CONFIRMED"
+  | "DELIVERY_COMPLETED"
+  | "PAYMENT_RISK_CLEARED"
+  | "DUPLICATE_ESCALATION"
+  | "TEST_OR_DEMO_RECORD"
+  | "ESCALATED_OUTSIDE_SHIPWRIGHT"
+  | "OTHER";
 
 export type SupportEscalation = {
   id: string;
@@ -683,6 +705,11 @@ export type SupportEscalation = {
   customerContactRequired: boolean;
   merchantContactRequired: boolean;
   courierContactRequired: boolean;
+  resolutionNote: string | null;
+  resolutionAction: SupportEscalationResolutionAction | null;
+  resolutionReason: SupportEscalationResolutionReason | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -717,6 +744,9 @@ export type UpdateSupportEscalationInput = Partial<{
   customerContactRequired: boolean;
   merchantContactRequired: boolean;
   courierContactRequired: boolean;
+  resolutionNote: string | null;
+  resolutionAction: SupportEscalationResolutionAction | null;
+  resolutionReason: SupportEscalationResolutionReason | null;
 }>;
 
 export type BusinessPaymentSummary = {

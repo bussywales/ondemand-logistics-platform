@@ -193,11 +193,13 @@ Show:
 - end-of-day closeout preview
 - read-only support escalation overview
 - support escalation counts in the top command posture
+- support records closed today in the closeout posture
 
 Say:
 - this is deterministic command intelligence for platform oversight
 - it helps admins spot which organisations need support without silently taking action
 - support escalation visibility is oversight-only for admins in this pass; business operators still own direct follow-up unless delegated
+- business operators close support records with a resolution note and final action; ShipWright records the context but does not message, refund, cancel, or assign automatically
 
 ### 9B. Driver readiness
 Open:

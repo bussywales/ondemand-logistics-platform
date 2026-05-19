@@ -216,6 +216,7 @@ export function EndOfDayReportView(props: { report: EndOfDayReport }) {
             <div><span>Driver follow-up</span><strong>{props.report.incidentsSummary.driverFollowUpIncidents}</strong></div>
             <div><span>Support follow-up</span><strong>{props.report.incidentsSummary.openSupportEscalations}</strong></div>
             <div><span>High support severity</span><strong>{props.report.incidentsSummary.highCriticalSupportEscalations}</strong></div>
+            <div><span>Support closed today</span><strong>{props.report.incidentsSummary.supportClosedToday}</strong></div>
             <div><span>Unresolved recommendations</span><strong>{props.report.incidentsSummary.unresolvedRecommendations}</strong></div>
           </div>
         </section>

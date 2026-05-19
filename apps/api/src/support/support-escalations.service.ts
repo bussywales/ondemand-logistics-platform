@@ -40,6 +40,11 @@ type SupportEscalationRow = {
   customer_contact_required: boolean;
   merchant_contact_required: boolean;
   courier_contact_required: boolean;
+  resolution_note: string | null;
+  resolution_action: string | null;
+  resolution_reason: string | null;
+  resolved_by: string | null;
+  resolved_at: string | Date | null;
   created_by: string | null;
   created_at: string | Date;
   updated_at: string | Date;
@@ -69,6 +74,11 @@ function mapSupportEscalation(row: SupportEscalationRow): SupportEscalationDto {
     customerContactRequired: row.customer_contact_required,
     merchantContactRequired: row.merchant_contact_required,
     courierContactRequired: row.courier_contact_required,
+    resolutionNote: row.resolution_note,
+    resolutionAction: row.resolution_action,
+    resolutionReason: row.resolution_reason,
+    resolvedBy: row.resolved_by,
+    resolvedAt: row.resolved_at ? toIsoDateTime(row.resolved_at) : null,
     createdBy: row.created_by,
     createdAt: toIsoDateTime(row.created_at),
     updatedAt: toIsoDateTime(row.updated_at),
@@ -159,7 +169,11 @@ export class SupportEscalationsService {
   }
 
   async updateBusinessEscalation(userId: string, escalationId: string, rawInput: unknown) {
-    const input = UpdateSupportEscalationSchema.parse(rawInput);
+    const parsedInput = UpdateSupportEscalationSchema.safeParse(rawInput);
+    if (!parsedInput.success) {
+      throw new UnprocessableEntityException(parsedInput.error.issues[0]?.message ?? "support_escalation_update_invalid");
+    }
+    const input = parsedInput.data;
     const assignments: string[] = [];
     const values: unknown[] = [escalationId, userId];
 
@@ -176,6 +190,24 @@ export class SupportEscalationsService {
     if (input.customerContactRequired !== undefined) add("customer_contact_required", input.customerContactRequired);
     if (input.merchantContactRequired !== undefined) add("merchant_contact_required", input.merchantContactRequired);
     if (input.courierContactRequired !== undefined) add("courier_contact_required", input.courierContactRequired);
+
+    if (input.status === "RESOLVED" || input.status === "CANCELLED") {
+      if (!input.resolutionNote?.trim()) {
+        throw new UnprocessableEntityException("support_escalation_resolution_note_required");
+      }
+      add("resolution_note", input.resolutionNote);
+      add("resolution_action", input.resolutionAction ?? null);
+      add("resolution_reason", input.resolutionReason ?? null);
+      assignments.push("resolved_at = now()");
+      add("resolved_by", userId);
+    } else if (input.status) {
+      // Reopening in v1 clears stale closeout metadata so unresolved records do not appear resolved.
+      assignments.push("resolution_note = null", "resolution_action = null", "resolution_reason = null", "resolved_by = null", "resolved_at = null");
+    } else {
+      if (input.resolutionNote !== undefined) add("resolution_note", input.resolutionNote);
+      if (input.resolutionAction !== undefined) add("resolution_action", input.resolutionAction);
+      if (input.resolutionReason !== undefined) add("resolution_reason", input.resolutionReason);
+    }
 
     const result = await this.pg.query<SupportEscalationRow>(
       `with updated as (
@@ -315,6 +347,11 @@ export class SupportEscalationsService {
         se.customer_contact_required,
         se.merchant_contact_required,
         se.courier_contact_required,
+        se.resolution_note,
+        se.resolution_action,
+        se.resolution_reason,
+        se.resolved_by,
+        se.resolved_at,
         se.created_by,
         se.created_at,
         se.updated_at,

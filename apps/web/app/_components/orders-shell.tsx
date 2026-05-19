@@ -31,7 +31,7 @@ import {
   type BusinessSession,
   type CreateSupportEscalationInput,
   type SupportEscalation,
-  type SupportEscalationStatus
+  type UpdateSupportEscalationInput
 } from "../_lib/product-state";
 import type { DispatchRecoverySuggestion, OperationalIncidentSummary } from "../_lib/product-state";
 import {
@@ -308,7 +308,7 @@ type OrderDetailProps = {
   supportError?: string | null;
   supportSubmitting?: boolean;
   onCreateSupportEscalation?: (input: CreateSupportEscalationInput) => Promise<void> | void;
-  onUpdateSupportEscalationStatus?: (id: string, status: SupportEscalationStatus) => Promise<void> | void;
+  onUpdateSupportEscalationStatus?: (id: string, input: UpdateSupportEscalationInput) => Promise<void> | void;
 };
 
 function RecoverySuggestionPanel(props: { suggestion: DispatchRecoverySuggestion }) {
@@ -940,7 +940,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     }
   }
 
-  async function handleUpdateSupportEscalationStatus(id: string, nextStatus: SupportEscalationStatus) {
+  async function handleUpdateSupportEscalationStatus(id: string, input: UpdateSupportEscalationInput) {
     if (!session) {
       return;
     }
@@ -949,7 +949,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setError(null);
 
     try {
-      const updated = await updateBusinessSupportEscalation(session, id, { status: nextStatus });
+      const updated = await updateBusinessSupportEscalation(session, id, input);
       setSelectedOrderEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     } catch (issue) {
       setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));

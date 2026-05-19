@@ -5,7 +5,7 @@ import type {
   CreateSupportEscalationInput,
   EligibleDriver,
   SupportEscalation,
-  SupportEscalationStatus
+  UpdateSupportEscalationInput
 } from "../../_lib/product-state";
 import type { DriverAssignmentFailureModel } from "../../_lib/driver-assignment";
 import { getDispatchIntelligence } from "../../_lib/dispatch-intelligence";
@@ -40,7 +40,7 @@ type JobDetailViewProps = {
   onResetCollectedPaymentMethod: () => void;
   onRetryDispatch: (job: AppJob) => void;
   onCreateSupportEscalation: (input: CreateSupportEscalationInput) => Promise<void> | void;
-  onUpdateSupportEscalationStatus: (id: string, status: SupportEscalationStatus) => Promise<void> | void;
+  onUpdateSupportEscalationStatus: (id: string, input: UpdateSupportEscalationInput) => Promise<void> | void;
   paymentSubmitting: boolean;
   selectedDriverId: string | null;
   session: BusinessSession;

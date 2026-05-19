@@ -86,6 +86,15 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     detail: payoutLedgerPaymentId ? "column_present" : "column_missing"
   });
 
+  for (const column of ["resolution_note", "resolution_action", "resolution_reason", "resolved_by", "resolved_at"]) {
+    const exists = await columnExists(client, "public", "support_escalations", column);
+    items.push({
+      name: `public.support_escalations.${column}`,
+      ok: exists,
+      detail: exists ? "column_present" : "column_missing"
+    });
+  }
+
   for (const table of POST_0011_RELEASE_CRITICAL_TABLES) {
     const exists = await tableExists(client, "public", table);
     items.push({

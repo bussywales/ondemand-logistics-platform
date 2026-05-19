@@ -51,6 +51,7 @@ type SupportReportRow = {
   note: string;
   created_at: string | Date;
   updated_at: string | Date;
+  resolved_at: string | Date | null;
   restaurant_name: string | null;
   customer_name: string | null;
 };
@@ -331,6 +332,8 @@ export function buildEndOfDayReport(
   now = new Date(),
   supportRows: SupportReportRow[] = []
 ): EndOfDayReportDto {
+  const unresolvedSupportRows = supportRows.filter((row) => UNRESOLVED_SUPPORT_STATUSES.includes(row.status));
+  const supportClosedToday = supportRows.filter((row) => row.resolved_at !== null).length;
   const categories = rows
     .map((row) => ({ row, category: getReportCategory(row, now) }))
     .filter((item): item is { row: ReportRow; category: ReportCategory } => item.category !== null);
@@ -339,7 +342,7 @@ export function buildEndOfDayReport(
     new Map(
       categories
         .flatMap(({ row, category }) => buildAction(row, category))
-        .concat(supportRows.map(buildSupportAction).filter((item): item is EndOfDayActionItemDto => item !== null))
+        .concat(unresolvedSupportRows.map(buildSupportAction).filter((item): item is EndOfDayActionItemDto => item !== null))
         .map((item) => [item.id, item] as const)
     ).values()
   ).slice(0, MAX_ACTIONS);
@@ -348,14 +351,14 @@ export function buildEndOfDayReport(
     new Map(
       categories
         .map(({ row, category }) => buildEvidenceLink(row, category))
-        .concat(supportRows.map(buildSupportEvidenceLink).filter((item): item is EndOfDayEvidenceLinkDto => item !== null))
+        .concat(unresolvedSupportRows.map(buildSupportEvidenceLink).filter((item): item is EndOfDayEvidenceLinkDto => item !== null))
         .map((item) => [item.id, item] as const)
     ).values()
   ).slice(0, MAX_EVIDENCE);
 
   const fulfilledOrders = rows.filter((row) => row.order_status === "FULFILLED").length;
   const unresolvedCount = unresolvedActions.length;
-  const highCriticalSupportEscalations = supportRows.filter((row) => row.severity === "HIGH" || row.severity === "CRITICAL").length;
+  const highCriticalSupportEscalations = unresolvedSupportRows.filter((row) => row.severity === "HIGH" || row.severity === "CRITICAL").length;
 
   return EndOfDayReportSchema.parse({
     scope,
@@ -392,8 +395,9 @@ export function buildEndOfDayReport(
       delayIncidents: rows.filter((row) => isDelayedJob(row, now)).length,
       paymentRisks: rows.filter((row) => isPaymentRisk(row)).length,
       driverFollowUpIncidents: getDriverFollowUpIncidentCount(rows, now),
-      openSupportEscalations: supportRows.length,
+      openSupportEscalations: unresolvedSupportRows.length,
       highCriticalSupportEscalations,
+      supportClosedToday,
       unresolvedRecommendations: unresolvedCount
     },
     unresolvedActions,
@@ -494,6 +498,7 @@ export class ReportsService {
         se.note,
         se.created_at,
         se.updated_at,
+        se.resolved_at,
         restaurant.name as restaurant_name,
         coalesce(order_from_escalation.customer_name, order_from_job.customer_name) as customer_name
       from public.support_escalations se
@@ -502,8 +507,13 @@ export class ReportsService {
       left join public.jobs job_from_escalation on job_from_escalation.id = se.job_id
       left join public.customer_orders order_from_job on order_from_job.job_id = job_from_escalation.id
       left join public.restaurants restaurant on restaurant.id = coalesce(order_from_escalation.restaurant_id, order_from_job.restaurant_id)
-      where se.status::text = any(array[${UNRESOLVED_SUPPORT_STATUSES.map((status) => `'${status}'`).join(", ")}])
-        and se.created_at::date <= $${scopeToMemberships ? "2" : "1"}::date
+      where (
+          (
+            se.status::text = any(array[${UNRESOLVED_SUPPORT_STATUSES.map((status) => `'${status}'`).join(", ")}])
+            and se.created_at::date <= $${scopeToMemberships ? "2" : "1"}::date
+          )
+          or se.resolved_at::date = $${scopeToMemberships ? "2" : "1"}::date
+        )
       ${scopeToMemberships ? `
         and exists (
           select 1

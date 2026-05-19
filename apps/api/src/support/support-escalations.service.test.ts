@@ -24,6 +24,11 @@ function createEscalationRow(overrides = {}) {
     customer_contact_required: true,
     merchant_contact_required: false,
     courier_contact_required: true,
+    resolution_note: null,
+    resolution_action: null,
+    resolution_reason: null,
+    resolved_by: null,
+    resolved_at: null,
     created_by: USER_ID,
     created_at: "2026-05-18T10:00:00.000Z",
     updated_at: "2026-05-18T10:00:00.000Z",
@@ -104,17 +109,60 @@ describe("SupportEscalationsService", () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
-  it("updates only allowed mutable fields", async () => {
-    const query = vi.fn().mockResolvedValueOnce({ rows: [createEscalationRow({ status: "RESOLVED" })] });
+  it("updates unresolved status without requiring closeout fields", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rows: [createEscalationRow({ status: "IN_REVIEW" })] });
     const service = new SupportEscalationsService({ query } as never);
 
-    const updated = await service.updateBusinessEscalation(USER_ID, ESCALATION_ID, { status: "RESOLVED" });
+    const updated = await service.updateBusinessEscalation(USER_ID, ESCALATION_ID, { status: "IN_REVIEW" });
 
-    expect(updated.status).toBe("RESOLVED");
+    expect(updated.status).toBe("IN_REVIEW");
     expect(query).toHaveBeenCalledWith(expect.stringContaining("update public.support_escalations"), [
       ESCALATION_ID,
       USER_ID,
-      "RESOLVED"
+      "IN_REVIEW"
+    ]);
+  });
+
+  it("requires a resolution note when closing an escalation", async () => {
+    const service = new SupportEscalationsService({ query: vi.fn() } as never);
+
+    await expect(service.updateBusinessEscalation(USER_ID, ESCALATION_ID, { status: "RESOLVED" })).rejects.toThrow();
+  });
+
+  it("sets closeout metadata when resolving an escalation", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        createEscalationRow({
+          status: "RESOLVED",
+          resolution_note: "Customer confirmed the delayed delivery was completed.",
+          resolution_action: "CUSTOMER_UPDATED",
+          resolution_reason: "CUSTOMER_CONFIRMED",
+          resolved_by: USER_ID,
+          resolved_at: "2026-05-18T11:00:00.000Z"
+        })
+      ]
+    });
+    const service = new SupportEscalationsService({ query } as never);
+
+    const updated = await service.updateBusinessEscalation(USER_ID, ESCALATION_ID, {
+      status: "RESOLVED",
+      resolutionNote: "Customer confirmed the delayed delivery was completed.",
+      resolutionAction: "CUSTOMER_UPDATED",
+      resolutionReason: "CUSTOMER_CONFIRMED"
+    });
+
+    expect(updated.status).toBe("RESOLVED");
+    expect(updated.resolutionNote).toBe("Customer confirmed the delayed delivery was completed.");
+    expect(updated.resolvedBy).toBe(USER_ID);
+    expect(updated.resolvedAt).toBe("2026-05-18T11:00:00.000Z");
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("resolved_at = now()"), [
+      ESCALATION_ID,
+      USER_ID,
+      "RESOLVED",
+      "Customer confirmed the delayed delivery was completed.",
+      "CUSTOMER_UPDATED",
+      "CUSTOMER_CONFIRMED",
+      USER_ID
     ]);
   });
 });

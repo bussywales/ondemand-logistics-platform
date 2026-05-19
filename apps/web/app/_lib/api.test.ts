@@ -395,7 +395,8 @@ describe('authorizePayment', () => {
             driverFollowUpIncidents: 1,
             openSupportEscalations: 0,
             highCriticalSupportEscalations: 0,
-            unresolvedRecommendations: 2
+            supportClosedToday: 0,
+    unresolvedRecommendations: 2
           },
           unresolvedActions: [
             {
@@ -721,7 +722,8 @@ describe('authorizePayment', () => {
             driverFollowUpIncidents: 0,
             openSupportEscalations: 0,
             highCriticalSupportEscalations: 0,
-            unresolvedRecommendations: 0
+            supportClosedToday: 0,
+    unresolvedRecommendations: 0
           },
           unresolvedActions: [],
           evidenceLinks: [],
@@ -1001,6 +1003,11 @@ describe('authorizePayment', () => {
       customerContactRequired: true,
       merchantContactRequired: false,
       courierContactRequired: true,
+      resolutionNote: null,
+      resolutionAction: null,
+      resolutionReason: null,
+      resolvedBy: null,
+      resolvedAt: null,
       createdBy: session.userId,
       createdAt: '2026-05-18T10:00:00.000Z',
       updatedAt: '2026-05-18T10:00:00.000Z',
@@ -1023,7 +1030,12 @@ describe('authorizePayment', () => {
       note: 'Customer asked for a status update.',
       customerContactRequired: true
     });
-    await updateBusinessSupportEscalation(session, escalation.id, { status: 'RESOLVED' });
+    await updateBusinessSupportEscalation(session, escalation.id, {
+      status: 'RESOLVED',
+      resolutionNote: 'Customer confirmed this support record can be closed.',
+      resolutionAction: 'CUSTOMER_UPDATED',
+      resolutionReason: 'CUSTOMER_CONFIRMED'
+    });
 
     const [listUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(listUrl).toContain('/v1/business/support/escalations?orderId=11111111-1111-4111-8111-111111111111');

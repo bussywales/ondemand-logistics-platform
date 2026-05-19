@@ -18,6 +18,7 @@
 5. Escalate to the named owner with the exact blocker and desired decision.
 6. Keep customer and restaurant communication factual while escalation is in progress.
 7. Use any incident-summary draft as a starting point only. Review and edit it before sending.
+8. When the issue is complete, close the support record with a final action, resolution reason, and resolution note.
 
 ## Customer/restaurant communication guidance
 - State that the issue is under active review.
@@ -47,10 +48,21 @@
 - escalation timestamp
 - support/escalation log id, if created
 - whether draft communication was used and what was edited before it was sent
+- final action taken
+- resolution reason
+- resolution note and closeout timestamp
+
+## Resolution and closeout
+- Closing a support record as `RESOLVED` or `CANCELLED` requires a resolution note.
+- Operators should record the final human action, such as customer update, dispatch retry, driver reassignment, payment review, refund review, manual cancellation, or no action required.
+- Reopening a closed record clears final-resolution metadata in v1 so unresolved records do not show stale closeout evidence.
+- The closeout log is audit context only. It does not send messages, refund, cancel, retry dispatch, assign drivers, or close incidents automatically.
 
 ## Product controls available
 - Business operators can create and update support/escalation records from order and job detail pages.
+- Business operators can resolve or cancel support records from order and job detail pages after entering closeout context.
 - Platform admins can review open cross-org escalation records from Admin Command Intelligence.
+- Admin Command and the end-of-day report show unresolved support follow-up and support records closed today.
 - Daily briefing and end-of-day report include unresolved support records as operator follow-up actions.
 - There is no delete endpoint in v1.
 - The log does not send messages, refund, cancel, assign drivers, or close incidents automatically.

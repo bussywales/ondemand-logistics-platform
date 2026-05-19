@@ -330,6 +330,7 @@ Current tranche status:
 - Tranche 2B admin-native command intelligence: implemented as cross-org deterministic oversight for platform admins
 - Support & Escalation Logging v1: implemented as human-entered order/job follow-up records with admin read-only oversight
 - Operational Maturity Tranche 1: unresolved support escalation posture is integrated into daily briefing, admin command summary, and end-of-day closeout actions
+- Operational Maturity Tranche 4: support escalation records now support human-reviewed resolution notes, final actions, closeout reasons, resolved timestamps, and resolved-by metadata
 - Operational Maturity Tranche 2: pilot management layer tracks demo/internal/controlled-pilot/live-ready workspace mode, readiness stage, owners, checklist evidence, and pilot posture without blocking workflows in v1
 
 Packaging rule for Command Intelligence v1:

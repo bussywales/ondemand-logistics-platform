@@ -149,6 +149,7 @@ These are operationally manual by design or by current Stage 1 scope.
 ### Operations and support
 - dispatch fallback handling
 - support escalation handling
+- support escalation resolution and closeout notes
 - customer communication for blocked orders
 - restaurant communication when dispatch or payment risk blocks fulfilment
 - cancellation and refund judgment on exception paths

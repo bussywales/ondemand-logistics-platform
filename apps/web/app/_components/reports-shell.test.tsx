@@ -35,6 +35,7 @@ const reportWithFollowUp: EndOfDayReport = {
     driverFollowUpIncidents: 0,
     openSupportEscalations: 1,
     highCriticalSupportEscalations: 1,
+    supportClosedToday: 0,
     unresolvedRecommendations: 2
   },
   unresolvedActions: [
@@ -104,6 +105,7 @@ const clearReport: EndOfDayReport = {
     ...reportWithFollowUp.incidentsSummary,
     openSupportEscalations: 0,
     highCriticalSupportEscalations: 0,
+    supportClosedToday: 0,
     unresolvedRecommendations: 0
   },
   unresolvedActions: []

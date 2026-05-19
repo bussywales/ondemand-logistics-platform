@@ -19,6 +19,11 @@ const escalation: SupportEscalation = {
   customerContactRequired: true,
   merchantContactRequired: false,
   courierContactRequired: true,
+  resolutionNote: null,
+  resolutionAction: null,
+  resolutionReason: null,
+  resolvedBy: null,
+  resolvedAt: null,
   createdBy: "9d90d9cb-aaed-494e-aebf-d0f02b9618fe",
   createdAt: "2026-05-18T10:00:00.000Z",
   updatedAt: "2026-05-18T10:00:00.000Z",
@@ -52,5 +57,32 @@ describe("SupportEscalationLog", () => {
 
     expect(markup).toContain("No support notes logged");
     expect(markup).toContain("Add support note");
+  });
+
+  it("renders resolved records with closeout metadata", () => {
+    const markup = renderToStaticMarkup(
+      <SupportEscalationLog
+        context="order"
+        items={[
+          {
+            ...escalation,
+            status: "RESOLVED",
+            resolutionNote: "Customer confirmed the delivery issue is resolved.",
+            resolutionAction: "CUSTOMER_UPDATED",
+            resolutionReason: "CUSTOMER_CONFIRMED",
+            resolvedBy: "9d90d9cb-aaed-494e-aebf-d0f02b9618fe",
+            resolvedAt: "2026-05-18T11:00:00.000Z"
+          }
+        ]}
+        onCreate={() => undefined}
+        onUpdateStatus={() => undefined}
+        orderId={escalation.orderId ?? undefined}
+        submitting={false}
+      />
+    );
+
+    expect(markup).toContain("Closed out");
+    expect(markup).toContain("Action: Customer Updated");
+    expect(markup).toContain("Customer confirmed the delivery issue is resolved.");
   });
 });

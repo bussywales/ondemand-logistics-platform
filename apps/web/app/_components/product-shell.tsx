@@ -51,7 +51,7 @@ import {
   type DeliveryFormInput,
   type EligibleDriver,
   type SupportEscalation,
-  type SupportEscalationStatus,
+  type UpdateSupportEscalationInput,
   type VehicleType
 } from "../_lib/product-state";
 
@@ -236,7 +236,7 @@ export function ProductShell(props: ProductShellProps) {
     }
   }
 
-  async function handleUpdateSupportEscalationStatus(id: string, nextStatus: SupportEscalationStatus) {
+  async function handleUpdateSupportEscalationStatus(id: string, input: UpdateSupportEscalationInput) {
     if (!session) {
       return;
     }
@@ -245,7 +245,7 @@ export function ProductShell(props: ProductShellProps) {
     setError(null);
 
     try {
-      const updated = await updateBusinessSupportEscalation(session, id, { status: nextStatus });
+      const updated = await updateBusinessSupportEscalation(session, id, input);
       setSelectedJobEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     } catch (issue) {
       setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));

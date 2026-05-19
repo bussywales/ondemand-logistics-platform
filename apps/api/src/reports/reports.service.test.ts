@@ -43,6 +43,7 @@ describe("buildEndOfDayReport", () => {
     expect(report.headline).toBe("No unresolved items today");
     expect(report.unresolvedCount).toBe(0);
     expect(report.unresolvedActions).toHaveLength(0);
+    expect(report.incidentsSummary.supportClosedToday).toBe(0);
   });
 
   it("includes dispatch failures in the report", () => {
@@ -102,6 +103,7 @@ describe("buildEndOfDayReport", () => {
         note: "Customer asked for an operator update.",
         created_at: "2026-05-03T08:20:00.000Z",
         updated_at: "2026-05-03T08:20:00.000Z",
+        resolved_at: null,
         restaurant_name: baseRow.restaurant_name,
         customer_name: baseRow.customer_name
       }
@@ -112,6 +114,42 @@ describe("buildEndOfDayReport", () => {
     expect(report.unresolvedActions[0]?.severity).toBe("danger");
     expect(report.incidentsSummary.openSupportEscalations).toBe(1);
     expect(report.incidentsSummary.highCriticalSupportEscalations).toBe(1);
+  });
+
+  it("counts support escalations closed today without creating unresolved actions", () => {
+    const report = buildEndOfDayReport([
+      {
+        ...baseRow,
+        order_status: "FULFILLED",
+        payment_status: "CAPTURED",
+        job_status: "DELIVERED",
+        payout_status: "READY",
+        order_updated_at: "2026-05-03T08:40:00.000Z",
+        payment_updated_at: "2026-05-03T08:40:00.000Z",
+        job_updated_at: "2026-05-03T08:40:00.000Z"
+      }
+    ], "business", "2026-05-03", now, [
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        org_id: baseRow.org_id,
+        org_name: baseRow.org_name,
+        order_id: baseRow.order_id,
+        job_id: baseRow.job_id,
+        status: "RESOLVED",
+        severity: "HIGH",
+        title: "Customer follow-up required",
+        note: "Customer asked for an operator update.",
+        created_at: "2026-05-03T08:20:00.000Z",
+        updated_at: "2026-05-03T08:50:00.000Z",
+        resolved_at: "2026-05-03T08:50:00.000Z",
+        restaurant_name: baseRow.restaurant_name,
+        customer_name: baseRow.customer_name
+      }
+    ]);
+
+    expect(report.unresolvedCount).toBe(0);
+    expect(report.incidentsSummary.openSupportEscalations).toBe(0);
+    expect(report.incidentsSummary.supportClosedToday).toBe(1);
   });
 });
 

@@ -1118,6 +1118,7 @@ export const EndOfDayIncidentsSummarySchema = z.object({
   driverFollowUpIncidents: z.number().int().nonnegative(),
   openSupportEscalations: z.number().int().nonnegative(),
   highCriticalSupportEscalations: z.number().int().nonnegative(),
+  supportClosedToday: z.number().int().nonnegative(),
   unresolvedRecommendations: z.number().int().nonnegative()
 });
 export type EndOfDayIncidentsSummaryDto = z.infer<typeof EndOfDayIncidentsSummarySchema>;
@@ -1320,6 +1321,33 @@ export type SupportEscalationStatus = z.infer<typeof SupportEscalationStatusSche
 export const SupportEscalationSeveritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 export type SupportEscalationSeverity = z.infer<typeof SupportEscalationSeveritySchema>;
 
+export const SupportEscalationResolutionActionSchema = z.enum([
+  "CUSTOMER_UPDATED",
+  "MERCHANT_UPDATED",
+  "COURIER_UPDATED",
+  "DISPATCH_RETRIED",
+  "DRIVER_REASSIGNED",
+  "PAYMENT_REVIEWED",
+  "REFUND_REVIEWED",
+  "ORDER_CANCELLED_MANUALLY",
+  "NO_ACTION_REQUIRED",
+  "OTHER"
+]);
+export type SupportEscalationResolutionAction = z.infer<typeof SupportEscalationResolutionActionSchema>;
+
+export const SupportEscalationResolutionReasonSchema = z.enum([
+  "CUSTOMER_CONFIRMED",
+  "MERCHANT_CONFIRMED",
+  "COURIER_CONFIRMED",
+  "DELIVERY_COMPLETED",
+  "PAYMENT_RISK_CLEARED",
+  "DUPLICATE_ESCALATION",
+  "TEST_OR_DEMO_RECORD",
+  "ESCALATED_OUTSIDE_SHIPWRIGHT",
+  "OTHER"
+]);
+export type SupportEscalationResolutionReason = z.infer<typeof SupportEscalationResolutionReasonSchema>;
+
 export const SupportEscalationSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
@@ -1335,6 +1363,11 @@ export const SupportEscalationSchema = z.object({
   customerContactRequired: z.boolean(),
   merchantContactRequired: z.boolean(),
   courierContactRequired: z.boolean(),
+  resolutionNote: z.string().nullable(),
+  resolutionAction: SupportEscalationResolutionActionSchema.nullable(),
+  resolutionReason: SupportEscalationResolutionReasonSchema.nullable(),
+  resolvedBy: z.string().uuid().nullable(),
+  resolvedAt: IsoDateTimeSchema.nullable(),
   createdBy: z.string().uuid().nullable(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
@@ -1372,10 +1405,23 @@ export const UpdateSupportEscalationSchema = z
     followUpOwner: z.string().trim().min(2).max(120).nullable().optional(),
     customerContactRequired: z.boolean().optional(),
     merchantContactRequired: z.boolean().optional(),
-    courierContactRequired: z.boolean().optional()
+    courierContactRequired: z.boolean().optional(),
+    resolutionNote: z.string().trim().min(3).max(2000).nullable().optional(),
+    resolutionAction: SupportEscalationResolutionActionSchema.nullable().optional(),
+    resolutionReason: SupportEscalationResolutionReasonSchema.nullable().optional()
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "support_escalation_update_required"
+  })
+  .refine((value) => {
+    if (value.status !== "RESOLVED" && value.status !== "CANCELLED") {
+      return true;
+    }
+
+    return typeof value.resolutionNote === "string" && value.resolutionNote.trim().length > 0;
+  }, {
+    message: "support_escalation_resolution_note_required",
+    path: ["resolutionNote"]
   });
 export type UpdateSupportEscalationInput = z.infer<typeof UpdateSupportEscalationSchema>;
 

@@ -250,6 +250,7 @@ export function AdminCommandView(props: {
           <CountCard copy="Commercial follow-up items affecting delivery or closeout." label="Payment risks" tone={props.report.incidentsSummary.paymentRisks ? "danger" : "info"} value={props.report.incidentsSummary.paymentRisks} />
           <CountCard copy="Operator-approved follow-up items remaining for closeout." label="Unresolved actions" tone={props.report.unresolvedCount ? "warning" : "success"} value={props.report.unresolvedCount} />
           <CountCard copy="Human support records that remain open or in review." label="Support follow-up" tone={supportPosture.highCriticalSupportEscalations ? "warning" : supportPosture.openSupportEscalations ? "info" : "success"} value={supportPosture.openSupportEscalations} />
+          <CountCard copy="Support records resolved or cancelled during the selected closeout date." label="Support closed today" tone="success" value={props.report.incidentsSummary.supportClosedToday} />
           <CountCard copy="Pilot profiles tracked for controlled operations." label="Pilot workspaces" tone={props.pilots.length ? "info" : "success"} value={props.pilots.length} />
           <CountCard copy="Controlled pilot workspaces currently active." label="Active controlled pilots" tone={activeControlledPilots ? "info" : "success"} value={activeControlledPilots} />
           <CountCard copy="Workspaces marked live-ready with pilot-ready evidence." label="Live-ready pilots" tone={liveReadyPilots ? "success" : "info"} value={liveReadyPilots} />

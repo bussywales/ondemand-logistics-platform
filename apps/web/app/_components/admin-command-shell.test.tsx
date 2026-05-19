@@ -202,6 +202,7 @@ const report: EndOfDayReport = {
     driverFollowUpIncidents: 0,
     openSupportEscalations: 1,
     highCriticalSupportEscalations: 1,
+    supportClosedToday: 0,
     unresolvedRecommendations: 2
   },
   unresolvedActions: [
@@ -240,6 +241,11 @@ const supportEscalations: SupportEscalation[] = [
     customerContactRequired: true,
     merchantContactRequired: false,
     courierContactRequired: true,
+    resolutionNote: null,
+    resolutionAction: null,
+    resolutionReason: null,
+    resolvedBy: null,
+    resolvedAt: null,
     createdBy: "user-1",
     createdAt: "2026-05-04T08:00:00.000Z",
     updatedAt: "2026-05-04T08:00:00.000Z",
