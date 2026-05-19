@@ -13,6 +13,7 @@ import {
   createMenuCategory,
   createMenuItem,
   createRestaurant,
+  ApiRequestError,
   getRestaurantMenu,
   listRestaurants,
   updateMenuItem
@@ -69,7 +70,8 @@ function mapMenuWriteError(error: unknown, fallback: string) {
   }
 
   if (error.message === "invalid_menu_item_payload") {
-    return "Enter a valid item name and a positive price before saving.";
+    const issue = error instanceof ApiRequestError ? getMenuItemValidationIssue(error.payload) : null;
+    return issue ? `${fallback} ${issue}` : `${fallback} Enter a valid item name and a positive price before saving.`;
   }
 
   if (/^Request failed with status \d+$/.test(error.message)) {
@@ -77,6 +79,38 @@ function mapMenuWriteError(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function getMenuItemValidationIssue(payload: unknown) {
+  if (typeof payload !== "object" || payload === null || !Array.isArray((payload as { issues?: unknown }).issues)) {
+    return null;
+  }
+
+  const issue = (payload as { issues: Array<{ path?: unknown; message?: unknown }> }).issues[0];
+  const path = Array.isArray(issue?.path) ? issue.path.join(".") : "";
+  const message = typeof issue?.message === "string" ? issue.message : "";
+
+  if (path === "priceCents") {
+    return "Enter a valid positive price, for example 12.99.";
+  }
+
+  if (path === "categoryId") {
+    return "Select a valid menu section before saving.";
+  }
+
+  if (path === "sortOrder") {
+    return "Display order must be a whole number.";
+  }
+
+  if (path === "name") {
+    return "Item name must be at least 2 characters.";
+  }
+
+  if (path === "description") {
+    return "Description must be blank or at least 2 characters.";
+  }
+
+  return message ? message.replaceAll("_", " ") : null;
 }
 
 function stepClass(done: boolean, current: boolean) {
@@ -107,22 +141,67 @@ function readinessLabel(hasRestaurant: boolean, hasCategory: boolean, hasItem: b
   return "Review the menu and open the customer route.";
 }
 
-type MenuItemEditForm = {
+export type MenuItemEditForm = {
   categoryId: string;
   name: string;
   description: string;
-  priceCents: number;
-  sortOrder: number;
+  price: string;
+  sortOrder: string;
   isActive: boolean;
 };
+
+export function centsToPriceInput(value: number) {
+  return (value / 100).toFixed(2);
+}
+
+export function parsePriceInputToCents(value: string) {
+  const trimmed = value.trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(trimmed)) {
+    return null;
+  }
+
+  const [major, minor = ""] = trimmed.split(".");
+  const cents = Number.parseInt(major, 10) * 100 + Number.parseInt(minor.padEnd(2, "0"), 10);
+  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+}
+
+export function parseSortOrderInput(value: string) {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    return null;
+  }
+
+  const sortOrder = Number.parseInt(trimmed, 10);
+  return Number.isSafeInteger(sortOrder) ? sortOrder : null;
+}
+
+export function buildMenuItemUpdatePayload(editForm: MenuItemEditForm) {
+  const priceCents = parsePriceInputToCents(editForm.price);
+  const sortOrder = parseSortOrderInput(editForm.sortOrder);
+  const name = editForm.name.trim();
+
+  if (priceCents === null || sortOrder === null || name.length < 2) {
+    return null;
+  }
+
+  const categoryId = editForm.categoryId.trim();
+  return {
+    ...(categoryId ? { categoryId } : {}),
+    name,
+    description: editForm.description.trim() || null,
+    priceCents,
+    sortOrder,
+    isActive: editForm.isActive
+  };
+}
 
 function menuItemToEditForm(item: MenuItemSummary): MenuItemEditForm {
   return {
     categoryId: item.categoryId,
     name: item.name,
     description: item.description ?? "",
-    priceCents: item.priceCents,
-    sortOrder: item.sortOrder,
+    price: centsToPriceInput(item.priceCents),
+    sortOrder: String(item.sortOrder),
     isActive: item.isActive
   };
 }
@@ -133,6 +212,7 @@ export function EditableMenuItemRow({
   item,
   isEditing,
   saving,
+  saveError,
   onCancel,
   onChange,
   onSave,
@@ -143,6 +223,7 @@ export function EditableMenuItemRow({
   item: MenuItemSummary;
   isEditing: boolean;
   saving: boolean;
+  saveError?: string | null;
   onCancel: () => void;
   onChange: (form: MenuItemEditForm) => void;
   onSave: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -162,14 +243,13 @@ export function EditableMenuItemRow({
               />
             </label>
             <label>
-              <span>Price in pence</span>
+              <span>Price</span>
               <input
                 disabled={saving}
-                min="1"
-                onChange={(event) => onChange({ ...editForm, priceCents: Number(event.target.value) })}
-                step="1"
-                type="number"
-                value={editForm.priceCents}
+                inputMode="decimal"
+                onChange={(event) => onChange({ ...editForm, price: event.target.value })}
+                placeholder="12.99"
+                value={editForm.price}
               />
             </label>
           </div>
@@ -202,7 +282,7 @@ export function EditableMenuItemRow({
               <input
                 disabled={saving}
                 min="0"
-                onChange={(event) => onChange({ ...editForm, sortOrder: Number(event.target.value) })}
+                onChange={(event) => onChange({ ...editForm, sortOrder: event.target.value })}
                 step="1"
                 type="number"
                 value={editForm.sortOrder}
@@ -218,10 +298,11 @@ export function EditableMenuItemRow({
             />
             <span>Orderable on the public menu</span>
           </label>
+          {saveError ? <p className="form-error-text" role="alert">{saveError}</p> : null}
           <div className="merchant-actions">
             <button
               className="button button-primary"
-              disabled={saving || !editForm.name.trim() || editForm.priceCents < 1}
+              disabled={saving || !editForm.name.trim() || parsePriceInputToCents(editForm.price) === null || parseSortOrderInput(editForm.sortOrder) === null}
               type="submit"
             >
               {saving ? "Saving..." : "Save item"}
@@ -258,6 +339,8 @@ export function RestaurantSetupShell() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [restaurantSubmitting, setRestaurantSubmitting] = useState(false);
   const [categorySubmitting, setCategorySubmitting] = useState(false);
   const [itemSubmitting, setItemSubmitting] = useState(false);
@@ -332,6 +415,7 @@ export function RestaurantSetupShell() {
   async function loadRestaurants(currentSession: BusinessSession) {
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       const items = await listRestaurants(currentSession);
@@ -368,6 +452,7 @@ export function RestaurantSetupShell() {
 
     setRestaurantSubmitting(true);
     setError(null);
+    setSuccess(null);
 
     try {
       const created = await createRestaurant(session, {
@@ -395,6 +480,7 @@ export function RestaurantSetupShell() {
 
     setCategorySubmitting(true);
     setError(null);
+    setSuccess(null);
 
     try {
       const created = await createMenuCategory(session, selectedRestaurantId, {
@@ -421,6 +507,7 @@ export function RestaurantSetupShell() {
 
     setItemSubmitting(true);
     setError(null);
+    setSuccess(null);
 
     try {
       await createMenuItem(session, selectedRestaurantId, {
@@ -452,11 +539,14 @@ export function RestaurantSetupShell() {
     setEditingItemId(item.id);
     setEditForm(menuItemToEditForm(item));
     setError(null);
+    setEditError(null);
+    setSuccess(null);
   }
 
   function handleCancelEditItem() {
     setEditingItemId(null);
     setEditForm(null);
+    setEditError(null);
   }
 
   async function handleUpdateItem(event: React.FormEvent<HTMLFormElement>) {
@@ -465,22 +555,35 @@ export function RestaurantSetupShell() {
       return;
     }
 
-    setEditingSubmitting(true);
     setError(null);
+    setEditError(null);
+    setSuccess(null);
+
+    const payload = buildMenuItemUpdatePayload(editForm);
+    if (parsePriceInputToCents(editForm.price) === null) {
+      setEditError("Could not update menu item. Enter a valid positive price, for example 12.99.");
+      return;
+    }
+
+    if (parseSortOrderInput(editForm.sortOrder) === null) {
+      setEditError("Could not update menu item. Display order must be a whole number.");
+      return;
+    }
+
+    if (!payload) {
+      setEditError("Could not update menu item. Item name must be at least 2 characters.");
+      return;
+    }
+
+    setEditingSubmitting(true);
 
     try {
-      await updateMenuItem(session, selectedRestaurantId, editingItemId, {
-        categoryId: editForm.categoryId,
-        name: editForm.name.trim(),
-        description: editForm.description.trim() || null,
-        priceCents: editForm.priceCents,
-        sortOrder: editForm.sortOrder,
-        isActive: editForm.isActive
-      });
+      await updateMenuItem(session, selectedRestaurantId, editingItemId, payload);
       handleCancelEditItem();
       await loadMenu(session, selectedRestaurantId);
+      setSuccess("Menu item updated.");
     } catch (issue) {
-      setError(mapMenuWriteError(issue, "Unable to update the menu item. Check the item details and try again."));
+      setEditError(mapMenuWriteError(issue, "Could not update menu item."));
     } finally {
       setEditingSubmitting(false);
     }
@@ -622,6 +725,7 @@ export function RestaurantSetupShell() {
 
         <div className="merchant-main">
           {error ? <div className="merchant-error" role="alert">{error}</div> : null}
+          {success ? <div className="merchant-success" role="status">{success}</div> : null}
 
           <section className="merchant-step-strip" aria-label="Merchant setup progress">
             <div className={stepClass(hasRestaurant, !hasRestaurant)}>
@@ -976,6 +1080,7 @@ export function RestaurantSetupShell() {
                             onChange={setEditForm}
                             onSave={handleUpdateItem}
                             onStartEdit={handleStartEditItem}
+                            saveError={editingItemId === item.id ? editError : null}
                             saving={editingSubmitting}
                           />
                         ))}

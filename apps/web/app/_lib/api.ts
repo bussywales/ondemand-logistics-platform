@@ -546,6 +546,9 @@ export async function updateMenuItem(
     `/v1/business/restaurants/${restaurantId}/menu-items/${itemId}`,
     {
       method: "PATCH",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-menu-item-update`
+      },
       body: JSON.stringify(input)
     }
   );

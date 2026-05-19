@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { RestaurantsService } from "./restaurants.service.js";
 
@@ -484,9 +484,16 @@ describe("RestaurantsService", () => {
   it("rejects invalid menu item prices", async () => {
     const service = new RestaurantsService({ query: vi.fn() } as never, {} as never);
 
-    await expect(service.updateMenuItem(RESTAURANT_ID, ITEM_ID, { priceCents: 0 }, USER_ID)).rejects.toThrow(
-      UnprocessableEntityException
-    );
+    await expect(service.updateMenuItem(RESTAURANT_ID, ITEM_ID, { priceCents: 0 }, USER_ID)).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: "invalid_menu_item_payload",
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            path: ["priceCents"]
+          })
+        ])
+      })
+    });
   });
 
   it("rejects cross-restaurant menu item updates", async () => {

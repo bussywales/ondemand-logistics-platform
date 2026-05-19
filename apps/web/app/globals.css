@@ -1954,6 +1954,15 @@ h3 {
   font-weight: 800;
 }
 
+.merchant-success {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(45, 123, 83, 0.18);
+  border-radius: 18px;
+  background: rgba(45, 123, 83, 0.08);
+  color: #1f6d49;
+  font-weight: 750;
+}
+
 .merchant-step-strip {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }

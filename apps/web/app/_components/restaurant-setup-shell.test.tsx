@@ -1,7 +1,13 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { EditableMenuItemRow } from "./restaurant-setup-shell";
+import {
+  EditableMenuItemRow,
+  buildMenuItemUpdatePayload,
+  centsToPriceInput,
+  parsePriceInputToCents,
+  parseSortOrderInput
+} from "./restaurant-setup-shell";
 import type { MenuItemSummary, RestaurantMenuCategory } from "../_lib/product-state";
 
 const item: MenuItemSummary = {
@@ -60,8 +66,8 @@ describe("EditableMenuItemRow", () => {
           categoryId: item.categoryId,
           name: "Chicken wrap",
           description: "Fresh and hot",
-          priceCents: 1499,
-          sortOrder: 0,
+          price: "14.99",
+          sortOrder: "0",
           isActive: true
         }}
         isEditing
@@ -74,9 +80,70 @@ describe("EditableMenuItemRow", () => {
       />
     );
 
-    expect(html).toContain("Price in pence");
-    expect(html).toContain("1499");
+    expect(html).toContain("Price");
+    expect(html).toContain("14.99");
     expect(html).toContain("Save item");
     expect(html).toContain("Orderable on the public menu");
+  });
+
+  it("renders a visible save error while keeping the edit form open", () => {
+    const html = renderToStaticMarkup(
+      <EditableMenuItemRow
+        categories={categories}
+        editForm={{
+          categoryId: item.categoryId,
+          name: "Chicken wrap",
+          description: "Fresh and hot",
+          price: "12.99",
+          sortOrder: "0",
+          isActive: true
+        }}
+        isEditing
+        item={item}
+        onCancel={vi.fn()}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        onStartEdit={vi.fn()}
+        saveError="Could not update menu item. Enter a valid positive price, for example 12.99."
+        saving={false}
+      />
+    );
+
+    expect(html).toContain("Could not update menu item.");
+    expect(html).toContain("Save item");
+  });
+
+  it("converts visible prices to integer pence and rejects invalid values", () => {
+    expect(centsToPriceInput(1299)).toBe("12.99");
+    expect(parsePriceInputToCents("12.99")).toBe(1299);
+    expect(parsePriceInputToCents("12.9")).toBe(1290);
+    expect(parsePriceInputToCents("12.999")).toBeNull();
+    expect(parsePriceInputToCents("")).toBeNull();
+  });
+
+  it("parses display order as a whole number", () => {
+    expect(parseSortOrderInput("0")).toBe(0);
+    expect(parseSortOrderInput("12")).toBe(12);
+    expect(parseSortOrderInput("1.5")).toBeNull();
+    expect(parseSortOrderInput("")).toBeNull();
+  });
+
+  it("builds the API payload without empty optional UUID fields", () => {
+    expect(
+      buildMenuItemUpdatePayload({
+        categoryId: "",
+        name: " Chicken wrap ",
+        description: "",
+        price: "12.99",
+        sortOrder: "0",
+        isActive: false
+      })
+    ).toEqual({
+      name: "Chicken wrap",
+      description: null,
+      priceCents: 1299,
+      sortOrder: 0,
+      isActive: false
+    });
   });
 });
