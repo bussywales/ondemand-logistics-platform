@@ -28,6 +28,7 @@ import {
   getLiveJob,
   getUserFacingApiError,
   listBusinessSupportEscalations,
+  listBusinessSupportEscalationEvents,
   listBusinessOrders,
   listEligibleDrivers,
   listLiveJobs,
@@ -51,6 +52,7 @@ import {
   type DeliveryFormInput,
   type EligibleDriver,
   type SupportEscalation,
+  type SupportEscalationEvent,
   type UpdateSupportEscalationInput,
   type VehicleType
 } from "../_lib/product-state";
@@ -72,6 +74,20 @@ const defaultForm: DeliveryFormInput = {
   dropoffLongitude: -0.1026
 };
 
+async function loadSupportEscalationEvents(session: BusinessSession, items: SupportEscalation[]) {
+  const entries = await Promise.all(
+    items.map(async (item) => {
+      try {
+        return [item.id, await listBusinessSupportEscalationEvents(session, item.id)] as const;
+      } catch {
+        return [item.id, []] as const;
+      }
+    })
+  );
+
+  return Object.fromEntries(entries);
+}
+
 export function ProductShell(props: ProductShellProps) {
   const router = useRouter();
   const { status, session, signOut, refreshBusinessSession } = useBusinessAuth();
@@ -79,6 +95,7 @@ export function ProductShell(props: ProductShellProps) {
   const [orders, setOrders] = useState<BusinessCustomerOrder[]>([]);
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
   const [selectedJobEscalations, setSelectedJobEscalations] = useState<SupportEscalation[]>([]);
+  const [selectedJobEscalationEvents, setSelectedJobEscalationEvents] = useState<Record<string, SupportEscalationEvent[]>>({});
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [dailyBriefing, setDailyBriefing] = useState<DailyBriefing | null>(null);
   const [briefingError, setBriefingError] = useState<string | null>(null);
@@ -111,6 +128,7 @@ export function ProductShell(props: ProductShellProps) {
     if (!props.jobId || !session) {
       setSelectedJob(null);
       setSelectedJobEscalations([]);
+      setSelectedJobEscalationEvents({});
       setSupportLogError(null);
       return;
     }
@@ -205,13 +223,15 @@ export function ProductShell(props: ProductShellProps) {
         })
       ]);
       setSelectedJob(job);
-      setSelectedJobEscalations(escalationItems);
+        setSelectedJobEscalations(escalationItems);
+        setSelectedJobEscalationEvents(await loadSupportEscalationEvents(currentSession, escalationItems));
       setJobs((current) =>
         [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       );
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Unable to load job.");
       setSelectedJobEscalations([]);
+      setSelectedJobEscalationEvents({});
     }
   }
 
@@ -229,6 +249,9 @@ export function ProductShell(props: ProductShellProps) {
         jobId: selectedJob.id
       });
       setSelectedJobEscalations((current) => [created, ...current]);
+      setSelectedJobEscalationEvents((current) => ({ ...current, [created.id]: [] }));
+      const events = await listBusinessSupportEscalationEvents(session, created.id);
+      setSelectedJobEscalationEvents((current) => ({ ...current, [created.id]: events }));
     } catch (issue) {
       setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
@@ -247,6 +270,8 @@ export function ProductShell(props: ProductShellProps) {
     try {
       const updated = await updateBusinessSupportEscalation(session, id, input);
       setSelectedJobEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      const events = await listBusinessSupportEscalationEvents(session, updated.id);
+      setSelectedJobEscalationEvents((current) => ({ ...current, [updated.id]: events }));
     } catch (issue) {
       setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
@@ -428,6 +453,7 @@ export function ProductShell(props: ProductShellProps) {
     setBriefingError(null);
     setSelectedJob(null);
     setSelectedJobEscalations([]);
+    setSelectedJobEscalationEvents({});
     setSupportLogError(null);
     router.push("/get-started");
   }
@@ -619,6 +645,7 @@ export function ProductShell(props: ProductShellProps) {
                 selectedDriverId={selectedDriverId}
                 session={session}
                 supportEscalations={selectedJobEscalations}
+                supportEscalationEvents={selectedJobEscalationEvents}
                 supportError={supportLogError}
                 supportSubmitting={supportSubmitting}
               />

@@ -8,6 +8,7 @@ const BASE_TABLES = new Set([
   "customer_orders",
   "job_dispatch_attempts",
   "support_escalations",
+  "support_escalation_events",
   "pilot_workspaces",
   "pilot_readiness_checks",
   "notification_reads",
@@ -20,7 +21,11 @@ const BASE_COLUMNS = new Set([
   "support_escalations.resolution_action",
   "support_escalations.resolution_reason",
   "support_escalations.resolved_by",
-  "support_escalations.resolved_at"
+  "support_escalations.resolved_at",
+  "support_escalation_events.support_escalation_id",
+  "support_escalation_events.event_type",
+  "support_escalation_events.metadata",
+  "support_escalation_events.created_at"
 ]);
 
 function buildClient(options?: {
@@ -139,6 +144,21 @@ describe("runReleaseSchemaCheck", () => {
     );
   });
 
+  it("fails when support_escalation_events is missing", async () => {
+    const result = await runReleaseSchemaCheck(buildClient({ missingTables: ["support_escalation_events"] }) as never);
+
+    expect(result.ok).toBe(false);
+    expect(result.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.support_escalation_events",
+          ok: false,
+          detail: "table_missing"
+        })
+      ])
+    );
+  });
+
   it("fails when pilot_workspaces is missing", async () => {
     const result = await runReleaseSchemaCheck(buildClient({ missingTables: ["pilot_workspaces"] }) as never);
 
@@ -177,6 +197,21 @@ describe("runReleaseSchemaCheck", () => {
       expect.arrayContaining([
         expect.objectContaining({
           name: "public.support_escalations.resolved_at",
+          ok: false,
+          detail: "column_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when support escalation event columns are missing", async () => {
+    const result = await runReleaseSchemaCheck(buildClient({ missingColumns: ["support_escalation_events.metadata"] }) as never);
+
+    expect(result.ok).toBe(false);
+    expect(result.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.support_escalation_events.metadata",
           ok: false,
           detail: "column_missing"
         })

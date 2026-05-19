@@ -689,6 +689,30 @@ export type SupportEscalationResolutionReason =
   | "TEST_OR_DEMO_RECORD"
   | "ESCALATED_OUTSIDE_SHIPWRIGHT"
   | "OTHER";
+export type SupportEscalationEventType =
+  | "CREATED"
+  | "STATUS_CHANGED"
+  | "NOTE_UPDATED"
+  | "OWNER_UPDATED"
+  | "CONTACT_FLAGS_UPDATED"
+  | "RESOLVED"
+  | "CANCELLED"
+  | "REOPENED"
+  | "RESOLUTION_UPDATED";
+
+export type SupportEscalationEvent = {
+  id: string;
+  supportEscalationId: string;
+  orgId: string;
+  eventType: SupportEscalationEventType;
+  actorId: string | null;
+  actorLabel: string | null;
+  previousStatus: SupportEscalationStatus | null;
+  newStatus: SupportEscalationStatus | null;
+  note: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
 
 export type SupportEscalation = {
   id: string;
@@ -719,6 +743,10 @@ export type SupportEscalation = {
 
 export type SupportEscalationList = {
   items: SupportEscalation[];
+};
+
+export type SupportEscalationEventList = {
+  items: SupportEscalationEvent[];
 };
 
 export type CreateSupportEscalationInput = {

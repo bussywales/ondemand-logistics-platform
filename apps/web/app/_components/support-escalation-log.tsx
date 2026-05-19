@@ -6,6 +6,7 @@ import {
   type CreateSupportEscalationInput,
   type SupportEscalation,
   type SupportEscalationCategory,
+  type SupportEscalationEvent,
   type SupportEscalationResolutionAction,
   type SupportEscalationResolutionReason,
   type SupportEscalationSeverity,
@@ -68,6 +69,18 @@ const RESOLUTION_REASON_OPTIONS: Array<{ value: SupportEscalationResolutionReaso
   { value: "OTHER", label: "Other" }
 ];
 
+const EVENT_LABELS: Record<SupportEscalationEvent["eventType"], string> = {
+  CREATED: "Created",
+  STATUS_CHANGED: "Status changed",
+  NOTE_UPDATED: "Note updated",
+  OWNER_UPDATED: "Owner updated",
+  CONTACT_FLAGS_UPDATED: "Contact flags updated",
+  RESOLVED: "Resolved",
+  CANCELLED: "Cancelled",
+  REOPENED: "Reopened",
+  RESOLUTION_UPDATED: "Resolution updated"
+};
+
 function formatEnumLabel(value: string) {
   return value
     .toLowerCase()
@@ -111,6 +124,7 @@ function isFinalStatus(value: SupportEscalationStatus) {
 export function SupportEscalationLog(props: {
   context: "order" | "job";
   error?: string | null;
+  eventsByEscalationId?: Record<string, SupportEscalationEvent[]>;
   items: SupportEscalation[];
   orderId?: string;
   jobId?: string;
@@ -204,6 +218,7 @@ export function SupportEscalationLog(props: {
             const selectedStatus = statusById[item.id] ?? item.status;
             const finalStatusSelected = isFinalStatus(selectedStatus);
             const itemResolved = isFinalStatus(item.status);
+            const events = props.eventsByEscalationId?.[item.id] ?? [];
             return (
               <article className={`sw-list-row support-escalation-row${itemResolved ? " support-escalation-row-resolved" : ""}`} key={item.id}>
                 <div className="support-escalation-row-main">
@@ -230,6 +245,29 @@ export function SupportEscalationLog(props: {
                     {item.merchantContactRequired ? <span>Merchant contact</span> : null}
                     {item.courierContactRequired ? <span>Courier contact</span> : null}
                   </div>
+                  {events.length ? (
+                    <details className="support-escalation-timeline">
+                      <summary>History timeline ({events.length})</summary>
+                      <div className="support-escalation-events">
+                        {events.map((event) => (
+                          <div className="support-escalation-event-row" key={event.id}>
+                            <span className={`sw-badge ${event.eventType === "RESOLVED" ? "sw-badge--success" : event.eventType === "CANCELLED" ? "sw-badge--neutral" : event.eventType === "REOPENED" ? "sw-badge--warning" : "sw-badge--info"}`}>
+                              {EVENT_LABELS[event.eventType]}
+                            </span>
+                            <div>
+                              <strong>
+                                {event.previousStatus && event.newStatus && event.previousStatus !== event.newStatus
+                                  ? `${formatEnumLabel(event.previousStatus)} -> ${formatEnumLabel(event.newStatus)}`
+                                  : EVENT_LABELS[event.eventType]}
+                              </strong>
+                              <p>{event.note ?? "Support history event recorded."}</p>
+                              <span>{event.actorLabel ?? "ShipWright operator"} · {formatDateTime(event.createdAt)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
                 </div>
                 <div className="support-escalation-status-control">
                   <label className="sw-field">

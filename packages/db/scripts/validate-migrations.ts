@@ -20,6 +20,7 @@ const requiredTables = [
   "audit_log",
   "outbox_messages",
   "support_escalations",
+  "support_escalation_events",
   "pilot_workspaces",
   "pilot_readiness_checks"
 ];
@@ -54,7 +55,8 @@ for (const clause of rlsChecks) {
 const appendOnlyChecks = [
   "create trigger job_events_append_only",
   "create trigger audit_log_append_only",
-  "create trigger outbox_delete_blocked"
+  "create trigger outbox_delete_blocked",
+  "create trigger support_escalation_events_append_only_blocked"
 ];
 
 for (const clause of appendOnlyChecks) {

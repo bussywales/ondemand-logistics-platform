@@ -25,7 +25,9 @@ import {
   listBusinessOrders,
   listBusinessPayments,
   listBusinessSupportEscalations,
+  listBusinessSupportEscalationEvents,
   listAdminSupportEscalations,
+  listAdminSupportEscalationEvents,
   listDriverOffers,
   markAllBusinessNotificationsRead,
   markBusinessNotificationRead,
@@ -1047,6 +1049,33 @@ describe('authorizePayment', () => {
     expect(String(updateInit.headers && (updateInit.headers as Record<string, string>)['Idempotency-Key'])).toContain('support-escalation-update');
   });
 
+  it('lists business support escalation audit events', async () => {
+    const event = {
+      id: '44444444-4444-4444-8444-444444444444',
+      supportEscalationId: '2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b',
+      orgId: '07ce83ef-3d05-4f78-9f5f-a21191f2d07e',
+      eventType: 'STATUS_CHANGED',
+      actorId: session.userId,
+      actorLabel: null,
+      previousStatus: 'OPEN',
+      newStatus: 'IN_REVIEW',
+      note: 'Status changed to in review.',
+      metadata: { previousStatus: 'OPEN', newStatus: 'IN_REVIEW' },
+      createdAt: '2026-05-18T10:10:00.000Z'
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({ items: [event] })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listBusinessSupportEscalationEvents(session, event.supportEscalationId)).resolves.toEqual([event]);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/support/escalations/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b/events');
+    expect(init.method).toBe('GET');
+  });
+
   it('lists admin support escalations from the admin endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -1058,6 +1087,37 @@ describe('authorizePayment', () => {
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('/v1/admin/support/escalations?severity=HIGH');
+    expect(init.method).toBe('GET');
+  });
+
+  it('lists admin support escalation audit events from the admin endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: '44444444-4444-4444-8444-444444444444',
+              supportEscalationId: '2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b',
+              orgId: '07ce83ef-3d05-4f78-9f5f-a21191f2d07e',
+              eventType: 'RESOLVED',
+              actorId: null,
+              actorLabel: 'Platform admin',
+              previousStatus: 'IN_REVIEW',
+              newStatus: 'RESOLVED',
+              note: 'Resolved with closeout metadata.',
+              metadata: { resolutionAction: 'CUSTOMER_UPDATED' },
+              createdAt: '2026-05-18T10:15:00.000Z'
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listAdminSupportEscalationEvents(session, '2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b')).resolves.toHaveLength(1);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/admin/support/escalations/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b/events');
     expect(init.method).toBe('GET');
   });
 });

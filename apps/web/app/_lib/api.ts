@@ -23,6 +23,8 @@ import type {
   CustomerOrderSubmission,
   PublicOrderTracking,
   SupportEscalation,
+  SupportEscalationEvent,
+  SupportEscalationEventList,
   SupportEscalationList,
   PilotReadinessCheck,
   PilotReadinessCheckList,
@@ -162,6 +164,7 @@ type DailyBriefingResponse = DailyBriefing;
 type EndOfDayReportResponse = EndOfDayReport;
 type SupportEscalationListResponse = SupportEscalationList;
 type SupportEscalationResponse = SupportEscalation;
+type SupportEscalationEventListResponse = SupportEscalationEventList;
 type PilotWorkspaceListResponse = PilotWorkspaceList;
 type PilotWorkspaceResponse = PilotWorkspace;
 type PilotReadinessCheckListResponse = PilotReadinessCheckList;
@@ -689,6 +692,19 @@ export async function updateBusinessSupportEscalation(
   );
 }
 
+export async function listBusinessSupportEscalationEvents(
+  session: BusinessSession,
+  escalationId: string
+): Promise<SupportEscalationEvent[]> {
+  const payload = await apiFetch<SupportEscalationEventListResponse>(
+    session,
+    `/v1/business/support/escalations/${encodeURIComponent(escalationId)}/events`,
+    { method: "GET" }
+  );
+
+  return payload.items;
+}
+
 export async function listAdminSupportEscalations(
   session: BusinessSession,
   filters?: {
@@ -702,6 +718,19 @@ export async function listAdminSupportEscalations(
   const payload = await apiFetch<SupportEscalationListResponse>(
     session,
     `/v1/admin/support/escalations${buildSupportEscalationsQuery(filters)}`,
+    { method: "GET" }
+  );
+
+  return payload.items;
+}
+
+export async function listAdminSupportEscalationEvents(
+  session: BusinessSession,
+  escalationId: string
+): Promise<SupportEscalationEvent[]> {
+  const payload = await apiFetch<SupportEscalationEventListResponse>(
+    session,
+    `/v1/admin/support/escalations/${encodeURIComponent(escalationId)}/events`,
     { method: "GET" }
   );
 

@@ -198,6 +198,19 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "created_by",
       "created_at",
       "updated_at"
+    ],
+    support_escalation_events: [
+      "id",
+      "support_escalation_id",
+      "org_id",
+      "event_type",
+      "actor_id",
+      "actor_label",
+      "previous_status",
+      "new_status",
+      "note",
+      "metadata",
+      "created_at"
     ]
   },
   pilots: {

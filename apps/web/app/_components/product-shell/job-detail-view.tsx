@@ -5,6 +5,7 @@ import type {
   CreateSupportEscalationInput,
   EligibleDriver,
   SupportEscalation,
+  SupportEscalationEvent,
   UpdateSupportEscalationInput
 } from "../../_lib/product-state";
 import type { DriverAssignmentFailureModel } from "../../_lib/driver-assignment";
@@ -45,6 +46,7 @@ type JobDetailViewProps = {
   selectedDriverId: string | null;
   session: BusinessSession;
   supportEscalations: SupportEscalation[];
+  supportEscalationEvents: Record<string, SupportEscalationEvent[]>;
   supportError?: string | null;
   supportSubmitting: boolean;
 };
@@ -65,6 +67,7 @@ export function JobDetailView(props: JobDetailViewProps) {
       <SupportEscalationLog
         context="job"
         error={props.supportError}
+        eventsByEscalationId={props.supportEscalationEvents}
         items={props.supportEscalations}
         jobId={props.job.id}
         onCreate={props.onCreateSupportEscalation}

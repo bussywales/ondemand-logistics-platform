@@ -92,11 +92,13 @@ Show:
 - customer total
 - platform fee / driver payout when available
 - order detail support and escalation log
+- support history timeline for status, owner, contact, resolution, and reopen changes when a support record exists
 
 Say:
 - operators manage fulfilment and financial risk from one order surface
 - Command Intelligence highlights risk and recommended next steps, but operators remain responsible for acting
 - human support notes can be recorded against the order without sending messages or executing refunds automatically
+- support history is append-only audit context; operators can see who changed what, when, and why
 
 ### 6. Payment risk page
 Open:
@@ -199,7 +201,7 @@ Say:
 - this is deterministic command intelligence for platform oversight
 - it helps admins spot which organisations need support without silently taking action
 - support escalation visibility is oversight-only for admins in this pass; business operators still own direct follow-up unless delegated
-- business operators close support records with a resolution note and final action; ShipWright records the context but does not message, refund, cancel, or assign automatically
+- business operators close support records with a resolution note and final action; ShipWright records the support history as append-only audit context but does not message, refund, cancel, or assign automatically
 
 ### 9B. Driver readiness
 Open:

@@ -28,6 +28,7 @@ import {
   PilotReadinessCheckListSchema,
   PilotWorkspaceListSchema,
   ProofOfDeliveryUploadUrlResponseSchema,
+  SupportEscalationEventListSchema,
   SupportEscalationListSchema,
   SubmitCustomerOrderResponseSchema,
   SubmitCustomerOrderSchema,
@@ -880,6 +881,28 @@ describe("read models", () => {
       resolutionNote: "Customer confirmed the delivery issue is resolved.",
       resolutionAction: "CUSTOMER_UPDATED",
       resolutionReason: "CUSTOMER_CONFIRMED"
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses support escalation event history payloads", () => {
+    const parsed = SupportEscalationEventListSchema.safeParse({
+      items: [
+        {
+          id: "44444444-4444-4444-8444-444444444444",
+          supportEscalationId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          orgId: "07ce83ef-3d05-4f78-9f5f-a21191f2d07e",
+          eventType: "STATUS_CHANGED",
+          actorId: "9d90d9cb-aaed-494e-aebf-d0f02b9618fe",
+          actorLabel: null,
+          previousStatus: "OPEN",
+          newStatus: "IN_REVIEW",
+          note: "Status changed to in review.",
+          metadata: { previousStatus: "OPEN", newStatus: "IN_REVIEW" },
+          createdAt: new Date().toISOString()
+        }
+      ]
     });
 
     expect(parsed.success).toBe(true);

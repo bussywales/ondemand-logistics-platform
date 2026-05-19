@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SupportEscalationLog } from "./support-escalation-log";
-import type { SupportEscalation } from "../_lib/product-state";
+import type { SupportEscalation, SupportEscalationEvent } from "../_lib/product-state";
 
 const escalation: SupportEscalation = {
   id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
@@ -31,6 +31,20 @@ const escalation: SupportEscalation = {
   customerName: "Ada Customer"
 };
 
+const event: SupportEscalationEvent = {
+  id: "44444444-4444-4444-8444-444444444444",
+  supportEscalationId: escalation.id,
+  orgId: escalation.orgId,
+  eventType: "STATUS_CHANGED",
+  actorId: escalation.createdBy,
+  actorLabel: null,
+  previousStatus: "OPEN",
+  newStatus: "IN_REVIEW",
+  note: "Status changed to in review.",
+  metadata: {},
+  createdAt: "2026-05-18T10:10:00.000Z"
+};
+
 describe("SupportEscalationLog", () => {
   it("renders existing support records with human approval copy", () => {
     const markup = renderToStaticMarkup(
@@ -57,6 +71,24 @@ describe("SupportEscalationLog", () => {
 
     expect(markup).toContain("No support notes logged");
     expect(markup).toContain("Add support note");
+  });
+
+  it("renders support event history timelines", () => {
+    const markup = renderToStaticMarkup(
+      <SupportEscalationLog
+        context="order"
+        eventsByEscalationId={{ [escalation.id]: [event] }}
+        items={[escalation]}
+        onCreate={() => undefined}
+        onUpdateStatus={() => undefined}
+        orderId={escalation.orderId ?? undefined}
+        submitting={false}
+      />
+    );
+
+    expect(markup).toContain("History timeline (1)");
+    expect(markup).toContain("Open -&gt; In Review");
+    expect(markup).toContain("Status changed to in review.");
   });
 
   it("renders resolved records with closeout metadata", () => {

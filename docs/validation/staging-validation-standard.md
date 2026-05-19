@@ -50,7 +50,8 @@ The paid-delivery proof must confirm:
 - final order status: `FULFILLED`
 - payment status: `CAPTURED`
 - notification outbox processed for the staged delivery flow
-- support escalation schema readiness remains available for command posture, resolution metadata, and closeout surfaces
+- support escalation schema readiness remains available for command posture, resolution metadata, closeout surfaces, and append-only support history
+- support escalation event history remains append-only and available to order/job support timelines
 - pilot workspace schema readiness remains available for admin-led pilot mode, readiness, owner, and checklist tracking
 - pilot guardrail surfaces remain non-blocking and visible on business/admin pilot routes when a pilot profile is configured
 - release readiness checks green
@@ -135,7 +136,8 @@ Playwright artifacts remain local and ignored:
 - Browser smoke should stay green after UI, auth, routing, or command-surface changes.
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
 - Public smoke should not require authentication.
-- Release readiness must include support/escalation schema dependencies because order, job, and admin command surfaces depend on them.
+- Release readiness must include support/escalation schema dependencies because order, job, admin command, closeout, and support history surfaces depend on them.
+- Support history events must be system-created from support create/update operations; new work must not add manual event creation or deletion paths.
 - Proof artifacts remain uncommitted unless intentionally exported.
 - Any staging-only credential changes stay in local env files or the staging secret manager, never in Git.
 - Staging validation should use deterministic staged fixtures and smoke users, not personal accounts.

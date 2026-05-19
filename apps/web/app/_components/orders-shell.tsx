@@ -17,6 +17,7 @@ import {
   getBusinessOrder,
   getBusinessPilotStatus,
   getUserFacingApiError,
+  listBusinessSupportEscalationEvents,
   listBusinessOrders,
   listBusinessPayments,
   listBusinessSupportEscalations,
@@ -31,6 +32,7 @@ import {
   type BusinessSession,
   type CreateSupportEscalationInput,
   type SupportEscalation,
+  type SupportEscalationEvent,
   type UpdateSupportEscalationInput
 } from "../_lib/product-state";
 import type { DispatchRecoverySuggestion, OperationalIncidentSummary } from "../_lib/product-state";
@@ -65,6 +67,20 @@ type OrderTrackingIntelligence = {
   recoverySuggestion: DispatchRecoverySuggestion | null;
   incidentSummary: OperationalIncidentSummary | null;
 };
+
+async function loadSupportEscalationEvents(session: BusinessSession, items: SupportEscalation[]) {
+  const entries = await Promise.all(
+    items.map(async (item) => {
+      try {
+        return [item.id, await listBusinessSupportEscalationEvents(session, item.id)] as const;
+      } catch {
+        return [item.id, []] as const;
+      }
+    })
+  );
+
+  return Object.fromEntries(entries);
+}
 
 export type OrdersShellProps = {
   orderId?: string;
@@ -305,6 +321,7 @@ type OrderDetailProps = {
   order: OrderFinancialView;
   tracking: OrderTrackingIntelligence | null;
   supportEscalations?: SupportEscalation[];
+  supportEscalationEvents?: Record<string, SupportEscalationEvent[]>;
   supportError?: string | null;
   supportSubmitting?: boolean;
   onCreateSupportEscalation?: (input: CreateSupportEscalationInput) => Promise<void> | void;
@@ -373,6 +390,7 @@ export function OrderDetail({
   order,
   tracking,
   supportEscalations = [],
+  supportEscalationEvents = {},
   supportError = null,
   supportSubmitting = false,
   onCreateSupportEscalation = () => undefined,
@@ -527,6 +545,7 @@ export function OrderDetail({
       <SupportEscalationLog
         context="order"
         error={supportError}
+        eventsByEscalationId={supportEscalationEvents}
         items={supportEscalations}
         jobId={order.job.id}
         onCreate={onCreateSupportEscalation}
@@ -782,6 +801,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
   const [selectedOrder, setSelectedOrder] = useState<BusinessCustomerOrder | null>(null);
   const [selectedOrderTracking, setSelectedOrderTracking] = useState<OrderTrackingIntelligence | null>(null);
   const [selectedOrderEscalations, setSelectedOrderEscalations] = useState<SupportEscalation[]>([]);
+  const [selectedOrderEscalationEvents, setSelectedOrderEscalationEvents] = useState<Record<string, SupportEscalationEvent[]>>({});
   const [pilotStatus, setPilotStatus] = useState<BusinessPilotStatus | null>(null);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [supportSubmitting, setSupportSubmitting] = useState(false);
@@ -898,6 +918,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
       setPayments(paymentItems);
       setPilotStatus(nextPilotStatus);
       setSelectedOrderEscalations(escalationItems);
+      setSelectedOrderEscalationEvents(await loadSupportEscalationEvents(currentSession, escalationItems));
       setOrders((current) => [order, ...current.filter((item) => item.id !== order.id)]);
 
       setSelectedOrderTracking(
@@ -913,6 +934,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
       setError(issue instanceof Error ? issue.message : "Unable to load customer order.");
       setSelectedOrderTracking(null);
       setSelectedOrderEscalations([]);
+      setSelectedOrderEscalationEvents({});
     } finally {
       setDetailLoading(false);
     }
@@ -933,6 +955,9 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
         jobId: selectedOrder.job.id
       });
       setSelectedOrderEscalations((current) => [created, ...current]);
+      setSelectedOrderEscalationEvents((current) => ({ ...current, [created.id]: [] }));
+      const events = await listBusinessSupportEscalationEvents(session, created.id);
+      setSelectedOrderEscalationEvents((current) => ({ ...current, [created.id]: events }));
     } catch (issue) {
       setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
@@ -951,6 +976,8 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     try {
       const updated = await updateBusinessSupportEscalation(session, id, input);
       setSelectedOrderEscalations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      const events = await listBusinessSupportEscalationEvents(session, updated.id);
+      setSelectedOrderEscalationEvents((current) => ({ ...current, [updated.id]: events }));
     } catch (issue) {
       setSupportLogError(getUserFacingApiError(issue, "Support log unavailable. Refresh or contact support."));
     } finally {
@@ -965,6 +992,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
     setSelectedOrder(null);
     setPilotStatus(null);
     setSelectedOrderEscalations([]);
+    setSelectedOrderEscalationEvents({});
     setSupportLogError(null);
     router.push("/get-started");
   }
@@ -1201,6 +1229,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
               onUpdateSupportEscalationStatus={handleUpdateSupportEscalationStatus}
               order={selectedOrderView}
               supportEscalations={selectedOrderEscalations}
+              supportEscalationEvents={selectedOrderEscalationEvents}
               supportError={supportLogError}
               supportSubmitting={supportSubmitting}
               tracking={selectedOrderTracking}

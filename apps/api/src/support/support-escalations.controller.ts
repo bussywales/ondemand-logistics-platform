@@ -18,6 +18,11 @@ export class BusinessSupportEscalationsController {
     return this.supportEscalations.createBusinessEscalation(user.id, body);
   }
 
+  @Get(":id/events")
+  listEscalationEvents(@RequestUser() user: AuthenticatedUser, @Param("id") id: string) {
+    return this.supportEscalations.listBusinessEscalationEvents(user.id, id);
+  }
+
   @Patch(":id")
   updateEscalation(@RequestUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: unknown) {
     return this.supportEscalations.updateBusinessEscalation(user.id, id, body);
@@ -32,5 +37,10 @@ export class AdminSupportEscalationsController {
   @Get()
   listEscalations(@Query() query: Record<string, string | undefined>) {
     return this.supportEscalations.listAdminEscalations(query);
+  }
+
+  @Get(":id/events")
+  listEscalationEvents(@Param("id") id: string) {
+    return this.supportEscalations.listAdminEscalationEvents(id);
   }
 }

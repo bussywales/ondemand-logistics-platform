@@ -1348,6 +1348,34 @@ export const SupportEscalationResolutionReasonSchema = z.enum([
 ]);
 export type SupportEscalationResolutionReason = z.infer<typeof SupportEscalationResolutionReasonSchema>;
 
+export const SupportEscalationEventTypeSchema = z.enum([
+  "CREATED",
+  "STATUS_CHANGED",
+  "NOTE_UPDATED",
+  "OWNER_UPDATED",
+  "CONTACT_FLAGS_UPDATED",
+  "RESOLVED",
+  "CANCELLED",
+  "REOPENED",
+  "RESOLUTION_UPDATED"
+]);
+export type SupportEscalationEventType = z.infer<typeof SupportEscalationEventTypeSchema>;
+
+export const SupportEscalationEventSchema = z.object({
+  id: z.string().uuid(),
+  supportEscalationId: z.string().uuid(),
+  orgId: z.string().uuid(),
+  eventType: SupportEscalationEventTypeSchema,
+  actorId: z.string().uuid().nullable(),
+  actorLabel: z.string().nullable(),
+  previousStatus: SupportEscalationStatusSchema.nullable(),
+  newStatus: SupportEscalationStatusSchema.nullable(),
+  note: z.string().nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+  createdAt: IsoDateTimeSchema
+});
+export type SupportEscalationEventDto = z.infer<typeof SupportEscalationEventSchema>;
+
 export const SupportEscalationSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
@@ -1429,6 +1457,11 @@ export const SupportEscalationListSchema = z.object({
   items: z.array(SupportEscalationSchema)
 });
 export type SupportEscalationListDto = z.infer<typeof SupportEscalationListSchema>;
+
+export const SupportEscalationEventListSchema = z.object({
+  items: z.array(SupportEscalationEventSchema)
+});
+export type SupportEscalationEventListDto = z.infer<typeof SupportEscalationEventListSchema>;
 
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;
