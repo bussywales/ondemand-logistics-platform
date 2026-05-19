@@ -186,7 +186,7 @@ test('authenticated fleet manager workspace smoke', async ({ page }) => {
   expect(signedIn, 'Fleet manager smoke credentials should sign in when configured.').toBe(true);
 
   await assertProtectedRouteLoads(page, '/fleet');
-  await expect(page.getByText(/Fleet readiness/i)).toBeVisible({ timeout: 12000 });
+  await expect(page.getByText('Fleet readiness', { exact: true }).first()).toBeVisible({ timeout: 12000 });
   await expect(page.getByRole('heading', { name: /Fleet-managed couriers/i })).toBeVisible({ timeout: 12000 });
   await expect(page.getByText(/No scoring, suspension, billing, payout, or dispatch preference automation/i)).toBeVisible();
 });
