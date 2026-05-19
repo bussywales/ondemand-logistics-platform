@@ -101,6 +101,9 @@ type AdminDriverReadinessRow = {
   active_job_status: string | null;
   org_id: string | null;
   org_name: string | null;
+  fleet_org_id: string | null;
+  fleet_org_name: string | null;
+  fleet_role: string | null;
   restaurant_name: string | null;
   restaurant_slug: string | null;
   last_location_at: string | Date | null;
@@ -259,6 +262,9 @@ export class AdminService {
           aj.status::text as active_job_status,
           d.home_org_id as org_id,
           o.name as org_name,
+          fleet.org_id as fleet_org_id,
+          fleet.org_name as fleet_org_name,
+          fleet.role as fleet_role,
           r.name as restaurant_name,
           r.slug as restaurant_slug,
           d.last_location_at,
@@ -267,6 +273,17 @@ export class AdminService {
        from public.drivers d
        left join public.users u on u.id = d.user_id
        left join public.orgs o on o.id = d.home_org_id
+       left join lateral (
+         select fo.id as org_id, fo.name as org_name, fm.role::text as role
+         from public.org_memberships fm
+         join public.orgs fo on fo.id = fm.org_id
+         where fm.user_id = d.user_id
+           and fm.is_active = true
+           and fo.org_type = 'DRIVER_COMPANY'
+           and fm.role::text in ('FLEET_OWNER', 'FLEET_MANAGER', 'DISPATCHER', 'DRIVER', 'COMPLIANCE_MANAGER')
+         order by fm.updated_at desc
+         limit 1
+       ) fleet on true
        left join public.jobs aj on aj.id = d.active_job_id
        left join public.customer_orders co on co.job_id = d.active_job_id
        left join public.restaurants r on r.id = co.restaurant_id
@@ -752,6 +769,9 @@ export class AdminService {
       activeJobStatus,
       orgId: row.org_id,
       orgName: row.org_name,
+      fleetOrgId: row.fleet_org_id,
+      fleetOrgName: row.fleet_org_name,
+      fleetRole: row.fleet_role as AdminDriverReadinessItemDto["fleetRole"],
       restaurantName: row.restaurant_name,
       restaurantSlug: row.restaurant_slug,
       lastLocationAt: toNullableIsoDateTime(row.last_location_at),

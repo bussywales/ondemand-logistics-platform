@@ -381,6 +381,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/orgs">
             Orgs
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/fleets">
+            Fleets
+          </Link>
           <button className="button button-secondary" onClick={() => void refreshBusinessSession()} type="button">
             Refresh
           </button>
@@ -433,6 +436,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/drivers">
               Driver readiness
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/fleets">
+              Fleet companies
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/orgs">
               Identity & access

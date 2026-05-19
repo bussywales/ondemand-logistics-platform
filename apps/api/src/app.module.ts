@@ -47,6 +47,8 @@ import { AdminPilotsController, BusinessPilotStatusController } from "./pilots/p
 import { PilotsService } from "./pilots/pilots.service.js";
 import { AdminIdentityController, BusinessTeamController } from "./identity/identity.controller.js";
 import { IdentityService } from "./identity/identity.service.js";
+import { AdminFleetsController, FleetController } from "./fleets/fleets.controller.js";
+import { FleetsService } from "./fleets/fleets.service.js";
 
 @Module({
   imports: [],
@@ -68,6 +70,8 @@ import { IdentityService } from "./identity/identity.service.js";
     BusinessPilotStatusController,
     AdminIdentityController,
     BusinessTeamController,
+    AdminFleetsController,
+    FleetController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -90,6 +94,7 @@ import { IdentityService } from "./identity/identity.service.js";
     SupportEscalationsService,
     PilotsService,
     IdentityService,
+    FleetsService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,

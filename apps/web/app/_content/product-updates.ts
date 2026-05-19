@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "driver-fleet-organisations-v1",
+    title: "Driver fleet organisations are available",
+    summary: "Platform admins can now create driver-company groups, add existing couriers, and review fleet readiness without changing dispatch automation.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin/fleets", "/admin/drivers", "/admin"],
+    releasedAt: "2026-05-19T13:00:00.000Z",
+    version: "v1.8",
+    ctaLabel: "Open fleet companies",
+    ctaHref: "/admin/fleets"
+  },
+  {
     id: "merchant-menu-price-editing",
     title: "Menu price editing is available",
     summary: "Restaurant operators can now update menu item details, prices, sections, and orderable state without recreating the item.",

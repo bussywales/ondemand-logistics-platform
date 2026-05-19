@@ -52,6 +52,11 @@ import type {
   DispatchAttempt,
   MenuCategorySummary,
   MenuItemSummary,
+  FleetDriver,
+  FleetDriverList,
+  FleetOrganisation,
+  FleetOrganisationList,
+  FleetReadinessSummary,
   PaymentSummary,
   ProofOfDelivery,
   ProofOfDeliveryUploadUrl,
@@ -189,6 +194,11 @@ type IdentityOrgMembersResponse = IdentityOrgMembers;
 type BusinessTeamResponse = BusinessTeam;
 type IdentityMembershipResponse = IdentityMembership;
 type IdentityInvitationResponse = IdentityInvitation;
+type FleetOrganisationListResponse = FleetOrganisationList;
+type FleetOrganisationResponse = FleetOrganisation;
+type FleetDriverListResponse = FleetDriverList;
+type FleetDriverResponse = FleetDriver;
+type FleetReadinessSummaryResponse = FleetReadinessSummary;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
@@ -1140,6 +1150,75 @@ export async function listAdminDriverReadiness(session: BusinessSession): Promis
   });
 
   return result.items;
+}
+
+export async function listAdminFleets(session: BusinessSession): Promise<FleetOrganisation[]> {
+  const result = await apiFetch<FleetOrganisationListResponse>(session, "/v1/admin/fleets", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function createAdminFleet(
+  session: BusinessSession,
+  input: { name: string; contactName?: string | null; contactEmail?: string | null; city?: string | null; status?: FleetOrganisation["status"] }
+): Promise<FleetOrganisation> {
+  return apiFetch<FleetOrganisationResponse>(session, "/v1/admin/fleets", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-fleet`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function listAdminFleetDrivers(session: BusinessSession, fleetOrgId: string): Promise<FleetDriver[]> {
+  const result = await apiFetch<FleetDriverListResponse>(session, `/v1/admin/fleets/${fleetOrgId}/drivers`, {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function addAdminFleetDriver(
+  session: BusinessSession,
+  fleetOrgId: string,
+  input: { userId?: string; driverId?: string; email?: string; role?: OrgRole }
+): Promise<FleetDriver> {
+  return apiFetch<FleetDriverResponse>(session, `/v1/admin/fleets/${fleetOrgId}/drivers`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-fleet-driver`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateAdminFleetDriver(
+  session: BusinessSession,
+  fleetOrgId: string,
+  membershipId: string,
+  input: { role?: OrgRole; isActive?: boolean }
+): Promise<FleetDriver> {
+  return apiFetch<FleetDriverResponse>(session, `/v1/admin/fleets/${fleetOrgId}/drivers/${membershipId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function listFleetDrivers(session: BusinessSession): Promise<FleetDriver[]> {
+  const result = await apiFetch<FleetDriverListResponse>(session, "/v1/fleet/drivers", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function getFleetReadiness(session: BusinessSession): Promise<FleetReadinessSummary> {
+  return apiFetch<FleetReadinessSummaryResponse>(session, "/v1/fleet/readiness", {
+    method: "GET"
+  });
 }
 
 export async function listAdminOutbox(session: BusinessSession): Promise<AdminOutboxItem[]> {

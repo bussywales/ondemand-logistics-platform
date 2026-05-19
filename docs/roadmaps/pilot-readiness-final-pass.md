@@ -16,6 +16,7 @@ Current roadmap alignment:
 - Platform Identity & Access Management is important, but it should not interrupt pilot rehearsal, guardrail, support, validation, or closeout work
 - Platform Identity & Access Management v1 now provides admin user/org visibility, org membership management, business team settings, non-destructive membership deactivation, and access-change audit records
 - Merchant Menu Editing / Price Update is now a merchant-ops readiness item because pilot restaurants must be able to correct menu prices without recreating items.
+- Driver Fleet Organisations v1 now provides driver-company groups, fleet courier membership, and fleet readiness visibility. It is management/readiness infrastructure only; it does not automate fleet billing, payout, dispatch preference, or courier suspension.
 
 ## Latest evidence used
 - release verification artifact:
@@ -95,6 +96,7 @@ Repo and staging evidence support:
 - `/admin` exists for `PLATFORM_ADMIN`
 - `/admin/command` exists as the admin-native cross-org command-intelligence view
 - `/admin/drivers` exists as the read-only courier readiness and compliance review surface
+- `/admin/fleets` exists as the platform-admin driver-company and fleet courier readiness surface
 - `/admin/users`, `/admin/orgs`, and `/admin/orgs/[orgId]/members` exist as platform-admin IAM surfaces
 - `/app/settings/team` exists as the business team management surface
 - help centre and product updates surfaces exist

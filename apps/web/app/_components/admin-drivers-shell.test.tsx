@@ -14,6 +14,9 @@ const baseDriver: AdminDriverReadinessItem = {
   activeJobStatus: null,
   orgId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
   orgName: "Pilot Org",
+  fleetOrgId: "99999999-9999-4999-8999-999999999999",
+  fleetOrgName: "Northside Couriers",
+  fleetRole: "DRIVER",
   restaurantName: null,
   restaurantSlug: null,
   lastLocationAt: "2026-05-04T08:00:00.000Z",
@@ -81,6 +84,8 @@ describe("AdminDriversView", () => {
     expect(markup).toContain("Human approval is required");
     expect(markup).toContain("No automated approval");
     expect(markup).toContain("Review before acting");
+    expect(markup).toContain("Fleet: Northside Couriers");
+    expect(markup).toContain("Fleet role");
     expect(markup).toContain("href=\"/app/jobs/44444444-4444-4444-8444-444444444444\"");
   });
 

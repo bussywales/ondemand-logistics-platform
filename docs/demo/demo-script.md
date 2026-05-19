@@ -218,6 +218,23 @@ Say:
 - approval, courier communication, and eligibility decisions remain human responsibilities
 - the surface is not a punitive driver score and does not approve, suspend, or assign couriers automatically
 
+### 9C. Fleet companies
+Open:
+- `/admin/fleets`
+
+Show:
+- driver-company organisations
+- ready, needs-review, and not-eligible courier counts
+- managed courier list for a fleet
+- fleet role and active membership controls
+- independent vs fleet-managed courier affiliation from driver readiness
+
+Say:
+- fleets are management groups for courier pools
+- independent couriers still work as individual driver profiles
+- fleet membership does not change dispatch preference, payout, billing, suspension, or assignment automation in v1
+- platform admins remain responsible for human compliance review and controlled pilot readiness
+
 ### 10. Playbooks and help
 Open:
 - `/help/pilot-operations`

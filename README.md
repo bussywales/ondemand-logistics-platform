@@ -47,6 +47,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin control plane: `/admin`
 - Admin pilot management: `/admin/pilots`
 - Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
+- Admin driver fleet organisations: `/admin/fleets`
 - Business team settings: `/app/settings/team`
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
@@ -111,6 +112,7 @@ See the full migration history in:
 
 Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, platform admin support, and identity/team management.
 Pilot management schema now tracks workspace mode, readiness stage, owners, readiness checklist evidence, and posture counts for admin-led controlled pilot review.
+Driver fleet organisations reuse the IAM organisation and membership model with `DRIVER_COMPANY` orgs and fleet roles; v1 is readiness/management visibility only, not fleet billing, payout, dispatch preference, or courier suspension automation.
 
 ## Strategic direction
 - current state: operational delivery and dispatch foundations
@@ -179,6 +181,7 @@ Next execution sequence:
 - tracking is status/progress based, not live-map movement or guaranteed ETA tracking
 - payout and reconciliation surfaces are visibility-first, not full Stripe Connect settlement automation
 - courier readiness is read-only; approval and compliance ownership remain human operational responsibilities
+- fleet organisations are management groups for courier pools; they do not automate fleet billing, payout, dispatch priority, or courier suspension in v1
 - pilot management and guardrails are soft, non-blocking context for business workspaces and admin-led review for platform admins; they warn before wrong-readiness workflows but do not disable operations in v1
 - Resend-backed external email delivery is intentionally parked until a verified sender/domain is available
 - design-system migration and legacy `globals.css` reduction remain incremental, not finished

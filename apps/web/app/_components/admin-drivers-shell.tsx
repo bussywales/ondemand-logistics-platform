@@ -149,6 +149,7 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
                         <span className={`sw-badge ${readinessTone(driver.readinessStatus)}`}>{formatStatus(driver.readinessStatus)}</span>
                         <span>{driver.availabilityStatus}</span>
                         <span>{driver.vehicleType ?? "No vehicle"}</span>
+                        {driver.fleetOrgName ? <span>Fleet: {driver.fleetOrgName}</span> : <span>Independent</span>}
                         {driver.orgName ? <span>{driver.orgName}</span> : null}
                       </div>
                       <h3>{driver.driverName}</h3>
@@ -159,6 +160,7 @@ export function AdminDriversView(props: { items: AdminDriverReadinessItem[] }) {
                   <div className="admin-fact-grid admin-detail-grid">
                     <div><span>Verification</span><strong>{formatStatus(driver.verificationStatus)}</strong></div>
                     <div><span>Active job</span><strong>{driver.activeJobId ? driver.activeJobId.slice(0, 8).toUpperCase() : "None"}</strong></div>
+                    <div><span>Fleet role</span><strong>{driver.fleetRole ? formatStatus(driver.fleetRole) : "Independent"}</strong></div>
                     <div><span>Last seen</span><strong>{driver.lastLocationAt ? formatDateTime(driver.lastLocationAt) : "Not recorded"}</strong></div>
                     <div><span>Updated</span><strong>{formatDateTime(driver.updatedAt)}</strong></div>
                   </div>
@@ -337,6 +339,9 @@ export function AdminDriversShell() {
         <div className="hero-actions">
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin">
             Back to Admin
+          </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/fleets">
+            Fleet companies
           </Link>
           <button className="button button-secondary" onClick={() => void handleRefresh()} type="button">
             Refresh

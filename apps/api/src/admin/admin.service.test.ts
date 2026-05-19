@@ -151,6 +151,9 @@ describe("AdminService", () => {
             active_job_status: null,
             org_id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
             org_name: "Pilot Org",
+            fleet_org_id: "99999999-9999-4999-8999-999999999999",
+            fleet_org_name: "Northside Couriers",
+            fleet_role: "DRIVER",
             restaurant_name: null,
             restaurant_slug: null,
             last_location_at: new Date(),
@@ -167,6 +170,9 @@ describe("AdminService", () => {
             active_job_status: null,
             org_id: null,
             org_name: null,
+            fleet_org_id: null,
+            fleet_org_name: null,
+            fleet_role: null,
             restaurant_name: null,
             restaurant_slug: null,
             last_location_at: new Date(),
@@ -183,6 +189,9 @@ describe("AdminService", () => {
             active_job_status: null,
             org_id: null,
             org_name: null,
+            fleet_org_id: null,
+            fleet_org_name: null,
+            fleet_role: null,
             restaurant_name: null,
             restaurant_slug: null,
             last_location_at: null,
@@ -199,6 +208,9 @@ describe("AdminService", () => {
             active_job_status: "ASSIGNED",
             org_id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
             org_name: "Pilot Org",
+            fleet_org_id: "99999999-9999-4999-8999-999999999999",
+            fleet_org_name: "Northside Couriers",
+            fleet_role: "DRIVER",
             restaurant_name: "Pilot Kitchen",
             restaurant_slug: "pilot-kitchen",
             last_location_at: new Date(),
@@ -221,5 +233,7 @@ describe("AdminService", () => {
     expect(readiness.items[1]?.recommendedNextAction).toContain("Review verification");
     expect(readiness.items[2]?.recommendedNextAction).toContain("go online");
     expect(readiness.items[3]?.checklist.find((item) => item.key === "no_active_blocking_job")?.result).toBe("fail");
+    expect(readiness.items[0]?.fleetOrgName).toBe("Northside Couriers");
+    expect(readiness.items[0]?.fleetRole).toBe("DRIVER");
   });
 });

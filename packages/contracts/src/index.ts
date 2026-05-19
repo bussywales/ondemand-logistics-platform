@@ -483,6 +483,9 @@ export const AdminDriverReadinessItemSchema = z.object({
   activeJobStatus: JobStatusSchema.nullable(),
   orgId: z.string().uuid().nullable(),
   orgName: z.string().nullable(),
+  fleetOrgId: z.string().uuid().nullable().optional().default(null),
+  fleetOrgName: z.string().nullable().optional().default(null),
+  fleetRole: OrgRoleSchema.nullable().optional().default(null),
   restaurantName: z.string().nullable(),
   restaurantSlug: z.string().min(2).max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).nullable(),
   lastLocationAt: z.string().nullable(),
@@ -499,6 +502,101 @@ export const AdminDriverReadinessListSchema = z.object({
   items: z.array(AdminDriverReadinessItemSchema)
 });
 export type AdminDriverReadinessListDto = z.infer<typeof AdminDriverReadinessListSchema>;
+
+export const FleetOrganisationSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(2),
+  status: OrgStatusSchema,
+  contactName: z.string().nullable(),
+  contactEmail: z.string().email().nullable(),
+  city: z.string().nullable(),
+  memberCount: z.number().int().nonnegative(),
+  activeDriverCount: z.number().int().nonnegative(),
+  readyDriverCount: z.number().int().nonnegative(),
+  needsReviewDriverCount: z.number().int().nonnegative(),
+  notEligibleDriverCount: z.number().int().nonnegative(),
+  activeJobCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type FleetOrganisationDto = z.infer<typeof FleetOrganisationSchema>;
+
+export const FleetOrganisationListSchema = z.object({
+  items: z.array(FleetOrganisationSchema)
+});
+export type FleetOrganisationListDto = z.infer<typeof FleetOrganisationListSchema>;
+
+export const CreateFleetOrganisationSchema = z.object({
+  name: z.string().min(2).max(160),
+  contactName: z.string().min(2).max(160).nullable().optional(),
+  contactEmail: z.string().email().nullable().optional(),
+  city: z.string().min(2).max(120).nullable().optional(),
+  status: OrgStatusSchema.optional().default("ONBOARDING")
+});
+export type CreateFleetOrganisationInput = z.infer<typeof CreateFleetOrganisationSchema>;
+
+export const FleetDriverSchema = z.object({
+  membershipId: z.string().uuid(),
+  fleetOrgId: z.string().uuid(),
+  fleetOrgName: z.string().min(2),
+  userId: z.string().uuid(),
+  email: z.string().email(),
+  displayName: z.string().min(2),
+  fleetRole: OrgRoleSchema,
+  membershipActive: z.boolean(),
+  driverId: z.string().uuid().nullable(),
+  availabilityStatus: DriverAvailabilityStatusSchema.nullable(),
+  verificationStatus: EligibleDriverVerificationStatusSchema,
+  vehicleType: VehicleTypeSchema.nullable(),
+  activeJobId: z.string().uuid().nullable(),
+  activeJobStatus: JobStatusSchema.nullable(),
+  lastLocationAt: IsoDateTimeSchema.nullable(),
+  readinessStatus: AdminDriverReadinessStatusSchema,
+  recommendedNextAction: z.string().min(2),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type FleetDriverDto = z.infer<typeof FleetDriverSchema>;
+
+export const FleetDriverListSchema = z.object({
+  items: z.array(FleetDriverSchema)
+});
+export type FleetDriverListDto = z.infer<typeof FleetDriverListSchema>;
+
+export const AddFleetDriverSchema = z
+  .object({
+    userId: z.string().uuid().optional(),
+    driverId: z.string().uuid().optional(),
+    email: z.string().email().optional(),
+    role: OrgRoleSchema.default("DRIVER")
+  })
+  .refine((value) => Boolean(value.userId || value.driverId || value.email), {
+    message: "fleet_driver_identifier_required"
+  });
+export type AddFleetDriverInput = z.infer<typeof AddFleetDriverSchema>;
+
+export const UpdateFleetDriverMembershipSchema = z
+  .object({
+    role: OrgRoleSchema.optional(),
+    isActive: z.boolean().optional()
+  })
+  .refine((value) => value.role !== undefined || value.isActive !== undefined, {
+    message: "fleet_membership_update_requires_fields"
+  });
+export type UpdateFleetDriverMembershipInput = z.infer<typeof UpdateFleetDriverMembershipSchema>;
+
+export const FleetReadinessSummarySchema = z.object({
+  fleetOrgId: z.string().uuid(),
+  fleetOrgName: z.string().min(2),
+  totalDrivers: z.number().int().nonnegative(),
+  readyDrivers: z.number().int().nonnegative(),
+  needsReviewDrivers: z.number().int().nonnegative(),
+  notEligibleDrivers: z.number().int().nonnegative(),
+  onlineDrivers: z.number().int().nonnegative(),
+  activeJobs: z.number().int().nonnegative(),
+  humanReviewNote: z.string().min(2)
+});
+export type FleetReadinessSummaryDto = z.infer<typeof FleetReadinessSummarySchema>;
 
 export const EligibleDriverListSchema = z.object({
   items: z.array(EligibleDriverSchema)

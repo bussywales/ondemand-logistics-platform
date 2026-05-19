@@ -13,6 +13,7 @@ import {
   BusinessNotificationListSchema,
   CancelJobSchema,
   CreateBusinessOrgSchema,
+  CreateFleetOrganisationSchema,
   CreateTeamInviteSchema,
   CreateJobRequestSchema,
   CreateProofOfDeliverySchema,
@@ -21,6 +22,9 @@ import {
   CreatePilotWorkspaceSchema,
   CustomerOrderStatusSchema,
   EligibleDriverListSchema,
+  FleetDriverListSchema,
+  FleetOrganisationListSchema,
+  FleetReadinessSummarySchema,
   JobPaymentSummarySchema,
   JobTrackingSchema,
   JobStatusSchema,
@@ -37,6 +41,8 @@ import {
   SubmitCustomerOrderResponseSchema,
   SubmitCustomerOrderSchema,
   UpdateMembershipSchema,
+  AddFleetDriverSchema,
+  UpdateFleetDriverMembershipSchema,
   UpdateMenuItemSchema,
   UpdateSupportEscalationSchema
 } from "./index.js";
@@ -171,6 +177,82 @@ describe("Menu item schemas", () => {
   it("rejects invalid or empty menu item updates", () => {
     expect(UpdateMenuItemSchema.safeParse({ priceCents: 0 }).success).toBe(false);
     expect(UpdateMenuItemSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("fleet organisation schemas", () => {
+  it("parses fleet organisations, drivers, and readiness summaries", () => {
+    const fleetId = "33333333-3333-4333-8333-333333333333";
+    const now = new Date().toISOString();
+
+    expect(CreateFleetOrganisationSchema.safeParse({ name: "Northside Couriers", contactEmail: "fleet@example.com" }).success).toBe(true);
+    expect(AddFleetDriverSchema.safeParse({ email: "driver@example.com", role: "DRIVER" }).success).toBe(true);
+    expect(AddFleetDriverSchema.safeParse({ role: "DRIVER" }).success).toBe(false);
+    expect(UpdateFleetDriverMembershipSchema.safeParse({ role: "DISPATCHER" }).success).toBe(true);
+    expect(UpdateFleetDriverMembershipSchema.safeParse({}).success).toBe(false);
+
+    const fleets = FleetOrganisationListSchema.parse({
+      items: [
+        {
+          id: fleetId,
+          name: "Northside Couriers",
+          status: "ONBOARDING",
+          contactName: null,
+          contactEmail: "fleet@example.com",
+          city: "London",
+          memberCount: 2,
+          activeDriverCount: 2,
+          readyDriverCount: 1,
+          needsReviewDriverCount: 1,
+          notEligibleDriverCount: 0,
+          activeJobCount: 0,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]
+    });
+
+    const drivers = FleetDriverListSchema.parse({
+      items: [
+        {
+          membershipId: "44444444-4444-4444-8444-444444444444",
+          fleetOrgId: fleetId,
+          fleetOrgName: "Northside Couriers",
+          userId: "22222222-2222-4222-8222-222222222222",
+          email: "driver@example.com",
+          displayName: "Fleet Driver",
+          fleetRole: "DRIVER",
+          membershipActive: true,
+          driverId: "55555555-5555-4555-8555-555555555555",
+          availabilityStatus: "ONLINE",
+          verificationStatus: "APPROVED",
+          vehicleType: "BIKE",
+          activeJobId: null,
+          activeJobStatus: null,
+          lastLocationAt: now,
+          readinessStatus: "READY",
+          recommendedNextAction: "Courier is ready after operator review.",
+          createdAt: now,
+          updatedAt: now
+        }
+      ]
+    });
+
+    const summary = FleetReadinessSummarySchema.parse({
+      fleetOrgId: fleetId,
+      fleetOrgName: "Northside Couriers",
+      totalDrivers: 1,
+      readyDrivers: 1,
+      needsReviewDrivers: 0,
+      notEligibleDrivers: 0,
+      onlineDrivers: 1,
+      activeJobs: 0,
+      humanReviewNote: "Fleet readiness is visibility-only."
+    });
+
+    expect(fleets.items[0]?.readyDriverCount).toBe(1);
+    expect(drivers.items[0]?.readinessStatus).toBe("READY");
+    expect(summary.readyDrivers).toBe(1);
   });
 });
 

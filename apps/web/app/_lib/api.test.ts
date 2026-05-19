@@ -4,6 +4,8 @@ import {
   acceptDriverOffer,
   authorizePayment,
   createProofOfDelivery,
+  addAdminFleetDriver,
+  createAdminFleet,
   createBusinessTeamInvite,
   createBusinessSupportEscalation,
   createRestaurant,
@@ -11,6 +13,7 @@ import {
   getAdminEndOfDayReport,
   getAdminPilotRehearsal,
   getAdminOrgMembers,
+  getFleetReadiness,
   getBusinessTeam,
   getBusinessDailyBriefing,
   getBusinessEndOfDayReport,
@@ -23,6 +26,8 @@ import {
   getRestaurantMenu,
   isUnauthorizedApiError,
   listAdminDriverReadiness,
+  listAdminFleetDrivers,
+  listAdminFleets,
   listAdminOrgs,
   listAdminUsers,
   listAdminPayments,
@@ -35,11 +40,13 @@ import {
   listAdminSupportEscalations,
   listAdminSupportEscalationEvents,
   listDriverOffers,
+  listFleetDrivers,
   markAllBusinessNotificationsRead,
   markBusinessNotificationRead,
   rejectDriverOffer,
   transitionDriverJob,
   updateAdminOrgMembership,
+  updateAdminFleetDriver,
   updateMenuItem,
   updateBusinessTeamMembership,
   updateBusinessSupportEscalation,
@@ -1337,5 +1344,85 @@ describe('authorizePayment', () => {
     expect((fetchMock.mock.calls[4] as [string, RequestInit])[0]).toContain('/v1/business/team');
     expect((fetchMock.mock.calls[5] as [string, RequestInit])[0]).toContain('/v1/business/team/invites');
     expect((fetchMock.mock.calls[6] as [string, RequestInit])[1].method).toBe('PATCH');
+  });
+
+  it('calls fleet organisation and fleet manager endpoints', async () => {
+    const fleet = {
+      id: '33333333-3333-4333-8333-333333333333',
+      name: 'Northside Couriers',
+      status: 'ONBOARDING',
+      contactName: 'Fleet Owner',
+      contactEmail: 'fleet@example.com',
+      city: 'London',
+      memberCount: 1,
+      activeDriverCount: 1,
+      readyDriverCount: 1,
+      needsReviewDriverCount: 0,
+      notEligibleDriverCount: 0,
+      activeJobCount: 0,
+      createdAt: '2026-05-19T10:00:00.000Z',
+      updatedAt: '2026-05-19T10:00:00.000Z'
+    };
+    const driver = {
+      membershipId: '44444444-4444-4444-8444-444444444444',
+      fleetOrgId: fleet.id,
+      fleetOrgName: fleet.name,
+      userId: '22222222-2222-4222-8222-222222222222',
+      email: 'driver@example.com',
+      displayName: 'Fleet Driver',
+      fleetRole: 'DRIVER',
+      membershipActive: true,
+      driverId: '55555555-5555-4555-8555-555555555555',
+      availabilityStatus: 'ONLINE',
+      verificationStatus: 'APPROVED',
+      vehicleType: 'BIKE',
+      activeJobId: null,
+      activeJobStatus: null,
+      lastLocationAt: '2026-05-19T10:00:00.000Z',
+      readinessStatus: 'READY',
+      recommendedNextAction: 'Courier is ready for fleet-managed pilot assignment after operator review.',
+      createdAt: '2026-05-19T10:00:00.000Z',
+      updatedAt: '2026-05-19T10:00:00.000Z'
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [fleet] }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(fleet) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [driver] }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(driver) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(driver) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [driver] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            fleetOrgId: fleet.id,
+            fleetOrgName: fleet.name,
+            totalDrivers: 1,
+            readyDrivers: 1,
+            needsReviewDrivers: 0,
+            notEligibleDrivers: 0,
+            onlineDrivers: 1,
+            activeJobs: 0,
+            humanReviewNote: 'Fleet readiness is visibility-only in v1.'
+          })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listAdminFleets(session);
+    await createAdminFleet(session, { name: fleet.name, contactEmail: fleet.contactEmail });
+    await listAdminFleetDrivers(session, fleet.id);
+    await addAdminFleetDriver(session, fleet.id, { email: driver.email, role: 'DRIVER' });
+    await updateAdminFleetDriver(session, fleet.id, driver.membershipId, { role: 'DISPATCHER' });
+    await listFleetDrivers(session);
+    await getFleetReadiness(session);
+
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[0]).toContain('/v1/admin/fleets');
+    expect((fetchMock.mock.calls[1] as [string, RequestInit])[1].method).toBe('POST');
+    expect((fetchMock.mock.calls[2] as [string, RequestInit])[0]).toContain(`/v1/admin/fleets/${fleet.id}/drivers`);
+    expect((fetchMock.mock.calls[3] as [string, RequestInit])[1].method).toBe('POST');
+    expect((fetchMock.mock.calls[4] as [string, RequestInit])[1].method).toBe('PATCH');
+    expect((fetchMock.mock.calls[5] as [string, RequestInit])[0]).toContain('/v1/fleet/drivers');
+    expect((fetchMock.mock.calls[6] as [string, RequestInit])[0]).toContain('/v1/fleet/readiness');
   });
 });

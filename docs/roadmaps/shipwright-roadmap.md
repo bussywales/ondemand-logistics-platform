@@ -14,6 +14,7 @@ ShipWright is a Stage 1 controlled-pilot logistics command centre with:
 - driver execution and proof of delivery
 - admin command intelligence
 - courier readiness
+- driver fleet organisation management
 - support escalation logging
 - support closeout workflow
 - append-only support audit history
@@ -174,24 +175,26 @@ Constraints:
 - no public checkout behaviour change beyond reading the updated menu data
 
 ## Workstream 5: Driver Fleet Organisations
-Status: Planned after IAM v1 establishes organisation, membership, and role primitives.
+Status: Implemented v1 foundation; continue hardening after controlled fleet rehearsal.
 
 Goal:
 Support driver-company-managed courier pools without weakening independent courier support.
 
-Scope:
-- driver company organisation type
-- fleet owner, fleet manager, dispatcher, driver, and compliance manager roles
-- fleet driver list
-- fleet readiness
-- driver-company-managed courier pool
-- relationship between courier profile and fleet membership
+Implemented scope:
+- driver-company organisations reuse `orgs.org_type = DRIVER_COMPANY`
+- fleet roles reuse the IAM role foundation: `FLEET_OWNER`, `FLEET_MANAGER`, `DISPATCHER`, `DRIVER`, `COMPLIANCE_MANAGER`
+- platform admins can create and review fleet organisations at `/admin/fleets`
+- platform admins can add existing users or couriers to a fleet and update fleet role/active status
+- fleet manager-scoped API exposes driver list and readiness summary for driver-company members with manager, dispatcher, owner, or compliance roles
+- admin driver readiness shows independent vs fleet-managed courier affiliation
+- fleet readiness remains compliance/readiness visibility, not dispatch preference automation
 
 Constraints:
 - no punitive driver scoring
 - no automatic courier suspension
 - no silent driver assignment autonomy
 - keep compliance and approval human-reviewed
+- no fleet billing, payout automation, or dispatch prioritisation in v1
 
 ## Workstream 6: Operational Maturity Continuation
 Status: Continue in parallel only where it strengthens pilot readiness.
@@ -272,6 +275,7 @@ Reference:
 - Resend external email remains parked until verified sender/domain exists
 - real-world courier compliance ownership remains human-reviewed
 - IAM is not yet mature enough for broad self-serve user/team management
+- fleet organisations are management groups only; they do not yet change dispatch eligibility or settlement flows
 
 ## Change Control
 - Update this roadmap when adding a major workstream or changing execution order.

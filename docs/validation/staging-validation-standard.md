@@ -56,6 +56,7 @@ The paid-delivery proof must confirm:
 - pilot workspace schema readiness remains available for admin-led pilot mode, readiness, owner, and checklist tracking
 - pilot guardrail surfaces remain non-blocking and visible on business/admin pilot routes when a pilot profile is configured
 - pilot rehearsal cockpit remains read-only and shows validation posture as unknown unless evidence is recorded through pilot checks
+- driver fleet organisation surfaces remain visibility-first and do not change dispatch preference, payout, billing, or courier suspension behavior
 - release readiness checks green
 
 The release verification must confirm:
@@ -85,6 +86,7 @@ Authenticated routes:
 - `/admin/command`
 - `/admin/users`
 - `/admin/orgs`
+- `/admin/fleets`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`
@@ -161,7 +163,7 @@ Do not merge or mark staging-ready if any of the following are true:
 - What’s New was not checked for a major user-visible feature and the release notes do not explain the omission.
 - A new release-critical schema dependency is missing from readiness or release verification.
 - A new authenticated route bypasses auth, org, driver, or platform-admin boundaries.
-- `internal_server_error` appears on staging command surfaces such as `/app`, `/app/orders`, `/app/payments`, `/app/reports/end-of-day`, `/admin`, `/admin/command`, `/admin/drivers`, or `/driver`.
+- `internal_server_error` appears on staging command surfaces such as `/app`, `/app/orders`, `/app/payments`, `/app/reports/end-of-day`, `/admin`, `/admin/command`, `/admin/drivers`, `/admin/fleets`, or `/driver`.
 - Playwright failures are hidden by weakening the app or silently skipping configured auth checks.
 
 ## Known Limitations

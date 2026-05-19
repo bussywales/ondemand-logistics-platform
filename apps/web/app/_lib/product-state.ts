@@ -967,6 +967,9 @@ export type AdminDriverReadinessItem = {
   activeJobStatus: JobStatus | null;
   orgId: string | null;
   orgName: string | null;
+  fleetOrgId?: string | null;
+  fleetOrgName?: string | null;
+  fleetRole?: OrgRole | null;
   restaurantName: string | null;
   restaurantSlug: string | null;
   lastLocationAt: string | null;
@@ -980,6 +983,65 @@ export type AdminDriverReadinessItem = {
 
 export type AdminDriverReadinessList = {
   items: AdminDriverReadinessItem[];
+};
+
+export type FleetOrganisation = {
+  id: string;
+  name: string;
+  status: OrgStatus;
+  contactName: string | null;
+  contactEmail: string | null;
+  city: string | null;
+  memberCount: number;
+  activeDriverCount: number;
+  readyDriverCount: number;
+  needsReviewDriverCount: number;
+  notEligibleDriverCount: number;
+  activeJobCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FleetOrganisationList = {
+  items: FleetOrganisation[];
+};
+
+export type FleetDriver = {
+  membershipId: string;
+  fleetOrgId: string;
+  fleetOrgName: string;
+  userId: string;
+  email: string;
+  displayName: string;
+  fleetRole: OrgRole;
+  membershipActive: boolean;
+  driverId: string | null;
+  availabilityStatus: DriverAvailabilityStatus | null;
+  verificationStatus: DriverVerificationStatus;
+  vehicleType: VehicleType | null;
+  activeJobId: string | null;
+  activeJobStatus: JobStatus | null;
+  lastLocationAt: string | null;
+  readinessStatus: AdminDriverReadinessStatus;
+  recommendedNextAction: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FleetDriverList = {
+  items: FleetDriver[];
+};
+
+export type FleetReadinessSummary = {
+  fleetOrgId: string;
+  fleetOrgName: string;
+  totalDrivers: number;
+  readyDrivers: number;
+  needsReviewDrivers: number;
+  notEligibleDrivers: number;
+  onlineDrivers: number;
+  activeJobs: number;
+  humanReviewNote: string;
 };
 
 export type AdminSystemHealth = {
