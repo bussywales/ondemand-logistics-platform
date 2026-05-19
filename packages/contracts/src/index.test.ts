@@ -13,6 +13,7 @@ import {
   BusinessNotificationListSchema,
   CancelJobSchema,
   CreateBusinessOrgSchema,
+  CreateTeamInviteSchema,
   CreateJobRequestSchema,
   CreateProofOfDeliverySchema,
   CreateQuoteSchema,
@@ -23,6 +24,8 @@ import {
   JobPaymentSummarySchema,
   JobTrackingSchema,
   JobStatusSchema,
+  IdentityOrgMembersSchema,
+  IdentityUserListSchema,
   PaginatedJobsSchema,
   PaymentStatusSchema,
   PilotReadinessCheckListSchema,
@@ -33,6 +36,7 @@ import {
   SupportEscalationListSchema,
   SubmitCustomerOrderResponseSchema,
   SubmitCustomerOrderSchema,
+  UpdateMembershipSchema,
   UpdateSupportEscalationSchema
 } from "./index.js";
 
@@ -538,6 +542,81 @@ describe("admin schemas", () => {
       recommendedNextActions: ["Run validation commands before rehearsal."],
       guidance: "Human review is required before any pilot rehearsal."
     }).success).toBe(true);
+  });
+});
+
+describe("identity and access schemas", () => {
+  const member = {
+    id: "bf835fca-017a-465d-adc1-bc5a42e311bd",
+    orgId: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+    orgName: "Pilot Org",
+    orgType: "RESTAURANT",
+    orgStatus: "ACTIVE",
+    userId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+    email: "ops@example.com",
+    displayName: "Busayo Adewale",
+    role: "OPERATOR",
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  it("parses identity user lists with memberships", () => {
+    const parsed = IdentityUserListSchema.safeParse({
+      items: [
+        {
+          id: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          email: "ops@example.com",
+          displayName: "Busayo Adewale",
+          status: "ACTIVE",
+          platformAdmin: true,
+          lastSignInAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          memberships: [member]
+        }
+      ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses organisation members, invitations, and membership updates", () => {
+    const org = {
+      id: "bd535fca-017a-465d-adc1-bc5a42e311bd",
+      name: "Pilot Org",
+      type: "RESTAURANT",
+      status: "ACTIVE",
+      contactName: null,
+      contactEmail: "ops@example.com",
+      city: "London",
+      memberCount: 1,
+      activeMemberCount: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    expect(
+      IdentityOrgMembersSchema.safeParse({
+        org,
+        members: [member],
+        invitations: [
+          {
+            id: "cf835fca-017a-465d-adc1-bc5a42e311bd",
+            orgId: org.id,
+            email: "new@example.com",
+            role: "OPERATOR",
+            status: "PENDING",
+            invitedBy: member.userId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ]
+      }).success
+    ).toBe(true);
+    expect(CreateTeamInviteSchema.safeParse({ email: "new@example.com", role: "OPERATOR" }).success).toBe(true);
+    expect(UpdateMembershipSchema.safeParse({ role: "MANAGER", isActive: false }).success).toBe(true);
+    expect(UpdateMembershipSchema.safeParse({}).success).toBe(false);
   });
 });
 

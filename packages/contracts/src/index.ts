@@ -4,9 +4,37 @@ export const OrgRoleSchema = z.enum([
   "CONSUMER",
   "DRIVER",
   "BUSINESS_OPERATOR",
-  "ADMIN"
+  "ADMIN",
+  "PLATFORM_OWNER",
+  "PLATFORM_ADMIN",
+  "PLATFORM_SUPPORT",
+  "PLATFORM_FINANCE",
+  "PLATFORM_VIEWER",
+  "OWNER",
+  "MANAGER",
+  "OPERATOR",
+  "FINANCE_VIEWER",
+  "SUPPORT_USER",
+  "MENU_MANAGER",
+  "FLEET_OWNER",
+  "FLEET_MANAGER",
+  "DISPATCHER",
+  "COMPLIANCE_MANAGER"
 ]);
 export type OrgRole = z.infer<typeof OrgRoleSchema>;
+
+export const OrgTypeSchema = z.enum([
+  "PLATFORM",
+  "RESTAURANT",
+  "RETAILER",
+  "DRIVER_COMPANY",
+  "INDEPENDENT_COURIER",
+  "SUPPORT_PARTNER"
+]);
+export type OrgType = z.infer<typeof OrgTypeSchema>;
+
+export const OrgStatusSchema = z.enum(["ACTIVE", "INACTIVE", "ONBOARDING", "SUSPENDED"]);
+export type OrgStatus = z.infer<typeof OrgStatusSchema>;
 
 export const VehicleTypeSchema = z.enum(["BIKE", "CAR"]);
 export type VehicleType = z.infer<typeof VehicleTypeSchema>;
@@ -523,6 +551,103 @@ export const BusinessContextSchema = z.object({
   )
 });
 export type BusinessContextDto = z.infer<typeof BusinessContextSchema>;
+
+export const IdentityUserStatusSchema = z.enum(["ACTIVE", "INVITED", "INACTIVE"]);
+export type IdentityUserStatus = z.infer<typeof IdentityUserStatusSchema>;
+
+export const IdentityMembershipSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  orgName: z.string().min(2),
+  orgType: OrgTypeSchema,
+  orgStatus: OrgStatusSchema,
+  userId: z.string().uuid(),
+  email: z.string().email(),
+  displayName: z.string().min(2),
+  role: OrgRoleSchema,
+  isActive: z.boolean(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type IdentityMembershipDto = z.infer<typeof IdentityMembershipSchema>;
+
+export const IdentityUserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  displayName: z.string().min(2),
+  status: IdentityUserStatusSchema,
+  platformAdmin: z.boolean(),
+  lastSignInAt: IsoDateTimeSchema.nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+  memberships: z.array(IdentityMembershipSchema)
+});
+export type IdentityUserDto = z.infer<typeof IdentityUserSchema>;
+
+export const IdentityUserListSchema = z.object({
+  items: z.array(IdentityUserSchema)
+});
+export type IdentityUserListDto = z.infer<typeof IdentityUserListSchema>;
+
+export const IdentityOrgSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(2),
+  type: OrgTypeSchema,
+  status: OrgStatusSchema,
+  contactName: z.string().nullable(),
+  contactEmail: z.string().nullable(),
+  city: z.string().nullable(),
+  memberCount: z.number().int().nonnegative(),
+  activeMemberCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type IdentityOrgDto = z.infer<typeof IdentityOrgSchema>;
+
+export const IdentityOrgListSchema = z.object({
+  items: z.array(IdentityOrgSchema)
+});
+export type IdentityOrgListDto = z.infer<typeof IdentityOrgListSchema>;
+
+export const IdentityInvitationStatusSchema = z.enum(["PENDING", "ACCEPTED", "CANCELLED"]);
+export type IdentityInvitationStatus = z.infer<typeof IdentityInvitationStatusSchema>;
+
+export const IdentityInvitationSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  email: z.string().email(),
+  role: OrgRoleSchema,
+  status: IdentityInvitationStatusSchema,
+  invitedBy: z.string().uuid().nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type IdentityInvitationDto = z.infer<typeof IdentityInvitationSchema>;
+
+export const IdentityOrgMembersSchema = z.object({
+  org: IdentityOrgSchema,
+  members: z.array(IdentityMembershipSchema),
+  invitations: z.array(IdentityInvitationSchema)
+});
+export type IdentityOrgMembersDto = z.infer<typeof IdentityOrgMembersSchema>;
+
+export const BusinessTeamSchema = IdentityOrgMembersSchema;
+export type BusinessTeamDto = z.infer<typeof BusinessTeamSchema>;
+
+export const CreateTeamInviteSchema = z.object({
+  email: z.string().email(),
+  displayName: z.string().min(2).max(160).optional(),
+  role: OrgRoleSchema
+});
+export type CreateTeamInviteInput = z.infer<typeof CreateTeamInviteSchema>;
+
+export const UpdateMembershipSchema = z.object({
+  role: OrgRoleSchema.optional(),
+  isActive: z.boolean().optional()
+}).refine((value) => value.role !== undefined || value.isActive !== undefined, {
+  message: "membership_update_requires_change"
+});
+export type UpdateMembershipInput = z.infer<typeof UpdateMembershipSchema>;
 
 export const RestaurantStatusSchema = z.enum(["DRAFT", "ACTIVE"]);
 export type RestaurantStatus = z.infer<typeof RestaurantStatusSchema>;

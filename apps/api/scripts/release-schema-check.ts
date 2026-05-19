@@ -70,7 +70,8 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     ["public", "support_escalations"],
     ["public", "support_escalation_events"],
     ["public", "pilot_workspaces"],
-    ["public", "pilot_readiness_checks"]
+    ["public", "pilot_readiness_checks"],
+    ["public", "org_invitations"]
   ] as const) {
     const exists = await tableExists(client, schema, table);
     items.push({
@@ -111,6 +112,24 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
       name: `public.${table}`,
       ok: exists,
       detail: exists ? "table_present" : "table_missing"
+    });
+  }
+
+  for (const column of ["org_type", "status"]) {
+    const exists = await columnExists(client, "public", "orgs", column);
+    items.push({
+      name: `public.orgs.${column}`,
+      ok: exists,
+      detail: exists ? "column_present" : "column_missing"
+    });
+  }
+
+  for (const column of ["email", "role", "status", "invited_by"]) {
+    const exists = await columnExists(client, "public", "org_invitations", column);
+    items.push({
+      name: `public.org_invitations.${column}`,
+      ok: exists,
+      detail: exists ? "column_present" : "column_missing"
     });
   }
 

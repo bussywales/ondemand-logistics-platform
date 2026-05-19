@@ -11,6 +11,7 @@ const BASE_TABLES = new Set([
   "support_escalation_events",
   "pilot_workspaces",
   "pilot_readiness_checks",
+  "org_invitations",
   "notification_reads",
   "platform_admins"
 ]);
@@ -25,7 +26,13 @@ const BASE_COLUMNS = new Set([
   "support_escalation_events.support_escalation_id",
   "support_escalation_events.event_type",
   "support_escalation_events.metadata",
-  "support_escalation_events.created_at"
+  "support_escalation_events.created_at",
+  "orgs.org_type",
+  "orgs.status",
+  "org_invitations.email",
+  "org_invitations.role",
+  "org_invitations.status",
+  "org_invitations.invited_by"
 ]);
 
 function buildClient(options?: {
@@ -169,6 +176,32 @@ describe("runReleaseSchemaCheck", () => {
           name: "public.pilot_workspaces",
           ok: false,
           detail: "table_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when identity access tables or columns are missing", async () => {
+    const missingTable = await runReleaseSchemaCheck(buildClient({ missingTables: ["org_invitations"] }) as never);
+    expect(missingTable.ok).toBe(false);
+    expect(missingTable.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.org_invitations",
+          ok: false,
+          detail: "table_missing"
+        })
+      ])
+    );
+
+    const missingColumn = await runReleaseSchemaCheck(buildClient({ missingColumns: ["orgs.org_type"] }) as never);
+    expect(missingColumn.ok).toBe(false);
+    expect(missingColumn.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.orgs.org_type",
+          ok: false,
+          detail: "column_missing"
         })
       ])
     );

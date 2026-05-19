@@ -1,5 +1,27 @@
 export type VehicleType = "BIKE" | "CAR";
 export type Role = "business" | "driver" | "consumer";
+export type OrgRole =
+  | "CONSUMER"
+  | "DRIVER"
+  | "BUSINESS_OPERATOR"
+  | "ADMIN"
+  | "PLATFORM_OWNER"
+  | "PLATFORM_ADMIN"
+  | "PLATFORM_SUPPORT"
+  | "PLATFORM_FINANCE"
+  | "PLATFORM_VIEWER"
+  | "OWNER"
+  | "MANAGER"
+  | "OPERATOR"
+  | "FINANCE_VIEWER"
+  | "SUPPORT_USER"
+  | "MENU_MANAGER"
+  | "FLEET_OWNER"
+  | "FLEET_MANAGER"
+  | "DISPATCHER"
+  | "COMPLIANCE_MANAGER";
+export type OrgType = "PLATFORM" | "RESTAURANT" | "RETAILER" | "DRIVER_COMPANY" | "INDEPENDENT_COURIER" | "SUPPORT_PARTNER";
+export type OrgStatus = "ACTIVE" | "INACTIVE" | "ONBOARDING" | "SUSPENDED";
 export type PaymentStatus =
   | "REQUIRES_PAYMENT_METHOD"
   | "REQUIRES_CONFIRMATION"
@@ -37,10 +59,70 @@ export type OrgMembershipSummary = {
   id: string;
   orgId: string;
   userId: string;
-  role: "BUSINESS_OPERATOR" | "ADMIN" | "CONSUMER" | "DRIVER";
+  role: OrgRole;
   isActive: boolean;
   createdAt: string;
 };
+
+export type IdentityMembership = {
+  id: string;
+  orgId: string;
+  orgName: string;
+  orgType: OrgType;
+  orgStatus: OrgStatus;
+  userId: string;
+  email: string;
+  displayName: string;
+  role: OrgRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IdentityUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  status: "ACTIVE" | "INVITED" | "INACTIVE";
+  platformAdmin: boolean;
+  lastSignInAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  memberships: IdentityMembership[];
+};
+
+export type IdentityOrg = {
+  id: string;
+  name: string;
+  type: OrgType;
+  status: OrgStatus;
+  contactName: string | null;
+  contactEmail: string | null;
+  city: string | null;
+  memberCount: number;
+  activeMemberCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IdentityInvitation = {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgRole;
+  status: "PENDING" | "ACCEPTED" | "CANCELLED";
+  invitedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IdentityOrgMembers = {
+  org: IdentityOrg;
+  members: IdentityMembership[];
+  invitations: IdentityInvitation[];
+};
+
+export type BusinessTeam = IdentityOrgMembers;
 
 export type BusinessContext = {
   userId: string;

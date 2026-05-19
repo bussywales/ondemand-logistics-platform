@@ -46,6 +46,8 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Driver execution route: `/driver`
 - Admin control plane: `/admin`
 - Admin pilot management: `/admin/pilots`
+- Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
+- Business team settings: `/app/settings/team`
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
 

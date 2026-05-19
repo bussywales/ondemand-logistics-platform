@@ -18,6 +18,7 @@ import type {
   BusinessCustomerOrder,
   BusinessCustomerOrderList,
   BusinessPilotStatus,
+  BusinessTeam,
   BusinessPaymentSummary,
   BusinessSession,
   CustomerOrderSubmission,
@@ -35,6 +36,12 @@ import type {
   UpdatePilotWorkspaceInput,
   UpdateSupportEscalationInput,
   DriverAvailabilityStatus,
+  IdentityInvitation,
+  IdentityMembership,
+  IdentityOrg,
+  IdentityOrgMembers,
+  IdentityUser,
+  OrgRole,
   EligibleDriver,
   EligibleDriverSuitabilityFlag,
   DriverJob,
@@ -172,6 +179,16 @@ type PilotReadinessCheckListResponse = PilotReadinessCheckList;
 type PilotReadinessCheckResponse = PilotReadinessCheck;
 type PilotRehearsalSummaryResponse = PilotRehearsalSummary;
 type BusinessPilotStatusResponse = BusinessPilotStatus;
+type IdentityUserListResponse = {
+  items: IdentityUser[];
+};
+type IdentityOrgListResponse = {
+  items: IdentityOrg[];
+};
+type IdentityOrgMembersResponse = IdentityOrgMembers;
+type BusinessTeamResponse = BusinessTeam;
+type IdentityMembershipResponse = IdentityMembership;
+type IdentityInvitationResponse = IdentityInvitation;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
@@ -629,6 +646,74 @@ export async function updateAdminPilotCheck(
 
 export async function getBusinessPilotStatus(session: BusinessSession): Promise<BusinessPilotStatus> {
   return apiFetch<BusinessPilotStatusResponse>(session, "/v1/business/pilot-status", { method: "GET" });
+}
+
+export async function listAdminUsers(session: BusinessSession, search?: string): Promise<IdentityUser[]> {
+  const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+  const payload = await apiFetch<IdentityUserListResponse>(session, `/v1/admin/users${query}`, { method: "GET" });
+  return payload.items;
+}
+
+export async function listAdminOrgs(session: BusinessSession, search?: string): Promise<IdentityOrg[]> {
+  const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+  const payload = await apiFetch<IdentityOrgListResponse>(session, `/v1/admin/orgs${query}`, { method: "GET" });
+  return payload.items;
+}
+
+export async function getAdminOrgMembers(session: BusinessSession, orgId: string): Promise<IdentityOrgMembers> {
+  return apiFetch<IdentityOrgMembersResponse>(session, `/v1/admin/orgs/${encodeURIComponent(orgId)}/members`, {
+    method: "GET"
+  });
+}
+
+export async function updateAdminOrgMembership(
+  session: BusinessSession,
+  orgId: string,
+  membershipId: string,
+  input: { role?: OrgRole; isActive?: boolean }
+): Promise<IdentityMembership> {
+  return apiFetch<IdentityMembershipResponse>(
+    session,
+    `/v1/admin/orgs/${encodeURIComponent(orgId)}/members/${encodeURIComponent(membershipId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-admin-membership`
+      },
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export async function getBusinessTeam(session: BusinessSession): Promise<BusinessTeam> {
+  return apiFetch<BusinessTeamResponse>(session, "/v1/business/team", { method: "GET" });
+}
+
+export async function createBusinessTeamInvite(
+  session: BusinessSession,
+  input: { email: string; displayName?: string; role: OrgRole }
+): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(session, "/v1/business/team/invites", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-team-invite`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateBusinessTeamMembership(
+  session: BusinessSession,
+  membershipId: string,
+  input: { role?: OrgRole; isActive?: boolean }
+): Promise<IdentityMembership> {
+  return apiFetch<IdentityMembershipResponse>(session, `/v1/business/team/${encodeURIComponent(membershipId)}`, {
+    method: "PATCH",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-team-membership`
+    },
+    body: JSON.stringify(input)
+  });
 }
 
 function buildSupportEscalationsQuery(filters?: {

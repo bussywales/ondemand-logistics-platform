@@ -82,7 +82,7 @@ Expected entry shape:
 - CTA link when relevant
 
 ## Workstream 3: Platform Identity & Access Management v1
-Status: Next major platform workstream after pilot rehearsal and What’s New discipline.
+Status: Implemented foundation; continue hardening with real invite delivery, richer audit views, and fleet/org policy refinement.
 
 Goal:
 Make user, organisation, membership, role, and profile management explicit enough for pilots, support operations, and future driver fleet organisations.
@@ -100,13 +100,13 @@ Planned routes:
 - `/app/settings/team`
 
 Core capabilities:
-- platform global user list
-- organisation membership management
-- restaurant/team management
-- invite user flow
-- role assignment
-- remove or deactivate membership
-- access-change audit trail
+- platform global user list: implemented at `/admin/users`
+- organisation membership management: implemented at `/admin/orgs` and `/admin/orgs/[orgId]/members`
+- restaurant/team management: implemented at `/app/settings/team`
+- invite/add member by email foundation: implemented as local invitation record plus membership creation; no external email delivery yet
+- role assignment: implemented for platform admin and business team managers
+- remove or deactivate membership: implemented as non-destructive deactivation/reactivation
+- access-change audit trail: implemented through append-only `audit_log`
 - safe role-boundary checks for platform, business, driver, and support users
 
 Organisation types to plan for:
@@ -149,6 +149,7 @@ Constraints:
 - do not loosen existing auth, RLS, or platform-admin boundaries
 - do not let IAM replace pilot guardrail or rehearsal discipline
 - every access mutation needs auditability
+- no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
 
 ## Workstream 4: Driver Fleet Organisations
 Status: Planned after IAM v1 establishes organisation, membership, and role primitives.

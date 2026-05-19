@@ -14,6 +14,7 @@ Current roadmap alignment:
 - `docs/roadmaps/shipwright-roadmap.md`
 - next execution sequence is Pilot Rehearsal Cockpit, What’s New discipline, Platform Identity & Access Management v1, Driver Fleet Organisations, then lead capture/commercial conversion backend
 - Platform Identity & Access Management is important, but it should not interrupt pilot rehearsal, guardrail, support, validation, or closeout work
+- Platform Identity & Access Management v1 now provides admin user/org visibility, org membership management, business team settings, non-destructive membership deactivation, and access-change audit records
 
 ## Latest evidence used
 - release verification artifact:
@@ -93,6 +94,8 @@ Repo and staging evidence support:
 - `/admin` exists for `PLATFORM_ADMIN`
 - `/admin/command` exists as the admin-native cross-org command-intelligence view
 - `/admin/drivers` exists as the read-only courier readiness and compliance review surface
+- `/admin/users`, `/admin/orgs`, and `/admin/orgs/[orgId]/members` exist as platform-admin IAM surfaces
+- `/app/settings/team` exists as the business team management surface
 - help centre and product updates surfaces exist
 - pilot playbooks now exist and are linked from help and admin
 - the current command surfaces are strong enough to become the base layer for assistive AI overlays later

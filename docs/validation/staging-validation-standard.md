@@ -80,8 +80,11 @@ Authenticated routes:
 - `/app/jobs/[latestJobId]`
 - `/app/payments`
 - `/app/reports/end-of-day`
+- `/app/settings/team`
 - `/admin`
 - `/admin/command`
+- `/admin/users`
+- `/admin/orgs`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`

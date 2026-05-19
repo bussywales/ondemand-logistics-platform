@@ -4,11 +4,14 @@ import {
   acceptDriverOffer,
   authorizePayment,
   createProofOfDelivery,
+  createBusinessTeamInvite,
   createBusinessSupportEscalation,
   createRestaurant,
   getAdminDailyBriefing,
   getAdminEndOfDayReport,
   getAdminPilotRehearsal,
+  getAdminOrgMembers,
+  getBusinessTeam,
   getBusinessDailyBriefing,
   getBusinessEndOfDayReport,
   getDriverAssignmentIneligibility,
@@ -20,6 +23,8 @@ import {
   getRestaurantMenu,
   isUnauthorizedApiError,
   listAdminDriverReadiness,
+  listAdminOrgs,
+  listAdminUsers,
   listAdminPayments,
   listEligibleDrivers,
   listBusinessNotifications,
@@ -34,6 +39,8 @@ import {
   markBusinessNotificationRead,
   rejectDriverOffer,
   transitionDriverJob,
+  updateAdminOrgMembership,
+  updateBusinessTeamMembership,
   updateBusinessSupportEscalation,
   updateDriverAvailability
 } from './api';
@@ -1181,5 +1188,121 @@ describe('authorizePayment', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('/v1/admin/support/escalations/2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b/events');
     expect(init.method).toBe('GET');
+  });
+
+  it('calls identity and team management endpoints', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [] }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            org: {
+              id: '22222222-2222-4222-8222-222222222222',
+              name: 'Pilot Org',
+              type: 'RESTAURANT',
+              status: 'ACTIVE',
+              contactName: null,
+              contactEmail: null,
+              city: null,
+              memberCount: 0,
+              activeMemberCount: 0,
+              createdAt: '2026-05-19T10:00:00.000Z',
+              updatedAt: '2026-05-19T10:00:00.000Z'
+            },
+            members: [],
+            invitations: []
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: '33333333-3333-4333-8333-333333333333',
+            orgId: '22222222-2222-4222-8222-222222222222',
+            orgName: 'Pilot Org',
+            orgType: 'RESTAURANT',
+            orgStatus: 'ACTIVE',
+            userId: '11111111-1111-4111-8111-111111111111',
+            email: 'operator@example.com',
+            displayName: 'Operator One',
+            role: 'MANAGER',
+            isActive: true,
+            createdAt: '2026-05-19T10:00:00.000Z',
+            updatedAt: '2026-05-19T10:00:00.000Z'
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            org: {
+              id: '22222222-2222-4222-8222-222222222222',
+              name: 'Pilot Org',
+              type: 'RESTAURANT',
+              status: 'ACTIVE',
+              contactName: null,
+              contactEmail: null,
+              city: null,
+              memberCount: 0,
+              activeMemberCount: 0,
+              createdAt: '2026-05-19T10:00:00.000Z',
+              updatedAt: '2026-05-19T10:00:00.000Z'
+            },
+            members: [],
+            invitations: []
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: '44444444-4444-4444-8444-444444444444',
+            orgId: '22222222-2222-4222-8222-222222222222',
+            email: 'new@example.com',
+            role: 'OPERATOR',
+            status: 'PENDING',
+            invitedBy: session.userId,
+            createdAt: '2026-05-19T10:00:00.000Z',
+            updatedAt: '2026-05-19T10:00:00.000Z'
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: '33333333-3333-4333-8333-333333333333',
+            orgId: '22222222-2222-4222-8222-222222222222',
+            orgName: 'Pilot Org',
+            orgType: 'RESTAURANT',
+            orgStatus: 'ACTIVE',
+            userId: '11111111-1111-4111-8111-111111111111',
+            email: 'operator@example.com',
+            displayName: 'Operator One',
+            role: 'OPERATOR',
+            isActive: false,
+            createdAt: '2026-05-19T10:00:00.000Z',
+            updatedAt: '2026-05-19T10:00:00.000Z'
+          })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listAdminUsers(session, 'ops');
+    await listAdminOrgs(session);
+    await getAdminOrgMembers(session, '22222222-2222-4222-8222-222222222222');
+    await updateAdminOrgMembership(session, '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333', { role: 'MANAGER' });
+    await getBusinessTeam(session);
+    await createBusinessTeamInvite(session, { email: 'new@example.com', role: 'OPERATOR' });
+    await updateBusinessTeamMembership(session, '33333333-3333-4333-8333-333333333333', { isActive: false });
+
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[0]).toContain('/v1/admin/users?search=ops');
+    expect((fetchMock.mock.calls[1] as [string, RequestInit])[0]).toContain('/v1/admin/orgs');
+    expect((fetchMock.mock.calls[2] as [string, RequestInit])[0]).toContain('/v1/admin/orgs/22222222-2222-4222-8222-222222222222/members');
+    expect((fetchMock.mock.calls[3] as [string, RequestInit])[1].method).toBe('PATCH');
+    expect((fetchMock.mock.calls[4] as [string, RequestInit])[0]).toContain('/v1/business/team');
+    expect((fetchMock.mock.calls[5] as [string, RequestInit])[0]).toContain('/v1/business/team/invites');
+    expect((fetchMock.mock.calls[6] as [string, RequestInit])[1].method).toBe('PATCH');
   });
 });

@@ -22,7 +22,8 @@ const requiredTables = [
   "support_escalations",
   "support_escalation_events",
   "pilot_workspaces",
-  "pilot_readiness_checks"
+  "pilot_readiness_checks",
+  "org_invitations"
 ];
 
 if (files.length < 2) {

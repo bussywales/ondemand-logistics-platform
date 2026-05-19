@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "identity-access-management-v1",
+    title: "Identity and team management is live",
+    summary: "Platform admins can now review users, organisations, and memberships while business operators manage team access from workspace settings.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/settings/team", "/admin/users", "/admin/orgs", "/admin"],
+    releasedAt: "2026-05-19T11:30:00.000Z",
+    version: "v1.7",
+    ctaLabel: "Open team settings",
+    ctaHref: "/app/settings/team"
+  },
+  {
     id: "pilot-workspaces-live",
     title: "Pilot workspaces are live",
     summary: "Admins can now track pilot mode, readiness stage, owners, and checklist progress before rehearsal or live operation.",

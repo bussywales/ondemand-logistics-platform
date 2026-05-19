@@ -121,7 +121,7 @@ test('authenticated business workspace routes smoke', async ({ page }) => {
   const signedIn = await signInOperator(page, BUSINESS_TEST_ACCOUNT);
   expect(signedIn, 'Business smoke credentials should sign in when configured.').toBe(true);
 
-  const routes = ['/app', '/app/orders', '/app/payments', '/app/reports/end-of-day'];
+  const routes = ['/app', '/app/orders', '/app/payments', '/app/reports/end-of-day', '/app/settings/team'];
   for (const route of routes) {
     await assertProtectedRouteLoads(page, route);
   }
@@ -142,6 +142,8 @@ test('authenticated admin routes smoke', async ({ page }) => {
 
   await assertProtectedRouteLoads(page, '/admin');
   await assertProtectedRouteLoads(page, '/admin/command');
+  await assertProtectedRouteLoads(page, '/admin/users');
+  await assertProtectedRouteLoads(page, '/admin/orgs');
   await assertProtectedRouteLoads(page, '/admin/pilots');
   const rehearsalLink = page.locator('a[href*="/admin/pilots/"][href$="/rehearsal"]').first();
   if (await rehearsalLink.isVisible({ timeout: 5000 }).catch(() => false)) {

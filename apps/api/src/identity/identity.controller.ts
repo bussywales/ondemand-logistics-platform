@@ -1,0 +1,60 @@
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { PlatformAdminGuard } from "../security/platform-admin.guard.js";
+import { RequestUser } from "../security/request-user.decorator.js";
+import type { AuthenticatedUser } from "../security/types.js";
+import { IdentityService } from "./identity.service.js";
+
+@UseGuards(PlatformAdminGuard)
+@Controller("v1/admin")
+export class AdminIdentityController {
+  constructor(private readonly identity: IdentityService) {}
+
+  @Get("users")
+  listUsers(@Query("search") search?: string) {
+    return this.identity.listAdminUsers(search);
+  }
+
+  @Get("orgs")
+  listOrgs(@Query("search") search?: string) {
+    return this.identity.listAdminOrgs(search);
+  }
+
+  @Get("orgs/:orgId/members")
+  getOrgMembers(@Param("orgId") orgId: string) {
+    return this.identity.getAdminOrgMembers(orgId);
+  }
+
+  @Patch("orgs/:orgId/members/:membershipId")
+  updateOrgMember(
+    @Param("orgId") orgId: string,
+    @Param("membershipId") membershipId: string,
+    @Body() body: unknown,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.identity.updateAdminMembership(orgId, membershipId, body, user);
+  }
+}
+
+@Controller("v1/business/team")
+export class BusinessTeamController {
+  constructor(private readonly identity: IdentityService) {}
+
+  @Get()
+  getTeam(@RequestUser() user: AuthenticatedUser) {
+    return this.identity.getBusinessTeam(user);
+  }
+
+  @Post("invites")
+  createInvite(@Body() body: unknown, @RequestUser() user: AuthenticatedUser) {
+    return this.identity.createBusinessInvite(body, user);
+  }
+
+  @Patch(":membershipId")
+  updateMember(
+    @Param("membershipId") membershipId: string,
+    @Body() body: unknown,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.identity.updateBusinessMembership(membershipId, body, user);
+  }
+}

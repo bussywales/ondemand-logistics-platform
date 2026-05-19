@@ -239,6 +239,11 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "updated_by",
       "updated_at"
     ]
+  },
+  identity: {
+    orgs: ["id", "name", "org_type", "status", "created_by", "created_at", "updated_at"],
+    org_memberships: ["id", "org_id", "user_id", "role", "is_active", "created_at", "updated_at"],
+    org_invitations: ["id", "org_id", "email", "role", "status", "invited_by", "created_at", "updated_at"]
   }
 } as const;
 
