@@ -244,6 +244,24 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
     orgs: ["id", "name", "org_type", "status", "created_by", "created_at", "updated_at"],
     org_memberships: ["id", "org_id", "user_id", "role", "is_active", "created_at", "updated_at"],
     org_invitations: ["id", "org_id", "email", "role", "status", "invited_by", "created_at", "updated_at"]
+  },
+  commercial: {
+    demo_requests: [
+      "id",
+      "name",
+      "email",
+      "organisation",
+      "role",
+      "interest_type",
+      "message",
+      "source",
+      "status",
+      "admin_note",
+      "reviewed_by",
+      "reviewed_at",
+      "created_at",
+      "updated_at"
+    ]
   }
 } as const;
 

@@ -264,6 +264,25 @@ describe("SchemaReadinessService", () => {
     } satisfies Partial<SchemaCompatibilityError>);
   });
 
+  it("fails when demo request persistence is missing", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows().filter((row) => row.table_name !== "demo_requests")
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter((row) => row.table_name !== "demo_requests")
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    const service = new SchemaReadinessService({ query } as never);
+
+    await expect(service.assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.demo_requests (table missing)"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
+
   it("queries post-0011 release-critical tables during readiness checks", async () => {
     const query = vi
       .fn()

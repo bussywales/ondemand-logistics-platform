@@ -22,6 +22,8 @@ export type OrgRole =
   | "COMPLIANCE_MANAGER";
 export type OrgType = "PLATFORM" | "RESTAURANT" | "RETAILER" | "DRIVER_COMPANY" | "INDEPENDENT_COURIER" | "SUPPORT_PARTNER";
 export type OrgStatus = "ACTIVE" | "INACTIVE" | "ONBOARDING" | "SUSPENDED";
+export type DemoRequestInterestType = "PILOT_MERCHANT" | "OPERATOR_PLATFORM" | "INVESTOR_PARTNER" | "OTHER";
+export type DemoRequestStatus = "NEW" | "REVIEWED" | "CONTACTED" | "QUALIFIED" | "CLOSED" | "SPAM";
 export type PaymentStatus =
   | "REQUIRES_PAYMENT_METHOD"
   | "REQUIRES_CONFIRMATION"
@@ -144,6 +146,39 @@ export type BusinessSession = {
   userId: string;
   email: string;
   context: BusinessContext;
+};
+
+export type DemoRequest = {
+  id: string;
+  name: string;
+  email: string;
+  organisation: string | null;
+  role: string | null;
+  interestType: DemoRequestInterestType;
+  message: string | null;
+  source: string | null;
+  status: DemoRequestStatus;
+  adminNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateDemoRequestInput = {
+  name: string;
+  email: string;
+  organisation?: string | null;
+  role?: string | null;
+  interestType: DemoRequestInterestType;
+  message?: string | null;
+  source?: string | null;
+  website?: string;
+};
+
+export type UpdateDemoRequestInput = {
+  status?: DemoRequestStatus;
+  adminNote?: string | null;
 };
 
 export type RestaurantStatus = "DRAFT" | "ACTIVE";

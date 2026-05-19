@@ -9,7 +9,10 @@ import type {
   AppJob,
   DailyBriefing,
   EndOfDayReport,
+  CreateDemoRequestInput,
   DispatchRecoverySuggestion,
+  DemoRequest,
+  DemoRequestStatus,
   OperationalIncidentSummary,
   CreateSupportEscalationInput,
   CreatePilotWorkspaceInput,
@@ -66,6 +69,7 @@ import type {
   RestaurantSummary,
   TimelineEvent,
   TrackingSummary,
+  UpdateDemoRequestInput,
   VehicleType
 } from "./product-state";
 import { createId } from "./product-state";
@@ -178,6 +182,10 @@ type EndOfDayReportResponse = EndOfDayReport;
 type SupportEscalationListResponse = SupportEscalationList;
 type SupportEscalationResponse = SupportEscalation;
 type SupportEscalationEventListResponse = SupportEscalationEventList;
+type DemoRequestResponse = DemoRequest;
+type DemoRequestListResponse = {
+  items: DemoRequest[];
+};
 type PilotWorkspaceListResponse = PilotWorkspaceList;
 type PilotWorkspaceResponse = PilotWorkspace;
 type PilotReadinessCheckListResponse = PilotReadinessCheckList;
@@ -1114,6 +1122,13 @@ export async function cancelJob(session: BusinessSession, jobId: string, reason:
   return toAppJob(job, tracking, payment ? { payment } : null);
 }
 
+export async function createDemoRequest(input: CreateDemoRequestInput): Promise<DemoRequest> {
+  return publicApiFetch<DemoRequestResponse>("/v1/demo-requests", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function getAdminOverview(session: BusinessSession): Promise<AdminOverview> {
   return apiFetch<AdminOverviewResponse>(session, "/v1/admin/overview", {
     method: "GET"
@@ -1150,6 +1165,26 @@ export async function listAdminDriverReadiness(session: BusinessSession): Promis
   });
 
   return result.items;
+}
+
+export async function listAdminDemoRequests(session: BusinessSession, status?: DemoRequestStatus): Promise<DemoRequest[]> {
+  const params = status ? `?status=${encodeURIComponent(status)}` : "";
+  const result = await apiFetch<DemoRequestListResponse>(session, `/v1/admin/demo-requests${params}`, {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function updateAdminDemoRequest(
+  session: BusinessSession,
+  id: string,
+  input: UpdateDemoRequestInput
+): Promise<DemoRequest> {
+  return apiFetch<DemoRequestResponse>(session, `/v1/admin/demo-requests/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
 }
 
 export async function listAdminFleets(session: BusinessSession): Promise<FleetOrganisation[]> {

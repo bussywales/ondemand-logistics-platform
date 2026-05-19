@@ -218,11 +218,11 @@ Constraints:
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
 ## Workstream 7: Commercial Conversion Layer
-Status: Planned after IAM and fleet organisation sequencing is clear, unless needed for an immediate demo commitment.
+Status: In progress. Demo request persistence and admin review are the first v1 commercial intake step.
 
 Scope:
 - real demo request persistence
-- lead capture
+- lead capture and admin review
 - email or webhook integration
 - admin lead view
 - analytics/conversion tracking
@@ -230,7 +230,8 @@ Scope:
 
 Current posture:
 - public landing page includes a demo request path
-- capture is intentionally lightweight until persistence and handoff are designed
+- demo requests are persisted for platform admin review
+- email, CRM, webhook, analytics, and pricing-package workflows remain deferred
 
 Constraints:
 - do not imply CRM/email automation is live until it is wired and verified

@@ -12,6 +12,7 @@ const BASE_TABLES = new Set([
   "pilot_workspaces",
   "pilot_readiness_checks",
   "org_invitations",
+  "demo_requests",
   "notification_reads",
   "platform_admins"
 ]);
@@ -32,7 +33,13 @@ const BASE_COLUMNS = new Set([
   "org_invitations.email",
   "org_invitations.role",
   "org_invitations.status",
-  "org_invitations.invited_by"
+  "org_invitations.invited_by",
+  "demo_requests.email",
+  "demo_requests.interest_type",
+  "demo_requests.status",
+  "demo_requests.admin_note",
+  "demo_requests.reviewed_by",
+  "demo_requests.reviewed_at"
 ]);
 
 function buildClient(options?: {
@@ -200,6 +207,32 @@ describe("runReleaseSchemaCheck", () => {
       expect.arrayContaining([
         expect.objectContaining({
           name: "public.orgs.org_type",
+          ok: false,
+          detail: "column_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when demo request persistence is missing", async () => {
+    const missingTable = await runReleaseSchemaCheck(buildClient({ missingTables: ["demo_requests"] }) as never);
+    expect(missingTable.ok).toBe(false);
+    expect(missingTable.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.demo_requests",
+          ok: false,
+          detail: "table_missing"
+        })
+      ])
+    );
+
+    const missingColumn = await runReleaseSchemaCheck(buildClient({ missingColumns: ["demo_requests.reviewed_by"] }) as never);
+    expect(missingColumn.ok).toBe(false);
+    expect(missingColumn.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.demo_requests.reviewed_by",
           ok: false,
           detail: "column_missing"
         })

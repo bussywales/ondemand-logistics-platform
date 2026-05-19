@@ -53,6 +53,7 @@ Configuration:
   - `LATEST_ORDER_ID`
 - Authenticated workspace/admin/driver/fleet-manager smoke requires credentials and is skipped otherwise.
 - Admin browser smoke includes `/admin`, `/admin/command`, and `/admin/drivers`.
+- Admin browser smoke should include `/admin/demo-requests` when commercial intake changes.
 - Fleet-manager browser smoke includes `/fleet` with a dedicated `FLEET_MANAGER` smoke account.
 - Required/used auth variables:
   - `SMOKE_BUSINESS_EMAIL`, `SMOKE_BUSINESS_PASSWORD`
@@ -95,6 +96,7 @@ For every major user-visible delivery:
    - `payments`
    - `jobs`
    - `outbox_messages`
+   - `demo_requests`
    - `customer_orders.status` supports `FULFILLED`
 4. optional business smoke when `SMOKE_BUSINESS_BEARER_TOKEN` is set:
    - `GET /v1/business/restaurants`

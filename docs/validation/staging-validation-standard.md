@@ -57,6 +57,7 @@ The paid-delivery proof must confirm:
 - pilot guardrail surfaces remain non-blocking and visible on business/admin pilot routes when a pilot profile is configured
 - pilot rehearsal cockpit remains read-only and shows validation posture as unknown unless evidence is recorded through pilot checks
 - driver fleet organisation surfaces remain visibility-first and do not change dispatch preference, payout, billing, or courier suspension behavior
+- demo request persistence remains available for public commercial intake and platform-admin review
 - release readiness checks green
 
 The release verification must confirm:
@@ -87,6 +88,7 @@ Authenticated routes:
 - `/admin/users`
 - `/admin/orgs`
 - `/admin/fleets`
+- `/admin/demo-requests`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`
@@ -94,6 +96,8 @@ Authenticated routes:
 - `/driver`
 
 Browser smoke must validate both unauthenticated and authenticated surfaces when smoke credentials are configured.
+
+Commercial intake smoke should also check `/demo/request` structurally when demo request capture changes. A staging verification may submit one non-sensitive test request and confirm it appears in `/admin/demo-requests`.
 
 ## Smoke Users
 Use dedicated staging-only smoke accounts. Document roles, not secrets:

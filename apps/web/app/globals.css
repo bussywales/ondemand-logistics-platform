@@ -12137,6 +12137,16 @@ select:hover,
   resize: vertical;
 }
 
+.demo-request-honeypot {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .demo-request-note {
   border: 1px solid rgba(201, 134, 63, 0.18);
   border-radius: 20px;
@@ -12145,6 +12155,25 @@ select:hover,
   background: rgba(255, 247, 235, 0.74);
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.demo-request-status {
+  margin: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  padding: 0.9rem 1rem;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.demo-request-status-success {
+  background: rgba(236, 253, 245, 0.72);
+  color: #166144;
+}
+
+.demo-request-status-error {
+  background: rgba(254, 242, 242, 0.72);
+  color: #8f2f2f;
 }
 
 .demo-request-actions {

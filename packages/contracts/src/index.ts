@@ -1765,6 +1765,69 @@ export const SupportEscalationEventListSchema = z.object({
 });
 export type SupportEscalationEventListDto = z.infer<typeof SupportEscalationEventListSchema>;
 
+export const DemoRequestInterestTypeSchema = z.enum([
+  "PILOT_MERCHANT",
+  "OPERATOR_PLATFORM",
+  "INVESTOR_PARTNER",
+  "OTHER"
+]);
+export type DemoRequestInterestType = z.infer<typeof DemoRequestInterestTypeSchema>;
+
+export const DemoRequestStatusSchema = z.enum([
+  "NEW",
+  "REVIEWED",
+  "CONTACTED",
+  "QUALIFIED",
+  "CLOSED",
+  "SPAM"
+]);
+export type DemoRequestStatus = z.infer<typeof DemoRequestStatusSchema>;
+
+export const DemoRequestSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(2),
+  email: z.string().email(),
+  organisation: z.string().nullable(),
+  role: z.string().nullable(),
+  interestType: DemoRequestInterestTypeSchema,
+  message: z.string().nullable(),
+  source: z.string().nullable(),
+  status: DemoRequestStatusSchema,
+  adminNote: z.string().nullable(),
+  reviewedBy: z.string().uuid().nullable(),
+  reviewedAt: IsoDateTimeSchema.nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type DemoRequestDto = z.infer<typeof DemoRequestSchema>;
+
+export const CreateDemoRequestSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+  organisation: z.string().trim().min(2).max(160).nullable().optional(),
+  role: z.string().trim().min(2).max(120).nullable().optional(),
+  interestType: DemoRequestInterestTypeSchema,
+  message: z.string().trim().min(3).max(2000).nullable().optional(),
+  source: z.string().trim().min(2).max(80).nullable().optional(),
+  website: z.string().max(200).optional()
+});
+export type CreateDemoRequestInput = z.infer<typeof CreateDemoRequestSchema>;
+
+export const UpdateDemoRequestSchema = z
+  .object({
+    status: DemoRequestStatusSchema.optional(),
+    adminNote: z.string().trim().min(2).max(2000).nullable().optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "demo_request_update_required"
+  });
+export type UpdateDemoRequestInput = z.infer<typeof UpdateDemoRequestSchema>;
+
+export const DemoRequestListSchema = z.object({
+  items: z.array(DemoRequestSchema)
+});
+export type DemoRequestListDto = z.infer<typeof DemoRequestListSchema>;
+
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;
 

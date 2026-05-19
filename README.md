@@ -48,10 +48,19 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin pilot management: `/admin/pilots`
 - Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
 - Admin driver fleet organisations: `/admin/fleets`
+- Admin demo requests: `/admin/demo-requests`
 - Fleet manager workspace: `/fleet`
 - Business team settings: `/app/settings/team`
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
+
+## Commercial intake
+Public demo and controlled-pilot requests are captured through:
+- `/demo/request`
+- API: `POST /v1/demo-requests`
+- admin review: `/admin/demo-requests`
+
+Demo request capture is persistence-only in v1. It does not send email, sync a CRM, or promise automatic follow-up.
 
 ## What’s New Entries
 Product update entries live in:

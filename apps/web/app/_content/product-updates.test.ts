@@ -17,6 +17,7 @@ describe("product updates content", () => {
   it("includes the current key product updates", () => {
     expect(productUpdates.map((update) => update.id)).toEqual(
       expect.arrayContaining([
+        "demo-request-persistence",
         "fleet-manager-workspace",
         "driver-fleet-organisations-v1",
         "merchant-menu-price-editing",

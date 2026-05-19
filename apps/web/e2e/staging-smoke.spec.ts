@@ -119,6 +119,13 @@ test('public tracking smoke opens latest order', async ({ page }) => {
   ).toBeVisible({ timeout: 10000 });
 });
 
+test('public demo request page smoke', async ({ page }) => {
+  await page.goto('/demo/request', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { name: /guided shipwright operations walkthrough/i })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('button', { name: /submit demo request/i })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/Requests are recorded for admin review/i)).toBeVisible();
+});
+
 test('authenticated business workspace routes smoke', async ({ page }) => {
   test.skip(
     !BUSINESS_TEST_ACCOUNT.email || !BUSINESS_TEST_ACCOUNT.password,
@@ -152,6 +159,7 @@ test('authenticated admin routes smoke', async ({ page }) => {
   await assertProtectedRouteLoads(page, '/admin/users');
   await assertProtectedRouteLoads(page, '/admin/orgs');
   await assertProtectedRouteLoads(page, '/admin/fleets');
+  await assertProtectedRouteLoads(page, '/admin/demo-requests');
   await assertProtectedRouteLoads(page, '/admin/pilots');
   const rehearsalLink = page.locator('a[href*="/admin/pilots/"][href$="/rehearsal"]').first();
   if (await rehearsalLink.isVisible({ timeout: 5000 }).catch(() => false)) {

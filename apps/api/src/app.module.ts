@@ -49,6 +49,8 @@ import { AdminIdentityController, BusinessTeamController } from "./identity/iden
 import { IdentityService } from "./identity/identity.service.js";
 import { AdminFleetsController, FleetController } from "./fleets/fleets.controller.js";
 import { FleetsService } from "./fleets/fleets.service.js";
+import { AdminDemoRequestsController, PublicDemoRequestsController } from "./demo-requests/demo-requests.controller.js";
+import { DemoRequestsService } from "./demo-requests/demo-requests.service.js";
 
 @Module({
   imports: [],
@@ -72,6 +74,8 @@ import { FleetsService } from "./fleets/fleets.service.js";
     BusinessTeamController,
     AdminFleetsController,
     FleetController,
+    PublicDemoRequestsController,
+    AdminDemoRequestsController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -95,6 +99,7 @@ import { FleetsService } from "./fleets/fleets.service.js";
     PilotsService,
     IdentityService,
     FleetsService,
+    DemoRequestsService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,
