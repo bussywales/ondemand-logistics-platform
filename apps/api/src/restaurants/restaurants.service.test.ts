@@ -481,6 +481,42 @@ describe("RestaurantsService", () => {
     expect(pg.query.mock.calls[3]?.[0]).toContain("insert into public.audit_log");
   });
 
+  it("updates a menu category display order under the current restaurant", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [categoryRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [categoryRow({ sort_order: 2, updated_at: new Date().toISOString() })]
+        })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.updateMenuCategory(RESTAURANT_ID, CATEGORY_ID, { sortOrder: 2 }, USER_ID);
+
+    expect(result.sortOrder).toBe(2);
+    expect(pg.query.mock.calls[2]?.[0]).toContain("update public.menu_categories");
+    expect(pg.query.mock.calls[3]?.[0]).toContain("insert into public.audit_log");
+  });
+
+  it("rejects cross-restaurant menu category updates", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+
+    await expect(service.updateMenuCategory(RESTAURANT_ID, CATEGORY_ID, { sortOrder: 1 }, USER_ID)).rejects.toThrow(
+      new NotFoundException("menu_category_not_found")
+    );
+  });
+
   it("rejects invalid menu item prices", async () => {
     const service = new RestaurantsService({ query: vi.fn() } as never, {} as never);
 
@@ -570,6 +606,9 @@ describe("RestaurantsService", () => {
     const result = await service.getPublicRestaurantMenu("Pilot Kitchen");
 
     expect(pg.query).toHaveBeenNthCalledWith(1, expect.stringContaining("status = 'ACTIVE'"), ["pilot-kitchen"]);
+    expect(pg.query.mock.calls[1]?.[0]).toContain("order by sort_order asc");
+    expect(pg.query.mock.calls[2]?.[0]).toContain("and is_active = true");
+    expect(pg.query.mock.calls[2]?.[0]).toContain("order by sort_order asc");
     expect(result).toEqual({
       restaurant: {
         id: RESTAURANT_ID,
@@ -595,6 +634,36 @@ describe("RestaurantsService", () => {
         }
       ]
     });
+  });
+
+  it("keeps public menu section and item order from display order queries", async () => {
+    const drinksCategoryId = "4b5e98ce-d8a8-4c89-8990-6c143d099f71";
+    const dessertItemId = "1d9f782a-3575-4e6b-8d65-463a1829f5f9";
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 2,
+          rows: [
+            categoryRow({ id: drinksCategoryId, name: "Drinks", sort_order: 0 }),
+            categoryRow({ id: CATEGORY_ID, name: "Mains", sort_order: 1 })
+          ]
+        })
+        .mockResolvedValueOnce({
+          rowCount: 2,
+          rows: [
+            itemRow({ id: dessertItemId, category_id: CATEGORY_ID, name: "Brownie", sort_order: 0 }),
+            itemRow({ id: ITEM_ID, category_id: CATEGORY_ID, name: "Chicken Wrap", sort_order: 1 })
+          ]
+        })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.getPublicRestaurantMenu("pilot-kitchen");
+
+    expect(result.categories.map((category) => category.name)).toEqual(["Drinks", "Mains"]);
+    expect(result.categories[1]?.items.map((item) => item.name)).toEqual(["Brownie", "Chicken Wrap"]);
   });
 
   it("returns a safe empty public menu when no active categories or items exist", async () => {

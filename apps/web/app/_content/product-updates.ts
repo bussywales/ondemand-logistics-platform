@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "merchant-menu-availability-reordering",
+    title: "Menu availability and ordering controls improved",
+    summary: "Restaurant operators can now see clearer live/hidden item status and reorder menu sections or items without manually managing display numbers.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/restaurant", "/restaurants"],
+    releasedAt: "2026-05-20T18:30:00.000Z",
+    version: "v2.2",
+    ctaLabel: "Manage restaurant menu",
+    ctaHref: "/app/restaurant"
+  },
+  {
     id: "operational-reset-tools",
     title: "Operational reset tools are available",
     summary: "Platform admins can now preview and record non-destructive staging/demo tidy actions without deleting audit evidence or proof history.",

@@ -50,6 +50,16 @@ export class RestaurantsController {
     return result.body;
   }
 
+  @Patch(":restaurantId/menu-categories/:categoryId")
+  async updateMenuCategory(
+    @Param("restaurantId") restaurantId: string,
+    @Param("categoryId") categoryId: string,
+    @Body() body: unknown,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.restaurantsService.updateMenuCategory(restaurantId, categoryId, body, user.id);
+  }
+
   @Post(":restaurantId/menu-items")
   @HttpCode(201)
   async createMenuItem(

@@ -51,6 +51,7 @@ import {
   executeAdminOperationalReset,
   updateAdminOrgMembership,
   updateAdminFleetDriver,
+  updateMenuCategory,
   updateMenuItem,
   updateBusinessTeamMembership,
   updateBusinessSupportEscalation,
@@ -227,6 +228,32 @@ describe('authorizePayment', () => {
     expect(init.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.stringMatching(/^idem-[0-9a-f-]+-menu-item-update$/) }));
     expect(init.body).toBe(JSON.stringify({ name: 'Chicken Wrap Meal', priceCents: 1499 }));
     expect(item.priceCents).toBe(1499);
+  });
+
+  it('patches menu category order through the business restaurant endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          id: 'category-1',
+          restaurantId: 'restaurant-1',
+          name: 'Drinks',
+          sortOrder: 1,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const category = await updateMenuCategory(session, 'restaurant-1', 'category-1', { sortOrder: 1 });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-categories/category-1');
+    expect(init.method).toBe('PATCH');
+    expect(init.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.stringMatching(/^idem-[0-9a-f-]+-menu-category-update$/) }));
+    expect(init.body).toBe(JSON.stringify({ sortOrder: 1 }));
+    expect(category.sortOrder).toBe(1);
   });
 
   it('reads a public restaurant menu by slug without bearer auth', async () => {

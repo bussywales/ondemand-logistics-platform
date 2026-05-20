@@ -55,7 +55,29 @@ describe("EditableMenuItemRow", () => {
 
     expect(html).toContain("Chicken wrap");
     expect(html).toContain("£12.99");
+    expect(html).toContain("Live");
+    expect(html).toContain("Move up");
+    expect(html).toContain("Move down");
     expect(html).toContain("Edit");
+  });
+
+  it("renders hidden item availability clearly", () => {
+    const html = renderToStaticMarkup(
+      <EditableMenuItemRow
+        categories={categories}
+        editForm={null}
+        isEditing={false}
+        item={{ ...item, isActive: false }}
+        onCancel={vi.fn()}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        onStartEdit={vi.fn()}
+        saving={false}
+      />
+    );
+
+    expect(html).toContain("Hidden");
+    expect(html).toContain("Hidden from public menu");
   });
 
   it("renders the structured menu item edit form with price controls", () => {
@@ -88,7 +110,7 @@ describe("EditableMenuItemRow", () => {
     expect(html).toContain("Price");
     expect(html).toContain("14.99");
     expect(html).toContain("Save item");
-    expect(html).toContain("Orderable on the public menu");
+    expect(html).toContain("Show this item as orderable on the public menu");
   });
 
   it("renders a visible save error while keeping the edit form open", () => {

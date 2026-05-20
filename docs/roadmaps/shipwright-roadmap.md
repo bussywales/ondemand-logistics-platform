@@ -158,8 +158,8 @@ Constraints:
 - every access mutation needs auditability
 - no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
 
-## Workstream 4: Merchant Menu Editing / Price Update
-Status: Implemented as a priority merchant-ops fix after IAM v1.
+## Workstream 4: Merchant Menu Operations
+Status: Implemented through v1.2 for price editing, availability clarity, and simple reordering.
 
 Goal:
 Make restaurant menu management complete enough for controlled pilots by allowing authorised business users to update existing menu item details, especially price.
@@ -167,9 +167,13 @@ Make restaurant menu management complete enough for controlled pilots by allowin
 Implemented scope:
 - business operators can edit menu item name, description, price, section, display order, and orderable state from `/app/restaurant`
 - backend exposes a scoped menu item update endpoint
+- backend exposes a scoped menu category update endpoint for section ordering and active-state updates
 - menu item price validation requires positive integer pence values
 - item and category updates remain scoped to the operator restaurant/org
+- operators can reorder sections and items with Move up / Move down controls instead of manually calculating display order
+- operators can see clear Live / Hidden / Draft availability posture for menu items
 - public restaurant menus read updated menu item data after refresh
+- public restaurant menus only expose active restaurants, active sections, and active menu items, ordered by display order
 - menu item updates write audit records with changed field names
 
 Constraints:

@@ -16,6 +16,7 @@ import {
   ApiRequestError,
   getRestaurantMenu,
   listRestaurants,
+  updateMenuCategory,
   updateMenuItem
 } from "../_lib/api";
 import {
@@ -206,29 +207,84 @@ function menuItemToEditForm(item: MenuItemSummary): MenuItemEditForm {
   };
 }
 
+function getMenuItemStatus(item: MenuItemSummary) {
+  if (!item.name.trim() || item.priceCents <= 0) {
+    return {
+      label: "Draft",
+      className: "sw-badge sw-badge--warning",
+      copy: "Draft / incomplete"
+    };
+  }
+
+  if (!item.isActive) {
+    return {
+      label: "Hidden",
+      className: "sw-badge sw-badge--neutral",
+      copy: "Hidden from public menu"
+    };
+  }
+
+  return {
+    label: "Live",
+    className: "sw-badge sw-badge--success",
+    copy: "Live on public menu"
+  };
+}
+
+function moveListItem<T extends { id: string }>(items: T[], itemId: string, direction: "up" | "down") {
+  const index = items.findIndex((item) => item.id === itemId);
+  if (index < 0) {
+    return items;
+  }
+
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= items.length) {
+    return items;
+  }
+
+  const next = [...items];
+  const current = next[index];
+  next[index] = next[targetIndex];
+  next[targetIndex] = current;
+  return next;
+}
+
 export function EditableMenuItemRow({
+  canMoveDown,
+  canMoveUp,
   categories,
   editForm,
   item,
   isEditing,
+  reordering,
   saving,
   saveError,
   onCancel,
   onChange,
+  onMoveDown,
+  onMoveUp,
   onSave,
   onStartEdit
 }: {
+  canMoveDown?: boolean;
+  canMoveUp?: boolean;
   categories: RestaurantMenu["categories"];
   editForm: MenuItemEditForm | null;
   item: MenuItemSummary;
   isEditing: boolean;
+  reordering?: boolean;
   saving: boolean;
   saveError?: string | null;
   onCancel: () => void;
   onChange: (form: MenuItemEditForm) => void;
+  onMoveDown?: (item: MenuItemSummary) => void;
+  onMoveUp?: (item: MenuItemSummary) => void;
   onSave: (event: React.FormEvent<HTMLFormElement>) => void;
   onStartEdit: (item: MenuItemSummary) => void;
 }) {
+  const itemStatus = getMenuItemStatus(item);
+  const controlsDisabled = saving || Boolean(reordering);
+
   return (
     <article className="merchant-menu-item">
       {isEditing && editForm ? (
@@ -283,8 +339,11 @@ export function EditableMenuItemRow({
                   onChange={(event) => onChange({ ...editForm, isActive: event.target.checked })}
                   type="checkbox"
                 />
-                <span>Orderable on the public menu</span>
+                <span>Show this item as orderable on the public menu</span>
               </label>
+              <p className="merchant-field-hint">
+                Turn this off when an item is sold out or not ready for customers.
+              </p>
             </fieldset>
 
             <fieldset className="merchant-menu-edit-section">
@@ -339,8 +398,27 @@ export function EditableMenuItemRow({
           </div>
           <div className="merchant-menu-item-actions">
             <strong>{formatCurrency(item.priceCents, item.currency)}</strong>
-            <span>{item.isActive ? "Orderable" : "Hidden"}</span>
-            <button className="button button-secondary" onClick={() => onStartEdit(item)} type="button">
+            <span className={itemStatus.className}>{itemStatus.label}</span>
+            <small>{itemStatus.copy}</small>
+            <div className="merchant-menu-item-controls">
+              <button
+                className="button button-secondary"
+                disabled={!canMoveUp || controlsDisabled}
+                onClick={() => onMoveUp?.(item)}
+                type="button"
+              >
+                Move up
+              </button>
+              <button
+                className="button button-secondary"
+                disabled={!canMoveDown || controlsDisabled}
+                onClick={() => onMoveDown?.(item)}
+                type="button"
+              >
+                Move down
+              </button>
+            </div>
+            <button className="button button-secondary" disabled={controlsDisabled} onClick={() => onStartEdit(item)} type="button">
               Edit
             </button>
           </div>
@@ -366,6 +444,7 @@ export function RestaurantSetupShell() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingSubmitting, setEditingSubmitting] = useState(false);
   const [editForm, setEditForm] = useState<MenuItemEditForm | null>(null);
+  const [reorderingKey, setReorderingKey] = useState<string | null>(null);
   const [restaurantForm, setRestaurantForm] = useState({ name: "", slug: "", slugManuallyEdited: false });
   const [categoryForm, setCategoryForm] = useState({ name: "", sortOrder: 0 });
   const [itemForm, setItemForm] = useState({
@@ -605,6 +684,68 @@ export function RestaurantSetupShell() {
       setEditError(mapMenuWriteError(issue, "Could not update menu item."));
     } finally {
       setEditingSubmitting(false);
+    }
+  }
+
+  async function handleMoveCategory(categoryId: string, direction: "up" | "down") {
+    if (!session || !selectedRestaurantId || !menu || reorderingKey) {
+      return;
+    }
+
+    const reordered = moveListItem(menu.categories, categoryId, direction);
+    if (reordered === menu.categories) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setReorderingKey(`category-${categoryId}`);
+
+    try {
+      await Promise.all(
+        reordered.map((category, index) =>
+          category.sortOrder === index
+            ? Promise.resolve()
+            : updateMenuCategory(session, selectedRestaurantId, category.id, { sortOrder: index })
+        )
+      );
+      await loadMenu(session, selectedRestaurantId);
+      setSuccess("Menu section order updated.");
+    } catch (issue) {
+      setError(mapMenuWriteError(issue, "Could not reorder menu sections. Refresh and try again."));
+    } finally {
+      setReorderingKey(null);
+    }
+  }
+
+  async function handleMoveItem(category: RestaurantMenu["categories"][number], itemId: string, direction: "up" | "down") {
+    if (!session || !selectedRestaurantId || reorderingKey) {
+      return;
+    }
+
+    const reordered = moveListItem(category.items, itemId, direction);
+    if (reordered === category.items) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setReorderingKey(`item-${itemId}`);
+
+    try {
+      await Promise.all(
+        reordered.map((item, index) =>
+          item.sortOrder === index
+            ? Promise.resolve()
+            : updateMenuItem(session, selectedRestaurantId, item.id, { sortOrder: index })
+        )
+      );
+      await loadMenu(session, selectedRestaurantId);
+      setSuccess("Menu item order updated.");
+    } catch (issue) {
+      setError(mapMenuWriteError(issue, "Could not reorder menu items. Refresh and try again."));
+    } finally {
+      setReorderingKey(null);
     }
   }
 
@@ -914,7 +1055,7 @@ export function RestaurantSetupShell() {
                   />
                 </label>
                 <label>
-                  <span>Display order</span>
+                  <span>Initial position</span>
                   <input
                     disabled={!selectedRestaurant || categorySubmitting}
                     min="0"
@@ -925,6 +1066,7 @@ export function RestaurantSetupShell() {
                     type="number"
                     value={categoryForm.sortOrder}
                   />
+                  <small>Operators can reorder sections later with Move up / Move down.</small>
                 </label>
                 <div className="merchant-actions">
                   <button
@@ -1034,9 +1176,12 @@ export function RestaurantSetupShell() {
           <section className="sw-supporting-surface merchant-menu-preview">
             <div className="merchant-preview-heading">
               <div>
-                <p className="eyebrow">Step 4</p>
-                <h2>{selectedRestaurant?.name ?? "Menu review"}</h2>
-                <p>Review the structure customers will browse before checkout.</p>
+                  <p className="eyebrow">Step 4</p>
+                  <h2>Manage existing menu</h2>
+                  <p>
+                    Review availability, section order, and item order before customers browse{" "}
+                    {selectedRestaurant?.name ?? "the public menu"}.
+                  </p>
               </div>
               <div className="merchant-preview-actions">
                 {refreshing ? <span className="support-note">Refreshing...</span> : null}
@@ -1066,16 +1211,34 @@ export function RestaurantSetupShell() {
               </div>
             ) : (
               <div className="merchant-menu-composition">
-                {menu.categories.map((category) => (
+                {menu.categories.map((category, categoryIndex) => (
                   <section className="merchant-menu-category" key={category.id}>
                     <div className="merchant-menu-category-header">
                       <div>
                         <strong>{category.name}</strong>
-                        <p>Display order {category.sortOrder}</p>
+                        <p>Position {categoryIndex + 1}</p>
                       </div>
-                      <span className={category.isActive ? "sw-badge sw-badge--success" : "sw-badge sw-badge--neutral"}>
-                        {category.isActive ? "Live" : "Inactive"}
-                      </span>
+                      <div className="merchant-category-actions">
+                        <span className={category.isActive ? "sw-badge sw-badge--success" : "sw-badge sw-badge--neutral"}>
+                          {category.isActive ? "Live" : "Inactive"}
+                        </span>
+                        <button
+                          className="button button-secondary"
+                          disabled={categoryIndex === 0 || Boolean(reorderingKey)}
+                          onClick={() => handleMoveCategory(category.id, "up")}
+                          type="button"
+                        >
+                          Move up
+                        </button>
+                        <button
+                          className="button button-secondary"
+                          disabled={categoryIndex === menu.categories.length - 1 || Boolean(reorderingKey)}
+                          onClick={() => handleMoveCategory(category.id, "down")}
+                          type="button"
+                        >
+                          Move down
+                        </button>
+                      </div>
                     </div>
 
                     {category.items.length === 0 ? (
@@ -1088,8 +1251,10 @@ export function RestaurantSetupShell() {
                       </div>
                     ) : (
                       <div className="merchant-menu-items">
-                        {category.items.map((item) => (
+                        {category.items.map((item, itemIndex) => (
                           <EditableMenuItemRow
+                            canMoveDown={itemIndex < category.items.length - 1}
+                            canMoveUp={itemIndex > 0}
                             categories={menu.categories}
                             editForm={editForm}
                             isEditing={editingItemId === item.id}
@@ -1097,8 +1262,11 @@ export function RestaurantSetupShell() {
                             key={item.id}
                             onCancel={handleCancelEditItem}
                             onChange={setEditForm}
+                            onMoveDown={() => handleMoveItem(category, item.id, "down")}
+                            onMoveUp={() => handleMoveItem(category, item.id, "up")}
                             onSave={handleUpdateItem}
                             onStartEdit={handleStartEditItem}
+                            reordering={reorderingKey === `item-${item.id}`}
                             saveError={editingItemId === item.id ? editError : null}
                             saving={editingSubmitting}
                           />

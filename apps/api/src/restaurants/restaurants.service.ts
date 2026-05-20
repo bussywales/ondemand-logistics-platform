@@ -23,6 +23,7 @@ import {
   SubmitCustomerOrderResponseSchema,
   SubmitCustomerOrderSchema,
   UpdateMenuItemSchema,
+  UpdateMenuCategorySchema,
   type MenuCategoryDto,
   type MenuItemDto,
   type PaymentDto,
@@ -435,6 +436,70 @@ export class RestaurantsService {
 
     this.logger.info({ actor_id: userId, restaurant_id: restaurantId, replay: result.replay }, "menu_category_created");
     return result;
+  }
+
+  async updateMenuCategory(
+    restaurantId: string,
+    categoryId: string,
+    input: unknown,
+    userId: string
+  ): Promise<MenuCategoryDto> {
+    const parsed = UpdateMenuCategorySchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_menu_category_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
+    const existingResult = await this.pg.query<MenuCategoryRow>(
+      `select id, restaurant_id, name, sort_order, is_active, created_at, updated_at
+       from public.menu_categories
+       where id = $1 and restaurant_id = $2`,
+      [categoryId, restaurantId]
+    );
+    const existing = existingResult.rows[0];
+    if (!existing) {
+      throw new NotFoundException("menu_category_not_found");
+    }
+
+    const next = {
+      name: parsed.data.name ?? existing.name,
+      sortOrder: parsed.data.sortOrder ?? toInteger(existing.sort_order, "menu_category.sort_order"),
+      isActive: parsed.data.isActive ?? existing.is_active
+    };
+
+    const result = await this.pg.query<MenuCategoryRow>(
+      `update public.menu_categories
+       set name = $3,
+           sort_order = $4,
+           is_active = $5,
+           updated_at = now()
+       where id = $1
+         and restaurant_id = $2
+       returning id, restaurant_id, name, sort_order, is_active, created_at, updated_at`,
+      [categoryId, restaurantId, next.name, next.sortOrder, next.isActive]
+    );
+    const updated = result.rows[0];
+
+    await this.pg.query(
+      `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
+       values ($1, $2, $3, 'menu_category', $4, 'menu_category_updated', $5::jsonb)`,
+      [
+        randomUUID(),
+        userId,
+        restaurant.org_id,
+        categoryId,
+        JSON.stringify({
+          restaurantId,
+          changedFields: Object.keys(parsed.data)
+        })
+      ]
+    );
+
+    this.logger.info({ actor_id: userId, restaurant_id: restaurantId, category_id: categoryId }, "menu_category_updated");
+    return this.mapCategory(updated);
   }
 
   async createMenuItem(restaurantId: string, input: unknown, userId: string, idempotencyKey: string) {

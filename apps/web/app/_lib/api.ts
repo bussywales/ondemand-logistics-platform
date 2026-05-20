@@ -524,6 +524,25 @@ export async function createMenuCategory(
   });
 }
 
+export async function updateMenuCategory(
+  session: BusinessSession,
+  restaurantId: string,
+  categoryId: string,
+  input: { name?: string; sortOrder?: number; isActive?: boolean }
+) {
+  return apiFetch<MenuCategoryResponse>(
+    session,
+    `/v1/business/restaurants/${restaurantId}/menu-categories/${categoryId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-menu-category-update`
+      },
+      body: JSON.stringify(input)
+    }
+  );
+}
+
 export async function createMenuItem(
   session: BusinessSession,
   restaurantId: string,

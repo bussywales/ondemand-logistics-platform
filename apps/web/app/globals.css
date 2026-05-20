@@ -2252,6 +2252,22 @@ h3 {
   align-items: end;
 }
 
+.merchant-category-actions,
+.merchant-menu-item-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.merchant-menu-item-actions small,
+.merchant-field-hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .merchant-menu-edit-form {
   display: grid;
   gap: var(--space-2);
@@ -2395,6 +2411,11 @@ h3 {
   .merchant-restaurant-list button {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .merchant-category-actions,
+  .merchant-menu-item-controls {
+    justify-content: flex-start;
   }
 
   .merchant-side-metrics,

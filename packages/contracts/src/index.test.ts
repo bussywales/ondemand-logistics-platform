@@ -44,6 +44,7 @@ import {
   UpdateMembershipSchema,
   AddFleetDriverSchema,
   UpdateFleetDriverMembershipSchema,
+  UpdateMenuCategorySchema,
   UpdateMenuItemSchema,
   UpdateSupportEscalationSchema,
   ValidationEvidenceRunListSchema
@@ -165,6 +166,12 @@ describe("Business onboarding schemas", () => {
 });
 
 describe("Menu item schemas", () => {
+  it("parses safe menu category display order updates", () => {
+    expect(UpdateMenuCategorySchema.safeParse({ sortOrder: 2 }).success).toBe(true);
+    expect(UpdateMenuCategorySchema.safeParse({ isActive: false }).success).toBe(true);
+    expect(UpdateMenuCategorySchema.safeParse({}).success).toBe(false);
+  });
+
   it("parses safe menu item price updates", () => {
     const parsed = UpdateMenuItemSchema.safeParse({
       name: "Chicken wrap",
