@@ -59,6 +59,7 @@ The paid-delivery proof must confirm:
 - driver fleet organisation surfaces remain visibility-first and do not change dispatch preference, payout, billing, or courier suspension behavior
 - demo request persistence remains available for public commercial intake and platform-admin review
 - demo request creation records internal admin notification posture through `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` outbox events or an explicitly documented fallback
+- demo request/admin notification delivery no-ops safely when `DEMO_REQUEST_WEBHOOK_URL`, `ADMIN_NOTIFICATION_EMAIL`, or Resend sender env is absent
 - release readiness checks green
 
 The release verification must confirm:
@@ -68,6 +69,7 @@ The release verification must confirm:
 - release-critical schema sanity passes when `DATABASE_URL` is present
 - authenticated API checks skip cleanly when bearer tokens are absent
 - external email delivery can remain skipped while Resend is parked without a verified sender/domain
+- webhook/admin-email delivery can remain skipped when optional notification secrets are absent, but skipped delivery must not block demo request persistence
 
 ## Required Smoke Routes
 Public routes:

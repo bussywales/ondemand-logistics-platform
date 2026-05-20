@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computeRetrySeconds,
   dispatchSideEffect,
   processBatchWithLogger,
+  setAdminNotificationConfigForTests,
   setNotificationProviderForTests,
   setPaymentProviderForTests
 } from "./index.js";
@@ -36,6 +37,16 @@ function createClientStub(
     remainingSteps: () => steps.length
   };
 }
+
+beforeEach(() => {
+  vi.unstubAllGlobals();
+  setAdminNotificationConfigForTests({ webhookUrl: null, adminEmail: null });
+  setNotificationProviderForTests({
+    provider: "noop",
+    isConfigured: () => false,
+    sendEmail: vi.fn()
+  });
+});
 
 describe("computeRetrySeconds", () => {
   it("uses exponential backoff and caps growth", () => {
@@ -575,6 +586,114 @@ describe("dispatchSideEffect", () => {
     );
 
     expect(sendEmail).toHaveBeenCalledOnce();
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("skips admin demo request notifications safely when no channel is configured", async () => {
+    setAdminNotificationConfigForTests({ webhookUrl: null, adminEmail: null });
+    setNotificationProviderForTests({
+      provider: "noop",
+      isConfigured: () => false,
+      sendEmail: vi.fn()
+    });
+
+    const client = createClientStub([{ match: "insert into public.audit_log" }]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-demo-1",
+        aggregate_type: "demo_request",
+        aggregate_id: "demo-1",
+        event_type: "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+        payload: {
+          demoRequestId: "demo-1",
+          requesterEmail: "buyer@example.com",
+          interestType: "PILOT_MERCHANT"
+        },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("posts admin demo request notifications to the configured webhook", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => ""
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    setAdminNotificationConfigForTests({ webhookUrl: "https://hooks.example.test/demo", adminEmail: null });
+    setNotificationProviderForTests({
+      provider: "noop",
+      isConfigured: () => false,
+      sendEmail: vi.fn()
+    });
+
+    const client = createClientStub([{ match: "insert into public.audit_log" }]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-demo-2",
+        aggregate_type: "demo_request",
+        aggregate_id: "demo-2",
+        event_type: "DEMO_REQUEST_STATUS_UPDATED",
+        payload: {
+          demoRequestId: "demo-2",
+          requesterEmail: "buyer@example.com",
+          previousStatus: "NEW",
+          newStatus: "REVIEWED",
+          status: "REVIEWED",
+          updatedAt: "2026-05-20T10:00:00.000Z"
+        },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://hooks.example.test/demo",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"eventType":"DEMO_REQUEST_STATUS_UPDATED"')
+      })
+    );
+    expect(client.remainingSteps()).toBe(0);
+  });
+
+  it("sends admin demo request email when admin email and provider are configured", async () => {
+    const sendEmail = vi.fn().mockResolvedValue({ providerMessageId: "email_demo_1" });
+    setAdminNotificationConfigForTests({ webhookUrl: null, adminEmail: "admin@example.com" });
+    setNotificationProviderForTests({
+      provider: "resend",
+      isConfigured: () => true,
+      sendEmail
+    });
+
+    const client = createClientStub([{ match: "insert into public.audit_log" }]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-demo-3",
+        aggregate_type: "demo_request",
+        aggregate_id: "demo-3",
+        event_type: "DEMO_REQUEST_CONTACT_RECORDED",
+        payload: {
+          demoRequestId: "demo-3",
+          requesterName: "Buyer One",
+          requesterEmail: "buyer@example.com",
+          lastContactedAt: "2026-05-20T10:00:00.000Z"
+        },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "admin@example.com" }));
     expect(client.remainingSteps()).toBe(0);
   });
 });

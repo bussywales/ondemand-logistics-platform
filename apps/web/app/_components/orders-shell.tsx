@@ -1076,8 +1076,6 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
         </div>
       </header>
 
-      <ProductUpdateAnnouncement routePath="/app/orders" viewer="business" viewerKey={session.userId} />
-
       <section className="ops-layout">
         <aside className="ops-sidebar">
           <WorkspaceNav active="orders" platformAdmin={session.context.platformAdmin} />
@@ -1134,6 +1132,7 @@ export function OrdersShell({ orderId }: OrdersShellProps) {
         </aside>
 
         <div className="ops-main">
+          <ProductUpdateAnnouncement routePath="/app/orders" viewer="business" viewerKey={session.userId} />
           <PilotGuardrailBanner canManagePilots={Boolean(session.context.platformAdmin)} compact pilotStatus={pilotStatus} />
 
           {!detailMode ? (

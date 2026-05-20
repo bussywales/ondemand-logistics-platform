@@ -300,7 +300,7 @@ function TeamInviteForm(props: { disabled: boolean; onInvite: (input: { email: s
 
   return (
     <form
-      className="sw-supporting-surface"
+      className="sw-supporting-surface team-invite-surface"
       onSubmit={(event) => {
         event.preventDefault();
         props.onInvite({ email, displayName: displayName || undefined, role });
@@ -315,10 +315,19 @@ function TeamInviteForm(props: { disabled: boolean; onInvite: (input: { email: s
           <p className="ops-detail-note">Existing users receive membership access. New emails are tracked as invitation records; no external email is sent in v1.</p>
         </div>
       </div>
-      <div className="form-grid">
-        <label><span>Email</span><input disabled={props.disabled} onChange={(event) => setEmail(event.target.value)} required type="email" value={email} /></label>
-        <label><span>Name</span><input disabled={props.disabled} onChange={(event) => setDisplayName(event.target.value)} placeholder="Optional display name" value={displayName} /></label>
-        <label><span>Role</span><select disabled={props.disabled} onChange={(event) => setRole(event.target.value as OrgRole)} value={role}>{BUSINESS_ROLE_OPTIONS.map((item) => <option key={item} value={item}>{formatLabel(item)}</option>)}</select></label>
+      <div className="form-grid team-invite-grid">
+        <label className="sw-field">
+          <span className="sw-label">Email</span>
+          <input className="sw-input" disabled={props.disabled} onChange={(event) => setEmail(event.target.value)} required type="email" value={email} />
+        </label>
+        <label className="sw-field">
+          <span className="sw-label">Name</span>
+          <input className="sw-input" disabled={props.disabled} onChange={(event) => setDisplayName(event.target.value)} placeholder="Optional display name" value={displayName} />
+        </label>
+        <label className="sw-field">
+          <span className="sw-label">Role</span>
+          <select className="sw-input" disabled={props.disabled} onChange={(event) => setRole(event.target.value as OrgRole)} value={role}>{BUSINESS_ROLE_OPTIONS.map((item) => <option key={item} value={item}>{formatLabel(item)}</option>)}</select>
+        </label>
       </div>
       <button className="sw-button sw-button--primary button button-primary" disabled={props.disabled} type="submit">Add team member</button>
     </form>
@@ -327,12 +336,20 @@ function TeamInviteForm(props: { disabled: boolean; onInvite: (input: { email: s
 
 export function BusinessTeamView(props: {
   team: BusinessTeam;
+  session?: BusinessSession | null;
   onInvite?: (input: { email: string; displayName?: string; role: OrgRole }) => void;
   onUpdate?: (member: IdentityMembership, patch: { role?: OrgRole; isActive?: boolean }) => void;
   pending?: boolean;
 }) {
+  const activeMembers = props.team.members.filter((member) => member.isActive).length;
+  const inactiveMembers = props.team.members.length - activeMembers;
+  const pendingInvites = props.team.invitations.filter((invite) => invite.status !== "ACCEPTED").length;
+  const platformAdmin = Boolean(props.session?.context.platformAdmin);
+  const currentUserRole =
+    props.session?.context.memberships.find((item) => item.membership.orgId === props.team.org.id)?.membership.role ?? null;
+
   return (
-    <main className="app-shell ops-shell orders-shell">
+    <main className="app-shell ops-shell orders-shell team-settings-shell">
       <header className="ops-topbar">
         <div className="ops-branding">
           <BrandLogo href="/" mode="responsive" />
@@ -340,26 +357,88 @@ export function BusinessTeamView(props: {
           <h1>Team</h1>
         </div>
       </header>
-      <WorkspaceNav active="team" platformAdmin={false} />
-      <section className="sw-command-surface">
-        <div className="sw-card-header">
-          <div>
-            <p className="eyebrow">Identity & Access</p>
-            <h2>{props.team.org.name}</h2>
-            <p>Manage who belongs to this workspace and which operational role they hold. Changes are audited.</p>
-          </div>
-        </div>
-      </section>
-      {props.onInvite ? <TeamInviteForm disabled={Boolean(props.pending)} onInvite={props.onInvite} /> : null}
-      <section className="sw-operational-surface">
-        <div className="sw-card-header">
-          <div>
-            <p className="eyebrow">Current team</p>
-            <h2>{props.team.members.length} members</h2>
-          </div>
-        </div>
-        <div className="sw-stack">
-          {props.team.members.map((member) => <MemberRow key={member.id} member={member} onUpdate={props.onUpdate} roleOptions={BUSINESS_ROLE_OPTIONS} />)}
+      <section className="ops-layout">
+        <aside className="ops-sidebar">
+          <WorkspaceNav active="team" platformAdmin={platformAdmin} />
+          <section className="sw-supporting-surface team-sidebar-card">
+            <div className="sw-stack-sm">
+              <p className="eyebrow">Workspace</p>
+              <h2>{props.team.org.name}</h2>
+              <p className="ops-detail-note">{formatLabel(props.team.org.type)} · {formatLabel(props.team.org.status)}</p>
+            </div>
+            <div className="sw-stack-sm">
+              <span className="sw-badge sw-badge--success">{activeMembers} active</span>
+              <span className="sw-badge sw-badge--neutral">{inactiveMembers} inactive</span>
+              <span className="sw-badge sw-badge--info">{pendingInvites} invite records</span>
+            </div>
+          </section>
+          {props.session ? (
+            <section className="sw-supporting-surface team-sidebar-card">
+              <p className="eyebrow">Signed in</p>
+              <p className="ops-detail-note">{props.session.email}</p>
+              {currentUserRole ? <span className="sw-badge sw-badge--info">{formatLabel(currentUserRole)}</span> : null}
+            </section>
+          ) : null}
+        </aside>
+        <div className="ops-main">
+          <ProductUpdateAnnouncement routePath="/app/settings/team" viewer="business" viewerKey={props.session?.userId ?? props.team.org.id} />
+          <section className="sw-command-surface team-identity-card">
+            <div className="sw-card-header">
+              <div>
+                <p className="eyebrow">Identity & Access</p>
+                <h2>{props.team.org.name}</h2>
+                <p>Manage who belongs to this workspace and which operational role they hold. Changes are audited.</p>
+              </div>
+            </div>
+            <div className="team-summary-grid">
+              <div className="sw-list-row">
+                <span>Active members</span>
+                <strong>{activeMembers}</strong>
+              </div>
+              <div className="sw-list-row">
+                <span>Inactive members</span>
+                <strong>{inactiveMembers}</strong>
+              </div>
+              <div className="sw-list-row">
+                <span>Invitation records</span>
+                <strong>{props.team.invitations.length}</strong>
+              </div>
+            </div>
+          </section>
+          {props.onInvite ? <TeamInviteForm disabled={Boolean(props.pending)} onInvite={props.onInvite} /> : null}
+          <section className="sw-operational-surface team-members-surface">
+            <div className="sw-card-header">
+              <div>
+                <p className="eyebrow">Current team</p>
+                <h2>{props.team.members.length} members</h2>
+                <p className="ops-detail-note">Use role and activation controls deliberately. Access changes are part of the workspace audit trail.</p>
+              </div>
+            </div>
+            <div className="sw-stack">
+              {props.team.members.map((member) => <MemberRow key={member.id} member={member} onUpdate={props.onUpdate} roleOptions={BUSINESS_ROLE_OPTIONS} />)}
+            </div>
+          </section>
+          <section className="sw-supporting-surface team-members-surface">
+            <div className="sw-card-header">
+              <div>
+                <p className="eyebrow">Invitation records</p>
+                <h2>{props.team.invitations.length} records</h2>
+              </div>
+            </div>
+            {props.team.invitations.length === 0 ? (
+              <p className="ops-detail-note">No invitation records yet.</p>
+            ) : (
+              <div className="sw-stack">
+                {props.team.invitations.map((invite) => (
+                  <div className="sw-list-row" key={invite.id}>
+                    <span>{invite.email}</span>
+                    <span className="sw-badge sw-badge--info">{formatLabel(invite.role)}</span>
+                    <span className={`sw-badge ${statusBadgeClass(invite.status)}`}>{formatLabel(invite.status)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </section>
     </main>
@@ -498,7 +577,7 @@ export function BusinessTeamShell() {
   const content = useMemo(() => {
     if (status === "loading" || !session) return <LoadingState copy="Restoring workspace session." />;
     if (!team) return <LoadingState copy={error ?? "Loading team settings."} />;
-    return <BusinessTeamView onInvite={handleInvite} onUpdate={handleUpdate} pending={pending} team={team} />;
+    return <BusinessTeamView onInvite={handleInvite} onUpdate={handleUpdate} pending={pending} session={session} team={team} />;
   }, [error, pending, session, status, team]);
 
   return content;

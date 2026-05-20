@@ -76,7 +76,12 @@ Commercial intake v4 adds follow-up pipeline preparation:
 - demo request history is append-only through `demo_request_events`
 - admin updates can enqueue internal automation-prep events for future email/webhook/CRM work
 
-Outbound email, CRM sync, webhooks, and automated follow-up delivery remain deferred.
+Demo request/admin notification outbox events can optionally deliver to configured channels:
+- `DEMO_REQUEST_WEBHOOK_URL` posts structured admin demo-request payloads to an external webhook
+- `ADMIN_NOTIFICATION_EMAIL` sends admin notification email when `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL` are also configured
+- when no webhook/email channel is configured, the worker records the notification as skipped/deferred and demo request persistence is not blocked
+
+CRM sync and automated follow-up delivery remain deferred.
 
 ## Operational Reset Tools
 `/admin/operational-resets` provides platform-admin-only staging/demo tidy controls.

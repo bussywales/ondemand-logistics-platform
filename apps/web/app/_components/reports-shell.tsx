@@ -425,8 +425,6 @@ export function ReportsShell(props: { initialDate?: string }) {
         </div>
       </header>
 
-      <ProductUpdateAnnouncement routePath="/app/reports/end-of-day" viewer="business" viewerKey={session.userId} />
-
       <section className="ops-layout">
         <aside className="ops-sidebar">
           <WorkspaceNav active="reports" platformAdmin={Boolean(session.context.platformAdmin)} />
@@ -485,6 +483,7 @@ export function ReportsShell(props: { initialDate?: string }) {
         </aside>
 
         <div className="ops-main">
+          <ProductUpdateAnnouncement routePath="/app/reports/end-of-day" viewer="business" viewerKey={session.userId} />
           <PilotGuardrailBanner canManagePilots={Boolean(session.context.platformAdmin)} compact pilotStatus={pilotStatus} />
 
           {loadError ? (

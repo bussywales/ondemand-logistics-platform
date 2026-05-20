@@ -3,7 +3,11 @@ export type ExternalNotificationEventType =
   | "NOTIFY_BUSINESS_NEW_ORDER"
   | "NOTIFY_DRIVER_OFFER"
   | "NOTIFY_JOB_DELIVERED"
-  | "NOTIFY_PAYMENT_CAPTURED";
+  | "NOTIFY_PAYMENT_CAPTURED"
+  | "NOTIFY_ADMIN_DEMO_REQUEST_CREATED"
+  | "DEMO_REQUEST_STATUS_UPDATED"
+  | "DEMO_REQUEST_FOLLOW_UP_SCHEDULED"
+  | "DEMO_REQUEST_CONTACT_RECORDED";
 
 export type ExternalNotificationEmail = {
   metadata: Record<string, unknown>;
@@ -75,6 +79,28 @@ export type PaymentCapturedNotificationContext = {
   restaurantName: string;
   totalCents: number;
   currency: string;
+};
+
+export type AdminDemoRequestNotificationContext = {
+  adminEmail: string;
+  demoRequestId: string;
+  eventType: Extract<
+    ExternalNotificationEventType,
+    | "NOTIFY_ADMIN_DEMO_REQUEST_CREATED"
+    | "DEMO_REQUEST_STATUS_UPDATED"
+    | "DEMO_REQUEST_FOLLOW_UP_SCHEDULED"
+    | "DEMO_REQUEST_CONTACT_RECORDED"
+  >;
+  requesterEmail: string | null;
+  requesterName: string | null;
+  organisation: string | null;
+  interestType: string | null;
+  status: string | null;
+  previousStatus?: string | null;
+  newStatus?: string | null;
+  nextFollowUpAt?: string | null;
+  lastContactedAt?: string | null;
+  occurredAt: string | null;
 };
 
 function formatCurrency(cents: number, currency: string) {
@@ -202,6 +228,49 @@ export function buildPaymentCapturedEmail(context: PaymentCapturedNotificationCo
       orderId: context.orderId,
       paymentId: context.paymentId,
       orgName: context.orgName
+    }
+  };
+}
+
+export function buildAdminDemoRequestEmail(context: AdminDemoRequestNotificationContext): ExternalNotificationEmail {
+  const eventLabel =
+    context.eventType === "NOTIFY_ADMIN_DEMO_REQUEST_CREATED"
+      ? "New demo request"
+      : context.eventType === "DEMO_REQUEST_STATUS_UPDATED"
+        ? "Demo request status updated"
+        : context.eventType === "DEMO_REQUEST_FOLLOW_UP_SCHEDULED"
+          ? "Demo follow-up scheduled"
+          : "Demo requester contact recorded";
+  const requester = context.requesterName || context.requesterEmail || "Unknown requester";
+  const details = [
+    `Demo request: ${context.demoRequestId}`,
+    `Requester: ${requester}`,
+    context.requesterEmail ? `Email: ${context.requesterEmail}` : null,
+    context.organisation ? `Organisation: ${context.organisation}` : null,
+    context.interestType ? `Interest: ${context.interestType}` : null,
+    context.status ? `Status: ${context.status}` : null,
+    context.previousStatus && context.newStatus ? `Status change: ${context.previousStatus} -> ${context.newStatus}` : null,
+    context.nextFollowUpAt ? `Next follow-up: ${context.nextFollowUpAt}` : null,
+    context.lastContactedAt ? `Last contacted: ${context.lastContactedAt}` : null,
+    context.occurredAt ? `Occurred at: ${context.occurredAt}` : null
+  ].filter(Boolean);
+
+  return {
+    to: context.adminEmail,
+    subject: `ShipWright admin · ${eventLabel}`,
+    text: [
+      eventLabel,
+      ``,
+      ...details,
+      ``,
+      `Open ShipWright Admin > Demo requests to review and update the follow-up pipeline.`
+    ].join("\n"),
+    metadata: {
+      category: "admin_demo_request",
+      demoRequestId: context.demoRequestId,
+      eventType: context.eventType,
+      interestType: context.interestType,
+      status: context.status
     }
   };
 }

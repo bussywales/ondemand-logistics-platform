@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   NoopExternalNotificationProvider,
   ResendExternalNotificationProvider,
+  buildAdminDemoRequestEmail,
   buildBusinessNewOrderEmail,
   buildCustomerOrderConfirmationEmail,
   buildDeliveryCompletedEmail,
@@ -88,6 +89,26 @@ describe("notification mapping", () => {
 
     expect(completed.text).toContain("has been delivered");
     expect(business.text).toContain("new paid order");
+  });
+
+  it("builds admin demo request notification copy", () => {
+    const message = buildAdminDemoRequestEmail({
+      adminEmail: "admin@example.com",
+      demoRequestId: "demo-1",
+      eventType: "DEMO_REQUEST_FOLLOW_UP_SCHEDULED",
+      requesterEmail: "buyer@example.com",
+      requesterName: "Buyer One",
+      organisation: "Pilot Retail",
+      interestType: "PILOT_MERCHANT",
+      status: "REVIEWED",
+      nextFollowUpAt: "2026-05-21T10:00:00.000Z",
+      occurredAt: "2026-05-20T10:00:00.000Z"
+    });
+
+    expect(message.to).toBe("admin@example.com");
+    expect(message.subject).toContain("Demo follow-up scheduled");
+    expect(message.text).toContain("Pilot Retail");
+    expect(message.metadata).toMatchObject({ category: "admin_demo_request", demoRequestId: "demo-1" });
   });
 });
 

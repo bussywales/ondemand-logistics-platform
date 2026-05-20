@@ -7959,7 +7959,12 @@ select:hover,
   padding: 2rem 1.5rem 3rem;
 }
 
-.orders-shell .ops-main .product-update-announcement,
+.ops-main .product-update-announcement {
+  margin: 0 0 1rem;
+  max-width: none;
+  width: 100%;
+}
+
 .ops-shell > .product-update-announcement {
   margin-bottom: 1rem;
 }
@@ -7982,6 +7987,59 @@ select:hover,
 
   .product-update-card-header .sw-badge {
     margin-left: 0;
+  }
+}
+
+.team-settings-shell .ops-main {
+  gap: 1rem;
+}
+
+.team-settings-shell .ops-sidebar {
+  gap: 1rem;
+}
+
+.team-sidebar-card,
+.team-identity-card,
+.team-invite-surface,
+.team-members-surface {
+  display: grid;
+  gap: 1rem;
+}
+
+.team-sidebar-card h2 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.team-summary-grid,
+.team-invite-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-summary-grid .sw-list-row {
+  min-height: auto;
+}
+
+.team-invite-surface .sw-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.team-invite-surface .sw-input,
+.team-settings-shell select {
+  width: 100%;
+}
+
+.team-settings-shell .sw-list-row {
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .team-summary-grid,
+  .team-invite-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -529,8 +529,6 @@ export function ProductShell(props: ProductShellProps) {
         </div>
       </header>
 
-      <ProductUpdateAnnouncement routePath={props.view === "home" ? "/app" : "/app/jobs"} viewer="business" viewerKey={session.userId} />
-
       <section className="ops-layout">
         <aside className="ops-sidebar">
           <WorkspaceNav active={props.view === "home" ? "operations" : "jobs"} platformAdmin={session.context.platformAdmin} />
@@ -577,6 +575,7 @@ export function ProductShell(props: ProductShellProps) {
         </aside>
 
         <div className="ops-main">
+          <ProductUpdateAnnouncement routePath={props.view === "home" ? "/app" : "/app/jobs"} viewer="business" viewerKey={session.userId} />
           {error ? <div className="form-error-banner">{error}</div> : null}
           <PilotGuardrailBanner
             canManagePilots={Boolean(session.context.platformAdmin)}

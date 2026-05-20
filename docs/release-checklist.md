@@ -163,11 +163,13 @@ Proof env behavior:
 - if required proof env is still missing after auto-load, the command fails with an actionable message instead of requiring manual shell sourcing
 
 ## 8) External notification caveat
-Resend-backed external email delivery is intentionally parked until a verified sender/domain exists.
+Resend-backed external email delivery remains optional until a verified sender/domain exists. Demo request/admin notification outbox events can also post to a configured webhook.
 
 What this means:
 - external notification send proof is optional until sender/domain setup is complete
-- missing provider env should degrade safely, not crash the worker
+- `DEMO_REQUEST_WEBHOOK_URL` enables webhook delivery for demo request/admin follow-up events
+- `ADMIN_NOTIFICATION_EMAIL` plus `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL` enables admin notification email
+- missing webhook/email provider env should degrade safely, record a skipped/deferred notification outcome, and not crash the worker
 - a parked email provider is not by itself a failed staging release unless the explicit release goal is outbound-email verification
 
 ## 8.5) Pilot fallback playbooks

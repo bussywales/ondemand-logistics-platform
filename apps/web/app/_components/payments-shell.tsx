@@ -373,8 +373,6 @@ export function PaymentsShell() {
         </div>
       </header>
 
-      <ProductUpdateAnnouncement routePath="/app/payments" viewer="business" viewerKey={session.userId} />
-
       <section className="ops-layout">
         <aside className="ops-sidebar">
           <WorkspaceNav active="payments" platformAdmin={Boolean(session.context.platformAdmin)} />
@@ -427,6 +425,7 @@ export function PaymentsShell() {
         </aside>
 
         <div className="ops-main">
+          <ProductUpdateAnnouncement routePath="/app/payments" viewer="business" viewerKey={session.userId} />
           <PilotGuardrailBanner canManagePilots={Boolean(session.context.platformAdmin)} compact pilotStatus={pilotStatus} />
 
           {loadError ? (

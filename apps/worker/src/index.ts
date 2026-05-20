@@ -10,6 +10,7 @@ import {
 import {
   NoopExternalNotificationProvider,
   ResendExternalNotificationProvider,
+  buildAdminDemoRequestEmail,
   buildBusinessNewOrderEmail,
   buildCustomerOrderConfirmationEmail,
   buildDeliveryCompletedEmail,
@@ -26,6 +27,17 @@ type OutboxMessage = {
   event_type: string;
   payload: Record<string, unknown>;
   retry_count: number;
+};
+
+type AdminDemoRequestNotificationEventType =
+  | "NOTIFY_ADMIN_DEMO_REQUEST_CREATED"
+  | "DEMO_REQUEST_STATUS_UPDATED"
+  | "DEMO_REQUEST_FOLLOW_UP_SCHEDULED"
+  | "DEMO_REQUEST_CONTACT_RECORDED";
+
+type AdminNotificationConfig = {
+  webhookUrl: string | null;
+  adminEmail: string | null;
 };
 
 type DispatchJob = {
@@ -138,6 +150,10 @@ let notificationProvider: ExternalNotificationProvider =
         replyToEmail: process.env.NOTIFICATION_REPLY_TO_EMAIL
       })
     : new NoopExternalNotificationProvider();
+let adminNotificationConfig: AdminNotificationConfig = {
+  webhookUrl: process.env.DEMO_REQUEST_WEBHOOK_URL?.trim() || null,
+  adminEmail: process.env.ADMIN_NOTIFICATION_EMAIL?.trim() || null
+};
 let activeLogger: AppLogger = defaultLogger;
 let workerPool: Pool | undefined;
 let workerRunning = false;
@@ -1119,6 +1135,128 @@ async function sendExternalEmailOrSkip(
   input.logger.info({ event_type: input.eventType, recipient: input.email.to }, "external_notification_sent");
 }
 
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function buildAdminDemoRequestPayload(message: OutboxMessage, eventType: AdminDemoRequestNotificationEventType) {
+  const occurredAt =
+    stringOrNull(message.payload.updatedAt) ??
+    stringOrNull(message.payload.createdAt) ??
+    new Date().toISOString();
+
+  return {
+    source: "shipwright",
+    channel: "admin_demo_request",
+    eventType,
+    outboxMessageId: message.id,
+    demoRequestId: stringOrNull(message.payload.demoRequestId) ?? message.aggregate_id,
+    aggregateType: message.aggregate_type,
+    aggregateId: message.aggregate_id,
+    requestId: stringOrNull(message.payload.requestId),
+    requesterEmail: stringOrNull(message.payload.requesterEmail),
+    requesterName: stringOrNull(message.payload.requesterName),
+    organisation: stringOrNull(message.payload.organisation),
+    interestType: stringOrNull(message.payload.interestType),
+    status: stringOrNull(message.payload.status),
+    previousStatus: stringOrNull(message.payload.previousStatus),
+    newStatus: stringOrNull(message.payload.newStatus),
+    nextFollowUpAt: stringOrNull(message.payload.nextFollowUpAt),
+    lastContactedAt: stringOrNull(message.payload.lastContactedAt),
+    occurredAt
+  };
+}
+
+async function postAdminNotificationWebhook(url: string, payload: ReturnType<typeof buildAdminDemoRequestPayload>) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "user-agent": "ShipWright-Worker/1.0"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`admin_notification_webhook_failed:${response.status}${body ? `:${body.slice(0, 160)}` : ""}`);
+  }
+}
+
+async function handleAdminDemoRequestNotification(
+  client: PoolClient,
+  message: OutboxMessage,
+  logger: AppLogger
+) {
+  const eventType = message.event_type as AdminDemoRequestNotificationEventType;
+  const payload = buildAdminDemoRequestPayload(message, eventType);
+  const requestId = String(message.payload.requestId ?? message.id);
+  const sentChannels: string[] = [];
+  const skippedChannels: string[] = [];
+
+  if (adminNotificationConfig.webhookUrl) {
+    await postAdminNotificationWebhook(adminNotificationConfig.webhookUrl, payload);
+    sentChannels.push("webhook");
+  } else {
+    skippedChannels.push("webhook:not_configured");
+  }
+
+  if (adminNotificationConfig.adminEmail && notificationProvider.isConfigured()) {
+    const email = buildAdminDemoRequestEmail({
+      adminEmail: adminNotificationConfig.adminEmail,
+      demoRequestId: payload.demoRequestId,
+      eventType,
+      requesterEmail: payload.requesterEmail,
+      requesterName: payload.requesterName,
+      organisation: payload.organisation,
+      interestType: payload.interestType,
+      status: payload.status,
+      previousStatus: payload.previousStatus,
+      newStatus: payload.newStatus,
+      nextFollowUpAt: payload.nextFollowUpAt,
+      lastContactedAt: payload.lastContactedAt,
+      occurredAt: payload.occurredAt
+    });
+    const result = await notificationProvider.sendEmail(email);
+    sentChannels.push("email");
+    logger.info({ provider_message_id: result.providerMessageId }, "admin_demo_request_email_sent");
+  } else if (adminNotificationConfig.adminEmail) {
+    skippedChannels.push("email:provider_not_configured");
+  } else {
+    skippedChannels.push("email:admin_notification_email_not_configured");
+  }
+
+  const action: "external_notification_sent" | "external_notification_skipped" =
+    sentChannels.length > 0 ? "external_notification_sent" : "external_notification_skipped";
+  const skipReason = sentChannels.length > 0 ? {} : { reason: "admin_notification_not_configured" };
+  await recordExternalNotificationOutcome(client, {
+    requestId,
+    orgId: null,
+    entityType: "demo_request",
+    entityId: payload.demoRequestId,
+    action,
+    metadata: {
+      eventType,
+      sentChannels,
+      skippedChannels,
+      ...skipReason,
+      demoRequestId: payload.demoRequestId,
+      interestType: payload.interestType,
+      status: payload.status
+    }
+  });
+
+  logger.info(
+    {
+      event_type: eventType,
+      demo_request_id: payload.demoRequestId,
+      sent_channels: sentChannels,
+      skipped_channels: skippedChannels
+    },
+    action
+  );
+}
+
 async function handleExternalNotificationRequested(
   client: PoolClient,
   message: OutboxMessage,
@@ -1618,6 +1756,12 @@ export async function dispatchSideEffect(
     case "NOTIFY_PAYMENT_CAPTURED":
       await handleExternalNotificationRequested(client, message, logger);
       return;
+    case "NOTIFY_ADMIN_DEMO_REQUEST_CREATED":
+    case "DEMO_REQUEST_STATUS_UPDATED":
+    case "DEMO_REQUEST_FOLLOW_UP_SCHEDULED":
+    case "DEMO_REQUEST_CONTACT_RECORDED":
+      await handleAdminDemoRequestNotification(client, message, logger);
+      return;
     case "PAYMENT_INTENT_CREATE_REQUESTED":
       await handlePaymentIntentCreateRequested(client, message, logger);
       return;
@@ -1822,4 +1966,11 @@ export function setPaymentProviderForTests(provider: PaymentProvider) {
 
 export function setNotificationProviderForTests(provider: ExternalNotificationProvider) {
   notificationProvider = provider;
+}
+
+export function setAdminNotificationConfigForTests(config: Partial<AdminNotificationConfig>) {
+  adminNotificationConfig = {
+    webhookUrl: config.webhookUrl?.trim() || null,
+    adminEmail: config.adminEmail?.trim() || null
+  };
 }
