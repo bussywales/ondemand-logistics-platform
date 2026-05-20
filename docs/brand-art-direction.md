@@ -85,9 +85,11 @@ Do not use:
 ## Colour Atmosphere
 Use colour as atmosphere and meaning, not decoration:
 
-- Commerce amber: order intake, merchant/customer activity.
-- Command blue: dispatch intelligence, operator context, platform oversight.
-- Proof green: delivery completion, payment capture, closeout.
+- Command blue: primary CTAs, dispatch intelligence, operator context, platform oversight, and trust. Public primary buttons should use this blue rather than black.
+- Commerce orange/amber: order intake, merchant/customer activity, route-start warmth, controlled pilot packaging, and commercial movement accents.
+- Proof green: delivery completion, payment capture, closeout, readiness, and validated proof moments.
+- Deep navy/charcoal: editorial typography, serious infrastructure tone, and restrained product framing.
+- Red: true risk only. Do not use red as a brand accent or commercial attention colour.
 - Soft violet/rose: ambient depth only; never the primary brand impression.
 - White/off-white: the base of the visual system.
 
@@ -100,8 +102,17 @@ Colour should increase only at meaningful operating moments:
 - Courier movement.
 - Proof and closeout.
 - Platform oversight.
+- Commercial pilot pathways and conversion moments, using blue for action and amber for warmth.
 
 Most page surfaces should stay white, off-white, pale grey-blue, or warm ivory so the brand feels premium instead of decorative.
+
+Button and CTA colour rules:
+
+- Primary public CTAs use command blue with a deeper blue hover state.
+- Secondary CTAs stay white/off-white with subtle blue borders or navy text.
+- Orange is an accent for route movement and commerce warmth, not the primary button colour.
+- Green is reserved for proof/completion cues.
+- Internal operational risk states should not be recoloured for marketing warmth.
 
 ## Typography Personality
 Typography should feel editorial and confident, but it should not carry the entire brand identity.

@@ -20,6 +20,15 @@
   --sw-color-danger: #a7434b;
   --sw-color-info: #315f9b;
   --sw-color-teal: #2c807f;
+  --sw-color-command-blue: #2563eb;
+  --sw-color-command-blue-hover: #1d4ed8;
+  --sw-color-command-blue-deep: #2447c7;
+  --sw-color-commerce-orange: #ea7a1a;
+  --sw-color-commerce-amber: #f59e0b;
+  --sw-color-commerce-amber-soft: #fff4df;
+  --sw-color-proof-green: #3b8f6b;
+  --sw-color-route-glow: rgba(245, 158, 11, 0.34);
+  --sw-focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
   --sw-color-success-soft: rgba(49, 122, 75, 0.1);
   --sw-color-warning-soft: rgba(162, 109, 27, 0.11);
   --sw-color-danger-soft: rgba(167, 67, 75, 0.1);
@@ -66,11 +75,11 @@
   --ink: var(--sw-color-text-primary);
   --muted: var(--sw-color-text-muted);
   --accent: var(--sw-color-navy-900);
-  --accent-strong: var(--sw-color-navy-950);
+  --accent-strong: var(--sw-color-command-blue-hover);
   --success: var(--sw-color-success);
   --danger: var(--sw-color-danger);
   --warning: var(--sw-color-warning);
-  --primary: var(--sw-color-navy-900);
+  --primary: var(--sw-color-command-blue);
   --secondary: var(--sw-color-navy-700);
   --teal: var(--sw-color-teal);
   --shadow-card: var(--sw-shadow-md);
@@ -714,6 +723,15 @@
   --sw-color-danger: #9f424b;
   --sw-color-info: #3d5f8f;
   --sw-color-teal: #3a7876;
+  --sw-color-command-blue: #2563eb;
+  --sw-color-command-blue-hover: #1d4ed8;
+  --sw-color-command-blue-deep: #2447c7;
+  --sw-color-commerce-orange: #ea7a1a;
+  --sw-color-commerce-amber: #f59e0b;
+  --sw-color-commerce-amber-soft: #fff4df;
+  --sw-color-proof-green: #3b8f6b;
+  --sw-color-route-glow: rgba(245, 158, 11, 0.34);
+  --sw-focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
   --sw-color-success-soft: rgba(47, 111, 78, 0.08);
   --sw-color-warning-soft: rgba(148, 103, 34, 0.08);
   --sw-color-danger-soft: rgba(159, 66, 75, 0.08);
@@ -736,7 +754,7 @@
   --surface-strong: var(--sw-color-surface-elevated);
   --ink: var(--sw-color-text-primary);
   --muted: var(--sw-color-text-muted);
-  --primary: var(--sw-color-navy-900);
+  --primary: var(--sw-color-command-blue);
   --secondary: var(--sw-color-navy-700);
   --danger: var(--sw-color-danger);
   --warning: var(--sw-color-warning);
@@ -1064,19 +1082,288 @@ p,
 .button-primary,
 .ops-command-actions .button-primary,
 .ops-decision-banner .button-primary {
-  border-color: var(--sw-color-navy-900);
-  background: var(--sw-color-navy-900);
+  border-color: var(--sw-color-command-blue);
+  background: var(--sw-color-command-blue);
   color: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
 }
 
 .sw-button--secondary,
 .button-secondary,
 .ops-decision-banner .button-secondary {
-  border-color: rgba(31, 41, 55, 0.12);
+  border-color: rgba(37, 99, 235, 0.16);
   background: #ffffff;
   color: var(--sw-color-text-primary);
   box-shadow: none;
+}
+
+.sw-button--primary:hover,
+.button-primary:hover,
+.sw-button--primary:focus-visible,
+.button-primary:focus-visible {
+  border-color: var(--sw-color-command-blue-hover);
+  background: var(--sw-color-command-blue-hover);
+  color: #ffffff;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.24);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.sw-button--secondary:hover,
+.button-secondary:hover,
+.sw-button--secondary:focus-visible,
+.button-secondary:focus-visible {
+  border-color: rgba(37, 99, 235, 0.28);
+  background: color-mix(in srgb, #ffffff 88%, var(--sw-color-command-blue) 12%);
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.sw-button--primary:active,
+.button-primary:active,
+.sw-button--secondary:active,
+.button-secondary:active {
+  box-shadow: none;
+  transform: translateY(0);
+}
+
+.sw-button--danger,
+.sw-button--danger.button,
+.sw-button--danger.button-primary {
+  border-color: var(--sw-color-danger);
+  background: var(--sw-color-danger);
+  color: var(--sw-color-text-inverse);
+  box-shadow: 0 12px 30px rgba(159, 66, 75, 0.16);
+}
+
+.sw-button--danger:hover,
+.sw-button--danger:focus-visible,
+.sw-button--danger.button:hover,
+.sw-button--danger.button:focus-visible {
+  border-color: color-mix(in srgb, var(--sw-color-danger) 86%, #000000 14%);
+  background: color-mix(in srgb, var(--sw-color-danger) 86%, #000000 14%);
+  box-shadow: 0 14px 34px rgba(159, 66, 75, 0.2);
+}
+
+.button:focus-visible,
+.sw-button:focus-visible,
+.landing-nav-cta:focus-visible,
+.landing-nav-link:focus-visible,
+.landing-mega-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--sw-focus-ring);
+}
+
+/* Premium colour system: public action, commerce, command, and proof tones. */
+.landing-page-story,
+.pricing-page,
+.demo-request-page,
+.internal-shell,
+.help-shell {
+  --sw-commerce-amber: var(--sw-color-commerce-orange);
+  --sw-command-blue: var(--sw-color-command-blue);
+  --sw-proof-green: var(--sw-color-proof-green);
+  --sw-route-glow: var(--sw-color-route-glow);
+  --story-ink: #0f172a;
+  --story-blue: var(--sw-color-command-blue);
+}
+
+.landing-button-primary,
+.landing-nav-cta,
+.pricing-package-cta,
+.demo-request-form .button-primary {
+  border-color: var(--sw-color-command-blue);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sw-color-command-blue) 96%, #ffffff 4%), var(--sw-color-command-blue)),
+    var(--sw-color-command-blue);
+  color: #ffffff;
+  box-shadow:
+    0 16px 36px rgba(37, 99, 235, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.landing-button-primary:hover,
+.landing-button-primary:focus-visible,
+.landing-nav-cta:hover,
+.landing-nav-cta:focus-visible,
+.pricing-package-cta:hover,
+.pricing-package-cta:focus-visible,
+.demo-request-form .button-primary:hover,
+.demo-request-form .button-primary:focus-visible {
+  border-color: var(--sw-color-command-blue-hover);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sw-color-command-blue-hover) 94%, #ffffff 6%), var(--sw-color-command-blue-hover)),
+    var(--sw-color-command-blue-hover);
+  box-shadow:
+    0 20px 44px rgba(37, 99, 235, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.landing-button-primary:active,
+.landing-nav-cta:active,
+.pricing-package-cta:active,
+.demo-request-form .button-primary:active {
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
+  transform: translateY(0);
+}
+
+.landing-button-secondary {
+  border-color: rgba(37, 99, 235, 0.16);
+  color: #172554;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.landing-button-secondary:hover,
+.landing-button-secondary:focus-visible {
+  border-color: rgba(37, 99, 235, 0.26);
+  background: color-mix(in srgb, #ffffff 90%, var(--sw-color-command-blue) 10%);
+}
+
+.landing-mega-trigger:hover,
+.landing-mega-trigger:focus-visible,
+.landing-mega-trigger[aria-expanded="true"],
+.landing-nav-pricing-link:hover,
+.landing-nav-pricing-link:focus-visible {
+  color: #172554;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(239, 246, 255, 0.76)),
+    #ffffff;
+  box-shadow:
+    inset 0 -2px 0 rgba(245, 158, 11, 0.62),
+    0 12px 30px rgba(37, 99, 235, 0.08);
+}
+
+.landing-kicker,
+.pricing-package-heading p,
+.pricing-note span,
+.landing-conversion-card > span,
+.demo-request-proof-row span:first-child {
+  color: color-mix(in srgb, var(--sw-color-commerce-orange) 80%, #0f172a 20%);
+}
+
+.landing-route-courier-marker {
+  background: var(--sw-color-command-blue);
+  box-shadow:
+    0 20px 54px rgba(37, 99, 235, 0.22),
+    0 0 0 9px rgba(255, 255, 255, 0.58);
+}
+
+.landing-route-arc,
+.pricing-route-line,
+.demo-request-route,
+.landing-mega-art-route {
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.18),
+    rgba(245, 158, 11, 0.72),
+    rgba(37, 99, 235, 0.66),
+    rgba(59, 143, 107, 0.42)
+  );
+  box-shadow: 0 0 34px rgba(245, 158, 11, 0.22);
+}
+
+.landing-scene-orb-primary,
+.landing-atmosphere-glow-amber {
+  background: rgba(245, 158, 11, 0.24);
+}
+
+.landing-scene-orb-secondary,
+.landing-atmosphere-glow-blue {
+  background: rgba(37, 99, 235, 0.14);
+}
+
+.landing-floating-card-command {
+  border-left-color: rgba(37, 99, 235, 0.72);
+}
+
+.landing-conversion-card-commerce,
+.pricing-package-card-commerce {
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255, 244, 223, 0.92), transparent 12rem),
+    rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 3px 0 rgba(245, 158, 11, 0.5),
+    0 26px 76px rgba(15, 23, 42, 0.075);
+}
+
+.landing-conversion-card-command,
+.pricing-package-card-command {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(239, 246, 255, 0.92), transparent 12rem),
+    rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 3px 0 rgba(37, 99, 235, 0.38),
+    0 26px 76px rgba(15, 23, 42, 0.075);
+}
+
+.landing-conversion-card-proof,
+.pricing-package-card-proof {
+  box-shadow:
+    inset 0 3px 0 rgba(59, 143, 107, 0.34),
+    0 26px 76px rgba(15, 23, 42, 0.075);
+}
+
+.landing-conversion-link {
+  color: var(--sw-color-command-blue);
+}
+
+.landing-conversion-link:hover,
+.landing-conversion-link:focus-visible,
+.public-mega-proof-card a:hover,
+.public-mega-proof-card a:focus-visible {
+  color: var(--sw-color-command-blue-hover);
+}
+
+.pricing-package-icon,
+.landing-mega-icon {
+  color: var(--sw-color-command-blue);
+}
+
+.pricing-package-card-commerce .pricing-package-icon,
+.landing-mega-item:nth-child(3n + 1) .landing-mega-icon {
+  color: var(--sw-color-commerce-orange);
+}
+
+.pricing-package-card-proof .pricing-package-icon,
+.landing-mega-item:nth-child(3n) .landing-mega-icon {
+  color: var(--sw-color-proof-green);
+}
+
+.public-mega-panel,
+.pricing-hero-scene,
+.demo-request-signal,
+.landing-cinematic-scene,
+.landing-conversion-section,
+.pricing-final {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(245, 158, 11, 0.12), transparent 22rem),
+    radial-gradient(circle at 82% 22%, rgba(37, 99, 235, 0.11), transparent 24rem),
+    radial-gradient(circle at 70% 78%, rgba(59, 143, 107, 0.08), transparent 18rem),
+    rgba(255, 255, 255, 0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .sw-button,
+  .landing-button-primary,
+  .landing-button-secondary,
+  .landing-nav-cta,
+  .landing-mega-trigger,
+  .landing-conversion-link,
+  .public-mega-proof-card a {
+    transition: none;
+  }
+
+  .button:hover,
+  .sw-button:hover,
+  .landing-button-primary:hover,
+  .landing-button-secondary:hover,
+  .landing-nav-cta:hover,
+  .landing-mega-trigger:hover {
+    transform: none;
+  }
 }
 
 .app-shell.ops-shell,
