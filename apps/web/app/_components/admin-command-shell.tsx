@@ -8,7 +8,7 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminDemoRequests, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminDemoRequests, listAdminOperationalResets, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
 import { getPilotGuardrailState } from "../_lib/pilot-guardrails";
 import {
@@ -17,6 +17,7 @@ import {
   type DailyBriefingItem,
   type DemoRequest,
   type EndOfDayReport,
+  type OperationalResetRun,
   type PilotWorkspace,
   type SupportEscalation
 } from "../_lib/product-state";
@@ -250,6 +251,8 @@ export function AdminCommandView(props: {
   session: BusinessSession;
   demoRequests: DemoRequest[];
   demoRequestsError?: string | null;
+  operationalResets: OperationalResetRun[];
+  operationalResetsError?: string | null;
   supportError?: string | null;
   supportEscalations: SupportEscalation[];
 }) {
@@ -287,6 +290,7 @@ export function AdminCommandView(props: {
   }).length;
   const demoRequestCounts = useMemo(() => countDemoRequestsByStatus(props.demoRequests), [props.demoRequests]);
   const demoFollowUpCounts = useMemo(() => getDemoRequestFollowUpCounts(props.demoRequests), [props.demoRequests]);
+  const latestResetRun = props.operationalResets[0] ?? null;
   const newDemoRequests = props.demoRequests.filter((request) => request.status === "NEW");
   const oldestNewDemoRequestAge =
     newDemoRequests.length > 0
@@ -326,10 +330,43 @@ export function AdminCommandView(props: {
           <CountCard copy="Demo request follow-ups scheduled for today." label="Due today" tone={demoFollowUpCounts.dueToday ? "info" : "success"} value={demoFollowUpCounts.dueToday} />
           <CountCard copy="Active requests marked high or urgent priority." label="High-priority leads" tone={demoFollowUpCounts.highPriority ? "warning" : "success"} value={demoFollowUpCounts.highPriority} />
           <CountCard copy="Qualified commercial opportunities ready for pilot or investor follow-up." label="Qualified opportunities" tone={demoFollowUpCounts.qualified ? "success" : "info"} value={demoFollowUpCounts.qualified} />
+          <CountCard copy="Completed non-destructive staging/demo tidy runs." label="Reset runs" tone={props.operationalResets.length ? "info" : "success"} value={props.operationalResets.length} />
         </div>
       </section>
 
       <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_EXPLAINER} />
+
+      <section className="sw-supporting-surface admin-command-section">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Operational reset tools</p>
+            <h2>{latestResetRun ? "Latest demo tidy run recorded" : "No reset runs recorded"}</h2>
+            <p className="ops-detail-note">Reset tools are admin-only, non-destructive, and never mutate proof orders, jobs, payments, or audit evidence.</p>
+          </div>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/operational-resets">
+            Open reset tools
+          </Link>
+        </div>
+        {props.operationalResetsError ? (
+          <div className="form-error-banner support-escalation-error">{props.operationalResetsError}</div>
+        ) : null}
+        {latestResetRun ? (
+          <article className="sw-list-row admin-command-report-action">
+            <div>
+              <div className="admin-command-item-meta">
+                <span className="sw-badge sw-badge--success">{latestResetRun.status.toLowerCase()}</span>
+                <span>{latestResetRun.mode.replaceAll("_", " ").toLowerCase()}</span>
+                <span>{formatAgeMinutes(minutesSince(latestResetRun.createdAt))}</span>
+              </div>
+              <strong>{latestResetRun.reason}</strong>
+              <p>{latestResetRun.summary.message}</p>
+            </div>
+            <span className="sw-badge sw-badge--neutral">{latestResetRun.summary.affectedCount} affected</span>
+          </article>
+        ) : (
+          <p className="ops-detail-note">Use reset tools before controlled demos when staging data is cluttering admin/operator screens.</p>
+        )}
+      </section>
 
       <section className="sw-supporting-surface admin-command-section">
         <div className="sw-card-header admin-section-header">
@@ -729,8 +766,10 @@ export function AdminCommandShell() {
   const [pilots, setPilots] = useState<PilotWorkspace[]>([]);
   const [supportEscalations, setSupportEscalations] = useState<SupportEscalation[]>([]);
   const [demoRequests, setDemoRequests] = useState<DemoRequest[]>([]);
+  const [operationalResets, setOperationalResets] = useState<OperationalResetRun[]>([]);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [demoRequestsError, setDemoRequestsError] = useState<string | null>(null);
+  const [operationalResetsError, setOperationalResetsError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -752,6 +791,7 @@ export function AdminCommandShell() {
     setLoadError(null);
     setSupportLogError(null);
     setDemoRequestsError(null);
+    setOperationalResetsError(null);
 
     void Promise.all([
       loadAdminCommandData(session, selectedDate),
@@ -763,9 +803,13 @@ export function AdminCommandShell() {
       listAdminDemoRequests(session).catch((issue) => {
         setDemoRequestsError(getUserFacingApiError(issue, "Demo request posture unavailable. Refresh or contact support."));
         return [];
+      }),
+      listAdminOperationalResets(session).catch((issue) => {
+        setOperationalResetsError(getUserFacingApiError(issue, "Operational reset posture unavailable. Refresh or contact support."));
+        return [];
       })
     ])
-      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests]) => {
+      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets]) => {
         if (!active) {
           return;
         }
@@ -775,6 +819,7 @@ export function AdminCommandShell() {
         setPilots(nextPilots);
         setSupportEscalations(nextSupportEscalations);
         setDemoRequests(nextDemoRequests);
+        setOperationalResets(nextOperationalResets);
       })
       .catch((issue) => {
         if (!active) {
@@ -804,9 +849,10 @@ export function AdminCommandShell() {
     setLoadError(null);
     setSupportLogError(null);
     setDemoRequestsError(null);
+    setOperationalResetsError(null);
 
     try {
-      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests] = await Promise.all([
+      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets] = await Promise.all([
         loadAdminCommandData(nextSession, selectedDate),
         listAdminPilots(nextSession).catch(() => []),
         listAdminSupportEscalations(nextSession).catch((issue) => {
@@ -816,6 +862,10 @@ export function AdminCommandShell() {
         listAdminDemoRequests(nextSession).catch((issue) => {
           setDemoRequestsError(getUserFacingApiError(issue, "Demo request posture unavailable. Refresh or contact support."));
           return [];
+        }),
+        listAdminOperationalResets(nextSession).catch((issue) => {
+          setOperationalResetsError(getUserFacingApiError(issue, "Operational reset posture unavailable. Refresh or contact support."));
+          return [];
         })
       ]);
       setBriefing(commandData.briefing);
@@ -823,6 +873,7 @@ export function AdminCommandShell() {
       setPilots(nextPilots);
       setSupportEscalations(nextSupportEscalations);
       setDemoRequests(nextDemoRequests);
+      setOperationalResets(nextOperationalResets);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
     } finally {
@@ -943,6 +994,8 @@ export function AdminCommandShell() {
           briefing={briefing}
           demoRequests={demoRequests}
           demoRequestsError={demoRequestsError}
+          operationalResets={operationalResets}
+          operationalResetsError={operationalResetsError}
           pilots={pilots}
           report={report}
           selectedDate={selectedDate}

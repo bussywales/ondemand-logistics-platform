@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "operational-reset-tools",
+    title: "Operational reset tools are available",
+    summary: "Platform admins can now preview and record non-destructive staging/demo tidy actions without deleting audit evidence or proof history.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin", "/admin/command", "/admin/operational-resets"],
+    releasedAt: "2026-05-20T10:00:00.000Z",
+    version: "v2.1",
+    ctaLabel: "Open reset tools",
+    ctaHref: "/admin/operational-resets"
+  },
+  {
     id: "demo-request-follow-up-workflow",
     title: "Demo request follow-up is now surfaced",
     summary: "New public demo requests now create an internal admin signal and appear in Admin Command with next-action guidance for human follow-up.",

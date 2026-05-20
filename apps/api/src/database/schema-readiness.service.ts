@@ -275,6 +275,28 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "metadata",
       "created_at"
     ]
+  },
+  operationalResets: {
+    operational_reset_runs: [
+      "id",
+      "created_by",
+      "scope",
+      "mode",
+      "reason",
+      "status",
+      "summary",
+      "created_at",
+      "completed_at"
+    ],
+    operational_reset_items: [
+      "id",
+      "reset_run_id",
+      "resource_type",
+      "resource_id",
+      "action",
+      "metadata",
+      "created_at"
+    ]
   }
 } as const;
 

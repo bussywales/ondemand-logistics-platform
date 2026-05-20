@@ -49,6 +49,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
 - Admin driver fleet organisations: `/admin/fleets`
 - Admin demo requests: `/admin/demo-requests`
+- Admin operational reset tools: `/admin/operational-resets`
 - Fleet manager workspace: `/fleet`
 - Business team settings: `/app/settings/team`
 - Help centre: `/help`
@@ -76,6 +77,18 @@ Commercial intake v4 adds follow-up pipeline preparation:
 - admin updates can enqueue internal automation-prep events for future email/webhook/CRM work
 
 Outbound email, CRM sync, webhooks, and automated follow-up delivery remain deferred.
+
+## Operational Reset Tools
+`/admin/operational-resets` provides platform-admin-only staging/demo tidy controls.
+
+Reset tools are deliberately non-destructive:
+- previews run before execution
+- execution requires typed confirmation: `RESET DEMO DATA`
+- reset runs and affected items are recorded
+- old demo requests may be closed/archived
+- clearly marked test/demo support escalations may be resolved with reset closeout evidence
+- stale pilot rehearsal state is reported as a recommendation in v1
+- paid-delivery proof orders, jobs, payments, audit history, and proof artifacts are not deleted or mutated
 
 ## What’s New Entries
 Product update entries live in:

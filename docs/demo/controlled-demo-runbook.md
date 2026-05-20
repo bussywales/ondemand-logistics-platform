@@ -115,13 +115,14 @@ Recommended order:
 11. show the driver execution route
 12. show the admin control plane
 13. show admin command intelligence
-14. show pilot management mode, readiness stage, owners, and checklist evidence
-15. open the selected pilot rehearsal cockpit and confirm readiness recommendation, validation unknown copy, operational posture, and recommended next actions
-16. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
-17. show `/pricing` as the controlled pilot package page; explain that ShipWright does not publish fake self-serve pricing and starts with fit review
-18. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet
-19. show help and pilot playbooks
-20. close by referencing the proof artifacts and current known limitations
+14. show `/admin/operational-resets` only if the audience asks how staging/demo clutter is prepared; explain preview, typed confirmation, reset-run evidence, and no hard deletes
+15. show pilot management mode, readiness stage, owners, and checklist evidence
+16. open the selected pilot rehearsal cockpit and confirm readiness recommendation, validation unknown copy, operational posture, and recommended next actions
+17. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
+18. show `/pricing` as the controlled pilot package page; explain that ShipWright does not publish fake self-serve pricing and starts with fit review
+19. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet
+20. show help and pilot playbooks
+21. close by referencing the proof artifacts and current known limitations
 
 Audience-specific walkthroughs:
 - use `investor-walkthrough.md` for investor or strategic partner sessions
@@ -145,6 +146,7 @@ Do not claim:
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - CRM, webhook, or email automation for demo requests; internal admin command/outbox visibility, owner assignment, follow-up scheduling, contact recording, and event history are available, but outbound follow-up remains manual
 - public fixed-price packages; `/pricing` explains controlled pilot paths and pricing is discussed after fit review
+- operational reset as deletion; reset tools are non-destructive, admin-only, previewed first, and do not mutate proof orders/jobs/payments
 - broad compliance completeness for live courier operations
 - settlement or reconciliation automation beyond the current visibility surfaces
 - pilot mode as an automatic operating control; it is a human-reviewed readiness layer in v1

@@ -94,6 +94,7 @@ Confirm the business guardrail strip is visible on `/app`, orders, jobs, payment
 Admin and driver:
 - `/admin`
 - `/admin/command`
+- `/admin/operational-resets`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`
@@ -106,6 +107,27 @@ For the selected pilot profile, open the rehearsal cockpit and confirm:
 - validation posture is understood as command-run evidence, not UI-executed proof
 
 ## 5. Prepare Browser State
+## 5. Review Operational Reset Tools
+If staging/demo records are cluttering the walkthrough, open `/admin/operational-resets` before the session.
+
+Use reset tools only for non-destructive tidy actions:
+- preview first
+- confirm affected items
+- execute only with typed confirmation: `RESET DEMO DATA`
+- close/archive old demo requests when appropriate
+- close clearly marked test/demo support escalations with reset closeout evidence
+- record stale pilot rehearsal recommendations without mutating proof records
+
+Reset tools do not:
+- hard delete records
+- delete audit history
+- delete or mutate payments
+- delete or mutate orders/jobs
+- alter paid-delivery proof history
+
+For any demo, use fresh proof records when the current proof/order/job data is too cluttered.
+
+## 6. Prepare Browser State
 Before the session:
 - use a clean browser profile or private window for public customer flow
 - sign into business, admin, and driver accounts in separate tabs/windows if needed
@@ -113,7 +135,7 @@ Before the session:
 - disable password manager popups where possible
 - keep latest proof artifact open or accessible
 
-## 6. Prepare Cold-Start Fallback
+## 7. Prepare Cold-Start Fallback
 Staging may cold-start. Before the session:
 - open the API `/healthz` route once
 - open the staging web root once
@@ -125,7 +147,7 @@ If cold-start occurs during the demo:
 - pause instead of clicking repeatedly
 - switch to proof-backed artifacts if needed
 
-## 7. Confirm Known Limitations
+## 8. Confirm Known Limitations
 Have `docs/demo/demo-known-limitations-talk-track.md` open for Q&A.
 
 Be ready to explain:
@@ -133,6 +155,7 @@ Be ready to explain:
 - browser payment surface vs proof harness payment execution
 - pilot workspace mode/status/readiness are admin-reviewed context signals, not automatic workflow gates
 - rehearsal cockpit is read-only and does not run proof commands from the browser
+- operational reset tools are admin-only and non-destructive; they close/archive safe demo clutter but do not alter proof orders/jobs/payments
 - pilot guardrails warn, explain, and guide; they do not block workflows in v1
 - Resend parked pending verified sender/domain
 - no autonomous AI actions
@@ -140,7 +163,7 @@ Be ready to explain:
 - courier readiness read-only
 - payout visibility, not full settlement automation
 
-## 8. Final Pre-Demo Standard
+## 9. Final Pre-Demo Standard
 Before any demo, the minimum standard is:
 
 - `pnpm release:verify-staging` passed
@@ -148,5 +171,6 @@ Before any demo, the minimum standard is:
 - `pnpm --filter @shipwright/web test:smoke` passed
 - latest proof IDs recorded
 - rehearsal cockpit reviewed for the selected pilot workspace
+- operational reset tools previewed or intentionally skipped
 - staging routes checked
 - known limitations ready to explain

@@ -332,6 +332,7 @@ describe("AdminCommandView", () => {
       <AdminCommandView
         briefing={briefing}
         demoRequests={demoRequests}
+        operationalResets={[]}
         pilots={pilotWorkspaces}
         report={report}
         selectedDate="2026-05-04"
@@ -356,6 +357,7 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Review new commercial interest");
     expect(markup).toContain("Overdue follow-ups");
     expect(markup).toContain("High-priority leads");
+    expect(markup).toContain("Operational reset tools");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });
@@ -365,6 +367,7 @@ describe("AdminCommandView", () => {
       <AdminCommandView
         briefing={briefing}
         demoRequests={demoRequests}
+        operationalResets={[]}
         pilots={pilotWorkspaces}
         report={report}
         selectedDate="2026-05-04"
@@ -396,6 +399,7 @@ describe("AdminCommandView", () => {
         selectedDate="2026-05-04"
         session={session}
         demoRequests={[]}
+        operationalResets={[]}
         pilots={[]}
         supportEscalations={[]}
       />

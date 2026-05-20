@@ -394,6 +394,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
             Demo requests
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/operational-resets">
+            Reset tools
+          </Link>
           <button className="button button-secondary" onClick={() => void refreshBusinessSession()} type="button">
             Refresh
           </button>
@@ -455,6 +458,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
               Demo requests
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/operational-resets">
+              Reset tools
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/app/reports/end-of-day">
               End-of-day report

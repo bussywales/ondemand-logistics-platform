@@ -1873,6 +1873,79 @@ export const DemoRequestEventListSchema = z.object({
 });
 export type DemoRequestEventListDto = z.infer<typeof DemoRequestEventListSchema>;
 
+export const OperationalResetModeSchema = z.enum([
+  "PREVIEW",
+  "ARCHIVE_DEMO_REQUESTS",
+  "CLOSE_TEST_ESCALATIONS",
+  "MARK_STALE_PILOT_REHEARSAL",
+  "FULL_DEMO_TIDY"
+]);
+export type OperationalResetMode = z.infer<typeof OperationalResetModeSchema>;
+
+export const OperationalResetStatusSchema = z.enum(["COMPLETED", "FAILED"]);
+export type OperationalResetStatus = z.infer<typeof OperationalResetStatusSchema>;
+
+export const OperationalResetPreviewItemSchema = z.object({
+  resourceType: z.enum(["demo_request", "support_escalation", "pilot_workspace", "proof_record"]),
+  resourceId: z.string().uuid(),
+  label: z.string().min(2),
+  action: z.string().min(2),
+  reason: z.string().min(2),
+  metadata: z.record(z.string(), z.unknown()).default({})
+});
+export type OperationalResetPreviewItemDto = z.infer<typeof OperationalResetPreviewItemSchema>;
+
+export const OperationalResetSummarySchema = z.object({
+  affectedCount: z.number().int().nonnegative(),
+  demoRequests: z.number().int().nonnegative(),
+  supportEscalations: z.number().int().nonnegative(),
+  pilotRecommendations: z.number().int().nonnegative(),
+  proofRecordsUntouched: z.boolean(),
+  message: z.string().min(2)
+});
+export type OperationalResetSummaryDto = z.infer<typeof OperationalResetSummarySchema>;
+
+export const OperationalResetPreviewSchema = z.object({
+  mode: OperationalResetModeSchema,
+  scope: z.string().min(2),
+  reason: z.string().min(8),
+  olderThan: IsoDateTimeSchema.nullable(),
+  summary: OperationalResetSummarySchema,
+  items: z.array(OperationalResetPreviewItemSchema)
+});
+export type OperationalResetPreviewDto = z.infer<typeof OperationalResetPreviewSchema>;
+
+export const OperationalResetRunSchema = z.object({
+  id: z.string().uuid(),
+  createdBy: z.string().uuid().nullable(),
+  scope: z.string().min(2),
+  mode: OperationalResetModeSchema,
+  reason: z.string().min(8),
+  status: OperationalResetStatusSchema,
+  summary: OperationalResetSummarySchema,
+  createdAt: IsoDateTimeSchema,
+  completedAt: IsoDateTimeSchema.nullable()
+});
+export type OperationalResetRunDto = z.infer<typeof OperationalResetRunSchema>;
+
+export const OperationalResetRunListSchema = z.object({
+  items: z.array(OperationalResetRunSchema)
+});
+export type OperationalResetRunListDto = z.infer<typeof OperationalResetRunListSchema>;
+
+export const OperationalResetRequestSchema = z.object({
+  mode: OperationalResetModeSchema.exclude(["PREVIEW"]),
+  scope: z.string().trim().min(2).max(80).default("staging_demo"),
+  reason: z.string().trim().min(8).max(1000),
+  olderThan: IsoDateTimeSchema.nullable().optional()
+});
+export type OperationalResetRequestInput = z.infer<typeof OperationalResetRequestSchema>;
+
+export const ExecuteOperationalResetSchema = OperationalResetRequestSchema.extend({
+  confirmation: z.literal("RESET DEMO DATA")
+});
+export type ExecuteOperationalResetInput = z.infer<typeof ExecuteOperationalResetSchema>;
+
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;
 

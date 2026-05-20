@@ -194,6 +194,63 @@ export type DemoRequestEvent = {
   createdAt: string;
 };
 
+export type OperationalResetMode =
+  | "PREVIEW"
+  | "ARCHIVE_DEMO_REQUESTS"
+  | "CLOSE_TEST_ESCALATIONS"
+  | "MARK_STALE_PILOT_REHEARSAL"
+  | "FULL_DEMO_TIDY";
+
+export type OperationalResetPreviewItem = {
+  resourceType: "demo_request" | "support_escalation" | "pilot_workspace" | "proof_record";
+  resourceId: string;
+  label: string;
+  action: string;
+  reason: string;
+  metadata: Record<string, unknown>;
+};
+
+export type OperationalResetSummary = {
+  affectedCount: number;
+  demoRequests: number;
+  supportEscalations: number;
+  pilotRecommendations: number;
+  proofRecordsUntouched: boolean;
+  message: string;
+};
+
+export type OperationalResetPreview = {
+  mode: OperationalResetMode;
+  scope: string;
+  reason: string;
+  olderThan: string | null;
+  summary: OperationalResetSummary;
+  items: OperationalResetPreviewItem[];
+};
+
+export type OperationalResetRun = {
+  id: string;
+  createdBy: string | null;
+  scope: string;
+  mode: OperationalResetMode;
+  reason: string;
+  status: "COMPLETED" | "FAILED";
+  summary: OperationalResetSummary;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type OperationalResetRequestInput = {
+  mode: Exclude<OperationalResetMode, "PREVIEW">;
+  scope?: string;
+  reason: string;
+  olderThan?: string | null;
+};
+
+export type ExecuteOperationalResetInput = OperationalResetRequestInput & {
+  confirmation: "RESET DEMO DATA";
+};
+
 export type CreateDemoRequestInput = {
   name: string;
   email: string;

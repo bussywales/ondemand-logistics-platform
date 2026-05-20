@@ -24,7 +24,10 @@ const requiredTables = [
   "pilot_workspaces",
   "pilot_readiness_checks",
   "org_invitations",
-  "demo_requests"
+  "demo_requests",
+  "demo_request_events",
+  "operational_reset_runs",
+  "operational_reset_items"
 ];
 
 if (files.length < 2) {
@@ -58,7 +61,9 @@ const appendOnlyChecks = [
   "create trigger job_events_append_only",
   "create trigger audit_log_append_only",
   "create trigger outbox_delete_blocked",
-  "create trigger support_escalation_events_append_only_blocked"
+  "create trigger support_escalation_events_append_only_blocked",
+  "create trigger operational_reset_runs_append_only_blocked",
+  "create trigger operational_reset_items_append_only_blocked"
 ];
 
 for (const clause of appendOnlyChecks) {

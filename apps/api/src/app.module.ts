@@ -51,6 +51,8 @@ import { AdminFleetsController, FleetController } from "./fleets/fleets.controll
 import { FleetsService } from "./fleets/fleets.service.js";
 import { AdminDemoRequestsController, PublicDemoRequestsController } from "./demo-requests/demo-requests.controller.js";
 import { DemoRequestsService } from "./demo-requests/demo-requests.service.js";
+import { AdminOperationalResetsController } from "./operational-resets/operational-resets.controller.js";
+import { OperationalResetsService } from "./operational-resets/operational-resets.service.js";
 
 @Module({
   imports: [],
@@ -76,6 +78,7 @@ import { DemoRequestsService } from "./demo-requests/demo-requests.service.js";
     FleetController,
     PublicDemoRequestsController,
     AdminDemoRequestsController,
+    AdminOperationalResetsController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -100,6 +103,7 @@ import { DemoRequestsService } from "./demo-requests/demo-requests.service.js";
     IdentityService,
     FleetsService,
     DemoRequestsService,
+    OperationalResetsService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,

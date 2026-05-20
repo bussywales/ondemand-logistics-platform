@@ -14,6 +14,10 @@ import type {
   DemoRequest,
   DemoRequestEvent,
   DemoRequestStatus,
+  ExecuteOperationalResetInput,
+  OperationalResetPreview,
+  OperationalResetRequestInput,
+  OperationalResetRun,
   OperationalIncidentSummary,
   CreateSupportEscalationInput,
   CreatePilotWorkspaceInput,
@@ -189,6 +193,9 @@ type DemoRequestListResponse = {
 };
 type DemoRequestEventListResponse = {
   items: DemoRequestEvent[];
+};
+type OperationalResetRunListResponse = {
+  items: OperationalResetRun[];
 };
 type PilotWorkspaceListResponse = PilotWorkspaceList;
 type PilotWorkspaceResponse = PilotWorkspace;
@@ -1208,6 +1215,34 @@ export async function listAdminDemoRequestEvents(session: BusinessSession, id: s
   });
 
   return result.items;
+}
+
+export async function listAdminOperationalResets(session: BusinessSession): Promise<OperationalResetRun[]> {
+  const result = await apiFetch<OperationalResetRunListResponse>(session, "/v1/admin/operational-resets", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function previewAdminOperationalReset(
+  session: BusinessSession,
+  input: OperationalResetRequestInput
+): Promise<OperationalResetPreview> {
+  return apiFetch<OperationalResetPreview>(session, "/v1/admin/operational-resets/preview", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function executeAdminOperationalReset(
+  session: BusinessSession,
+  input: ExecuteOperationalResetInput
+): Promise<OperationalResetRun> {
+  return apiFetch<OperationalResetRun>(session, "/v1/admin/operational-resets", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
 }
 
 export async function listAdminFleets(session: BusinessSession): Promise<FleetOrganisation[]> {

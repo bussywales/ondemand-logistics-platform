@@ -90,6 +90,7 @@ Authenticated routes:
 - `/admin/orgs`
 - `/admin/fleets`
 - `/admin/demo-requests`
+- `/admin/operational-resets`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
 - `/admin/drivers`
@@ -157,6 +158,7 @@ Playwright artifacts remain local and ignored:
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
 - Public smoke should not require authentication.
 - Demo request follow-up changes should keep `/admin/demo-requests` and `/admin/command` calm, admin-only, event-audited, and free of CRM/email overclaims.
+- Operational reset changes should keep `/admin/operational-resets` admin-only, preview-first, typed-confirmation gated, and non-destructive. Proof orders, jobs, payments, audit events, and proof artifacts must remain historical.
 - Release readiness must include support/escalation schema dependencies because order, job, admin command, closeout, and support history surfaces depend on them.
 - Support history events must be system-created from support create/update operations; new work must not add manual event creation or deletion paths.
 - Rehearsal cockpit should not execute release verification, paid-delivery proof, browser smoke, or destructive pilot controls from the UI in v1.
@@ -174,6 +176,7 @@ Do not merge or mark staging-ready if any of the following are true:
 - `pnpm typecheck` fails.
 - What’s New was not checked for a major user-visible feature and the release notes do not explain the omission.
 - A new release-critical schema dependency is missing from readiness or release verification.
+- Operational reset tooling can delete orders, jobs, payments, support history, proof evidence, or audit events.
 - A new authenticated route bypasses auth, org, driver, or platform-admin boundaries.
 - `internal_server_error` appears on staging command surfaces such as `/app`, `/app/orders`, `/app/payments`, `/app/reports/end-of-day`, `/admin`, `/admin/command`, `/admin/drivers`, `/admin/fleets`, or `/driver`.
 - Playwright failures are hidden by weakening the app or silently skipping configured auth checks.

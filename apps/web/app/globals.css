@@ -13359,6 +13359,26 @@ select:hover,
   justify-content: flex-end;
 }
 
+.admin-operational-reset-layout,
+.admin-operational-reset-form {
+  display: grid;
+  gap: var(--sw-space-4);
+}
+
+.admin-operational-reset-hero {
+  gap: var(--sw-space-4);
+}
+
+.admin-operational-reset-form {
+  max-width: 46rem;
+}
+
+.admin-operational-reset-form input,
+.admin-operational-reset-form select,
+.admin-operational-reset-form textarea {
+  width: 100%;
+}
+
 @media (max-width: 820px) {
   .pilot-guardrail {
     flex-direction: column;

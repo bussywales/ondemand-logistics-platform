@@ -205,16 +205,17 @@ Active foundations:
 - resolution closeout
 - pilot guardrails
 - support/incident closeout reporting
+- operational reset tools for staging/demo tidy runs
 
 Next candidates:
-- operational reset tools
 - support/incident closeout reporting polish
 - clearer rehearsal evidence capture
 - better support escalation filters and admin views
 - pilot owner accountability reporting
 
 Constraints:
-- no destructive reset tools without explicit confirmation, audit, and staging-first proof
+- reset tools remain admin-only, preview-first, typed-confirmation gated, and non-destructive
+- reset tools must not mutate proof orders, jobs, payments, proof artifacts, or audit events
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
 ## Workstream 7: Commercial Conversion Layer

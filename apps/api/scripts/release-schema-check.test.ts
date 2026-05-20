@@ -14,6 +14,8 @@ const BASE_TABLES = new Set([
   "org_invitations",
   "demo_requests",
   "demo_request_events",
+  "operational_reset_runs",
+  "operational_reset_items",
   "notification_reads",
   "platform_admins"
 ]);
@@ -49,7 +51,20 @@ const BASE_COLUMNS = new Set([
   "demo_request_events.demo_request_id",
   "demo_request_events.event_type",
   "demo_request_events.metadata",
-  "demo_request_events.created_at"
+  "demo_request_events.created_at",
+  "operational_reset_runs.created_by",
+  "operational_reset_runs.scope",
+  "operational_reset_runs.mode",
+  "operational_reset_runs.reason",
+  "operational_reset_runs.status",
+  "operational_reset_runs.summary",
+  "operational_reset_runs.completed_at",
+  "operational_reset_items.reset_run_id",
+  "operational_reset_items.resource_type",
+  "operational_reset_items.resource_id",
+  "operational_reset_items.action",
+  "operational_reset_items.metadata",
+  "operational_reset_items.created_at"
 ]);
 
 function buildClient(options?: {
@@ -288,6 +303,32 @@ describe("runReleaseSchemaCheck", () => {
       expect.arrayContaining([
         expect.objectContaining({
           name: "public.support_escalation_events.metadata",
+          ok: false,
+          detail: "column_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when operational reset tables are missing", async () => {
+    const missingTable = await runReleaseSchemaCheck(buildClient({ missingTables: ["operational_reset_runs"] }) as never);
+    expect(missingTable.ok).toBe(false);
+    expect(missingTable.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.operational_reset_runs",
+          ok: false,
+          detail: "table_missing"
+        })
+      ])
+    );
+
+    const missingColumn = await runReleaseSchemaCheck(buildClient({ missingColumns: ["operational_reset_items.action"] }) as never);
+    expect(missingColumn.ok).toBe(false);
+    expect(missingColumn.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.operational_reset_items.action",
           ok: false,
           detail: "column_missing"
         })
