@@ -14,6 +14,7 @@ import {
   CreateRestaurantSchema,
   IdempotencyHeaderSchema,
   MenuCategorySchema,
+  MenuHistorySchema,
   MenuItemSchema,
   PublicCustomerOrderSchema,
   PublicRestaurantMenuSchema,
@@ -25,6 +26,9 @@ import {
   UpdateMenuItemSchema,
   UpdateMenuCategorySchema,
   type MenuCategoryDto,
+  type MenuHistoryDto,
+  type MenuHistoryEventDto,
+  type MenuHistoryEventType,
   type MenuItemDto,
   type PaymentDto,
   BusinessCustomerOrderListSchema,
@@ -79,6 +83,19 @@ type MenuItemRow = {
   sort_order: number;
   created_at: string | Date;
   updated_at: string | Date;
+};
+
+type MenuHistoryRow = {
+  id: string | number;
+  actor_name: string | null;
+  actor_email: string | null;
+  entity_type: string;
+  entity_id: string | null;
+  action: string;
+  metadata: Record<string, unknown> | string | null;
+  created_at: string | Date;
+  category_name: string | null;
+  item_name: string | null;
 };
 
 type CustomerOrderRow = {
@@ -208,6 +225,128 @@ function normalizeRestaurantSlug(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
+}
+
+function parseAuditMetadata(value: MenuHistoryRow["metadata"]): Record<string, unknown> {
+  if (!value) {
+    return {};
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  return value;
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function readRecord(value: unknown) {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+function readNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
+
+  return null;
+}
+
+function formatAuditPrice(value: unknown) {
+  const cents = readNumber(value);
+  return cents === null ? null : `£${(cents / 100).toFixed(2)}`;
+}
+
+function getMenuHistoryEventType(
+  action: string,
+  resourceType: "category" | "item",
+  changedFields: string[]
+): MenuHistoryEventType {
+  if (action === "menu_category_created") {
+    return "MENU_CATEGORY_CREATED";
+  }
+
+  if (action === "menu_item_created") {
+    return "MENU_ITEM_CREATED";
+  }
+
+  if (resourceType === "category" && changedFields.length === 1 && changedFields[0] === "sortOrder") {
+    return "MENU_CATEGORY_REORDERED";
+  }
+
+  if (resourceType === "category") {
+    return "MENU_CATEGORY_UPDATED";
+  }
+
+  if (changedFields.length === 1 && changedFields[0] === "priceCents") {
+    return "MENU_ITEM_PRICE_UPDATED";
+  }
+
+  if (changedFields.length === 1 && changedFields[0] === "isActive") {
+    return "MENU_ITEM_VISIBILITY_UPDATED";
+  }
+
+  if (changedFields.length === 1 && changedFields[0] === "sortOrder") {
+    return "MENU_ITEM_REORDERED";
+  }
+
+  if (changedFields.length === 1 && changedFields[0] === "categoryId") {
+    return "MENU_ITEM_MOVED_CATEGORY";
+  }
+
+  return "MENU_ITEM_UPDATED";
+}
+
+function buildMenuHistorySummary(eventType: MenuHistoryEventType, resourceName: string | null, metadata: Record<string, unknown>) {
+  const name = resourceName ?? "Menu record";
+  const previous = readRecord(metadata.previous);
+  const next = readRecord(metadata.next);
+
+  if (eventType === "MENU_CATEGORY_CREATED") {
+    return `${name} section was created.`;
+  }
+
+  if (eventType === "MENU_CATEGORY_REORDERED") {
+    return `${name} section moved from position ${readNumber(previous.sortOrder) ?? "unknown"} to ${readNumber(next.sortOrder) ?? "unknown"}.`;
+  }
+
+  if (eventType === "MENU_CATEGORY_UPDATED") {
+    return `${name} section details were updated.`;
+  }
+
+  if (eventType === "MENU_ITEM_CREATED") {
+    return `${name} was added to the menu.`;
+  }
+
+  if (eventType === "MENU_ITEM_PRICE_UPDATED") {
+    return `${name} price changed from ${formatAuditPrice(previous.priceCents) ?? "unknown"} to ${formatAuditPrice(next.priceCents) ?? "unknown"}.`;
+  }
+
+  if (eventType === "MENU_ITEM_VISIBILITY_UPDATED") {
+    return `${name} was ${next.isActive === false ? "hidden from" : "made live on"} the public menu.`;
+  }
+
+  if (eventType === "MENU_ITEM_REORDERED") {
+    return `${name} moved from position ${readNumber(previous.sortOrder) ?? "unknown"} to ${readNumber(next.sortOrder) ?? "unknown"}.`;
+  }
+
+  if (eventType === "MENU_ITEM_MOVED_CATEGORY") {
+    return `${name} moved to another section.`;
+  }
+
+  return `${name} details were updated.`;
 }
 
 @Injectable()
@@ -409,7 +548,7 @@ export class RestaurantsService {
       });
     }
 
-    await this.loadOperatorRestaurant(restaurantId, userId);
+    const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
 
     const result = await this.pg.withIdempotency({
       actorId: userId,
@@ -426,10 +565,29 @@ export class RestaurantsService {
            returning id, restaurant_id, name, sort_order, is_active, created_at, updated_at`,
           [restaurantId, parsed.data.name, parsed.data.sortOrder, parsed.data.isActive]
         );
+        const category = inserted.rows[0];
+
+        await client.query(
+          `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
+           values ($1, $2, $3, 'menu_category', $4, 'menu_category_created', $5::jsonb)`,
+          [
+            randomUUID(),
+            userId,
+            restaurant.org_id,
+            category.id,
+            JSON.stringify({
+              restaurantId,
+              categoryName: category.name,
+              sortOrder: toInteger(category.sort_order, "menu_category.sort_order"),
+              isActive: category.is_active,
+              changedFields: ["name", "sortOrder", "isActive"]
+            })
+          ]
+        );
 
         return {
           responseCode: 201,
-          body: this.mapCategory(inserted.rows[0])
+          body: this.mapCategory(category)
         };
       }
     });
@@ -469,6 +627,7 @@ export class RestaurantsService {
       sortOrder: parsed.data.sortOrder ?? toInteger(existing.sort_order, "menu_category.sort_order"),
       isActive: parsed.data.isActive ?? existing.is_active
     };
+    const previousSortOrder = toInteger(existing.sort_order, "menu_category.sort_order");
 
     const result = await this.pg.query<MenuCategoryRow>(
       `update public.menu_categories
@@ -493,7 +652,14 @@ export class RestaurantsService {
         categoryId,
         JSON.stringify({
           restaurantId,
-          changedFields: Object.keys(parsed.data)
+          categoryName: next.name,
+          changedFields: Object.keys(parsed.data),
+          previous: {
+            name: existing.name,
+            sortOrder: previousSortOrder,
+            isActive: existing.is_active
+          },
+          next
         })
       ]
     );
@@ -511,7 +677,7 @@ export class RestaurantsService {
       });
     }
 
-    await this.loadOperatorRestaurant(restaurantId, userId);
+    const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
 
     const categoryResult = await this.pg.query<{ id: string }>(
       `select id
@@ -552,10 +718,31 @@ export class RestaurantsService {
             parsed.data.isActive
           ]
         );
+        const item = inserted.rows[0];
+
+        await client.query(
+          `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
+           values ($1, $2, $3, 'menu_item', $4, 'menu_item_created', $5::jsonb)`,
+          [
+            randomUUID(),
+            userId,
+            restaurant.org_id,
+            item.id,
+            JSON.stringify({
+              restaurantId,
+              categoryId: item.category_id,
+              itemName: item.name,
+              priceCents: toInteger(item.price_cents, "menu_item.price_cents"),
+              isActive: item.is_active,
+              sortOrder: toInteger(item.sort_order, "menu_item.sort_order"),
+              changedFields: ["categoryId", "name", "description", "priceCents", "currency", "sortOrder", "isActive"]
+            })
+          ]
+        );
 
         return {
           responseCode: 201,
-          body: this.mapItem(inserted.rows[0])
+          body: this.mapItem(item)
         };
       }
     });
@@ -608,6 +795,14 @@ export class RestaurantsService {
       sortOrder: parsed.data.sortOrder ?? toInteger(existing.sort_order, "menu_item.sort_order"),
       isActive: parsed.data.isActive ?? existing.is_active
     };
+    const previous = {
+      categoryId: existing.category_id,
+      name: existing.name,
+      description: existing.description,
+      priceCents: toInteger(existing.price_cents, "menu_item.price_cents"),
+      sortOrder: toInteger(existing.sort_order, "menu_item.sort_order"),
+      isActive: existing.is_active
+    };
 
     const result = await this.pg.query<MenuItemRow>(
       `update public.menu_items
@@ -635,7 +830,10 @@ export class RestaurantsService {
         itemId,
         JSON.stringify({
           restaurantId,
-          changedFields: Object.keys(parsed.data)
+          itemName: next.name,
+          changedFields: Object.keys(parsed.data),
+          previous,
+          next
         })
       ]
     );
@@ -677,6 +875,41 @@ export class RestaurantsService {
         ...this.mapCategory(row),
         items: itemsByCategory.get(row.id) ?? []
       }))
+    });
+  }
+
+  async getRestaurantMenuHistory(restaurantId: string, userId: string): Promise<MenuHistoryDto> {
+    const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
+    const result = await this.pg.query<MenuHistoryRow>(
+      `select
+          a.id,
+          u.display_name as actor_name,
+          u.email as actor_email,
+          a.entity_type,
+          a.entity_id,
+          a.action,
+          a.metadata,
+          a.created_at,
+          mc.name as category_name,
+          mi.name as item_name
+       from public.audit_log a
+       left join public.users u on u.id = a.actor_id
+       left join public.menu_categories mc
+         on a.entity_type = 'menu_category'
+        and mc.id = a.entity_id
+       left join public.menu_items mi
+         on a.entity_type = 'menu_item'
+        and mi.id = a.entity_id
+       where a.org_id = $1
+         and a.action in ('menu_category_created', 'menu_category_updated', 'menu_item_created', 'menu_item_updated')
+         and a.metadata->>'restaurantId' = $2
+       order by a.created_at desc
+       limit 40`,
+      [restaurant.org_id, restaurantId]
+    );
+
+    return MenuHistorySchema.parse({
+      items: result.rows.map((row) => this.mapMenuHistoryRow(row))
     });
   }
 
@@ -1308,6 +1541,35 @@ export class RestaurantsService {
     }
 
     return inserted;
+  }
+
+  private mapMenuHistoryRow(row: MenuHistoryRow): MenuHistoryEventDto {
+    const metadata = parseAuditMetadata(row.metadata);
+    const changedFields = Array.isArray(metadata.changedFields)
+      ? metadata.changedFields.filter((field): field is string => typeof field === "string")
+      : [];
+    const resourceType = row.entity_type === "menu_category" ? "category" : "item";
+    const resourceName =
+      readString(metadata.resourceName) ??
+      readString(metadata.itemName) ??
+      readString(metadata.categoryName) ??
+      row.item_name ??
+      row.category_name ??
+      null;
+    const eventType = getMenuHistoryEventType(row.action, resourceType, changedFields);
+
+    return {
+      id: String(row.id),
+      eventType,
+      actorName: row.actor_name,
+      actorEmail: row.actor_email,
+      createdAt: toIsoDateTime(row.created_at),
+      summary: buildMenuHistorySummary(eventType, resourceName, metadata),
+      resourceType,
+      resourceName,
+      changedFields,
+      metadata
+    };
   }
 
   private mapRestaurant(row: RestaurantRow): RestaurantDto {

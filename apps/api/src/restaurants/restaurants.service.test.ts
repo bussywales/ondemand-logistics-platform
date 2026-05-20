@@ -479,6 +479,15 @@ describe("RestaurantsService", () => {
     expect(result.name).toBe("Chicken Wrap Meal");
     expect(pg.query.mock.calls[2]?.[0]).toContain("update public.menu_items");
     expect(pg.query.mock.calls[3]?.[0]).toContain("insert into public.audit_log");
+    expect(JSON.parse(pg.query.mock.calls[3]?.[1]?.[4])).toEqual(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_ID,
+        itemName: "Chicken Wrap Meal",
+        changedFields: ["name", "priceCents"],
+        previous: expect.objectContaining({ priceCents: 1299 }),
+        next: expect.objectContaining({ priceCents: 1499 })
+      })
+    );
   });
 
   it("updates a menu category display order under the current restaurant", async () => {
@@ -500,6 +509,15 @@ describe("RestaurantsService", () => {
     expect(result.sortOrder).toBe(2);
     expect(pg.query.mock.calls[2]?.[0]).toContain("update public.menu_categories");
     expect(pg.query.mock.calls[3]?.[0]).toContain("insert into public.audit_log");
+    expect(JSON.parse(pg.query.mock.calls[3]?.[1]?.[4])).toEqual(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_ID,
+        categoryName: "Mains",
+        changedFields: ["sortOrder"],
+        previous: expect.objectContaining({ sortOrder: 0 }),
+        next: expect.objectContaining({ sortOrder: 2 })
+      })
+    );
   });
 
   it("rejects cross-restaurant menu category updates", async () => {
@@ -514,6 +532,55 @@ describe("RestaurantsService", () => {
 
     await expect(service.updateMenuCategory(RESTAURANT_ID, CATEGORY_ID, { sortOrder: 1 }, USER_ID)).rejects.toThrow(
       new NotFoundException("menu_category_not_found")
+    );
+  });
+
+  it("lists scoped menu history from audit log", async () => {
+    const createdAt = new Date("2026-05-21T10:00:00.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: 42,
+              actor_name: "Operator One",
+              actor_email: "operator@example.com",
+              entity_type: "menu_item",
+              entity_id: ITEM_ID,
+              action: "menu_item_updated",
+              metadata: {
+                restaurantId: RESTAURANT_ID,
+                itemName: "Chicken Wrap",
+                changedFields: ["priceCents"],
+                previous: { priceCents: 1299 },
+                next: { priceCents: 1499 }
+              },
+              created_at: createdAt,
+              category_name: null,
+              item_name: "Chicken Wrap"
+            }
+          ]
+        })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.getRestaurantMenuHistory(RESTAURANT_ID, USER_ID);
+
+    expect(pg.query.mock.calls[1]?.[0]).toContain("from public.audit_log");
+    expect(pg.query.mock.calls[1]?.[1]).toEqual([ORG_ID, RESTAURANT_ID]);
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({
+        id: "42",
+        eventType: "MENU_ITEM_PRICE_UPDATED",
+        actorName: "Operator One",
+        summary: "Chicken Wrap price changed from £12.99 to £14.99.",
+        resourceType: "item",
+        resourceName: "Chicken Wrap",
+        changedFields: ["priceCents"]
+      })
     );
   });
 

@@ -159,7 +159,7 @@ Constraints:
 - no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
 
 ## Workstream 4: Merchant Menu Operations
-Status: Implemented through v1.2 for price editing, availability clarity, and simple reordering.
+Status: Implemented through v1.3 for price editing, availability clarity, simple reordering, and menu-specific audit visibility.
 
 Goal:
 Make restaurant menu management complete enough for controlled pilots by allowing authorised business users to update existing menu item details, especially price.
@@ -175,11 +175,14 @@ Implemented scope:
 - public restaurant menus read updated menu item data after refresh
 - public restaurant menus only expose active restaurants, active sections, and active menu items, ordered by display order
 - menu item updates write audit records with changed field names
+- `/app/restaurant` includes recent menu history so operators can review price, visibility, section, and ordering changes
+- `GET /v1/business/restaurants/:restaurantId/menu-history` reads menu-specific events from the existing append-only audit log
 
 Constraints:
 - no destructive menu deletion in this pass
 - no bulk import/export yet
 - no historical menu price ledger yet
+- no rollback from audit history in v1
 - no public checkout behaviour change beyond reading the updated menu data
 
 ## Workstream 5: Driver Fleet Organisations

@@ -893,6 +893,41 @@ export const PublicRestaurantMenuSchema = z.object({
 });
 export type PublicRestaurantMenuDto = z.infer<typeof PublicRestaurantMenuSchema>;
 
+export const MenuHistoryEventTypeSchema = z.enum([
+  "MENU_CATEGORY_CREATED",
+  "MENU_CATEGORY_UPDATED",
+  "MENU_CATEGORY_REORDERED",
+  "MENU_ITEM_CREATED",
+  "MENU_ITEM_UPDATED",
+  "MENU_ITEM_PRICE_UPDATED",
+  "MENU_ITEM_VISIBILITY_UPDATED",
+  "MENU_ITEM_REORDERED",
+  "MENU_ITEM_MOVED_CATEGORY"
+]);
+export type MenuHistoryEventType = z.infer<typeof MenuHistoryEventTypeSchema>;
+
+export const MenuHistoryResourceTypeSchema = z.enum(["category", "item"]);
+export type MenuHistoryResourceType = z.infer<typeof MenuHistoryResourceTypeSchema>;
+
+export const MenuHistoryEventSchema = z.object({
+  id: z.string(),
+  eventType: MenuHistoryEventTypeSchema,
+  actorName: z.string().nullable(),
+  actorEmail: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  summary: z.string(),
+  resourceType: MenuHistoryResourceTypeSchema,
+  resourceName: z.string().nullable(),
+  changedFields: z.array(z.string()),
+  metadata: z.record(z.string(), z.unknown()).default({})
+});
+export type MenuHistoryEventDto = z.infer<typeof MenuHistoryEventSchema>;
+
+export const MenuHistorySchema = z.object({
+  items: z.array(MenuHistoryEventSchema)
+});
+export type MenuHistoryDto = z.infer<typeof MenuHistorySchema>;
+
 export const CustomerOrderStatusSchema = z.enum(["SUBMITTED", "PAYMENT_AUTHORIZED", "PAYMENT_FAILED", "FULFILLED"]);
 export type CustomerOrderStatus = z.infer<typeof CustomerOrderStatusSchema>;
 

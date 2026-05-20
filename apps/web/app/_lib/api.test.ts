@@ -25,6 +25,7 @@ import {
   getUserFacingApiError,
   getPublicRestaurantMenu,
   getRestaurantMenu,
+  getRestaurantMenuHistory,
   isUnauthorizedApiError,
   listAdminDriverReadiness,
   listAdminFleetDrivers,
@@ -254,6 +255,37 @@ describe('authorizePayment', () => {
     expect(init.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.stringMatching(/^idem-[0-9a-f-]+-menu-category-update$/) }));
     expect(init.body).toBe(JSON.stringify({ sortOrder: 1 }));
     expect(category.sortOrder).toBe(1);
+  });
+
+  it('reads menu history for a business restaurant', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: 'audit-1',
+              eventType: 'MENU_ITEM_PRICE_UPDATED',
+              actorName: 'Operator One',
+              actorEmail: 'operator@example.com',
+              createdAt: new Date().toISOString(),
+              summary: 'Chicken wrap price changed from £12.99 to £14.99.',
+              resourceType: 'item',
+              resourceName: 'Chicken wrap',
+              changedFields: ['priceCents'],
+              metadata: { oldPriceCents: 1299, newPriceCents: 1499 }
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const history = await getRestaurantMenuHistory(session, 'restaurant-1');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-history');
+    expect(init.method).toBe('GET');
+    expect(history.items[0]?.eventType).toBe('MENU_ITEM_PRICE_UPDATED');
   });
 
   it('reads a public restaurant menu by slug without bearer auth', async () => {

@@ -30,6 +30,7 @@ import {
   JobStatusSchema,
   IdentityOrgMembersSchema,
   IdentityUserListSchema,
+  MenuHistorySchema,
   PaginatedJobsSchema,
   PaymentStatusSchema,
   PilotReadinessCheckListSchema,
@@ -186,6 +187,27 @@ describe("Menu item schemas", () => {
   it("rejects invalid or empty menu item updates", () => {
     expect(UpdateMenuItemSchema.safeParse({ priceCents: 0 }).success).toBe(false);
     expect(UpdateMenuItemSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("parses menu history audit events", () => {
+    const parsed = MenuHistorySchema.safeParse({
+      items: [
+        {
+          id: "123",
+          eventType: "MENU_ITEM_PRICE_UPDATED",
+          actorName: "Operator One",
+          actorEmail: "operator@example.com",
+          createdAt: new Date().toISOString(),
+          summary: "Chicken wrap price changed from £12.99 to £14.99.",
+          resourceType: "item",
+          resourceName: "Chicken wrap",
+          changedFields: ["priceCents"],
+          metadata: { oldPriceCents: 1299, newPriceCents: 1499 }
+        }
+      ]
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });
 

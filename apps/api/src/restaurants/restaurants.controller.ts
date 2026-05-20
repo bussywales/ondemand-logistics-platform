@@ -88,6 +88,11 @@ export class RestaurantsController {
     return this.restaurantsService.updateMenuItem(restaurantId, itemId, body, user.id);
   }
 
+  @Get(":restaurantId/menu-history")
+  async getRestaurantMenuHistory(@Param("restaurantId") restaurantId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.restaurantsService.getRestaurantMenuHistory(restaurantId, user.id);
+  }
+
   @Get(":restaurantId/menu")
   async getRestaurantMenu(@Param("restaurantId") restaurantId: string, @RequestUser() user: AuthenticatedUser) {
     return this.restaurantsService.getRestaurantMenu(restaurantId, user.id);

@@ -2414,8 +2414,13 @@ h3 {
   }
 
   .merchant-category-actions,
-  .merchant-menu-item-controls {
+  .merchant-menu-item-controls,
+  .merchant-history-fields {
     justify-content: flex-start;
+  }
+
+  .merchant-history-row {
+    flex-direction: column;
   }
 
   .merchant-side-metrics,
@@ -3935,6 +3940,43 @@ select:focus,
 .merchant-menu-items {
   display: grid;
   gap: var(--space-1);
+}
+
+.merchant-menu-history,
+.merchant-history-list {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.merchant-history-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.merchant-history-row > div:first-child {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.merchant-history-row strong {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.merchant-history-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.merchant-history-fields {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
 }
 
 .merchant-menu-category,

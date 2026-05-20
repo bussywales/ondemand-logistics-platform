@@ -15,6 +15,7 @@ import {
   createRestaurant,
   ApiRequestError,
   getRestaurantMenu,
+  getRestaurantMenuHistory,
   listRestaurants,
   updateMenuCategory,
   updateMenuItem
@@ -23,6 +24,7 @@ import {
   formatCurrency,
   formatDateTime,
   type BusinessSession,
+  type MenuHistoryEvent,
   type MenuItemSummary,
   type RestaurantMenu,
   type RestaurantSummary
@@ -231,6 +233,22 @@ function getMenuItemStatus(item: MenuItemSummary) {
   };
 }
 
+function getMenuHistoryLabel(eventType: MenuHistoryEvent["eventType"]) {
+  const labels: Record<MenuHistoryEvent["eventType"], string> = {
+    MENU_CATEGORY_CREATED: "Section created",
+    MENU_CATEGORY_UPDATED: "Section updated",
+    MENU_CATEGORY_REORDERED: "Section reordered",
+    MENU_ITEM_CREATED: "Item created",
+    MENU_ITEM_UPDATED: "Item updated",
+    MENU_ITEM_PRICE_UPDATED: "Price updated",
+    MENU_ITEM_VISIBILITY_UPDATED: "Visibility updated",
+    MENU_ITEM_REORDERED: "Item reordered",
+    MENU_ITEM_MOVED_CATEGORY: "Item moved"
+  };
+
+  return labels[eventType];
+}
+
 function moveListItem<T extends { id: string }>(items: T[], itemId: string, direction: "up" | "down") {
   const index = items.findIndex((item) => item.id === itemId);
   if (index < 0) {
@@ -247,6 +265,55 @@ function moveListItem<T extends { id: string }>(items: T[], itemId: string, dire
   next[index] = next[targetIndex];
   next[targetIndex] = current;
   return next;
+}
+
+export function MenuHistoryPanel({ events }: { events: MenuHistoryEvent[] }) {
+  return (
+    <section className="sw-supporting-surface merchant-menu-history">
+      <div className="merchant-panel-heading">
+        <div>
+          <p className="eyebrow">Audit trail</p>
+          <h2>Menu history</h2>
+          <p>Recent menu changes, who made them, and what changed.</p>
+        </div>
+      </div>
+
+      {events.length === 0 ? (
+        <div className="merchant-empty-inline">
+          <span className="empty-state-icon empty-state-icon-small" aria-hidden="true">
+            <ShipWrightIcon name="document" />
+          </span>
+          <strong>Menu changes will appear here after edits.</strong>
+          <p>Price, visibility, section, and ordering updates are recorded for operator review.</p>
+        </div>
+      ) : (
+        <div className="merchant-history-list">
+          {events.slice(0, 12).map((event) => (
+            <article className="sw-list-row merchant-history-row" key={event.id}>
+              <div>
+                <span className="sw-badge sw-badge--neutral">{getMenuHistoryLabel(event.eventType)}</span>
+                <strong>{event.summary}</strong>
+                <p>
+                  {event.actorName ?? event.actorEmail ?? "Unknown actor"} · {formatDateTime(event.createdAt)}
+                </p>
+              </div>
+              <div className="merchant-history-fields">
+                {event.changedFields.length > 0 ? (
+                  event.changedFields.slice(0, 4).map((field) => (
+                    <span className="sw-badge sw-badge--info" key={`${event.id}-${field}`}>
+                      {field}
+                    </span>
+                  ))
+                ) : (
+                  <span className="sw-badge sw-badge--neutral">No fields listed</span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function EditableMenuItemRow({
@@ -433,6 +500,7 @@ export function RestaurantSetupShell() {
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [menu, setMenu] = useState<RestaurantMenu | null>(null);
+  const [menuHistory, setMenuHistory] = useState<MenuHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -533,8 +601,12 @@ export function RestaurantSetupShell() {
     setError(null);
 
     try {
-      const nextMenu = await getRestaurantMenu(currentSession, restaurantId);
+      const [nextMenu, nextHistory] = await Promise.all([
+        getRestaurantMenu(currentSession, restaurantId),
+        getRestaurantMenuHistory(currentSession, restaurantId)
+      ]);
       setMenu(nextMenu);
+      setMenuHistory(nextHistory.items);
     } catch (issue) {
       setError(mapRestaurantReadError(issue, "Unable to load the restaurant menu right now. Refresh and try again."));
     } finally {
@@ -1278,6 +1350,8 @@ export function RestaurantSetupShell() {
               </div>
             )}
           </section>
+
+          <MenuHistoryPanel events={menuHistory} />
         </div>
       </section>
     </main>

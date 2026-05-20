@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
   EditableMenuItemRow,
+  MenuHistoryPanel,
   buildMenuItemUpdatePayload,
   centsToPriceInput,
   parsePriceInputToCents,
@@ -172,5 +173,39 @@ describe("EditableMenuItemRow", () => {
       sortOrder: 0,
       isActive: false
     });
+  });
+});
+
+describe("MenuHistoryPanel", () => {
+  it("renders a compact menu history row", () => {
+    const html = renderToStaticMarkup(
+      <MenuHistoryPanel
+        events={[
+          {
+            id: "audit-1",
+            eventType: "MENU_ITEM_PRICE_UPDATED",
+            actorName: "Operator One",
+            actorEmail: "operator@example.com",
+            createdAt: "2026-05-21T10:00:00.000Z",
+            summary: "Chicken wrap price changed from £12.99 to £14.99.",
+            resourceType: "item",
+            resourceName: "Chicken wrap",
+            changedFields: ["priceCents"],
+            metadata: {}
+          }
+        ]}
+      />
+    );
+
+    expect(html).toContain("Menu history");
+    expect(html).toContain("Price updated");
+    expect(html).toContain("Operator One");
+    expect(html).toContain("priceCents");
+  });
+
+  it("renders an empty state for menu history", () => {
+    const html = renderToStaticMarkup(<MenuHistoryPanel events={[]} />);
+
+    expect(html).toContain("Menu changes will appear here after edits.");
   });
 });

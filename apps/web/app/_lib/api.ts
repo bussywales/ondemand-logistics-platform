@@ -59,6 +59,7 @@ import type {
   DriverState,
   DispatchAttempt,
   MenuCategorySummary,
+  MenuHistory,
   MenuItemSummary,
   FleetDriver,
   FleetDriverList,
@@ -176,6 +177,7 @@ type RestaurantMenuResponse = {
 };
 
 type PublicRestaurantMenuResponse = PublicRestaurantMenu;
+type MenuHistoryResponse = MenuHistory;
 
 type SubmitCustomerOrderResponse = CustomerOrderSubmission;
 
@@ -593,6 +595,12 @@ export async function updateMenuItem(
 
 export async function getRestaurantMenu(session: BusinessSession, restaurantId: string): Promise<RestaurantMenu> {
   return apiFetch<RestaurantMenuResponse>(session, `/v1/business/restaurants/${restaurantId}/menu`, {
+    method: "GET"
+  });
+}
+
+export async function getRestaurantMenuHistory(session: BusinessSession, restaurantId: string): Promise<MenuHistory> {
+  return apiFetch<MenuHistoryResponse>(session, `/v1/business/restaurants/${restaurantId}/menu-history`, {
     method: "GET"
   });
 }

@@ -345,6 +345,36 @@ export type PublicRestaurantMenu = {
   categories: PublicRestaurantMenuCategory[];
 };
 
+export type MenuHistoryEventType =
+  | "MENU_CATEGORY_CREATED"
+  | "MENU_CATEGORY_UPDATED"
+  | "MENU_CATEGORY_REORDERED"
+  | "MENU_ITEM_CREATED"
+  | "MENU_ITEM_UPDATED"
+  | "MENU_ITEM_PRICE_UPDATED"
+  | "MENU_ITEM_VISIBILITY_UPDATED"
+  | "MENU_ITEM_REORDERED"
+  | "MENU_ITEM_MOVED_CATEGORY";
+
+export type MenuHistoryResourceType = "category" | "item";
+
+export type MenuHistoryEvent = {
+  id: string;
+  eventType: MenuHistoryEventType;
+  actorName: string | null;
+  actorEmail: string | null;
+  createdAt: string;
+  summary: string;
+  resourceType: MenuHistoryResourceType;
+  resourceName: string | null;
+  changedFields: string[];
+  metadata: Record<string, unknown>;
+};
+
+export type MenuHistory = {
+  items: MenuHistoryEvent[];
+};
+
 export type CustomerCheckoutDetails = {
   name: string;
   email: string;
