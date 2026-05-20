@@ -1786,6 +1786,28 @@ export type DemoRequestStatus = z.infer<typeof DemoRequestStatusSchema>;
 export const DemoRequestFollowUpPrioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
 export type DemoRequestFollowUpPriority = z.infer<typeof DemoRequestFollowUpPrioritySchema>;
 
+export const DemoRequestNotificationDeliveryStatusSchema = z.enum([
+  "pending",
+  "sent",
+  "skipped",
+  "failed",
+  "retrying",
+  "unknown"
+]);
+export type DemoRequestNotificationDeliveryStatus = z.infer<typeof DemoRequestNotificationDeliveryStatusSchema>;
+
+export const DemoRequestNotificationStatusSchema = z.object({
+  status: DemoRequestNotificationDeliveryStatusSchema,
+  channel: z.string().nullable(),
+  provider: z.string().nullable(),
+  lastAttemptAt: IsoDateTimeSchema.nullable(),
+  lastEventType: z.string().nullable(),
+  outboxMessageId: z.string().uuid().nullable(),
+  retryCount: z.number().int().nonnegative(),
+  safeErrorSummary: z.string().nullable()
+});
+export type DemoRequestNotificationStatusDto = z.infer<typeof DemoRequestNotificationStatusSchema>;
+
 export const DemoRequestSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(2),
@@ -1804,6 +1826,7 @@ export const DemoRequestSchema = z.object({
   closeReason: z.string().nullable(),
   reviewedBy: z.string().uuid().nullable(),
   reviewedAt: IsoDateTimeSchema.nullable(),
+  notification: DemoRequestNotificationStatusSchema.nullable().optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema
 });

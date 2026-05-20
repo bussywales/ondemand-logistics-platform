@@ -10,6 +10,7 @@ import {
   DemoRequestSchema,
   DemoRequestInterestTypeSchema,
   DemoRequestStatusSchema,
+  type DemoRequestNotificationStatusDto,
   UpdateDemoRequestSchema,
   type CreateDemoRequestInput,
   type DemoRequestDto,
@@ -49,6 +50,16 @@ type DemoRequestRow = {
   reviewed_at: string | Date | null;
   created_at: string | Date;
   updated_at: string | Date;
+  notification_outbox_id?: string | null;
+  notification_event_type?: string | null;
+  notification_retry_count?: string | number | null;
+  notification_last_error?: string | null;
+  notification_processed_at?: string | Date | null;
+  notification_next_attempt_at?: string | Date | null;
+  notification_created_at?: string | Date | null;
+  notification_audit_action?: string | null;
+  notification_audit_metadata?: Record<string, unknown> | string | null;
+  notification_audit_created_at?: string | Date | null;
 };
 
 type DemoRequestEventRow = {
@@ -99,6 +110,77 @@ function metadataFromRow(row: DemoRequestRow) {
   };
 }
 
+function parseMetadata(value: Record<string, unknown> | string | null | undefined): Record<string, unknown> {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  return value;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function safeErrorSummary(value: string | null | undefined) {
+  const text = value?.trim();
+  if (!text) return null;
+  return text.length > 180 ? `${text.slice(0, 180)}...` : text;
+}
+
+function mapDemoRequestNotification(row: DemoRequestRow): DemoRequestNotificationStatusDto | null {
+  const hasOutbox = Boolean(row.notification_outbox_id);
+  const hasAudit = Boolean(row.notification_audit_action);
+  if (!hasOutbox && !hasAudit) {
+    return null;
+  }
+
+  const metadata = parseMetadata(row.notification_audit_metadata);
+  const sentChannels = stringArray(metadata.sentChannels);
+  const skippedChannels = stringArray(metadata.skippedChannels);
+  const channelList = sentChannels.length ? sentChannels : skippedChannels.map((item) => item.split(":")[0]).filter(Boolean);
+  const channel = channelList.length ? Array.from(new Set(channelList)).join(", ") : null;
+  const provider = typeof metadata.emailProvider === "string" ? metadata.emailProvider : typeof metadata.provider === "string" ? metadata.provider : null;
+
+  let status: DemoRequestNotificationStatusDto["status"] = "unknown";
+  if (row.notification_audit_action === "external_notification_sent") {
+    status = "sent";
+  } else if (row.notification_audit_action === "external_notification_skipped") {
+    status = "skipped";
+  } else if (row.notification_last_error && row.notification_processed_at) {
+    status = "failed";
+  } else if (row.notification_last_error) {
+    status = "retrying";
+  } else if (hasOutbox && !row.notification_processed_at) {
+    status = "pending";
+  } else if (hasOutbox && row.notification_processed_at) {
+    status = "sent";
+  }
+
+  return {
+    status,
+    channel,
+    provider,
+    lastAttemptAt: row.notification_audit_created_at
+      ? toIsoDateTime(row.notification_audit_created_at)
+      : row.notification_processed_at
+        ? toIsoDateTime(row.notification_processed_at)
+        : row.notification_next_attempt_at
+          ? toIsoDateTime(row.notification_next_attempt_at)
+          : row.notification_created_at
+            ? toIsoDateTime(row.notification_created_at)
+            : null,
+    lastEventType: row.notification_event_type ?? null,
+    outboxMessageId: row.notification_outbox_id ?? null,
+    retryCount: Number(row.notification_retry_count ?? 0),
+    safeErrorSummary: safeErrorSummary(row.notification_last_error)
+  };
+}
+
 function mapDemoRequest(row: DemoRequestRow): DemoRequestDto {
   return DemoRequestSchema.parse({
     id: row.id,
@@ -118,6 +200,7 @@ function mapDemoRequest(row: DemoRequestRow): DemoRequestDto {
     closeReason: row.close_reason ?? null,
     reviewedBy: row.reviewed_by,
     reviewedAt: row.reviewed_at ? toIsoDateTime(row.reviewed_at) : null,
+    notification: mapDemoRequestNotification(row),
     createdAt: toIsoDateTime(row.created_at),
     updatedAt: toIsoDateTime(row.updated_at)
   });
@@ -266,38 +349,71 @@ export class DemoRequestsService {
     const where: string[] = [];
     if (filters.status) {
       values.push(filters.status);
-      where.push(`status = $${values.length}`);
+      where.push(`d.status = $${values.length}`);
     }
     if (filters.priority) {
       values.push(filters.priority);
-      where.push(`follow_up_priority = $${values.length}`);
+      where.push(`d.follow_up_priority = $${values.length}`);
     }
     if (filters.owner) {
       values.push(filters.owner.toLowerCase());
-      where.push(`lower(assigned_owner) = $${values.length}`);
+      where.push(`lower(d.assigned_owner) = $${values.length}`);
     }
     if (filters.interestType) {
       values.push(filters.interestType);
-      where.push(`interest_type = $${values.length}`);
+      where.push(`d.interest_type = $${values.length}`);
     }
     if (filters.due === "overdue") {
-      where.push(`next_follow_up_at is not null and next_follow_up_at < now() and status not in ('CLOSED', 'SPAM')`);
+      where.push(`d.next_follow_up_at is not null and d.next_follow_up_at < now() and d.status not in ('CLOSED', 'SPAM')`);
     }
     if (filters.due === "today") {
-      where.push(`next_follow_up_at >= date_trunc('day', now()) and next_follow_up_at < date_trunc('day', now()) + interval '1 day' and status not in ('CLOSED', 'SPAM')`);
+      where.push(`d.next_follow_up_at >= date_trunc('day', now()) and d.next_follow_up_at < date_trunc('day', now()) + interval '1 day' and d.status not in ('CLOSED', 'SPAM')`);
     }
     if (filters.due === "upcoming") {
-      where.push(`next_follow_up_at is not null and next_follow_up_at >= now() and status not in ('CLOSED', 'SPAM')`);
+      where.push(`d.next_follow_up_at is not null and d.next_follow_up_at >= now() and d.status not in ('CLOSED', 'SPAM')`);
     }
     if (filters.due === "none") {
-      where.push(`next_follow_up_at is null and status not in ('CLOSED', 'SPAM')`);
+      where.push(`d.next_follow_up_at is null and d.status not in ('CLOSED', 'SPAM')`);
     }
 
     const result = await this.pg.query<DemoRequestRow>(
-      `select *
-       from public.demo_requests
+      `select d.*,
+              latest_outbox.id as notification_outbox_id,
+              latest_outbox.event_type as notification_event_type,
+              latest_outbox.retry_count as notification_retry_count,
+              latest_outbox.last_error as notification_last_error,
+              latest_outbox.processed_at as notification_processed_at,
+              latest_outbox.next_attempt_at as notification_next_attempt_at,
+              latest_outbox.created_at as notification_created_at,
+              latest_audit.action as notification_audit_action,
+              latest_audit.metadata as notification_audit_metadata,
+              latest_audit.created_at as notification_audit_created_at
+       from public.demo_requests d
+       left join lateral (
+         select id, event_type, retry_count, last_error, processed_at, next_attempt_at, created_at
+         from public.outbox_messages om
+         where om.aggregate_type = 'demo_request'
+           and om.aggregate_id = d.id
+           and om.event_type in (
+             'NOTIFY_ADMIN_DEMO_REQUEST_CREATED',
+             'DEMO_REQUEST_STATUS_UPDATED',
+             'DEMO_REQUEST_FOLLOW_UP_SCHEDULED',
+             'DEMO_REQUEST_CONTACT_RECORDED'
+           )
+         order by om.created_at desc
+         limit 1
+       ) latest_outbox on true
+       left join lateral (
+         select action, metadata, created_at
+         from public.audit_log a
+         where a.entity_type = 'demo_request'
+           and a.entity_id = d.id
+           and a.action in ('external_notification_sent', 'external_notification_skipped')
+         order by a.created_at desc
+         limit 1
+       ) latest_audit on true
        ${where.length ? `where ${where.join(" and ")}` : ""}
-       order by created_at desc
+       order by d.created_at desc
        limit 100`,
       values
     );

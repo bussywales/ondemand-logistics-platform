@@ -3,6 +3,7 @@ import { buildAuthRedirectTarget } from '../app/_lib/route-protection';
 
 const PUBLIC_RESTAURANT_PATH = '/restaurants/pilot-kitchen-1777370757';
 const LATEST_ORDER_ID = process.env.SMOKE_LATEST_ORDER_ID || process.env.LATEST_ORDER_ID;
+const SMOKE_REQUIRE_AUTH = /^(1|true|yes)$/i.test(process.env.SMOKE_REQUIRE_AUTH ?? '');
 
 const BUSINESS_TEST_ACCOUNT = {
   email: process.env.SMOKE_BUSINESS_EMAIL || process.env.BUSINESS_SMOKE_EMAIL || '',
@@ -23,6 +24,14 @@ const FLEET_MANAGER_TEST_ACCOUNT = {
   email: process.env.SMOKE_FLEET_MANAGER_EMAIL || '',
   password: process.env.SMOKE_FLEET_MANAGER_PASSWORD || ''
 };
+
+function requireOrSkip(condition: boolean, message: string) {
+  if (condition) return;
+  if (SMOKE_REQUIRE_AUTH) {
+    throw new Error(`${message} SMOKE_REQUIRE_AUTH=true requires full authenticated smoke coverage.`);
+  }
+  test.skip(true, message);
+}
 
 async function signInOperator(page: Page, credentials: { email: string; password: string }, options?: { returnTo?: string }) {
   if (!credentials.email || !credentials.password) {
@@ -110,7 +119,7 @@ test('public ordering smoke with checkout surface', async ({ page }) => {
 });
 
 test('public tracking smoke opens latest order', async ({ page }) => {
-  test.skip(!LATEST_ORDER_ID, 'Set SMOKE_LATEST_ORDER_ID to smoke the public tracking route.');
+  requireOrSkip(Boolean(LATEST_ORDER_ID), 'Set SMOKE_LATEST_ORDER_ID to smoke the public tracking route.');
 
   await page.goto(`/track/${LATEST_ORDER_ID}`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('main')).toBeVisible({ timeout: 15000 });
@@ -127,8 +136,8 @@ test('public demo request page smoke', async ({ page }) => {
 });
 
 test('authenticated business workspace routes smoke', async ({ page }) => {
-  test.skip(
-    !BUSINESS_TEST_ACCOUNT.email || !BUSINESS_TEST_ACCOUNT.password,
+  requireOrSkip(
+    Boolean(BUSINESS_TEST_ACCOUNT.email && BUSINESS_TEST_ACCOUNT.password),
     'Set SMOKE_BUSINESS_EMAIL and SMOKE_BUSINESS_PASSWORD for authenticated workspace smoke.'
   );
 
@@ -149,7 +158,7 @@ test('authenticated business workspace routes smoke', async ({ page }) => {
 });
 
 test('authenticated admin routes smoke', async ({ page }) => {
-  test.skip(!ADMIN_TEST_ACCOUNT.email || !ADMIN_TEST_ACCOUNT.password, 'Set SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD for admin smoke.');
+  requireOrSkip(Boolean(ADMIN_TEST_ACCOUNT.email && ADMIN_TEST_ACCOUNT.password), 'Set SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD for admin smoke.');
 
   const signedIn = await signInOperator(page, ADMIN_TEST_ACCOUNT);
   expect(signedIn, 'Admin smoke credentials should sign in when configured.').toBe(true);
@@ -171,7 +180,7 @@ test('authenticated admin routes smoke', async ({ page }) => {
 });
 
 test('authenticated driver route smoke', async ({ page }) => {
-  test.skip(!DRIVER_TEST_ACCOUNT.email || !DRIVER_TEST_ACCOUNT.password, 'Set SMOKE_DRIVER_EMAIL and SMOKE_DRIVER_PASSWORD for driver smoke.');
+  requireOrSkip(Boolean(DRIVER_TEST_ACCOUNT.email && DRIVER_TEST_ACCOUNT.password), 'Set SMOKE_DRIVER_EMAIL and SMOKE_DRIVER_PASSWORD for driver smoke.');
 
   const signedIn = await signInOperator(page, DRIVER_TEST_ACCOUNT, { returnTo: '/driver' });
   expect(signedIn, 'Driver smoke credentials should sign in when configured.').toBe(true);
@@ -186,8 +195,8 @@ test('authenticated driver route smoke', async ({ page }) => {
 });
 
 test('authenticated fleet manager workspace smoke', async ({ page }) => {
-  test.skip(
-    !FLEET_MANAGER_TEST_ACCOUNT.email || !FLEET_MANAGER_TEST_ACCOUNT.password,
+  requireOrSkip(
+    Boolean(FLEET_MANAGER_TEST_ACCOUNT.email && FLEET_MANAGER_TEST_ACCOUNT.password),
     'Set SMOKE_FLEET_MANAGER_EMAIL and SMOKE_FLEET_MANAGER_PASSWORD for dedicated fleet manager smoke.'
   );
 

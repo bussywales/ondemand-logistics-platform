@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { getUserFacingApiError, listAdminDemoRequestEvents, listAdminDemoRequests, updateAdminDemoRequest } from "../_lib/api";
-import type { DemoRequest, DemoRequestEvent, DemoRequestFollowUpPriority, DemoRequestStatus, UpdateDemoRequestInput } from "../_lib/product-state";
+import type { DemoRequest, DemoRequestEvent, DemoRequestFollowUpPriority, DemoRequestNotificationStatus, DemoRequestStatus, UpdateDemoRequestInput } from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { BrandLogo } from "./brand-logo";
 import { useBusinessAuth } from "./business-auth-provider";
@@ -29,6 +29,20 @@ function statusTone(status: DemoRequestStatus) {
   if (status === "SPAM") return "sw-badge--danger";
   if (status === "CONTACTED" || status === "REVIEWED") return "sw-badge--warning";
   return "sw-badge--neutral";
+}
+
+function notificationTone(status: DemoRequestNotificationStatus["status"]) {
+  if (status === "sent") return "sw-badge--success";
+  if (status === "failed") return "sw-badge--danger";
+  if (status === "retrying") return "sw-badge--warning";
+  if (status === "pending") return "sw-badge--info";
+  return "sw-badge--neutral";
+}
+
+function notificationCopy(status: DemoRequestNotificationStatus["status"]) {
+  if (status === "skipped") return "Skipped / unconfigured";
+  if (status === "retrying") return "Retrying";
+  return formatLabel(status);
 }
 
 function formatDate(value: string) {
@@ -89,6 +103,17 @@ export function getDemoRequestQueueSummary(requests: DemoRequest[], now = new Da
       return acc;
     },
     { dueToday: 0, highPriority: 0, new: 0, overdue: 0, qualified: 0 }
+  );
+}
+
+export function getDemoRequestNotificationSummary(requests: DemoRequest[]) {
+  return requests.reduce(
+    (acc, request) => {
+      const status = request.notification?.status ?? "unknown";
+      acc[status] += 1;
+      return acc;
+    },
+    { failed: 0, pending: 0, retrying: 0, sent: 0, skipped: 0, unknown: 0 }
   );
 }
 
@@ -181,6 +206,9 @@ function RequestRow(props: {
       <div className="sw-stack-sm">
         <div className="admin-command-item-meta">
           <span className={`sw-badge ${statusTone(props.request.status)}`}>{formatLabel(props.request.status)}</span>
+          <span className={`sw-badge ${notificationTone(props.request.notification?.status ?? "unknown")}`}>
+            Notification {notificationCopy(props.request.notification?.status ?? "unknown")}
+          </span>
           <span className="sw-badge sw-badge--neutral">{formatLabel(props.request.interestType)}</span>
           {props.request.followUpPriority ? <span className={`sw-badge ${props.request.followUpPriority === "URGENT" || props.request.followUpPriority === "HIGH" ? "sw-badge--warning" : "sw-badge--info"}`}>{formatLabel(props.request.followUpPriority)} priority</span> : null}
           {followUpState === "overdue" ? <span className="sw-badge sw-badge--danger">Overdue</span> : null}
@@ -198,6 +226,20 @@ function RequestRow(props: {
           <span>Next follow-up: {props.request.nextFollowUpAt ? formatDate(props.request.nextFollowUpAt) : "Not scheduled"}</span>
           <span>Last contacted: {props.request.lastContactedAt ? formatDate(props.request.lastContactedAt) : "Not recorded"}</span>
         </div>
+        {props.request.notification ? (
+          <div className="admin-demo-request-notification">
+            <div className="admin-command-item-meta">
+              <span>Notification event: {props.request.notification.lastEventType?.replaceAll("_", " ").toLowerCase() ?? "not recorded"}</span>
+              <span>Channel: {props.request.notification.channel ?? "not configured"}</span>
+              {props.request.notification.provider ? <span>Provider: {props.request.notification.provider}</span> : null}
+              <span>Attempts: {props.request.notification.retryCount}</span>
+              <span>Last attempt: {props.request.notification.lastAttemptAt ? formatDate(props.request.notification.lastAttemptAt) : "not attempted"}</span>
+            </div>
+            {props.request.notification.safeErrorSummary ? <p className="ops-detail-note">Delivery note: {props.request.notification.safeErrorSummary}</p> : null}
+          </div>
+        ) : (
+          <p className="ops-detail-note">Notification delivery state is not available for this request yet.</p>
+        )}
         {props.request.reviewedAt ? (
           <p className="ops-detail-note">
             Reviewed {formatDate(props.request.reviewedAt)}
@@ -320,6 +362,7 @@ export function AdminDemoRequestsView(props: {
   onUpdate: (id: string, input: UpdateDemoRequestInput) => void;
 }) {
   const queueSummary = getDemoRequestQueueSummary(props.requests);
+  const notificationSummary = getDemoRequestNotificationSummary(props.requests);
 
   return (
     <section className="sw-operational-surface admin-command-section">
@@ -336,6 +379,10 @@ export function AdminDemoRequestsView(props: {
         <div><span>Overdue</span><strong>{queueSummary.overdue}</strong></div>
         <div><span>High priority</span><strong>{queueSummary.highPriority}</strong></div>
         <div><span>Qualified</span><strong>{queueSummary.qualified}</strong></div>
+        <div><span>Notifications pending</span><strong>{notificationSummary.pending}</strong></div>
+        <div><span>Notifications sent</span><strong>{notificationSummary.sent}</strong></div>
+        <div><span>Skipped / unconfigured</span><strong>{notificationSummary.skipped}</strong></div>
+        <div><span>Failed / retrying</span><strong>{notificationSummary.failed + notificationSummary.retrying}</strong></div>
       </div>
       <div className="orders-filter-row admin-filter-row">
         {FILTERS.map((nextFilter) => (

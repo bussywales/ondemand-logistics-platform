@@ -48,10 +48,12 @@ pnpm --filter @shipwright/web test:smoke
 
 Configuration:
 - `STAGING_WEB_BASE_URL` should point at the staging web URL.
+- Playwright auto-loads repo-root `.env.smoke` when present.
 - Public tracking smoke requires one of:
   - `SMOKE_LATEST_ORDER_ID`
   - `LATEST_ORDER_ID`
 - Authenticated workspace/admin/driver/fleet-manager smoke requires credentials and is skipped otherwise.
+- Set `SMOKE_REQUIRE_AUTH=true` for release/full smoke mode; missing tracking or authenticated smoke credentials then fail instead of skipping.
 - Admin browser smoke includes `/admin`, `/admin/command`, and `/admin/drivers`.
 - Admin browser smoke should include `/admin/demo-requests` when commercial intake changes.
 - Commercial intake changes should verify that a non-sensitive staging request appears in `/admin/demo-requests` and that `/admin/command` shows the demo request posture.
@@ -170,6 +172,7 @@ What this means:
 - `DEMO_REQUEST_WEBHOOK_URL` enables webhook delivery for demo request/admin follow-up events
 - `ADMIN_NOTIFICATION_EMAIL` plus `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL` enables admin notification email
 - missing webhook/email provider env should degrade safely, record a skipped/deferred notification outcome, and not crash the worker
+- `/admin/demo-requests` and `/admin/command` should show demo-request notification posture as pending, sent, skipped/unconfigured, failed, or retrying without exposing secrets or webhook URLs
 - a parked email provider is not by itself a failed staging release unless the explicit release goal is outbound-email verification
 
 ## 8.5) Pilot fallback playbooks

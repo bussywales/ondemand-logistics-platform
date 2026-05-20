@@ -300,6 +300,16 @@ const demoRequests: DemoRequest[] = [
     closeReason: null,
     reviewedBy: null,
     reviewedAt: null,
+    notification: {
+      status: "skipped",
+      channel: "webhook, email",
+      provider: "noop",
+      lastAttemptAt: "2026-05-04T07:51:00.000Z",
+      lastEventType: "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+      outboxMessageId: "7cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      retryCount: 1,
+      safeErrorSummary: null
+    },
     createdAt: "2026-05-04T07:50:00.000Z",
     updatedAt: "2026-05-04T07:50:00.000Z"
   },
@@ -321,6 +331,16 @@ const demoRequests: DemoRequest[] = [
     closeReason: null,
     reviewedBy: "user-1",
     reviewedAt: "2026-05-04T08:00:00.000Z",
+    notification: {
+      status: "sent",
+      channel: "webhook",
+      provider: null,
+      lastAttemptAt: "2026-05-04T08:01:00.000Z",
+      lastEventType: "DEMO_REQUEST_CONTACT_RECORDED",
+      outboxMessageId: "8cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      retryCount: 1,
+      safeErrorSummary: null
+    },
     createdAt: "2026-05-04T07:40:00.000Z",
     updatedAt: "2026-05-04T08:00:00.000Z"
   }
@@ -357,6 +377,8 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Review new commercial interest");
     expect(markup).toContain("Overdue follow-ups");
     expect(markup).toContain("High-priority leads");
+    expect(markup).toContain("Notification skipped");
+    expect(markup).toContain("Skipped notification delivery is acceptable");
     expect(markup).toContain("Operational reset tools");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");

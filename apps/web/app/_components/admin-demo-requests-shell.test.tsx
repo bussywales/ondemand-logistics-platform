@@ -22,6 +22,16 @@ const request: DemoRequest = {
   closeReason: null,
   reviewedBy: null,
   reviewedAt: null,
+  notification: {
+    status: "skipped",
+    channel: "webhook, email",
+    provider: "noop",
+    lastAttemptAt: "2026-05-19T10:05:00.000Z",
+    lastEventType: "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+    outboxMessageId: "22222222-2222-4222-8222-222222222222",
+    retryCount: 1,
+    safeErrorSummary: null
+  },
   createdAt: "2026-05-19T10:00:00.000Z",
   updatedAt: "2026-05-19T10:00:00.000Z"
 };
@@ -51,6 +61,9 @@ describe("AdminDemoRequestsView", () => {
     expect(html).toContain("Save follow-up");
     expect(html).toContain("Assigned owner");
     expect(html).toContain("Next follow-up");
+    expect(html).toContain("Notification Skipped / unconfigured");
+    expect(html).toContain("Channel: webhook, email");
+    expect(html).toContain("Notifications sent");
   });
 
   it("renders an empty state", () => {

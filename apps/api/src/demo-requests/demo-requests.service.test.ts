@@ -99,7 +99,40 @@ describe("DemoRequestsService", () => {
     const result = await service.listAdminDemoRequests({ status: "NEW" });
 
     expect(result.items).toHaveLength(1);
-    expect(query).toHaveBeenCalledWith(expect.stringContaining("where status = $1"), ["NEW"]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("where d.status = $1"), ["NEW"]);
+  });
+
+  it("maps demo request notification delivery state from outbox and audit logs", async () => {
+    const { service } = createService([
+      {
+        ...DEMO_ROW,
+        notification_outbox_id: "44444444-4444-4444-8444-444444444444",
+        notification_event_type: "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+        notification_retry_count: 1,
+        notification_last_error: null,
+        notification_processed_at: NOW,
+        notification_next_attempt_at: NOW,
+        notification_created_at: NOW,
+        notification_audit_action: "external_notification_skipped",
+        notification_audit_metadata: {
+          sentChannels: [],
+          skippedChannels: ["webhook:not_configured", "email:admin_notification_email_not_configured"],
+          reason: "admin_notification_not_configured",
+          emailProvider: "noop"
+        },
+        notification_audit_created_at: NOW
+      }
+    ]);
+
+    const result = await service.listAdminDemoRequests({});
+
+    expect(result.items[0]?.notification).toMatchObject({
+      status: "skipped",
+      channel: "webhook, email",
+      provider: "noop",
+      lastEventType: "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+      retryCount: 1
+    });
   });
 
   it("updates admin status and note", async () => {

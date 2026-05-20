@@ -135,6 +135,8 @@ Notes:
   - `SMOKE_LATEST_ORDER_ID` (preferred), or
   - `LATEST_ORDER_ID` fallback.
 - Authenticated workspace/admin/driver/fleet-manager smoke checks require credentials and are skipped if missing.
+- The Playwright config auto-loads repo-root `.env.smoke` when present.
+- Set `SMOKE_REQUIRE_AUTH=true` for release/full smoke mode; missing tracking or authenticated smoke credentials fail instead of skipping.
 - Playwright artifacts are local test outputs and must not be committed:
   - `playwright-report`
   - `test-results`
@@ -147,6 +149,7 @@ Optional authenticated smoke env vars in the Playwright spec:
 
 Global run env:
 - `STAGING_WEB_BASE_URL` (set to staging host for authenticated and public smoke routes)
+- `SMOKE_REQUIRE_AUTH=true` when the release gate must prove authenticated browser coverage
 
 ## Migrations
 The schema has moved well beyond the original foundations migrations.

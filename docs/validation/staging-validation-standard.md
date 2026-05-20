@@ -100,10 +100,11 @@ Authenticated routes:
 - `/driver`
 
 Browser smoke must validate both unauthenticated and authenticated surfaces when smoke credentials are configured.
+For release/full smoke mode, set `SMOKE_REQUIRE_AUTH=true`; the smoke suite then fails when tracking or authenticated credentials are missing instead of skipping.
 
 Commercial intake smoke should also check `/demo/request` structurally when demo request capture changes. A staging verification may submit one non-sensitive test request and confirm it appears in `/admin/demo-requests` and is reflected in `/admin/command` commercial intake posture.
 
-When demo request follow-up changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, and view append-only event history in `/admin/demo-requests`.
+When demo request follow-up or notification delivery changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, view append-only event history, and see notification delivery posture in `/admin/demo-requests`.
 
 ## Smoke Users
 Use dedicated staging-only smoke accounts. Document roles, not secrets:
@@ -124,6 +125,7 @@ SMOKE_DRIVER_EMAIL=
 SMOKE_DRIVER_PASSWORD=
 SMOKE_FLEET_MANAGER_EMAIL=
 SMOKE_FLEET_MANAGER_PASSWORD=
+SMOKE_REQUIRE_AUTH=true
 ```
 
 Supporting browser smoke env:
@@ -132,6 +134,18 @@ Supporting browser smoke env:
 STAGING_WEB_BASE_URL=
 SMOKE_LATEST_ORDER_ID=
 ```
+
+Optional notification delivery env for staging verification:
+
+```bash
+DEMO_REQUEST_WEBHOOK_URL=
+ADMIN_NOTIFICATION_EMAIL=
+RESEND_API_KEY=
+NOTIFICATION_FROM_EMAIL=
+NOTIFICATION_REPLY_TO_EMAIL=
+```
+
+When those notification env values are absent, skipped/unconfigured delivery is expected and should be visible to platform admins without blocking demo request persistence.
 
 Do not commit passwords or `.env.smoke`.
 

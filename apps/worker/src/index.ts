@@ -1195,8 +1195,10 @@ async function handleAdminDemoRequestNotification(
   const skippedChannels: string[] = [];
 
   if (adminNotificationConfig.webhookUrl) {
+    logger.info({ event_type: eventType, demo_request_id: payload.demoRequestId }, "admin_demo_request_webhook_send_start");
     await postAdminNotificationWebhook(adminNotificationConfig.webhookUrl, payload);
     sentChannels.push("webhook");
+    logger.info({ event_type: eventType, demo_request_id: payload.demoRequestId }, "admin_demo_request_webhook_sent");
   } else {
     skippedChannels.push("webhook:not_configured");
   }
@@ -1242,7 +1244,10 @@ async function handleAdminDemoRequestNotification(
       ...skipReason,
       demoRequestId: payload.demoRequestId,
       interestType: payload.interestType,
-      status: payload.status
+      status: payload.status,
+      emailProvider: notificationProvider.provider,
+      webhookConfigured: Boolean(adminNotificationConfig.webhookUrl),
+      adminEmailConfigured: Boolean(adminNotificationConfig.adminEmail)
     }
   });
 

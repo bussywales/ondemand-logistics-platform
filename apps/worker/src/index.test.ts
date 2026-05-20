@@ -19,7 +19,7 @@ function createLoggerStub() {
 function createClientStub(
   steps: Array<{ match: string; result?: { rowCount?: number; rows?: unknown[] } }>
 ) {
-  const query = vi.fn(async (sql: string) => {
+  const query = vi.fn(async (sql: string, _params?: unknown[]) => {
     const step = steps.shift();
     if (!step) {
       throw new Error(`Unexpected query: ${sql}`);
@@ -36,6 +36,15 @@ function createClientStub(
     query,
     remainingSteps: () => steps.length
   };
+}
+
+function latestAuditMetadata(client: ReturnType<typeof createClientStub>) {
+  const auditCall = client.query.mock.calls.find(([sql]) => String(sql).includes("insert into public.audit_log"));
+  const metadata = auditCall?.[1]?.[6];
+  if (typeof metadata !== "string") {
+    throw new Error("Expected audit metadata JSON");
+  }
+  return JSON.parse(metadata) as Record<string, unknown>;
 }
 
 beforeEach(() => {
@@ -617,6 +626,14 @@ describe("dispatchSideEffect", () => {
     );
 
     expect(client.remainingSteps()).toBe(0);
+    expect(latestAuditMetadata(client)).toMatchObject({
+      eventType: "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+      reason: "admin_notification_not_configured",
+      sentChannels: [],
+      skippedChannels: ["webhook:not_configured", "email:admin_notification_email_not_configured"],
+      webhookConfigured: false,
+      adminEmailConfigured: false
+    });
   });
 
   it("posts admin demo request notifications to the configured webhook", async () => {
@@ -662,6 +679,12 @@ describe("dispatchSideEffect", () => {
       })
     );
     expect(client.remainingSteps()).toBe(0);
+    expect(latestAuditMetadata(client)).toMatchObject({
+      eventType: "DEMO_REQUEST_STATUS_UPDATED",
+      sentChannels: ["webhook"],
+      skippedChannels: ["email:admin_notification_email_not_configured"],
+      webhookConfigured: true
+    });
   });
 
   it("sends admin demo request email when admin email and provider are configured", async () => {
@@ -695,10 +718,64 @@ describe("dispatchSideEffect", () => {
 
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "admin@example.com" }));
     expect(client.remainingSteps()).toBe(0);
+    expect(latestAuditMetadata(client)).toMatchObject({
+      eventType: "DEMO_REQUEST_CONTACT_RECORDED",
+      sentChannels: ["email"],
+      skippedChannels: ["webhook:not_configured"],
+      adminEmailConfigured: true,
+      emailProvider: "resend"
+    });
   });
 });
 
 describe("processBatchWithLogger", () => {
+  it("records retry metadata when admin demo request webhook delivery fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: async () => "temporary outage"
+      })
+    );
+    setAdminNotificationConfigForTests({ webhookUrl: "https://hooks.example.test/demo", adminEmail: null });
+
+    const client = createClientStub([
+      {
+        match: "from public.outbox_messages",
+        result: {
+          rows: [
+            {
+              id: "msg-demo-fail",
+              aggregate_type: "demo_request",
+              aggregate_id: "demo-fail",
+              event_type: "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+              payload: { demoRequestId: "demo-fail", requestId: "req-demo-fail" },
+              retry_count: 0
+            }
+          ]
+        }
+      },
+      { match: "update public.outbox_messages" }
+    ]);
+
+    const handled = await processBatchWithLogger(
+      client as never,
+      {
+        databaseUrl: "postgres://example",
+        pollIntervalMs: 1000,
+        batchSize: 20,
+        maxRetries: 10
+      },
+      createLoggerStub()
+    );
+
+    expect(handled).toBe(1);
+    expect(client.remainingSteps()).toBe(0);
+    const updateCall = client.query.mock.calls.find(([sql]) => String(sql).includes("update public.outbox_messages"));
+    expect(updateCall?.[1]).toEqual(expect.arrayContaining(["msg-demo-fail", false, 2, expect.stringContaining("admin_notification_webhook_failed:503")]));
+  });
+
   it("does not crash the worker loop when an external notification provider fails", async () => {
     setNotificationProviderForTests({
       provider: "resend",

@@ -35,6 +35,17 @@ export type DemoRequestEventType =
   | "PRIORITY_CHANGED"
   | "CLOSED"
   | "REOPENED";
+export type DemoRequestNotificationDeliveryStatus = "pending" | "sent" | "skipped" | "failed" | "retrying" | "unknown";
+export type DemoRequestNotificationStatus = {
+  status: DemoRequestNotificationDeliveryStatus;
+  channel: string | null;
+  provider: string | null;
+  lastAttemptAt: string | null;
+  lastEventType: string | null;
+  outboxMessageId: string | null;
+  retryCount: number;
+  safeErrorSummary: string | null;
+};
 export type PaymentStatus =
   | "REQUIRES_PAYMENT_METHOD"
   | "REQUIRES_CONFIRMATION"
@@ -177,6 +188,7 @@ export type DemoRequest = {
   closeReason: string | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
+  notification?: DemoRequestNotificationStatus | null;
   createdAt: string;
   updatedAt: string;
 };

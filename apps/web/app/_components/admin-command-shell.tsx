@@ -185,6 +185,17 @@ function getDemoRequestFollowUpCounts(requests: DemoRequest[]) {
   );
 }
 
+function getDemoRequestNotificationCounts(requests: DemoRequest[]) {
+  return requests.reduce(
+    (acc, request) => {
+      const status = request.notification?.status ?? "unknown";
+      acc[status] += 1;
+      return acc;
+    },
+    { failed: 0, pending: 0, retrying: 0, sent: 0, skipped: 0, unknown: 0 }
+  );
+}
+
 function groupAttentionItems(items: DailyBriefingItem[]) {
   const groups = new Map<string, AdminCommandGroup>();
 
@@ -290,6 +301,7 @@ export function AdminCommandView(props: {
   }).length;
   const demoRequestCounts = useMemo(() => countDemoRequestsByStatus(props.demoRequests), [props.demoRequests]);
   const demoFollowUpCounts = useMemo(() => getDemoRequestFollowUpCounts(props.demoRequests), [props.demoRequests]);
+  const demoNotificationCounts = useMemo(() => getDemoRequestNotificationCounts(props.demoRequests), [props.demoRequests]);
   const latestResetRun = props.operationalResets[0] ?? null;
   const newDemoRequests = props.demoRequests.filter((request) => request.status === "NEW");
   const oldestNewDemoRequestAge =
@@ -330,6 +342,9 @@ export function AdminCommandView(props: {
           <CountCard copy="Demo request follow-ups scheduled for today." label="Due today" tone={demoFollowUpCounts.dueToday ? "info" : "success"} value={demoFollowUpCounts.dueToday} />
           <CountCard copy="Active requests marked high or urgent priority." label="High-priority leads" tone={demoFollowUpCounts.highPriority ? "warning" : "success"} value={demoFollowUpCounts.highPriority} />
           <CountCard copy="Qualified commercial opportunities ready for pilot or investor follow-up." label="Qualified opportunities" tone={demoFollowUpCounts.qualified ? "success" : "info"} value={demoFollowUpCounts.qualified} />
+          <CountCard copy="Demo request notification outbox events not processed yet." label="Notification pending" tone={demoNotificationCounts.pending ? "info" : "success"} value={demoNotificationCounts.pending} />
+          <CountCard copy="Demo request notification deliveries that need retry or investigation." label="Notification failed" tone={demoNotificationCounts.failed + demoNotificationCounts.retrying ? "warning" : "success"} value={demoNotificationCounts.failed + demoNotificationCounts.retrying} />
+          <CountCard copy="Notification delivery skipped because optional email/webhook config is absent." label="Notification skipped" tone={demoNotificationCounts.skipped ? "info" : "success"} value={demoNotificationCounts.skipped} />
           <CountCard copy="Completed non-destructive staging/demo tidy runs." label="Reset runs" tone={props.operationalResets.length ? "info" : "success"} value={props.operationalResets.length} />
         </div>
       </section>
@@ -393,6 +408,10 @@ export function AdminCommandView(props: {
               <div><span>Overdue</span><strong>{demoFollowUpCounts.overdue}</strong></div>
               <div><span>Due today</span><strong>{demoFollowUpCounts.dueToday}</strong></div>
               <div><span>High priority</span><strong>{demoFollowUpCounts.highPriority}</strong></div>
+              <div><span>Notification pending</span><strong>{demoNotificationCounts.pending}</strong></div>
+              <div><span>Notification sent</span><strong>{demoNotificationCounts.sent}</strong></div>
+              <div><span>Skipped / unconfigured</span><strong>{demoNotificationCounts.skipped}</strong></div>
+              <div><span>Failed / retrying</span><strong>{demoNotificationCounts.failed + demoNotificationCounts.retrying}</strong></div>
             </div>
           </div>
           <div className="sw-operational-surface admin-command-report-card">
@@ -402,6 +421,9 @@ export function AdminCommandView(props: {
               {oldestNewDemoRequestAge == null
                 ? "The intake queue is clear for new requests."
                 : `Oldest new request is ${formatAgeMinutes(oldestNewDemoRequestAge)}.`}
+            </p>
+            <p className="ops-detail-note">
+              Skipped notification delivery is acceptable when optional email/webhook secrets are intentionally not configured.
             </p>
           </div>
         </div>

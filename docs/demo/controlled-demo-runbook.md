@@ -145,6 +145,7 @@ Do not claim:
 - live-map courier movement
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - CRM automation for demo requests; internal admin command/outbox visibility, owner assignment, follow-up scheduling, contact recording, event history, and optional webhook/admin-email notification delivery are available, but outbound follow-up remains manual unless configured and separately proven
+- notification delivery posture is visible to platform admins; skipped/unconfigured demo request notifications are acceptable when optional webhook/email secrets are intentionally absent
 - public fixed-price packages; `/pricing` explains controlled pilot paths and pricing is discussed after fit review
 - operational reset as deletion; reset tools are non-destructive, admin-only, previewed first, and do not mutate proof orders/jobs/payments
 - broad compliance completeness for live courier operations
