@@ -1,7 +1,8 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { DemoRequestFeedback, DemoRequestForm, normalizeDemoRequestInterest } from "./demo-request-form";
+import { normalizeDemoRequestInterest } from "../_lib/demo-request-interest";
+import { DemoRequestFeedback, DemoRequestForm } from "./demo-request-form";
 
 describe("DemoRequestForm", () => {
   it("renders real capture copy and honeypot field", () => {

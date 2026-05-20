@@ -257,10 +257,23 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "source",
       "status",
       "admin_note",
+      "assigned_owner",
+      "next_follow_up_at",
+      "follow_up_priority",
+      "last_contacted_at",
+      "close_reason",
       "reviewed_by",
       "reviewed_at",
       "created_at",
       "updated_at"
+    ],
+    demo_request_events: [
+      "id",
+      "demo_request_id",
+      "event_type",
+      "actor_id",
+      "metadata",
+      "created_at"
     ]
   }
 } as const;

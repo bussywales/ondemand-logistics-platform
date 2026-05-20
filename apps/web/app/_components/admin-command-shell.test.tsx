@@ -293,6 +293,11 @@ const demoRequests: DemoRequest[] = [
     source: "landing_page",
     status: "NEW",
     adminNote: null,
+    assignedOwner: "Commercial lead",
+    nextFollowUpAt: new Date(Date.now() - 60_000).toISOString(),
+    followUpPriority: "URGENT",
+    lastContactedAt: null,
+    closeReason: null,
     reviewedBy: null,
     reviewedAt: null,
     createdAt: "2026-05-04T07:50:00.000Z",
@@ -309,6 +314,11 @@ const demoRequests: DemoRequest[] = [
     source: "landing_page",
     status: "QUALIFIED",
     adminNote: "Pilot follow-up needed.",
+    assignedOwner: "Pilot owner",
+    nextFollowUpAt: new Date().toISOString(),
+    followUpPriority: "HIGH",
+    lastContactedAt: "2026-05-04T08:00:00.000Z",
+    closeReason: null,
     reviewedBy: "user-1",
     reviewedAt: "2026-05-04T08:00:00.000Z",
     createdAt: "2026-05-04T07:40:00.000Z",
@@ -344,6 +354,8 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Demo request follow-up");
     expect(markup).toContain("New demo requests");
     expect(markup).toContain("Review new commercial interest");
+    expect(markup).toContain("Overdue follow-ups");
+    expect(markup).toContain("High-priority leads");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });

@@ -218,13 +218,14 @@ Constraints:
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
 ## Workstream 7: Commercial Conversion Layer
-Status: In progress. Demo request persistence, internal notification posture, admin follow-up workflow, and controlled pilot package positioning are active.
+Status: In progress. Demo request persistence, internal notification posture, admin follow-up pipeline preparation, and controlled pilot package positioning are active.
 
 Scope:
 - real demo request persistence
 - lead capture and admin review
 - email or webhook integration
 - admin lead view
+- lead follow-up owner, priority, due date, contact record, and append-only event history
 - analytics/conversion tracking
 - pilot package/pricing page
 
@@ -234,15 +235,17 @@ Current posture:
 - demo requests are persisted for platform admin review
 - new demo requests record internal outbox event `NOTIFY_ADMIN_DEMO_REQUEST_CREATED`
 - `/admin` and `/admin/command` surface new demo request counts and link to the review queue
-- `/admin/demo-requests` shows next-action guidance, reviewed metadata, status quick actions, and admin notes
+- `/admin/demo-requests` shows next-action guidance, reviewed metadata, owner, priority, next follow-up date, contact record, status quick actions, admin notes, close reason, and compact event history
+- meaningful admin updates record append-only `demo_request_events`
+- status, scheduled follow-up, and contact updates can enqueue internal outbox events for later automation wiring
 - pricing CTAs preselect the correct demo request interest type
-- email, CRM, webhook, and analytics workflows remain deferred
+- outbound email, CRM sync, webhook delivery, and analytics workflows remain deferred
 
 Constraints:
 - do not imply CRM/email automation is live until it is wired and verified
 - do not expose internal docs or proof artifacts publicly without review
 - do not expose demo request lists outside platform-admin surfaces
-- do not add delete/destructive lead management in v2
+- do not add delete/destructive lead management in the follow-up pipeline
 
 ## Workstream 8: Brand/Product Marketing
 Status: Pause broad redesign work for now.

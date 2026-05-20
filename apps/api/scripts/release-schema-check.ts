@@ -134,10 +134,31 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     });
   }
 
-  for (const column of ["email", "interest_type", "status", "admin_note", "reviewed_by", "reviewed_at"]) {
+  for (const column of [
+    "email",
+    "interest_type",
+    "status",
+    "admin_note",
+    "assigned_owner",
+    "next_follow_up_at",
+    "follow_up_priority",
+    "last_contacted_at",
+    "close_reason",
+    "reviewed_by",
+    "reviewed_at"
+  ]) {
     const exists = await columnExists(client, "public", "demo_requests", column);
     items.push({
       name: `public.demo_requests.${column}`,
+      ok: exists,
+      detail: exists ? "column_present" : "column_missing"
+    });
+  }
+
+  for (const column of ["demo_request_id", "event_type", "metadata", "created_at"]) {
+    const exists = await columnExists(client, "public", "demo_request_events", column);
+    items.push({
+      name: `public.demo_request_events.${column}`,
       ok: exists,
       detail: exists ? "column_present" : "column_missing"
     });

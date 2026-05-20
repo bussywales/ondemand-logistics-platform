@@ -100,6 +100,8 @@ Browser smoke must validate both unauthenticated and authenticated surfaces when
 
 Commercial intake smoke should also check `/demo/request` structurally when demo request capture changes. A staging verification may submit one non-sensitive test request and confirm it appears in `/admin/demo-requests` and is reflected in `/admin/command` commercial intake posture.
 
+When demo request follow-up changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, and view append-only event history in `/admin/demo-requests`.
+
 ## Smoke Users
 Use dedicated staging-only smoke accounts. Document roles, not secrets:
 
@@ -154,7 +156,7 @@ Playwright artifacts remain local and ignored:
 - Browser smoke should stay green after UI, auth, routing, or command-surface changes.
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
 - Public smoke should not require authentication.
-- Demo request follow-up changes should keep `/admin/demo-requests` and `/admin/command` calm, admin-only, and free of CRM/email overclaims.
+- Demo request follow-up changes should keep `/admin/demo-requests` and `/admin/command` calm, admin-only, event-audited, and free of CRM/email overclaims.
 - Release readiness must include support/escalation schema dependencies because order, job, admin command, closeout, and support history surfaces depend on them.
 - Support history events must be system-created from support create/update operations; new work must not add manual event creation or deletion paths.
 - Rehearsal cockpit should not execute release verification, paid-delivery proof, browser smoke, or destructive pilot controls from the UI in v1.

@@ -24,6 +24,17 @@ export type OrgType = "PLATFORM" | "RESTAURANT" | "RETAILER" | "DRIVER_COMPANY" 
 export type OrgStatus = "ACTIVE" | "INACTIVE" | "ONBOARDING" | "SUSPENDED";
 export type DemoRequestInterestType = "PILOT_MERCHANT" | "OPERATOR_PLATFORM" | "INVESTOR_PARTNER" | "OTHER";
 export type DemoRequestStatus = "NEW" | "REVIEWED" | "CONTACTED" | "QUALIFIED" | "CLOSED" | "SPAM";
+export type DemoRequestFollowUpPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type DemoRequestEventType =
+  | "CREATED"
+  | "STATUS_CHANGED"
+  | "NOTE_UPDATED"
+  | "OWNER_ASSIGNED"
+  | "FOLLOW_UP_SCHEDULED"
+  | "CONTACT_RECORDED"
+  | "PRIORITY_CHANGED"
+  | "CLOSED"
+  | "REOPENED";
 export type PaymentStatus =
   | "REQUIRES_PAYMENT_METHOD"
   | "REQUIRES_CONFIRMATION"
@@ -159,10 +170,28 @@ export type DemoRequest = {
   source: string | null;
   status: DemoRequestStatus;
   adminNote: string | null;
+  assignedOwner: string | null;
+  nextFollowUpAt: string | null;
+  followUpPriority: DemoRequestFollowUpPriority | null;
+  lastContactedAt: string | null;
+  closeReason: string | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DemoRequestEvent = {
+  id: string;
+  demoRequestId: string;
+  eventType: DemoRequestEventType;
+  actorId: string | null;
+  actorLabel: string | null;
+  previousStatus: DemoRequestStatus | null;
+  newStatus: DemoRequestStatus | null;
+  note: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
 };
 
 export type CreateDemoRequestInput = {
@@ -179,6 +208,11 @@ export type CreateDemoRequestInput = {
 export type UpdateDemoRequestInput = {
   status?: DemoRequestStatus;
   adminNote?: string | null;
+  assignedOwner?: string | null;
+  nextFollowUpAt?: string | null;
+  followUpPriority?: DemoRequestFollowUpPriority | null;
+  lastContactedAt?: string | null;
+  closeReason?: string | null;
 };
 
 export type RestaurantStatus = "DRAFT" | "ACTIVE";

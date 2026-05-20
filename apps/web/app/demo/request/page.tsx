@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "../../_components/brand-logo";
-import { DemoRequestForm, normalizeDemoRequestInterest } from "../../_components/demo-request-form";
+import { DemoRequestForm } from "../../_components/demo-request-form";
 import { ShipWrightIcon } from "../../_components/shipwright-icon";
+import { normalizeDemoRequestInterest } from "../../_lib/demo-request-interest";
 
 export const metadata: Metadata = {
   title: "Request Demo | ShipWright",

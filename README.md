@@ -70,7 +70,12 @@ Commercial intake v2 adds internal operational visibility:
 - `/admin` and `/admin/command` surface new request posture for platform admins
 - `/admin/demo-requests` provides next-action guidance, reviewed metadata, status quick actions, and admin notes
 
-Outbound email, CRM sync, webhooks, and automated follow-up remain deferred.
+Commercial intake v4 adds follow-up pipeline preparation:
+- platform admins can assign an owner, set priority, schedule next follow-up, record contact, and close leads with reason
+- demo request history is append-only through `demo_request_events`
+- admin updates can enqueue internal automation-prep events for future email/webhook/CRM work
+
+Outbound email, CRM sync, webhooks, and automated follow-up delivery remain deferred.
 
 ## What’s New Entries
 Product update entries live in:

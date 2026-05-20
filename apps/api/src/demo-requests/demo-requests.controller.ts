@@ -30,4 +30,9 @@ export class AdminDemoRequestsController {
   updateDemoRequest(@RequestUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: unknown) {
     return this.demoRequests.updateAdminDemoRequest(user.id, id, body);
   }
+
+  @Get(":id/events")
+  listDemoRequestEvents(@Param("id") id: string) {
+    return this.demoRequests.listAdminDemoRequestEvents(id);
+  }
 }

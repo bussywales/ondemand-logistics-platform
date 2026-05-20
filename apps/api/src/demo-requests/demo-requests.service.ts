@@ -1,14 +1,20 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
-import type { PoolClient } from "pg";
+import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 import { z } from "zod";
 import {
   CreateDemoRequestSchema,
+  DemoRequestEventListSchema,
+  DemoRequestEventSchema,
+  DemoRequestFollowUpPrioritySchema,
   DemoRequestListSchema,
   DemoRequestSchema,
+  DemoRequestInterestTypeSchema,
   DemoRequestStatusSchema,
   UpdateDemoRequestSchema,
   type CreateDemoRequestInput,
   type DemoRequestDto,
+  type DemoRequestEventDto,
+  type DemoRequestEventType,
   type DemoRequestStatus,
   type UpdateDemoRequestInput
 } from "@shipwright/contracts";
@@ -16,7 +22,11 @@ import { toIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 
 const ListDemoRequestsFilterSchema = z.object({
-  status: DemoRequestStatusSchema.optional()
+  status: DemoRequestStatusSchema.optional(),
+  priority: DemoRequestFollowUpPrioritySchema.optional(),
+  owner: z.string().trim().min(2).max(160).optional(),
+  due: z.enum(["overdue", "today", "upcoming", "none"]).optional(),
+  interestType: DemoRequestInterestTypeSchema.optional()
 });
 
 type DemoRequestRow = {
@@ -30,15 +40,63 @@ type DemoRequestRow = {
   source: string | null;
   status: string;
   admin_note: string | null;
+  assigned_owner: string | null;
+  next_follow_up_at: string | Date | null;
+  follow_up_priority: string | null;
+  last_contacted_at: string | Date | null;
+  close_reason: string | null;
   reviewed_by: string | null;
   reviewed_at: string | Date | null;
   created_at: string | Date;
   updated_at: string | Date;
 };
 
+type DemoRequestEventRow = {
+  id: string;
+  demo_request_id: string;
+  event_type: string;
+  actor_id: string | null;
+  actor_label: string | null;
+  previous_status: string | null;
+  new_status: string | null;
+  note: string | null;
+  metadata: Record<string, unknown> | string | null;
+  created_at: string | Date;
+};
+
+type DemoRequestEventInsert = {
+  eventType: DemoRequestEventType;
+  previousStatus?: DemoRequestStatus | null;
+  newStatus?: DemoRequestStatus | null;
+  note?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+type Queryable = {
+  query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<QueryResult<T>>;
+};
+
 function nullableText(value: string | null | undefined) {
   const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function nullableDate(value: string | null | undefined) {
+  if (!value) return null;
+  return new Date(value);
+}
+
+function valuesDiffer(left: unknown, right: unknown) {
+  return (left ?? null) !== (right ?? null);
+}
+
+function metadataFromRow(row: DemoRequestRow) {
+  return {
+    title: row.name,
+    email: row.email,
+    interestType: row.interest_type,
+    organisation: row.organisation
+  };
 }
 
 function mapDemoRequest(row: DemoRequestRow): DemoRequestDto {
@@ -53,10 +111,30 @@ function mapDemoRequest(row: DemoRequestRow): DemoRequestDto {
     source: row.source,
     status: row.status,
     adminNote: row.admin_note,
+    assignedOwner: row.assigned_owner ?? null,
+    nextFollowUpAt: row.next_follow_up_at ? toIsoDateTime(row.next_follow_up_at) : null,
+    followUpPriority: row.follow_up_priority ?? null,
+    lastContactedAt: row.last_contacted_at ? toIsoDateTime(row.last_contacted_at) : null,
+    closeReason: row.close_reason ?? null,
     reviewedBy: row.reviewed_by,
     reviewedAt: row.reviewed_at ? toIsoDateTime(row.reviewed_at) : null,
     createdAt: toIsoDateTime(row.created_at),
     updatedAt: toIsoDateTime(row.updated_at)
+  });
+}
+
+function mapDemoRequestEvent(row: DemoRequestEventRow): DemoRequestEventDto {
+  return DemoRequestEventSchema.parse({
+    id: row.id,
+    demoRequestId: row.demo_request_id,
+    eventType: row.event_type,
+    actorId: row.actor_id,
+    actorLabel: row.actor_label,
+    previousStatus: row.previous_status,
+    newStatus: row.new_status,
+    note: row.note,
+    metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata ?? {},
+    createdAt: toIsoDateTime(row.created_at)
   });
 }
 
@@ -84,6 +162,39 @@ async function enqueueAdminDemoRequestNotification(client: PoolClient, row: Demo
         createdAt: toIsoDateTime(row.created_at)
       }),
       `demo-request-created:${row.id}`
+    ]
+  );
+}
+
+async function enqueueDemoRequestUpdateOutbox(
+  client: PoolClient,
+  row: DemoRequestRow,
+  eventType: "DEMO_REQUEST_STATUS_UPDATED" | "DEMO_REQUEST_FOLLOW_UP_SCHEDULED" | "DEMO_REQUEST_CONTACT_RECORDED",
+  payload: Record<string, unknown>
+) {
+  await client.query(
+    `insert into public.outbox_messages (
+       aggregate_type,
+       aggregate_id,
+       event_type,
+       payload,
+       idempotency_key
+     )
+     values ($1, $2, $3, $4::jsonb, $5)
+     on conflict (event_type, idempotency_key) do nothing`,
+    [
+      "demo_request",
+      row.id,
+      eventType,
+      JSON.stringify({
+        demoRequestId: row.id,
+        status: row.status,
+        interestType: row.interest_type,
+        requesterEmail: row.email,
+        updatedAt: toIsoDateTime(row.updated_at),
+        ...payload
+      }),
+      `${eventType.toLowerCase()}:${row.id}:${toIsoDateTime(row.updated_at)}`
     ]
   );
 }
@@ -133,6 +244,12 @@ export class DemoRequestsService {
       }
 
       await enqueueAdminDemoRequestNotification(client, row);
+      await this.insertEvent(client, row.id, null, {
+        eventType: "CREATED",
+        newStatus: "NEW",
+        note: "Demo request created from public intake.",
+        metadata: metadataFromRow(row)
+      });
 
       return mapDemoRequest(row);
     });
@@ -150,6 +267,30 @@ export class DemoRequestsService {
     if (filters.status) {
       values.push(filters.status);
       where.push(`status = $${values.length}`);
+    }
+    if (filters.priority) {
+      values.push(filters.priority);
+      where.push(`follow_up_priority = $${values.length}`);
+    }
+    if (filters.owner) {
+      values.push(filters.owner.toLowerCase());
+      where.push(`lower(assigned_owner) = $${values.length}`);
+    }
+    if (filters.interestType) {
+      values.push(filters.interestType);
+      where.push(`interest_type = $${values.length}`);
+    }
+    if (filters.due === "overdue") {
+      where.push(`next_follow_up_at is not null and next_follow_up_at < now() and status not in ('CLOSED', 'SPAM')`);
+    }
+    if (filters.due === "today") {
+      where.push(`next_follow_up_at >= date_trunc('day', now()) and next_follow_up_at < date_trunc('day', now()) + interval '1 day' and status not in ('CLOSED', 'SPAM')`);
+    }
+    if (filters.due === "upcoming") {
+      where.push(`next_follow_up_at is not null and next_follow_up_at >= now() and status not in ('CLOSED', 'SPAM')`);
+    }
+    if (filters.due === "none") {
+      where.push(`next_follow_up_at is null and status not in ('CLOSED', 'SPAM')`);
     }
 
     const result = await this.pg.query<DemoRequestRow>(
@@ -171,29 +312,171 @@ export class DemoRequestsService {
     }
 
     const input: UpdateDemoRequestInput = parsed.data;
-    const result = await this.pg.query<DemoRequestRow>(
-      `update public.demo_requests
-       set status = coalesce($2, status),
-           admin_note = case when $3::boolean then $4 else admin_note end,
-           reviewed_by = $5,
-           reviewed_at = now()
-       where id = $1
-       returning *`,
-      [
-        id,
-        input.status ?? null,
-        Object.prototype.hasOwnProperty.call(input, "adminNote"),
-        nullableText(input.adminNote),
-        userId
-      ]
-    );
 
-    const row = result.rows[0];
-    if (!row) {
+    return this.pg.withTransaction(async (client) => {
+      const previous = await this.getDemoRequestById(client, id);
+      if (!previous) {
+        throw new NotFoundException("demo_request_not_found");
+      }
+
+      const result = await client.query<DemoRequestRow>(
+        `update public.demo_requests
+         set status = coalesce($2, status),
+             admin_note = case when $3::boolean then $4 else admin_note end,
+             assigned_owner = case when $5::boolean then $6 else assigned_owner end,
+             next_follow_up_at = case when $7::boolean then $8 else next_follow_up_at end,
+             follow_up_priority = case when $9::boolean then $10 else follow_up_priority end,
+             last_contacted_at = case when $11::boolean then $12 else last_contacted_at end,
+             close_reason = case when $13::boolean then $14 else close_reason end,
+             reviewed_by = $15,
+             reviewed_at = now()
+         where id = $1
+         returning *`,
+        [
+          id,
+          input.status ?? null,
+          Object.prototype.hasOwnProperty.call(input, "adminNote"),
+          nullableText(input.adminNote),
+          Object.prototype.hasOwnProperty.call(input, "assignedOwner"),
+          nullableText(input.assignedOwner),
+          Object.prototype.hasOwnProperty.call(input, "nextFollowUpAt"),
+          nullableDate(input.nextFollowUpAt),
+          Object.prototype.hasOwnProperty.call(input, "followUpPriority"),
+          input.followUpPriority ?? null,
+          Object.prototype.hasOwnProperty.call(input, "lastContactedAt"),
+          nullableDate(input.lastContactedAt),
+          Object.prototype.hasOwnProperty.call(input, "closeReason"),
+          nullableText(input.closeReason),
+          userId
+        ]
+      );
+
+      const row = result.rows[0];
+      if (!row) {
+        throw new NotFoundException("demo_request_not_found");
+      }
+
+      const events = this.buildUpdateEvents(previous, row, input);
+      for (const event of events) {
+        await this.insertEvent(client, row.id, userId, event);
+      }
+      await this.enqueueUpdateOutboxEvents(client, previous, row);
+
+      return mapDemoRequest(row);
+    });
+  }
+
+  async listAdminDemoRequestEvents(id: string) {
+    const request = await this.getDemoRequestById(this.pg, id);
+    if (!request) {
       throw new NotFoundException("demo_request_not_found");
     }
 
-    return mapDemoRequest(row);
+    const result = await this.pg.query<DemoRequestEventRow>(
+      `select *
+       from public.demo_request_events
+       where demo_request_id = $1
+       order by created_at desc
+       limit 100`,
+      [id]
+    );
+
+    return DemoRequestEventListSchema.parse({ items: result.rows.map(mapDemoRequestEvent) });
+  }
+
+  private async getDemoRequestById(queryable: Queryable, id: string) {
+    const result = await queryable.query<DemoRequestRow>(
+      `select *
+       from public.demo_requests
+       where id = $1
+       limit 1`,
+      [id]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  private async insertEvent(
+    queryable: Queryable,
+    demoRequestId: string,
+    actorId: string | null,
+    event: DemoRequestEventInsert
+  ) {
+    await queryable.query(
+      `insert into public.demo_request_events (
+         demo_request_id,
+         event_type,
+         actor_id,
+         actor_label,
+         previous_status,
+         new_status,
+         note,
+         metadata
+       )
+       values ($1, $2, $3, null, $4, $5, $6, $7::jsonb)`,
+      [
+        demoRequestId,
+        event.eventType,
+        actorId,
+        event.previousStatus ?? null,
+        event.newStatus ?? null,
+        event.note ?? null,
+        JSON.stringify(event.metadata ?? {})
+      ]
+    );
+  }
+
+  private buildUpdateEvents(previous: DemoRequestRow, next: DemoRequestRow, input: UpdateDemoRequestInput) {
+    const events: DemoRequestEventInsert[] = [];
+
+    if (previous.status !== next.status) {
+      const wasClosed = previous.status === "CLOSED" || previous.status === "SPAM";
+      const isClosed = next.status === "CLOSED" || next.status === "SPAM";
+      events.push({
+        eventType: wasClosed && !isClosed ? "REOPENED" : isClosed ? "CLOSED" : "STATUS_CHANGED",
+        previousStatus: previous.status as DemoRequestStatus,
+        newStatus: next.status as DemoRequestStatus,
+        note: input.adminNote ?? null,
+        metadata: { previousStatus: previous.status, newStatus: next.status }
+      });
+    }
+
+    if (valuesDiffer(previous.admin_note, next.admin_note)) {
+      events.push({ eventType: "NOTE_UPDATED", note: next.admin_note, metadata: { previousPresent: Boolean(previous.admin_note), nextPresent: Boolean(next.admin_note) } });
+    }
+    if (valuesDiffer(previous.assigned_owner, next.assigned_owner)) {
+      events.push({ eventType: "OWNER_ASSIGNED", note: next.assigned_owner ? `Assigned to ${next.assigned_owner}.` : "Owner cleared.", metadata: { assignedOwner: next.assigned_owner } });
+    }
+    if (valuesDiffer(previous.next_follow_up_at ? toIsoDateTime(previous.next_follow_up_at) : null, next.next_follow_up_at ? toIsoDateTime(next.next_follow_up_at) : null)) {
+      events.push({ eventType: "FOLLOW_UP_SCHEDULED", note: next.next_follow_up_at ? `Follow-up scheduled for ${toIsoDateTime(next.next_follow_up_at)}.` : "Follow-up date cleared.", metadata: { nextFollowUpAt: next.next_follow_up_at ? toIsoDateTime(next.next_follow_up_at) : null } });
+    }
+    if (valuesDiffer(previous.last_contacted_at ? toIsoDateTime(previous.last_contacted_at) : null, next.last_contacted_at ? toIsoDateTime(next.last_contacted_at) : null)) {
+      events.push({ eventType: "CONTACT_RECORDED", note: next.last_contacted_at ? `Contact recorded at ${toIsoDateTime(next.last_contacted_at)}.` : "Last contacted date cleared.", metadata: { lastContactedAt: next.last_contacted_at ? toIsoDateTime(next.last_contacted_at) : null } });
+    }
+    if (valuesDiffer(previous.follow_up_priority, next.follow_up_priority)) {
+      events.push({ eventType: "PRIORITY_CHANGED", note: next.follow_up_priority ? `Priority set to ${next.follow_up_priority}.` : "Priority cleared.", metadata: { followUpPriority: next.follow_up_priority } });
+    }
+
+    return events;
+  }
+
+  private async enqueueUpdateOutboxEvents(client: PoolClient, previous: DemoRequestRow, next: DemoRequestRow) {
+    if (previous.status !== next.status) {
+      await enqueueDemoRequestUpdateOutbox(client, next, "DEMO_REQUEST_STATUS_UPDATED", {
+        previousStatus: previous.status,
+        newStatus: next.status
+      });
+    }
+    if (valuesDiffer(previous.next_follow_up_at ? toIsoDateTime(previous.next_follow_up_at) : null, next.next_follow_up_at ? toIsoDateTime(next.next_follow_up_at) : null)) {
+      await enqueueDemoRequestUpdateOutbox(client, next, "DEMO_REQUEST_FOLLOW_UP_SCHEDULED", {
+        nextFollowUpAt: next.next_follow_up_at ? toIsoDateTime(next.next_follow_up_at) : null
+      });
+    }
+    if (valuesDiffer(previous.last_contacted_at ? toIsoDateTime(previous.last_contacted_at) : null, next.last_contacted_at ? toIsoDateTime(next.last_contacted_at) : null)) {
+      await enqueueDemoRequestUpdateOutbox(client, next, "DEMO_REQUEST_CONTACT_RECORDED", {
+        lastContactedAt: next.last_contacted_at ? toIsoDateTime(next.last_contacted_at) : null
+      });
+    }
   }
 }
 

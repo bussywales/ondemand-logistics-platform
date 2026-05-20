@@ -152,6 +152,38 @@ function countDemoRequestsByStatus(requests: DemoRequest[]) {
   );
 }
 
+function getDemoRequestFollowUpCounts(requests: DemoRequest[]) {
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+
+  return requests.reduce(
+    (acc, request) => {
+      const active = !["CLOSED", "SPAM"].includes(request.status);
+      if ((request.followUpPriority === "HIGH" || request.followUpPriority === "URGENT") && active) {
+        acc.highPriority += 1;
+      }
+      if (request.status === "QUALIFIED") {
+        acc.qualified += 1;
+      }
+      if (!active || !request.nextFollowUpAt) {
+        return acc;
+      }
+      const followUpAt = new Date(request.nextFollowUpAt);
+      if (followUpAt < now) {
+        acc.overdue += 1;
+      }
+      if (followUpAt >= start && followUpAt < end) {
+        acc.dueToday += 1;
+      }
+      return acc;
+    },
+    { dueToday: 0, highPriority: 0, overdue: 0, qualified: 0 }
+  );
+}
+
 function groupAttentionItems(items: DailyBriefingItem[]) {
   const groups = new Map<string, AdminCommandGroup>();
 
@@ -254,6 +286,7 @@ export function AdminCommandView(props: {
     return state.guardrailLevel === "PAUSED" || state.guardrailLevel === "WARNING";
   }).length;
   const demoRequestCounts = useMemo(() => countDemoRequestsByStatus(props.demoRequests), [props.demoRequests]);
+  const demoFollowUpCounts = useMemo(() => getDemoRequestFollowUpCounts(props.demoRequests), [props.demoRequests]);
   const newDemoRequests = props.demoRequests.filter((request) => request.status === "NEW");
   const oldestNewDemoRequestAge =
     newDemoRequests.length > 0
@@ -289,6 +322,10 @@ export function AdminCommandView(props: {
           <CountCard copy="Paused or not rehearsal-ready workspaces need review." label="Pilot guardrail gaps" tone={pilotGuardrailGaps ? "warning" : "success"} value={pilotGuardrailGaps} />
           <CountCard copy="Commercial intake requests waiting for platform review." label="New demo requests" tone={demoRequestCounts.NEW ? "info" : "success"} value={demoRequestCounts.NEW} />
           <CountCard copy="Requests already contacted or qualified for follow-up." label="Follow-up in motion" tone={demoRequestCounts.CONTACTED + demoRequestCounts.QUALIFIED ? "info" : "success"} value={demoRequestCounts.CONTACTED + demoRequestCounts.QUALIFIED} />
+          <CountCard copy="Demo request follow-ups past their scheduled date." label="Overdue follow-ups" tone={demoFollowUpCounts.overdue ? "warning" : "success"} value={demoFollowUpCounts.overdue} />
+          <CountCard copy="Demo request follow-ups scheduled for today." label="Due today" tone={demoFollowUpCounts.dueToday ? "info" : "success"} value={demoFollowUpCounts.dueToday} />
+          <CountCard copy="Active requests marked high or urgent priority." label="High-priority leads" tone={demoFollowUpCounts.highPriority ? "warning" : "success"} value={demoFollowUpCounts.highPriority} />
+          <CountCard copy="Qualified commercial opportunities ready for pilot or investor follow-up." label="Qualified opportunities" tone={demoFollowUpCounts.qualified ? "success" : "info"} value={demoFollowUpCounts.qualified} />
         </div>
       </section>
 
@@ -316,6 +353,9 @@ export function AdminCommandView(props: {
               <div><span>Reviewed</span><strong>{demoRequestCounts.REVIEWED}</strong></div>
               <div><span>Contacted</span><strong>{demoRequestCounts.CONTACTED}</strong></div>
               <div><span>Qualified</span><strong>{demoRequestCounts.QUALIFIED}</strong></div>
+              <div><span>Overdue</span><strong>{demoFollowUpCounts.overdue}</strong></div>
+              <div><span>Due today</span><strong>{demoFollowUpCounts.dueToday}</strong></div>
+              <div><span>High priority</span><strong>{demoFollowUpCounts.highPriority}</strong></div>
             </div>
           </div>
           <div className="sw-operational-surface admin-command-report-card">

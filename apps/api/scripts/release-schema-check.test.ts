@@ -13,6 +13,7 @@ const BASE_TABLES = new Set([
   "pilot_readiness_checks",
   "org_invitations",
   "demo_requests",
+  "demo_request_events",
   "notification_reads",
   "platform_admins"
 ]);
@@ -38,8 +39,17 @@ const BASE_COLUMNS = new Set([
   "demo_requests.interest_type",
   "demo_requests.status",
   "demo_requests.admin_note",
+  "demo_requests.assigned_owner",
+  "demo_requests.next_follow_up_at",
+  "demo_requests.follow_up_priority",
+  "demo_requests.last_contacted_at",
+  "demo_requests.close_reason",
   "demo_requests.reviewed_by",
-  "demo_requests.reviewed_at"
+  "demo_requests.reviewed_at",
+  "demo_request_events.demo_request_id",
+  "demo_request_events.event_type",
+  "demo_request_events.metadata",
+  "demo_request_events.created_at"
 ]);
 
 function buildClient(options?: {

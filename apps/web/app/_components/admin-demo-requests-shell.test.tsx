@@ -15,6 +15,11 @@ const request: DemoRequest = {
   source: "landing_page",
   status: "NEW",
   adminNote: null,
+  assignedOwner: null,
+  nextFollowUpAt: null,
+  followUpPriority: null,
+  lastContactedAt: null,
+  closeReason: null,
   reviewedBy: null,
   reviewedAt: null,
   createdAt: "2026-05-19T10:00:00.000Z",
@@ -27,8 +32,11 @@ describe("AdminDemoRequestsView", () => {
       <AdminDemoRequestsView
         busyId={null}
         counts={{ ALL: 1, NEW: 1 }}
+        eventsBusyId={null}
+        eventsByRequestId={{}}
         filter="ALL"
         onFilterChange={vi.fn()}
+        onLoadEvents={vi.fn()}
         onUpdate={vi.fn()}
         requests={[request]}
       />
@@ -40,7 +48,9 @@ describe("AdminDemoRequestsView", () => {
     expect(html).toContain("Pilot Merchant");
     expect(html).toContain("Next action: Review request");
     expect(html).toContain("Mark Reviewed");
-    expect(html).toContain("Save review");
+    expect(html).toContain("Save follow-up");
+    expect(html).toContain("Assigned owner");
+    expect(html).toContain("Next follow-up");
   });
 
   it("renders an empty state", () => {
@@ -48,8 +58,11 @@ describe("AdminDemoRequestsView", () => {
       <AdminDemoRequestsView
         busyId={null}
         counts={{ ALL: 0 }}
+        eventsBusyId={null}
+        eventsByRequestId={{}}
         filter="ALL"
         onFilterChange={vi.fn()}
+        onLoadEvents={vi.fn()}
         onUpdate={vi.fn()}
         requests={[]}
       />
@@ -66,5 +79,30 @@ describe("AdminDemoRequestsView", () => {
     expect(getDemoRequestNextAction("QUALIFIED")).toBe("Prepare pilot/investor follow-up");
     expect(getDemoRequestNextAction("CLOSED")).toBe("No action");
     expect(getDemoRequestNextAction("SPAM")).toBe("No action");
+  });
+
+  it("renders follow-up queue summary counts", () => {
+    const html = renderToStaticMarkup(
+      <AdminDemoRequestsView
+        busyId={null}
+        counts={{ ALL: 1, NEW: 1 }}
+        eventsBusyId={null}
+        eventsByRequestId={{}}
+        filter="ALL"
+        onFilterChange={vi.fn()}
+        onLoadEvents={vi.fn()}
+        onUpdate={vi.fn()}
+        requests={[
+          {
+            ...request,
+            followUpPriority: "HIGH",
+            nextFollowUpAt: "2026-05-19T09:00:00.000Z"
+          }
+        ]}
+      />
+    );
+
+    expect(html).toContain("High priority");
+    expect(html).toContain("Due today");
   });
 });

@@ -1783,6 +1783,9 @@ export const DemoRequestStatusSchema = z.enum([
 ]);
 export type DemoRequestStatus = z.infer<typeof DemoRequestStatusSchema>;
 
+export const DemoRequestFollowUpPrioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
+export type DemoRequestFollowUpPriority = z.infer<typeof DemoRequestFollowUpPrioritySchema>;
+
 export const DemoRequestSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(2),
@@ -1794,6 +1797,11 @@ export const DemoRequestSchema = z.object({
   source: z.string().nullable(),
   status: DemoRequestStatusSchema,
   adminNote: z.string().nullable(),
+  assignedOwner: z.string().nullable(),
+  nextFollowUpAt: IsoDateTimeSchema.nullable(),
+  followUpPriority: DemoRequestFollowUpPrioritySchema.nullable(),
+  lastContactedAt: IsoDateTimeSchema.nullable(),
+  closeReason: z.string().nullable(),
   reviewedBy: z.string().uuid().nullable(),
   reviewedAt: IsoDateTimeSchema.nullable(),
   createdAt: IsoDateTimeSchema,
@@ -1816,7 +1824,12 @@ export type CreateDemoRequestInput = z.infer<typeof CreateDemoRequestSchema>;
 export const UpdateDemoRequestSchema = z
   .object({
     status: DemoRequestStatusSchema.optional(),
-    adminNote: z.string().trim().min(2).max(2000).nullable().optional()
+    adminNote: z.string().trim().min(2).max(2000).nullable().optional(),
+    assignedOwner: z.string().trim().min(2).max(160).nullable().optional(),
+    nextFollowUpAt: IsoDateTimeSchema.nullable().optional(),
+    followUpPriority: DemoRequestFollowUpPrioritySchema.nullable().optional(),
+    lastContactedAt: IsoDateTimeSchema.nullable().optional(),
+    closeReason: z.string().trim().min(2).max(500).nullable().optional()
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "demo_request_update_required"
@@ -1827,6 +1840,38 @@ export const DemoRequestListSchema = z.object({
   items: z.array(DemoRequestSchema)
 });
 export type DemoRequestListDto = z.infer<typeof DemoRequestListSchema>;
+
+export const DemoRequestEventTypeSchema = z.enum([
+  "CREATED",
+  "STATUS_CHANGED",
+  "NOTE_UPDATED",
+  "OWNER_ASSIGNED",
+  "FOLLOW_UP_SCHEDULED",
+  "CONTACT_RECORDED",
+  "PRIORITY_CHANGED",
+  "CLOSED",
+  "REOPENED"
+]);
+export type DemoRequestEventType = z.infer<typeof DemoRequestEventTypeSchema>;
+
+export const DemoRequestEventSchema = z.object({
+  id: z.string().uuid(),
+  demoRequestId: z.string().uuid(),
+  eventType: DemoRequestEventTypeSchema,
+  actorId: z.string().uuid().nullable(),
+  actorLabel: z.string().nullable(),
+  previousStatus: DemoRequestStatusSchema.nullable(),
+  newStatus: DemoRequestStatusSchema.nullable(),
+  note: z.string().nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+  createdAt: IsoDateTimeSchema
+});
+export type DemoRequestEventDto = z.infer<typeof DemoRequestEventSchema>;
+
+export const DemoRequestEventListSchema = z.object({
+  items: z.array(DemoRequestEventSchema)
+});
+export type DemoRequestEventListDto = z.infer<typeof DemoRequestEventListSchema>;
 
 export const RefundStatusSchema = z.enum(["PENDING", "SUCCEEDED", "FAILED", "CANCELLED"]);
 export type RefundStatus = z.infer<typeof RefundStatusSchema>;

@@ -143,7 +143,7 @@ Do not claim:
 - autonomous end-of-day closeout or AI-led incident resolution
 - live-map courier movement
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
-- CRM, webhook, or email automation for demo requests; internal admin command/outbox visibility is available, but outbound follow-up remains manual
+- CRM, webhook, or email automation for demo requests; internal admin command/outbox visibility, owner assignment, follow-up scheduling, contact recording, and event history are available, but outbound follow-up remains manual
 - public fixed-price packages; `/pricing` explains controlled pilot paths and pricing is discussed after fit review
 - broad compliance completeness for live courier operations
 - settlement or reconciliation automation beyond the current visibility surfaces

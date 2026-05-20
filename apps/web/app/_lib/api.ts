@@ -12,6 +12,7 @@ import type {
   CreateDemoRequestInput,
   DispatchRecoverySuggestion,
   DemoRequest,
+  DemoRequestEvent,
   DemoRequestStatus,
   OperationalIncidentSummary,
   CreateSupportEscalationInput,
@@ -185,6 +186,9 @@ type SupportEscalationEventListResponse = SupportEscalationEventList;
 type DemoRequestResponse = DemoRequest;
 type DemoRequestListResponse = {
   items: DemoRequest[];
+};
+type DemoRequestEventListResponse = {
+  items: DemoRequestEvent[];
 };
 type PilotWorkspaceListResponse = PilotWorkspaceList;
 type PilotWorkspaceResponse = PilotWorkspace;
@@ -1170,9 +1174,17 @@ export async function listAdminDriverReadiness(session: BusinessSession): Promis
   return result.items;
 }
 
-export async function listAdminDemoRequests(session: BusinessSession, status?: DemoRequestStatus): Promise<DemoRequest[]> {
-  const params = status ? `?status=${encodeURIComponent(status)}` : "";
-  const result = await apiFetch<DemoRequestListResponse>(session, `/v1/admin/demo-requests${params}`, {
+export async function listAdminDemoRequests(
+  session: BusinessSession,
+  filters: DemoRequestStatus | { status?: DemoRequestStatus; priority?: string; owner?: string; due?: string; interestType?: string } = {}
+): Promise<DemoRequest[]> {
+  const normalizedFilters = typeof filters === "string" ? { status: filters } : filters;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(normalizedFilters)) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const result = await apiFetch<DemoRequestListResponse>(session, `/v1/admin/demo-requests${query}`, {
     method: "GET"
   });
 
@@ -1188,6 +1200,14 @@ export async function updateAdminDemoRequest(
     method: "PATCH",
     body: JSON.stringify(input)
   });
+}
+
+export async function listAdminDemoRequestEvents(session: BusinessSession, id: string): Promise<DemoRequestEvent[]> {
+  const result = await apiFetch<DemoRequestEventListResponse>(session, `/v1/admin/demo-requests/${id}/events`, {
+    method: "GET"
+  });
+
+  return result.items;
 }
 
 export async function listAdminFleets(session: BusinessSession): Promise<FleetOrganisation[]> {
