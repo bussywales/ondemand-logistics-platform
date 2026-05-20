@@ -43,8 +43,10 @@ import {
   listFleetDrivers,
   markAllBusinessNotificationsRead,
   markBusinessNotificationRead,
+  previewAdminOperationalReset,
   rejectDriverOffer,
   transitionDriverJob,
+  executeAdminOperationalReset,
   updateAdminOrgMembership,
   updateAdminFleetDriver,
   updateMenuItem,
@@ -1425,5 +1427,65 @@ describe('authorizePayment', () => {
     expect((fetchMock.mock.calls[4] as [string, RequestInit])[1].method).toBe('PATCH');
     expect((fetchMock.mock.calls[5] as [string, RequestInit])[0]).toContain('/v1/fleet/drivers');
     expect((fetchMock.mock.calls[6] as [string, RequestInit])[0]).toContain('/v1/fleet/readiness');
+  });
+
+  it('sends idempotency keys for operational reset preview and execute posts', async () => {
+    const summary = {
+      affectedCount: 0,
+      demoRequests: 0,
+      supportEscalations: 0,
+      pilotRecommendations: 0,
+      proofRecordsUntouched: true,
+      message: 'No safe reset actions match this mode.'
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            mode: 'FULL_DEMO_TIDY',
+            scope: 'staging_demo',
+            reason: 'Prepare staging for a controlled demo rehearsal.',
+            olderThan: null,
+            summary,
+            items: []
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: '11111111-1111-4111-8111-111111111111',
+            createdBy: session.userId,
+            scope: 'staging_demo',
+            mode: 'FULL_DEMO_TIDY',
+            reason: 'Prepare staging for a controlled demo rehearsal.',
+            status: 'COMPLETED',
+            summary,
+            createdAt: '2026-05-20T10:00:00.000Z',
+            completedAt: '2026-05-20T10:00:00.000Z'
+          })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await previewAdminOperationalReset(session, {
+      mode: 'FULL_DEMO_TIDY',
+      scope: 'staging_demo',
+      reason: 'Prepare staging for a controlled demo rehearsal.'
+    });
+    await executeAdminOperationalReset(session, {
+      mode: 'FULL_DEMO_TIDY',
+      scope: 'staging_demo',
+      reason: 'Prepare staging for a controlled demo rehearsal.',
+      confirmation: 'RESET DEMO DATA'
+    });
+
+    const previewInit = (fetchMock.mock.calls[0] as [string, RequestInit])[1];
+    const executeInit = (fetchMock.mock.calls[1] as [string, RequestInit])[1];
+    expect(previewInit.method).toBe('POST');
+    expect(String(previewInit.headers && (previewInit.headers as Record<string, string>)['Idempotency-Key'])).toContain('operational-reset-preview');
+    expect(executeInit.method).toBe('POST');
+    expect(String(executeInit.headers && (executeInit.headers as Record<string, string>)['Idempotency-Key'])).toContain('operational-reset-execute');
   });
 });

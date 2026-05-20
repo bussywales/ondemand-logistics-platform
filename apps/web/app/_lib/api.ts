@@ -1231,6 +1231,9 @@ export async function previewAdminOperationalReset(
 ): Promise<OperationalResetPreview> {
   return apiFetch<OperationalResetPreview>(session, "/v1/admin/operational-resets/preview", {
     method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-operational-reset-preview`
+    },
     body: JSON.stringify(input)
   });
 }
@@ -1241,6 +1244,9 @@ export async function executeAdminOperationalReset(
 ): Promise<OperationalResetRun> {
   return apiFetch<OperationalResetRun>(session, "/v1/admin/operational-resets", {
     method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-operational-reset-execute`
+    },
     body: JSON.stringify(input)
   });
 }
