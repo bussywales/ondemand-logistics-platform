@@ -66,15 +66,17 @@ Recommended seeded roles:
 Run these from the repo root before the session:
 
 ```bash
-pnpm release:verify-staging
-pnpm proof:staging-paid-delivery
-pnpm --filter @shipwright/web test:smoke
+RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
+RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
+SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
 ```
 
 Expected outcome:
 - release verification passes
 - paid-delivery proof passes
 - browser smoke passes for configured public/authenticated staging routes
+- `/admin/validation-evidence` shows current stored release, proof, and required-auth smoke evidence
 - latest proof artifacts are written under `docs/proofs/`
 
 Use `demo-reset-checklist.md` for the full reset process before observers join.
@@ -85,6 +87,9 @@ Reference the latest generated artifacts from `docs/proofs/`.
 Minimum recommended evidence:
 - latest `release-verify-<timestamp>.json`
 - latest `paid-delivery-<timestamp>.json`
+- latest stored release verification evidence in `/admin/validation-evidence`
+- latest stored paid-delivery proof evidence in `/admin/validation-evidence`
+- latest stored required-auth smoke evidence in `/admin/validation-evidence`
 
 When presenting proof, call out:
 - latest order id
@@ -93,6 +98,7 @@ When presenting proof, call out:
 - final `CAPTURED` payment state
 - final `FULFILLED` customer order state
 - outbox evidence for notification and payment events
+- stored validation evidence is summary-level admin evidence; the UI does not execute release, proof, or smoke commands
 
 Record the latest ids before the session:
 - order id

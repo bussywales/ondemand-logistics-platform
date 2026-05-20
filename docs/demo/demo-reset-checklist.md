@@ -6,9 +6,10 @@ Use this checklist before every investor, pilot merchant, or internal tester dem
 From repo root:
 
 ```bash
-pnpm release:verify-staging
-pnpm proof:staging-paid-delivery
-pnpm --filter @shipwright/web test:smoke
+RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
+RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
+SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
 ```
 
 Recommended when time allows:
@@ -20,6 +21,7 @@ pnpm typecheck
 ```
 
 Do not start a high-stakes demo if release verification, paid-delivery proof, or browser smoke fails.
+Do not start a controlled demo if `/admin/validation-evidence` does not show current stored release, proof, and required-auth smoke evidence unless the facilitator explicitly explains the missing/stale posture.
 
 ## 2. Capture Latest Proof IDs
 From the latest `docs/proofs/paid-delivery-*.json`, record:
@@ -97,6 +99,7 @@ Admin and driver:
 - `/admin/operational-resets`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
+- `/admin/validation-evidence`
 - `/admin/drivers`
 - `/driver`
 
@@ -167,10 +170,12 @@ Be ready to explain:
 ## 9. Final Pre-Demo Standard
 Before any demo, the minimum standard is:
 
-- `pnpm release:verify-staging` passed
-- `pnpm proof:staging-paid-delivery` passed
-- `pnpm --filter @shipwright/web test:smoke` passed
+- `RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging` passed
+- `RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery` passed
+- `SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke` passed
+- required-auth smoke was recorded with `pnpm evidence:record` when the smoke runner did not record it automatically
 - latest proof IDs recorded
+- `/admin/validation-evidence` reviewed for current stored evidence
 - rehearsal cockpit reviewed for the selected pilot workspace
 - operational reset tools previewed or intentionally skipped
 - staging routes checked

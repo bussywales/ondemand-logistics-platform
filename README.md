@@ -120,15 +120,16 @@ pnpm --filter @shipwright/web test:smoke
 
 The required staging-ready quality gate is documented in `docs/validation/staging-validation-standard.md`.
 
-Validation evidence can be stored for admin rehearsal review after successful gates:
+Validation evidence must be stored for controlled demo readiness after successful gates:
 
 ```bash
 RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
 RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0}'
+SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
 ```
 
-Stored evidence is visible at `/admin/validation-evidence` and in pilot rehearsal cockpits. It stores summary IDs/status, not secrets; proof JSON artifacts remain local and uncommitted.
+Stored evidence is visible at `/admin/validation-evidence` and in pilot rehearsal cockpits. It stores summary IDs/status, not secrets; proof JSON artifacts remain local and uncommitted. The admin UI reads stored evidence only and does not run release verification, paid proof, or smoke commands.
 
 ## Browser smoke testing (Playwright)
 Commit `4975b8c` adds a minimal Playwright setup for staging smoke checks.
@@ -145,6 +146,7 @@ Notes:
   - `SMOKE_LATEST_ORDER_ID` (preferred), or
   - `LATEST_ORDER_ID` fallback.
 - Authenticated workspace/admin/driver/fleet-manager smoke checks require credentials and are skipped if missing.
+- Full admin smoke covers `/admin/validation-evidence` and accepts either current evidence records or the empty state.
 - The Playwright config auto-loads repo-root `.env.smoke` when present.
 - Set `SMOKE_REQUIRE_AUTH=true` for release/full smoke mode; missing tracking or authenticated smoke credentials fail instead of skipping.
 - Playwright artifacts are local test outputs and must not be committed:
@@ -204,12 +206,13 @@ Driver fleet organisations reuse the IAM organisation and membership model with 
 Minimum demo readiness standard:
 
 ```bash
-pnpm release:verify-staging
-pnpm proof:staging-paid-delivery
-pnpm --filter @shipwright/web test:smoke
+RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
+RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
+SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
 ```
 
-Before a demo, record the latest proof order/job/payment/POD ids and keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available.
+Before a demo, record the latest proof order/job/payment/POD ids, keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available, and confirm `/admin/validation-evidence` shows current stored release/proof/required-auth smoke evidence.
 
 ## Roadmaps
 - `docs/roadmaps/shipwright-roadmap.md` - canonical roadmap order across pilot readiness, What’s New discipline, IAM, merchant menu operations, driver fleets, commercial conversion, and brand work

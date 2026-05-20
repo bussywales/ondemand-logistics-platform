@@ -18,9 +18,10 @@ pnpm --filter @shipwright/web test:smoke
 Before any investor, pilot merchant, or internal tester demo, run at minimum:
 
 ```bash
-pnpm release:verify-staging
-pnpm proof:staging-paid-delivery
-pnpm --filter @shipwright/web test:smoke
+RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
+RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
+SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
 ```
 
 Also record:
@@ -33,6 +34,8 @@ Also record:
 - latest POD id, if present
 - What’s New checked for major user-visible changes
 - staging routes checked for the intended audience
+- `/admin/validation-evidence` checked for current stored release, proof, and required-auth smoke evidence
+- selected pilot rehearsal cockpit checked for non-stale validation posture
 
 Use `docs/demo/demo-reset-checklist.md` to prepare accounts, browser state, fallback routes, and known limitation talk tracks.
 
@@ -75,6 +78,8 @@ pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --
 
 Stored evidence is admin-only at `/admin/validation-evidence`. It records status, command/source, summary, artifact path, and related proof IDs where available. It does not store secrets and does not cause the UI to execute release verification, paid proof, or browser smoke.
 
+For controlled demos, release verification, paid-delivery proof, and required-auth browser smoke evidence should be stored before observers join. Proof artifacts remain local/uncommitted; the admin UI reads stored evidence only and never runs validation commands from the browser.
+
 The release verification must confirm:
 
 - `/healthz` returns `200`
@@ -108,6 +113,7 @@ Authenticated routes:
 - `/admin/operational-resets`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
+- `/admin/validation-evidence`
 - `/admin/drivers`
 - `/fleet`
 - `/driver`
