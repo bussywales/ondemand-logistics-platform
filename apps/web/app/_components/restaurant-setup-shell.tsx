@@ -233,71 +233,90 @@ export function EditableMenuItemRow({
     <article className="merchant-menu-item">
       {isEditing && editForm ? (
         <form className="merchant-menu-edit-form" onSubmit={onSave}>
-          <div className="merchant-form-split">
-            <label>
-              <span>Item name</span>
-              <input
-                disabled={saving}
-                onChange={(event) => onChange({ ...editForm, name: event.target.value })}
-                value={editForm.name}
-              />
-            </label>
-            <label>
-              <span>Price</span>
-              <input
-                disabled={saving}
-                inputMode="decimal"
-                onChange={(event) => onChange({ ...editForm, price: event.target.value })}
-                placeholder="12.99"
-                value={editForm.price}
-              />
-            </label>
+          <div className="merchant-menu-edit-header">
+            <div>
+              <p className="eyebrow">Menu item</p>
+              <h3>Edit menu item</h3>
+              <p>Update customer-facing menu details.</p>
+            </div>
+            <span className="sw-badge sw-badge--neutral">{item.currency}</span>
           </div>
-          <label>
-            <span>Description</span>
-            <textarea
-              disabled={saving}
-              onChange={(event) => onChange({ ...editForm, description: event.target.value })}
-              rows={3}
-              value={editForm.description}
-            />
-          </label>
-          <div className="merchant-form-split">
-            <label>
-              <span>Section</span>
-              <select
-                disabled={saving}
-                onChange={(event) => onChange({ ...editForm, categoryId: event.target.value })}
-                value={editForm.categoryId}
-              >
-                {categories.map((menuCategory) => (
-                  <option key={menuCategory.id} value={menuCategory.id}>
-                    {menuCategory.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Display order</span>
-              <input
-                disabled={saving}
-                min="0"
-                onChange={(event) => onChange({ ...editForm, sortOrder: event.target.value })}
-                step="1"
-                type="number"
-                value={editForm.sortOrder}
-              />
-            </label>
+
+          <div className="merchant-menu-edit-grid">
+            <fieldset className="merchant-menu-edit-section merchant-menu-edit-section-wide">
+              <legend>Item details</legend>
+              <label>
+                <span>Item name</span>
+                <input
+                  disabled={saving}
+                  onChange={(event) => onChange({ ...editForm, name: event.target.value })}
+                  value={editForm.name}
+                />
+              </label>
+              <label>
+                <span>Description</span>
+                <textarea
+                  disabled={saving}
+                  onChange={(event) => onChange({ ...editForm, description: event.target.value })}
+                  rows={3}
+                  value={editForm.description}
+                />
+              </label>
+            </fieldset>
+
+            <fieldset className="merchant-menu-edit-section">
+              <legend>Pricing and visibility</legend>
+              <label>
+                <span>Price</span>
+                <input
+                  disabled={saving}
+                  inputMode="decimal"
+                  onChange={(event) => onChange({ ...editForm, price: event.target.value })}
+                  placeholder="12.99"
+                  value={editForm.price}
+                />
+              </label>
+              <label className="merchant-checkbox">
+                <input
+                  checked={editForm.isActive}
+                  disabled={saving}
+                  onChange={(event) => onChange({ ...editForm, isActive: event.target.checked })}
+                  type="checkbox"
+                />
+                <span>Orderable on the public menu</span>
+              </label>
+            </fieldset>
+
+            <fieldset className="merchant-menu-edit-section">
+              <legend>Organisation</legend>
+              <label>
+                <span>Section</span>
+                <select
+                  disabled={saving}
+                  onChange={(event) => onChange({ ...editForm, categoryId: event.target.value })}
+                  value={editForm.categoryId}
+                >
+                  {categories.map((menuCategory) => (
+                    <option key={menuCategory.id} value={menuCategory.id}>
+                      {menuCategory.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Display order</span>
+                <input
+                  disabled={saving}
+                  min="0"
+                  onChange={(event) => onChange({ ...editForm, sortOrder: event.target.value })}
+                  step="1"
+                  type="number"
+                  value={editForm.sortOrder}
+                />
+              </label>
+            </fieldset>
           </div>
-          <label className="merchant-checkbox">
-            <input
-              checked={editForm.isActive}
-              disabled={saving}
-              onChange={(event) => onChange({ ...editForm, isActive: event.target.checked })}
-              type="checkbox"
-            />
-            <span>Orderable on the public menu</span>
-          </label>
+
           {saveError ? <p className="form-error-text" role="alert">{saveError}</p> : null}
           <div className="merchant-actions">
             <button

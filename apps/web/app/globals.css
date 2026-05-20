@@ -2254,8 +2254,83 @@ h3 {
 
 .merchant-menu-edit-form {
   display: grid;
-  gap: 0.9rem;
+  gap: var(--space-2);
   width: 100%;
+  padding: var(--space-2);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+.merchant-menu-edit-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--line);
+}
+
+.merchant-menu-edit-header h3 {
+  margin: 0.1rem 0 0.25rem;
+  color: var(--primary);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.merchant-menu-edit-header p:not(.eyebrow) {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--muted);
+}
+
+.merchant-menu-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: var(--space-2);
+}
+
+.merchant-menu-edit-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.merchant-menu-edit-section-wide {
+  grid-row: span 2;
+}
+
+.merchant-menu-edit-section legend {
+  padding: 0 0.35rem;
+  color: var(--secondary);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.merchant-menu-edit-section label {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  color: var(--primary);
+  font-weight: 750;
+}
+
+.merchant-menu-edit-section .merchant-checkbox {
+  display: flex;
+  align-items: center;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-weight: 650;
 }
 
 .merchant-checkbox {
@@ -2323,6 +2398,7 @@ h3 {
   }
 
   .merchant-side-metrics,
+  .merchant-menu-edit-grid,
   .merchant-form-split {
     grid-template-columns: 1fr;
   }

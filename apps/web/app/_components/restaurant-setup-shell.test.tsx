@@ -58,7 +58,7 @@ describe("EditableMenuItemRow", () => {
     expect(html).toContain("Edit");
   });
 
-  it("renders the menu item edit form with price controls", () => {
+  it("renders the structured menu item edit form with price controls", () => {
     const html = renderToStaticMarkup(
       <EditableMenuItemRow
         categories={categories}
@@ -80,6 +80,11 @@ describe("EditableMenuItemRow", () => {
       />
     );
 
+    expect(html).toContain("Edit menu item");
+    expect(html).toContain("Update customer-facing menu details.");
+    expect(html).toContain("Item details");
+    expect(html).toContain("Pricing and visibility");
+    expect(html).toContain("Organisation");
     expect(html).toContain("Price");
     expect(html).toContain("14.99");
     expect(html).toContain("Save item");

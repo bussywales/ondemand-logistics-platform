@@ -97,6 +97,17 @@ async function assertValidationEvidencePageRenders(page: Page) {
   ).toBeVisible({ timeout: 12000 });
 }
 
+async function assertReleaseReadinessPageRenders(page: Page) {
+  await assertProtectedRouteLoads(page, '/admin/release-readiness');
+  await expect(
+    page
+      .getByText(/release ready/i)
+      .or(page.getByText(/needs review/i))
+      .or(page.getByText(/blocked/i))
+      .or(page.getByRole('heading', { name: /release readiness/i }))
+  ).toBeVisible({ timeout: 12000 });
+}
+
 test('public ordering smoke with checkout surface', async ({ page }) => {
   await page.goto(PUBLIC_RESTAURANT_PATH, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('main')).toBeVisible({ timeout: 15000 });
@@ -179,6 +190,7 @@ test('authenticated admin routes smoke', async ({ page }) => {
   await assertProtectedRouteLoads(page, '/admin/demo-requests');
   await assertProtectedRouteLoads(page, '/admin/operational-resets');
   await assertProtectedRouteLoads(page, '/admin/pilots');
+  await assertReleaseReadinessPageRenders(page);
   await assertValidationEvidencePageRenders(page);
   const rehearsalLink = page.locator('a[href*="/admin/pilots/"][href$="/rehearsal"]').first();
   if (await rehearsalLink.isVisible({ timeout: 5000 }).catch(() => false)) {

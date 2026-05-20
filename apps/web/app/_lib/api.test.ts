@@ -224,7 +224,7 @@ describe('authorizePayment', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-items/item-1');
     expect(init.method).toBe('PATCH');
-    expect(init.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.stringContaining("menu-item-update") }));
+    expect(init.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.stringMatching(/^idem-[0-9a-f-]+-menu-item-update$/) }));
     expect(init.body).toBe(JSON.stringify({ name: 'Chicken Wrap Meal', priceCents: 1499 }));
     expect(item.priceCents).toBe(1499);
   });
