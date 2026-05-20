@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PublicMarketingNav } from "./public-marketing-nav";
 
 export function PlaceholderPage(props: {
   eyebrow: string;
@@ -10,6 +11,7 @@ export function PlaceholderPage(props: {
 }) {
   return (
     <main className="internal-shell">
+      <PublicMarketingNav />
       <section className="internal-card route-card">
         <p className="eyebrow">{props.eyebrow}</p>
         <h1>{props.title}</h1>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { BrandLogo } from "../../_components/brand-logo";
+import { PublicMarketingNav } from "../../_components/public-marketing-nav";
 import { ShipWrightIcon, type ShipWrightIconName } from "../../_components/shipwright-icon";
 import { investorDemoControlLinks, investorDemoSteps, investorDemoWarnings } from "../../_content/investor-demo";
 
@@ -71,6 +72,7 @@ export default function InvestorDemoPage() {
 
   return (
     <main className="help-shell investor-demo-shell">
+      <PublicMarketingNav />
       <header className="sw-command-surface investor-demo-hero">
         <div>
           <BrandLogo href="/" />

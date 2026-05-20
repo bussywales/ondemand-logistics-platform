@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import React from "react";
-import { BrandLogo } from "../_components/brand-logo";
+import { PublicMarketingNav } from "../_components/public-marketing-nav";
 import { ShipWrightIcon, type ShipWrightIconName } from "../_components/shipwright-icon";
 
 export const metadata: Metadata = {
@@ -165,15 +165,7 @@ function PricingList(props: { items: string[]; title: string; tone: "included" |
 export default function PricingPage() {
   return (
     <main className="pricing-page landing-page-story">
-      <header className="topbar landing-topbar landing-story-topbar pricing-topbar">
-        <BrandLogo href="/" />
-        <nav className="topnav landing-topnav" aria-label="Pricing navigation">
-          <Link href="/">Platform</Link>
-          <Link href="/demo">Demo</Link>
-          <Link href="/demo/investor">Investor walkthrough</Link>
-          <Link href="/demo/request">Request demo</Link>
-        </nav>
-      </header>
+      <PublicMarketingNav />
 
       <section className="pricing-hero">
         <div className="pricing-hero-copy">

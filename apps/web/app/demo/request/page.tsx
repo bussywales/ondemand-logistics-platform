@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BrandLogo } from "../../_components/brand-logo";
 import { DemoRequestForm } from "../../_components/demo-request-form";
+import { PublicMarketingNav } from "../../_components/public-marketing-nav";
 import { ShipWrightIcon } from "../../_components/shipwright-icon";
 import { normalizeDemoRequestInterest } from "../../_lib/demo-request-interest";
 
@@ -19,8 +19,8 @@ export default async function DemoRequestPage(props: {
 
   return (
     <main className="demo-request-page">
+      <PublicMarketingNav />
       <header className="demo-request-hero">
-        <BrandLogo href="/" />
         <div className="demo-request-hero-grid">
           <div className="demo-request-copy">
             <p className="landing-kicker">Controlled pilot request</p>

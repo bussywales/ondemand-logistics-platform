@@ -7,6 +7,8 @@ describe("PricingPage", () => {
   it("renders controlled pilot package positioning", () => {
     const html = renderToStaticMarkup(<PricingPage />);
 
+    expect(html).toContain("Start controlled pilot");
+    expect(html).toContain('href="/pricing"');
     expect(html).toContain("Controlled pilot packages");
     expect(html).toContain("Commercial entry without public-price theatre.");
     expect(html).toContain("Pilot pricing discussed after fit review");
