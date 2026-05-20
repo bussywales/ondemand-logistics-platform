@@ -7,10 +7,12 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "test:rehearsal-wrapper": "vitest run scripts/rehearsal-verify-staging.test.ts",
     "test:integration": "pnpm -r test:integration",
     "migration:validate": "pnpm --filter @shipwright/db migration:validate",
     "fixtures:staging-auth": "tsx scripts/seed-staging-auth-fixtures.ts",
     "evidence:record": "pnpm --filter api evidence:record",
+    "rehearsal:verify-staging": "tsx scripts/rehearsal-verify-staging.ts",
     "proof:staging-paid-delivery": "pnpm --filter api proof:staging-paid-delivery",
     "release:verify-staging": "pnpm --filter api verify:staging"
   },

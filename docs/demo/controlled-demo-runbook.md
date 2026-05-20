@@ -66,16 +66,14 @@ Recommended seeded roles:
 Run these from the repo root before the session:
 
 ```bash
-RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
-RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
-SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
+pnpm rehearsal:verify-staging
 ```
 
 Expected outcome:
 - release verification passes
 - paid-delivery proof passes
 - browser smoke passes for configured public/authenticated staging routes
+- required-auth smoke evidence is recorded by the wrapper
 - `/admin/validation-evidence` shows current stored release, proof, and required-auth smoke evidence
 - latest proof artifacts are written under `docs/proofs/`
 

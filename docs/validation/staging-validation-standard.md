@@ -18,10 +18,7 @@ pnpm --filter @shipwright/web test:smoke
 Before any investor, pilot merchant, or internal tester demo, run at minimum:
 
 ```bash
-RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
-RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
-SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
+pnpm rehearsal:verify-staging
 ```
 
 Also record:
@@ -67,14 +64,22 @@ The paid-delivery proof must confirm:
 - release readiness checks green
 
 ## Stored Validation Evidence
-Validation commands do not write database evidence by default. To make rehearsal cockpit posture evidence-backed, record successful runs explicitly:
+Validation commands do not write database evidence by default. To make rehearsal cockpit posture evidence-backed, use the wrapper:
+
+```bash
+pnpm rehearsal:verify-staging
+```
+
+The wrapper runs this sequence and stops on the first failed required step:
 
 ```bash
 RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
 RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
 SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0}'
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source rehearsal_wrapper --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
 ```
+
+The wrapper records failed required-auth smoke evidence as `FAILED` before exiting non-zero.
 
 Stored evidence is admin-only at `/admin/validation-evidence`. It records status, command/source, summary, artifact path, and related proof IDs where available. It does not store secrets and does not cause the UI to execute release verification, paid proof, or browser smoke.
 

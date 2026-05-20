@@ -123,11 +123,10 @@ The required staging-ready quality gate is documented in `docs/validation/stagin
 Validation evidence must be stored for controlled demo readiness after successful gates:
 
 ```bash
-RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
-RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
-SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
+pnpm rehearsal:verify-staging
 ```
+
+The wrapper runs release verification, paid-delivery proof, required-auth browser smoke, and required-auth smoke evidence recording in sequence. It stops on the first failed required step and prints proof IDs plus stored evidence IDs when available.
 
 Stored evidence is visible at `/admin/validation-evidence` and in pilot rehearsal cockpits. It stores summary IDs/status, not secrets; proof JSON artifacts remain local and uncommitted. The admin UI reads stored evidence only and does not run release verification, paid proof, or smoke commands.
 
@@ -206,10 +205,7 @@ Driver fleet organisations reuse the IAM organisation and membership model with 
 Minimum demo readiness standard:
 
 ```bash
-RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
-RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
-SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
+pnpm rehearsal:verify-staging
 ```
 
 Before a demo, record the latest proof order/job/payment/POD ids, keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available, and confirm `/admin/validation-evidence` shows current stored release/proof/required-auth smoke evidence.

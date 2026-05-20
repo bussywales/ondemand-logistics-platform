@@ -77,10 +77,7 @@ Controlled demos require stored validation evidence, not only local command outp
 Run:
 
 ```bash
-RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
-RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
-SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
+pnpm rehearsal:verify-staging
 ```
 
 Then verify:
@@ -88,6 +85,14 @@ Then verify:
 - the selected pilot rehearsal cockpit reads stored evidence instead of showing missing/stale validation posture
 - proof artifacts under `docs/proofs/` remain local and uncommitted
 - the UI is read-only evidence review; it does not execute validation commands
+
+The wrapper runs:
+1. `RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging`
+2. `RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery`
+3. `SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke`
+4. `pnpm evidence:record` for `PLAYWRIGHT_SMOKE_REQUIRED_AUTH` with `source=rehearsal_wrapper`
+
+If any required step fails, the wrapper prints the failed step and exits non-zero.
 
 ## 3.6) Do not merge if
 Do not merge or mark staging-ready when:

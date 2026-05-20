@@ -6,11 +6,10 @@ Use this checklist before every investor, pilot merchant, or internal tester dem
 From repo root:
 
 ```bash
-RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
-RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
-SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
-pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0,"requiredAuth":true}'
+pnpm rehearsal:verify-staging
 ```
+
+The wrapper runs release verification, paid-delivery proof, required-auth browser smoke, and required-auth smoke evidence recording in order. If any required step fails, stop the reset and use the printed failed step as the owner handoff.
 
 Recommended when time allows:
 
@@ -170,10 +169,8 @@ Be ready to explain:
 ## 9. Final Pre-Demo Standard
 Before any demo, the minimum standard is:
 
-- `RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging` passed
-- `RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery` passed
-- `SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke` passed
-- required-auth smoke was recorded with `pnpm evidence:record` when the smoke runner did not record it automatically
+- `pnpm rehearsal:verify-staging` passed
+- release, proof, and required-auth smoke evidence IDs were printed or verified in `/admin/validation-evidence`
 - latest proof IDs recorded
 - `/admin/validation-evidence` reviewed for current stored evidence
 - rehearsal cockpit reviewed for the selected pilot workspace

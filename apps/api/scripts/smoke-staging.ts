@@ -88,7 +88,7 @@ export async function runCheck(
   init: RequestInit,
   options?: { timeoutMs?: number; expectedStatus?: number }
 ): Promise<CheckResult> {
-  const timeoutMs = options?.timeoutMs ?? 10_000;
+  const timeoutMs = options?.timeoutMs ?? 30_000;
   const expectedStatus = options?.expectedStatus ?? 200;
 
   try {
