@@ -904,6 +904,43 @@ export type ValidationEvidenceLatest = {
   };
 };
 
+export type ReleaseReadinessVerdict = "READY" | "NEEDS_REVIEW" | "BLOCKED";
+
+export type ReleaseReadinessEvidenceItem = {
+  evidenceType: ValidationEvidenceType;
+  label: string;
+  required: boolean;
+  status: ValidationEvidenceStatus;
+  createdAt: string | null;
+  ageMinutes: number | null;
+  isFresh: boolean;
+  evidenceId: string | null;
+  source: string | null;
+  command: string | null;
+  artifactPath: string | null;
+  relatedOrderId: string | null;
+  relatedJobId: string | null;
+  relatedPaymentId: string | null;
+  relatedPodId: string | null;
+};
+
+export type ReleaseReadinessSummary = {
+  verdict: ReleaseReadinessVerdict;
+  title: string;
+  summary: string;
+  environment: string;
+  freshnessWindowHours: number;
+  checkedAt: string;
+  requiredEvidence: ReleaseReadinessEvidenceItem[];
+  optionalEvidence: ReleaseReadinessEvidenceItem[];
+  recommendedActions: string[];
+  links: {
+    validationEvidence: "/admin/validation-evidence";
+    pilots: "/admin/pilots";
+    command: "/admin/command";
+  };
+};
+
 export type PilotGuardrailLevel = "INFO" | "CAUTION" | "WARNING" | "PAUSED" | "READY";
 export type PilotRehearsalRecommendation = "READY_FOR_REHEARSAL" | "NEEDS_REVIEW" | "BLOCKED" | "UNKNOWN";
 export type PilotRehearsalValidationStatus = "UNKNOWN" | "PASSED" | "FAILED" | "SKIPPED";

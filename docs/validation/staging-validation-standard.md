@@ -31,6 +31,7 @@ Also record:
 - latest POD id, if present
 - What’s New checked for major user-visible changes
 - staging routes checked for the intended audience
+- `/admin/release-readiness` checked for `READY`, or any `NEEDS_REVIEW` posture explicitly accepted by the demo owner
 - `/admin/validation-evidence` checked for current stored release, proof, and required-auth smoke evidence
 - selected pilot rehearsal cockpit checked for non-stale validation posture
 
@@ -82,6 +83,8 @@ pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --
 The wrapper records failed required-auth smoke evidence as `FAILED` before exiting non-zero.
 
 Stored evidence is admin-only at `/admin/validation-evidence`. It records status, command/source, summary, artifact path, and related proof IDs where available. It does not store secrets and does not cause the UI to execute release verification, paid proof, or browser smoke.
+
+`/admin/release-readiness` is the single source admin verdict for release/demo posture. It reads the latest stored `RELEASE_VERIFY`, `PAID_DELIVERY_PROOF`, and `PLAYWRIGHT_SMOKE_REQUIRED_AUTH` records, applies the 24-hour freshness window, and returns `READY`, `NEEDS_REVIEW`, or `BLOCKED`.
 
 For controlled demos, release verification, paid-delivery proof, and required-auth browser smoke evidence should be stored before observers join. Proof artifacts remain local/uncommitted; the admin UI reads stored evidence only and never runs validation commands from the browser.
 

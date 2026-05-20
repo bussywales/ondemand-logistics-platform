@@ -55,6 +55,7 @@ import { AdminOperationalResetsController } from "./operational-resets/operation
 import { OperationalResetsService } from "./operational-resets/operational-resets.service.js";
 import { AdminValidationEvidenceController } from "./validation-evidence/validation-evidence.controller.js";
 import { ValidationEvidenceService } from "./validation-evidence/validation-evidence.service.js";
+import { AdminReleaseReadinessController } from "./release-readiness/release-readiness.controller.js";
 
 @Module({
   imports: [],
@@ -82,6 +83,7 @@ import { ValidationEvidenceService } from "./validation-evidence/validation-evid
     AdminDemoRequestsController,
     AdminOperationalResetsController,
     AdminValidationEvidenceController,
+    AdminReleaseReadinessController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,

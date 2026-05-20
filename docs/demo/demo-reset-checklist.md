@@ -20,7 +20,7 @@ pnpm typecheck
 ```
 
 Do not start a high-stakes demo if release verification, paid-delivery proof, or browser smoke fails.
-Do not start a controlled demo if `/admin/validation-evidence` does not show current stored release, proof, and required-auth smoke evidence unless the facilitator explicitly explains the missing/stale posture.
+Do not start a controlled demo if `/admin/release-readiness` is `BLOCKED`. If it is `NEEDS_REVIEW`, the facilitator must explain and accept the missing/stale/non-critical posture before observers join.
 
 ## 2. Capture Latest Proof IDs
 From the latest `docs/proofs/paid-delivery-*.json`, record:
@@ -98,6 +98,7 @@ Admin and driver:
 - `/admin/operational-resets`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
+- `/admin/release-readiness`
 - `/admin/validation-evidence`
 - `/admin/drivers`
 - `/driver`
@@ -107,6 +108,7 @@ For the selected pilot profile, open the rehearsal cockpit and confirm:
 - blocked checks are either cleared or owned
 - high/critical support escalations are resolved or explicitly deferred by the demo owner
 - validation posture is backed by current stored evidence in `/admin/validation-evidence`, or explicitly called out as missing/stale
+- release readiness is `READY`, or the demo owner has accepted a documented `NEEDS_REVIEW` posture
 - release verification, paid-delivery proof, and required-auth smoke evidence should be less than 24 hours old before a formal rehearsal
 
 ## 5. Prepare Browser State
@@ -172,6 +174,7 @@ Before any demo, the minimum standard is:
 - `pnpm rehearsal:verify-staging` passed
 - release, proof, and required-auth smoke evidence IDs were printed or verified in `/admin/validation-evidence`
 - latest proof IDs recorded
+- `/admin/release-readiness` reviewed for the single release/demo verdict
 - `/admin/validation-evidence` reviewed for current stored evidence
 - rehearsal cockpit reviewed for the selected pilot workspace
 - operational reset tools previewed or intentionally skipped

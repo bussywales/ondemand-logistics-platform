@@ -387,6 +387,9 @@ export function AdminCommandView(props: {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/validation-evidence">
             Open evidence
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/release-readiness">
+            Release readiness
+          </Link>
         </div>
         {props.validationEvidenceError ? (
           <div className="form-error-banner support-escalation-error">{props.validationEvidenceError}</div>

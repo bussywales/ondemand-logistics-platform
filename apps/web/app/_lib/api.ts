@@ -75,6 +75,7 @@ import type {
   TimelineEvent,
   TrackingSummary,
   UpdateDemoRequestInput,
+  ReleaseReadinessSummary,
   ValidationEvidenceRun,
   ValidationEvidenceRunList,
   ValidationEvidenceLatest,
@@ -202,6 +203,7 @@ type OperationalResetRunListResponse = {
 };
 type ValidationEvidenceRunListResponse = ValidationEvidenceRunList;
 type ValidationEvidenceLatestResponse = ValidationEvidenceLatest;
+type ReleaseReadinessSummaryResponse = ReleaseReadinessSummary;
 type PilotWorkspaceListResponse = PilotWorkspaceList;
 type PilotWorkspaceResponse = PilotWorkspace;
 type PilotReadinessCheckListResponse = PilotReadinessCheckList;
@@ -1255,6 +1257,17 @@ export async function getLatestAdminValidationEvidence(
   return apiFetch<ValidationEvidenceLatestResponse>(
     session,
     `/v1/admin/validation-evidence/latest?environment=${encodeURIComponent(environment)}`,
+    { method: "GET" }
+  );
+}
+
+export async function getAdminReleaseReadiness(
+  session: BusinessSession,
+  environment = "staging"
+): Promise<ReleaseReadinessSummary> {
+  return apiFetch<ReleaseReadinessSummaryResponse>(
+    session,
+    `/v1/admin/release-readiness?environment=${encodeURIComponent(environment)}`,
     { method: "GET" }
   );
 }

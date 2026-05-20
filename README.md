@@ -128,7 +128,7 @@ pnpm rehearsal:verify-staging
 
 The wrapper runs release verification, paid-delivery proof, required-auth browser smoke, and required-auth smoke evidence recording in sequence. It stops on the first failed required step and prints proof IDs plus stored evidence IDs when available.
 
-Stored evidence is visible at `/admin/validation-evidence` and in pilot rehearsal cockpits. It stores summary IDs/status, not secrets; proof JSON artifacts remain local and uncommitted. The admin UI reads stored evidence only and does not run release verification, paid proof, or smoke commands.
+Stored evidence is visible at `/admin/validation-evidence`, `/admin/release-readiness`, and in pilot rehearsal cockpits. It stores summary IDs/status, not secrets; proof JSON artifacts remain local and uncommitted. The admin UI reads stored evidence only and does not run release verification, paid proof, or smoke commands.
 
 ## Browser smoke testing (Playwright)
 Commit `4975b8c` adds a minimal Playwright setup for staging smoke checks.
@@ -145,7 +145,7 @@ Notes:
   - `SMOKE_LATEST_ORDER_ID` (preferred), or
   - `LATEST_ORDER_ID` fallback.
 - Authenticated workspace/admin/driver/fleet-manager smoke checks require credentials and are skipped if missing.
-- Full admin smoke covers `/admin/validation-evidence` and accepts either current evidence records or the empty state.
+- Full admin smoke covers `/admin/validation-evidence` and accepts either current evidence records or the empty state. After the release-readiness route is deployed, open `/admin/release-readiness` before demos/releases to confirm the stored-evidence verdict.
 - The Playwright config auto-loads repo-root `.env.smoke` when present.
 - Set `SMOKE_REQUIRE_AUTH=true` for release/full smoke mode; missing tracking or authenticated smoke credentials fail instead of skipping.
 - Playwright artifacts are local test outputs and must not be committed:
@@ -208,7 +208,7 @@ Minimum demo readiness standard:
 pnpm rehearsal:verify-staging
 ```
 
-Before a demo, record the latest proof order/job/payment/POD ids, keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available, and confirm `/admin/validation-evidence` shows current stored release/proof/required-auth smoke evidence.
+Before a demo, record the latest proof order/job/payment/POD ids, keep the latest `docs/proofs/release-verify-*.json` and `docs/proofs/paid-delivery-*.json` paths available, and confirm `/admin/release-readiness` is `READY` or that any `NEEDS_REVIEW` posture is explicitly explained.
 
 ## Roadmaps
 - `docs/roadmaps/shipwright-roadmap.md` - canonical roadmap order across pilot readiness, What’s New discipline, IAM, merchant menu operations, driver fleets, commercial conversion, and brand work

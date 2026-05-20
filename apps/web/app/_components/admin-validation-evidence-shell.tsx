@@ -102,6 +102,7 @@ export function AdminValidationEvidenceView(props: { latest: ValidationEvidenceL
           </p>
         </div>
         <div className="hero-actions">
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/release-readiness">Release readiness</Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/pilots">Pilot workspaces</Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/command">Admin command</Link>
         </div>

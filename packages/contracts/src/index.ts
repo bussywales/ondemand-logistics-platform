@@ -1593,6 +1593,46 @@ export const CreateValidationEvidenceRunSchema = z.object({
 });
 export type CreateValidationEvidenceRunInput = z.infer<typeof CreateValidationEvidenceRunSchema>;
 
+export const ReleaseReadinessVerdictSchema = z.enum(["READY", "NEEDS_REVIEW", "BLOCKED"]);
+export type ReleaseReadinessVerdict = z.infer<typeof ReleaseReadinessVerdictSchema>;
+
+export const ReleaseReadinessEvidenceItemSchema = z.object({
+  evidenceType: ValidationEvidenceTypeSchema,
+  label: z.string().min(2),
+  required: z.boolean(),
+  status: ValidationEvidenceStatusSchema,
+  createdAt: IsoDateTimeSchema.nullable(),
+  ageMinutes: z.number().int().nonnegative().nullable(),
+  isFresh: z.boolean(),
+  evidenceId: z.string().uuid().nullable(),
+  source: z.string().nullable(),
+  command: z.string().nullable(),
+  artifactPath: z.string().nullable(),
+  relatedOrderId: z.string().uuid().nullable(),
+  relatedJobId: z.string().uuid().nullable(),
+  relatedPaymentId: z.string().uuid().nullable(),
+  relatedPodId: z.string().uuid().nullable()
+});
+export type ReleaseReadinessEvidenceItemDto = z.infer<typeof ReleaseReadinessEvidenceItemSchema>;
+
+export const ReleaseReadinessSummarySchema = z.object({
+  verdict: ReleaseReadinessVerdictSchema,
+  title: z.string().min(2),
+  summary: z.string().min(2),
+  environment: z.string().min(2),
+  freshnessWindowHours: z.number().int().positive(),
+  checkedAt: IsoDateTimeSchema,
+  requiredEvidence: z.array(ReleaseReadinessEvidenceItemSchema),
+  optionalEvidence: z.array(ReleaseReadinessEvidenceItemSchema),
+  recommendedActions: z.array(z.string().min(2)),
+  links: z.object({
+    validationEvidence: z.literal("/admin/validation-evidence"),
+    pilots: z.literal("/admin/pilots"),
+    command: z.literal("/admin/command")
+  })
+});
+export type ReleaseReadinessSummaryDto = z.infer<typeof ReleaseReadinessSummarySchema>;
+
 export const PilotGuardrailLevelSchema = z.enum(["INFO", "CAUTION", "WARNING", "PAUSED", "READY"]);
 export type PilotGuardrailLevel = z.infer<typeof PilotGuardrailLevelSchema>;
 

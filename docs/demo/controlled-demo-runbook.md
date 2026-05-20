@@ -74,6 +74,7 @@ Expected outcome:
 - paid-delivery proof passes
 - browser smoke passes for configured public/authenticated staging routes
 - required-auth smoke evidence is recorded by the wrapper
+- `/admin/release-readiness` reports `READY`, or a `NEEDS_REVIEW` posture is explicitly accepted and explained
 - `/admin/validation-evidence` shows current stored release, proof, and required-auth smoke evidence
 - latest proof artifacts are written under `docs/proofs/`
 
@@ -85,6 +86,7 @@ Reference the latest generated artifacts from `docs/proofs/`.
 Minimum recommended evidence:
 - latest `release-verify-<timestamp>.json`
 - latest `paid-delivery-<timestamp>.json`
+- current `/admin/release-readiness` verdict
 - latest stored release verification evidence in `/admin/validation-evidence`
 - latest stored paid-delivery proof evidence in `/admin/validation-evidence`
 - latest stored required-auth smoke evidence in `/admin/validation-evidence`
@@ -121,7 +123,7 @@ Recommended order:
 13. show admin command intelligence
 14. show `/admin/operational-resets` only if the audience asks how staging/demo clutter is prepared; explain preview, typed confirmation, reset-run evidence, and no hard deletes
 15. show pilot management mode, readiness stage, owners, and checklist evidence
-16. open `/admin/validation-evidence` and the selected pilot rehearsal cockpit; confirm stored release/proof/smoke evidence is current or explain any missing/stale posture
+16. open `/admin/release-readiness`, `/admin/validation-evidence`, and the selected pilot rehearsal cockpit; confirm stored release/proof/smoke evidence is current or explain any missing/stale posture
 17. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
 18. show `/pricing` as the controlled pilot package page; explain that ShipWright does not publish fake self-serve pricing and starts with fit review
 19. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet

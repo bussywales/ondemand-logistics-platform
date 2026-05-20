@@ -36,6 +36,7 @@ import {
   PilotRehearsalSummarySchema,
   PilotWorkspaceListSchema,
   ProofOfDeliveryUploadUrlResponseSchema,
+  ReleaseReadinessSummarySchema,
   SupportEscalationEventListSchema,
   SupportEscalationListSchema,
   SubmitCustomerOrderResponseSchema,
@@ -674,6 +675,40 @@ describe("admin schemas", () => {
           createdAt: new Date().toISOString()
         }
       ]
+    }).success).toBe(true);
+    expect(ReleaseReadinessSummarySchema.safeParse({
+      verdict: "READY",
+      title: "Release ready",
+      summary: "Stored validation evidence is current.",
+      environment: "staging",
+      freshnessWindowHours: 24,
+      checkedAt: new Date().toISOString(),
+      requiredEvidence: [
+        {
+          evidenceType: "RELEASE_VERIFY",
+          label: "Release verification",
+          required: true,
+          status: "PASSED",
+          createdAt: new Date().toISOString(),
+          ageMinutes: 10,
+          isFresh: true,
+          evidenceId: "6cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          source: "release_verify_script",
+          command: "pnpm release:verify-staging",
+          artifactPath: "docs/proofs/release-verify.json",
+          relatedOrderId: null,
+          relatedJobId: null,
+          relatedPaymentId: null,
+          relatedPodId: null
+        }
+      ],
+      optionalEvidence: [],
+      recommendedActions: ["Proceed with controlled demo."],
+      links: {
+        validationEvidence: "/admin/validation-evidence",
+        pilots: "/admin/pilots",
+        command: "/admin/command"
+      }
     }).success).toBe(true);
   });
 });

@@ -55,7 +55,7 @@ Configuration:
 - Authenticated workspace/admin/driver/fleet-manager smoke requires credentials and is skipped otherwise.
 - Set `SMOKE_REQUIRE_AUTH=true` for release/full smoke mode; missing tracking or authenticated smoke credentials then fail instead of skipping.
 - Admin browser smoke includes `/admin`, `/admin/command`, and `/admin/drivers`.
-- Full authenticated admin smoke includes `/admin/validation-evidence`; it must render whether evidence exists or the empty state appears.
+- Full authenticated admin smoke includes `/admin/validation-evidence`; it must render whether evidence exists or the empty state appears. After deployment, open `/admin/release-readiness` before demos/releases to confirm the stored-evidence verdict.
 - Admin browser smoke should include `/admin/demo-requests` when commercial intake changes.
 - Commercial intake changes should verify that a non-sensitive staging request appears in `/admin/demo-requests` and that `/admin/command` shows the demo request posture.
 - Fleet-manager browser smoke includes `/fleet` with a dedicated `FLEET_MANAGER` smoke account.
@@ -81,6 +81,7 @@ pnpm rehearsal:verify-staging
 ```
 
 Then verify:
+- `/admin/release-readiness` shows `READY`, or any `NEEDS_REVIEW` posture is explicitly accepted for the session
 - `/admin/validation-evidence` shows current release verification, paid-delivery proof, and required-auth smoke records
 - the selected pilot rehearsal cockpit reads stored evidence instead of showing missing/stale validation posture
 - proof artifacts under `docs/proofs/` remain local and uncommitted
@@ -99,6 +100,7 @@ Do not merge or mark staging-ready when:
 - release verification fails
 - paid-delivery proof fails
 - Playwright smoke fails with configured smoke credentials
+- `/admin/release-readiness` is `BLOCKED`
 - controlled-demo release/proof/smoke evidence is missing or stale in `/admin/validation-evidence` without an explicit facilitator note
 - a major user-visible feature ships without a `/app/updates`, `/driver/updates`, or `/admin/updates` What’s New entry, unless the release notes explain why no entry is needed
 - readiness is missing a critical schema dependency introduced by the change

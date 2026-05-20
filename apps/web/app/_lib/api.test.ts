@@ -11,6 +11,7 @@ import {
   createRestaurant,
   getAdminDailyBriefing,
   getAdminEndOfDayReport,
+  getAdminReleaseReadiness,
   getAdminPilotRehearsal,
   getAdminOrgMembers,
   getFleetReadiness,
@@ -748,6 +749,37 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/admin/validation-evidence?evidenceType=PAID_DELIVERY_PROOF&limit=10');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(evidence[0]?.status).toBe('PASSED');
+  });
+
+  it('reads admin release readiness', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          verdict: 'READY',
+          title: 'Release ready',
+          summary: 'Required stored evidence is passed and fresh.',
+          environment: 'staging',
+          freshnessWindowHours: 24,
+          checkedAt: new Date().toISOString(),
+          requiredEvidence: [],
+          optionalEvidence: [],
+          recommendedActions: ['Proceed with controlled demo.'],
+          links: {
+            validationEvidence: '/admin/validation-evidence',
+            pilots: '/admin/pilots',
+            command: '/admin/command'
+          }
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const readiness = await getAdminReleaseReadiness(session);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/admin/release-readiness?environment=staging');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(readiness.verdict).toBe('READY');
   });
 
   it('reads business notifications with bearer auth', async () => {

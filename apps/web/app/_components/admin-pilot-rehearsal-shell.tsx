@@ -157,6 +157,7 @@ export function AdminPilotRehearsalView(props: { summary: PilotRehearsalSummary 
             </p>
           </div>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/validation-evidence">Open evidence</Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/release-readiness">Release readiness</Link>
         </div>
         <div className="admin-command-list">
           {validationSignals.map((signal) => (
