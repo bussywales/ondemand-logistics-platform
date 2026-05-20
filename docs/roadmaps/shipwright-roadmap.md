@@ -59,10 +59,12 @@ Scope:
 Current rule:
 - the cockpit may summarise validation posture
 - the cockpit does not run proof, smoke, release verification, or destructive pilot controls from the UI
-- if proof/smoke artifacts are not persisted in DB, the UI should show unknown and direct admins to run validation commands
+- release verification, paid-delivery proof, and Playwright smoke can be stored as admin-only validation evidence
+- if validation evidence is missing, stale, skipped, or failed, the UI should direct admins to rerun and record validation commands
 
 Next hardening:
 - seed pilot profiles for rehearsal environments where needed
+- keep `/admin/validation-evidence` current before investor or pilot rehearsals
 - keep `/admin/pilots/[pilotId]/rehearsal` in smoke coverage
 - decide later whether proof/smoke evidence should be stored as pilot readiness evidence
 

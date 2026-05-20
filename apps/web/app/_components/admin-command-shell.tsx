@@ -8,7 +8,7 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport, getUserFacingApiError, listAdminDemoRequests, listAdminOperationalResets, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getLatestAdminValidationEvidence, getUserFacingApiError, listAdminDemoRequests, listAdminOperationalResets, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
 import { getPilotGuardrailState } from "../_lib/pilot-guardrails";
 import {
@@ -19,7 +19,9 @@ import {
   type EndOfDayReport,
   type OperationalResetRun,
   type PilotWorkspace,
-  type SupportEscalation
+  type SupportEscalation,
+  type ValidationEvidenceRun,
+  type ValidationEvidenceLatest
 } from "../_lib/product-state";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import { COMMAND_INTELLIGENCE_EXPLAINER, COMMAND_INTELLIGENCE_SIGNAL_COPY, CommandIntelligenceNote } from "./product-shell/shared";
@@ -71,6 +73,10 @@ function severityIcon(value: DailyBriefing["criticalItems"][number]["severity"])
   }
 
   return "check";
+}
+
+function isValidationEvidenceRun(value: ValidationEvidenceRun | null): value is ValidationEvidenceRun {
+  return value !== null;
 }
 
 function toReadableIssue(category: DailyBriefingItem["category"]) {
@@ -264,6 +270,8 @@ export function AdminCommandView(props: {
   demoRequestsError?: string | null;
   operationalResets: OperationalResetRun[];
   operationalResetsError?: string | null;
+  validationEvidence: ValidationEvidenceLatest | null;
+  validationEvidenceError?: string | null;
   supportError?: string | null;
   supportEscalations: SupportEscalation[];
 }) {
@@ -303,6 +311,23 @@ export function AdminCommandView(props: {
   const demoFollowUpCounts = useMemo(() => getDemoRequestFollowUpCounts(props.demoRequests), [props.demoRequests]);
   const demoNotificationCounts = useMemo(() => getDemoRequestNotificationCounts(props.demoRequests), [props.demoRequests]);
   const latestResetRun = props.operationalResets[0] ?? null;
+  const latestValidationRuns = props.validationEvidence
+    ? [
+        props.validationEvidence.items.releaseVerify,
+        props.validationEvidence.items.paidDeliveryProof,
+        props.validationEvidence.items.playwrightSmoke,
+        props.validationEvidence.items.playwrightSmokeRequiredAuth
+      ].filter(isValidationEvidenceRun)
+    : [];
+  const latestValidationPassed = latestValidationRuns.filter((run) => run.status === "PASSED").length;
+  const validationEvidenceRows: Array<[string, ValidationEvidenceRun | null]> = props.validationEvidence
+    ? [
+        ["Release verification", props.validationEvidence.items.releaseVerify],
+        ["Paid-delivery proof", props.validationEvidence.items.paidDeliveryProof],
+        ["Browser smoke", props.validationEvidence.items.playwrightSmoke],
+        ["Required-auth smoke", props.validationEvidence.items.playwrightSmokeRequiredAuth]
+      ]
+    : [];
   const newDemoRequests = props.demoRequests.filter((request) => request.status === "NEW");
   const oldestNewDemoRequestAge =
     newDemoRequests.length > 0
@@ -346,10 +371,39 @@ export function AdminCommandView(props: {
           <CountCard copy="Demo request notification deliveries that need retry or investigation." label="Notification failed" tone={demoNotificationCounts.failed + demoNotificationCounts.retrying ? "warning" : "success"} value={demoNotificationCounts.failed + demoNotificationCounts.retrying} />
           <CountCard copy="Notification delivery skipped because optional email/webhook config is absent." label="Notification skipped" tone={demoNotificationCounts.skipped ? "info" : "success"} value={demoNotificationCounts.skipped} />
           <CountCard copy="Completed non-destructive staging/demo tidy runs." label="Reset runs" tone={props.operationalResets.length ? "info" : "success"} value={props.operationalResets.length} />
+          <CountCard copy="Latest stored release/proof/smoke evidence records currently passed." label="Validation evidence" tone={latestValidationPassed >= 3 ? "success" : "warning"} value={latestValidationPassed} />
         </div>
       </section>
 
       <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_EXPLAINER} />
+
+      <section className="sw-supporting-surface admin-command-section">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Validation evidence</p>
+            <h2>{latestValidationRuns.length ? `${latestValidationPassed}/${latestValidationRuns.length} latest validation records passed` : "No stored validation evidence"}</h2>
+            <p className="ops-detail-note">Pilot rehearsal reads stored evidence for release verification, paid-delivery proof, browser smoke, and required-auth smoke. The UI does not run validation commands.</p>
+          </div>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/validation-evidence">
+            Open evidence
+          </Link>
+        </div>
+        {props.validationEvidenceError ? (
+          <div className="form-error-banner support-escalation-error">{props.validationEvidenceError}</div>
+        ) : null}
+        {props.validationEvidence ? (
+          <div className="admin-command-report-grid">
+            {validationEvidenceRows.map(([label, run]) => (
+              <div className="sw-list-row" key={label}>
+                <span>{label}</span>
+                <strong>{run ? run.status.replaceAll("_", " ").toLowerCase() : "missing"}</strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="ops-detail-note">Run validation with evidence recording enabled or record the successful smoke/proof result manually after release gates pass.</p>
+        )}
+      </section>
 
       <section className="sw-supporting-surface admin-command-section">
         <div className="sw-card-header admin-section-header">
@@ -789,9 +843,11 @@ export function AdminCommandShell() {
   const [supportEscalations, setSupportEscalations] = useState<SupportEscalation[]>([]);
   const [demoRequests, setDemoRequests] = useState<DemoRequest[]>([]);
   const [operationalResets, setOperationalResets] = useState<OperationalResetRun[]>([]);
+  const [validationEvidence, setValidationEvidence] = useState<ValidationEvidenceLatest | null>(null);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [demoRequestsError, setDemoRequestsError] = useState<string | null>(null);
   const [operationalResetsError, setOperationalResetsError] = useState<string | null>(null);
+  const [validationEvidenceError, setValidationEvidenceError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -814,6 +870,7 @@ export function AdminCommandShell() {
     setSupportLogError(null);
     setDemoRequestsError(null);
     setOperationalResetsError(null);
+    setValidationEvidenceError(null);
 
     void Promise.all([
       loadAdminCommandData(session, selectedDate),
@@ -829,9 +886,13 @@ export function AdminCommandShell() {
       listAdminOperationalResets(session).catch((issue) => {
         setOperationalResetsError(getUserFacingApiError(issue, "Operational reset posture unavailable. Refresh or contact support."));
         return [];
+      }),
+      getLatestAdminValidationEvidence(session).catch((issue) => {
+        setValidationEvidenceError(getUserFacingApiError(issue, "Validation evidence posture unavailable. Refresh or contact support."));
+        return null;
       })
     ])
-      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets]) => {
+      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence]) => {
         if (!active) {
           return;
         }
@@ -842,6 +903,7 @@ export function AdminCommandShell() {
         setSupportEscalations(nextSupportEscalations);
         setDemoRequests(nextDemoRequests);
         setOperationalResets(nextOperationalResets);
+        setValidationEvidence(nextValidationEvidence);
       })
       .catch((issue) => {
         if (!active) {
@@ -872,9 +934,10 @@ export function AdminCommandShell() {
     setSupportLogError(null);
     setDemoRequestsError(null);
     setOperationalResetsError(null);
+    setValidationEvidenceError(null);
 
     try {
-      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets] = await Promise.all([
+      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence] = await Promise.all([
         loadAdminCommandData(nextSession, selectedDate),
         listAdminPilots(nextSession).catch(() => []),
         listAdminSupportEscalations(nextSession).catch((issue) => {
@@ -888,6 +951,10 @@ export function AdminCommandShell() {
         listAdminOperationalResets(nextSession).catch((issue) => {
           setOperationalResetsError(getUserFacingApiError(issue, "Operational reset posture unavailable. Refresh or contact support."));
           return [];
+        }),
+        getLatestAdminValidationEvidence(nextSession).catch((issue) => {
+          setValidationEvidenceError(getUserFacingApiError(issue, "Validation evidence posture unavailable. Refresh or contact support."));
+          return null;
         })
       ]);
       setBriefing(commandData.briefing);
@@ -896,6 +963,7 @@ export function AdminCommandShell() {
       setSupportEscalations(nextSupportEscalations);
       setDemoRequests(nextDemoRequests);
       setOperationalResets(nextOperationalResets);
+      setValidationEvidence(nextValidationEvidence);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
     } finally {
@@ -1024,6 +1092,8 @@ export function AdminCommandShell() {
           session={session}
           supportError={supportLogError}
           supportEscalations={supportEscalations}
+          validationEvidence={validationEvidence}
+          validationEvidenceError={validationEvidenceError}
         />
       ) : null}
     </main>

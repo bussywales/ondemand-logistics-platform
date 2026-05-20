@@ -5,6 +5,8 @@ import {
   PilotReadinessCheckListSchema,
   PilotReadinessCheckSchema,
   PilotRehearsalSummarySchema,
+  type PilotRehearsalValidationPostureDto,
+  type PilotRehearsalValidationSignalDto,
   PilotWorkspaceListSchema,
   PilotWorkspaceSchema,
   UpdatePilotReadinessCheckSchema,
@@ -15,9 +17,11 @@ import {
   type PilotReadinessCheckKey,
   type PilotRehearsalRecommendation,
   type PilotWorkspaceDto,
+  type ValidationEvidenceRunDto,
 } from "@shipwright/contracts";
 import { toIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
+import { ValidationEvidenceService } from "../validation-evidence/validation-evidence.service.js";
 
 const DEFAULT_CHECKS: Array<{ key: PilotReadinessCheckKey; label: string }> = [
   { key: "merchant_profile_ready", label: "Merchant profile ready" },
@@ -70,6 +74,8 @@ type SupportPostureRow = {
   unresolved_support_escalations: number | string;
   high_critical_support_escalations: number | string;
 };
+
+const VALIDATION_FRESHNESS_WINDOW_HOURS = 24;
 
 function numberValue(value: number | string) {
   return typeof value === "number" ? value : Number.parseInt(value, 10);
@@ -218,26 +224,83 @@ function summariseChecks(checks: PilotReadinessCheckDto[]) {
   };
 }
 
-function buildUnknownValidationPosture() {
+function evidenceFreshness(evidence: ValidationEvidenceRunDto | null, now = new Date()) {
+  if (!evidence) return "missing" as const;
+  const ageMs = now.getTime() - new Date(evidence.createdAt).getTime();
+  return ageMs <= VALIDATION_FRESHNESS_WINDOW_HOURS * 60 * 60 * 1000 ? "fresh" : "stale";
+}
+
+function evidenceSummary(
+  evidence: ValidationEvidenceRunDto | null,
+  fallbackCommand: string,
+  label: string,
+  now = new Date()
+): PilotRehearsalValidationSignalDto {
+  if (!evidence) {
+    return {
+      status: "UNKNOWN" as const,
+      label,
+      summary: `No stored evidence yet. Run ${fallbackCommand} and record validation evidence before rehearsal.`,
+      evidenceAt: null,
+      freshness: "missing" as const,
+      evidence: null
+    };
+  }
+
+  const freshness = evidenceFreshness(evidence, now);
+  const staleNote = freshness === "stale" ? " Stored evidence is older than the 24 hour rehearsal window." : "";
   return {
-    releaseVerification: {
-      status: "UNKNOWN" as const,
-      label: "Release verification",
-      summary: "Run pnpm release:verify-staging before rehearsal.",
-      evidenceAt: null
-    },
-    paidDeliveryProof: {
-      status: "UNKNOWN" as const,
-      label: "Paid delivery proof",
-      summary: "Run pnpm proof:staging-paid-delivery before rehearsal.",
-      evidenceAt: null
-    },
-    browserSmoke: {
-      status: "UNKNOWN" as const,
-      label: "Browser smoke",
-      summary: "Run pnpm --filter @shipwright/web test:smoke before rehearsal.",
-      evidenceAt: null
-    }
+    status: evidence.status,
+    label,
+    summary: `${evidence.status.toLowerCase()} evidence from ${evidence.source}.${staleNote}`,
+    evidenceAt: evidence.createdAt,
+    freshness,
+    evidence
+  };
+}
+
+function buildValidationPosture(latest: {
+  releaseVerify: ValidationEvidenceRunDto | null;
+  paidDeliveryProof: ValidationEvidenceRunDto | null;
+  playwrightSmoke: ValidationEvidenceRunDto | null;
+  playwrightSmokeRequiredAuth: ValidationEvidenceRunDto | null;
+} | null): PilotRehearsalValidationPostureDto {
+  const signals = {
+    releaseVerification: evidenceSummary(latest?.releaseVerify ?? null, "pnpm release:verify-staging", "Release verification"),
+    paidDeliveryProof: evidenceSummary(latest?.paidDeliveryProof ?? null, "pnpm proof:staging-paid-delivery", "Paid delivery proof"),
+    browserSmoke: evidenceSummary(latest?.playwrightSmoke ?? null, "pnpm --filter @shipwright/web test:smoke", "Browser smoke"),
+    requiredAuthSmoke: evidenceSummary(
+      latest?.playwrightSmokeRequiredAuth ?? null,
+      "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke",
+      "Required-auth browser smoke"
+    )
+  };
+
+  const required = [signals.releaseVerification, signals.paidDeliveryProof, signals.requiredAuthSmoke];
+  const anyFailed = required.some((signal) => signal.status === "FAILED");
+  const anySkipped = required.some((signal) => signal.status === "SKIPPED");
+  const allFreshPassed = required.every((signal) => signal.status === "PASSED" && signal.freshness === "fresh");
+  const missingOrStale = required.some((signal) => signal.freshness !== "fresh");
+
+  const overallStatus = anyFailed
+    ? "FAILED"
+    : anySkipped
+      ? "SKIPPED"
+      : allFreshPassed
+        ? "PASSED"
+        : "UNKNOWN";
+
+  const recommendedAction = allFreshPassed
+    ? "Stored release verification, paid-delivery proof, and required-auth smoke evidence are current."
+    : missingOrStale
+      ? "Run and record release verification, paid-delivery proof, and required-auth browser smoke within 24 hours of rehearsal."
+      : "Review failed or skipped validation evidence before rehearsal.";
+
+  return {
+    ...signals,
+    freshnessWindowHours: VALIDATION_FRESHNESS_WINDOW_HOURS,
+    overallStatus,
+    recommendedAction
   };
 }
 
@@ -245,13 +308,15 @@ function buildRecommendation(
   workspace: PilotWorkspaceDto,
   checklist: ReturnType<typeof summariseChecks>,
   highCriticalSupportEscalations: number,
-  validationChecklistClear: boolean
+  validationChecklistClear: boolean,
+  validationEvidenceClear: boolean
 ): PilotRehearsalRecommendation {
   if (!workspace || checklist.total === 0) return "UNKNOWN";
   if (workspace.status === "PAUSED" || checklist.blocked > 0 || highCriticalSupportEscalations > 0) return "BLOCKED";
   if (!isRehearsalReady(workspace)) return "NEEDS_REVIEW";
   if (checklist.passed + checklist.waived < checklist.total) return "NEEDS_REVIEW";
   if (!validationChecklistClear) return "NEEDS_REVIEW";
+  if (!validationEvidenceClear) return "NEEDS_REVIEW";
   return "READY_FOR_REHEARSAL";
 }
 
@@ -265,7 +330,10 @@ function validationChecklistClear(checks: PilotReadinessCheckDto[]) {
 
 @Injectable()
 export class PilotsService {
-  constructor(private readonly pg: PgService) {}
+  constructor(
+    private readonly pg: PgService,
+    private readonly validationEvidence?: ValidationEvidenceService
+  ) {}
 
   async listAdminPilots() {
     const result = await this.pg.query<PilotWorkspaceRow>(this.workspaceSelectSql());
@@ -396,15 +464,24 @@ export class PilotsService {
     };
     const highCriticalSupportEscalations = numberValue(supportPosture.high_critical_support_escalations);
     const unresolvedSupportEscalations = numberValue(supportPosture.unresolved_support_escalations);
-    const validationPosture = buildUnknownValidationPosture();
+    const latestEvidence = this.validationEvidence ? await this.validationEvidence.getLatestEvidence("staging") : null;
+    const validationPosture = buildValidationPosture(latestEvidence?.items ?? null);
     const validationChecksClear = validationChecklistClear(checks);
-    const recommendation = buildRecommendation(workspace, checklistSummary, highCriticalSupportEscalations, validationChecksClear);
+    const validationEvidenceClear = validationPosture.overallStatus === "PASSED";
+    const recommendation = buildRecommendation(
+      workspace,
+      checklistSummary,
+      highCriticalSupportEscalations,
+      validationChecksClear,
+      validationEvidenceClear
+    );
     const nextActions = this.buildRehearsalNextActions({
       workspace,
       checklistSummary,
       highCriticalSupportEscalations,
       unresolvedSupportEscalations,
-      validationUnknown: !validationChecksClear
+      validationUnknown: !validationChecksClear || !validationEvidenceClear,
+      validationAction: validationPosture.recommendedAction
     });
 
     return PilotRehearsalSummarySchema.parse({
@@ -532,6 +609,7 @@ export class PilotsService {
     highCriticalSupportEscalations: number;
     unresolvedSupportEscalations: number;
     validationUnknown: boolean;
+    validationAction: string;
   }) {
     const actions: string[] = [];
 
@@ -562,7 +640,7 @@ export class PilotsService {
     }
 
     if (input.validationUnknown) {
-      actions.push("Run release verification, paid-delivery proof, and browser smoke before rehearsal.");
+      actions.push(input.validationAction);
     }
 
     actions.push("Review known limitations and demo reset checklist with the rehearsal owner.");

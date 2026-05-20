@@ -59,6 +59,42 @@ function createPg(...responses: Array<{ rows: unknown[] }>) {
   };
 }
 
+function createValidationEvidence(status: "PASSED" | "FAILED" = "PASSED", createdAt = new Date().toISOString()) {
+  const run = (evidenceType: "RELEASE_VERIFY" | "PAID_DELIVERY_PROOF" | "PLAYWRIGHT_SMOKE_REQUIRED_AUTH") => ({
+    id:
+      evidenceType === "RELEASE_VERIFY"
+        ? "55555555-5555-4555-8555-555555555551"
+        : evidenceType === "PAID_DELIVERY_PROOF"
+          ? "55555555-5555-4555-8555-555555555552"
+          : "55555555-5555-4555-8555-555555555553",
+    evidenceType,
+    status,
+    environment: "staging",
+    source: "test",
+    command: "pnpm validation",
+    summary: {},
+    artifactPath: "docs/proofs/test.json",
+    relatedOrderId: null,
+    relatedJobId: null,
+    relatedPaymentId: null,
+    relatedPodId: null,
+    createdBy: null,
+    createdAt
+  });
+
+  return {
+    getLatestEvidence: vi.fn().mockResolvedValue({
+      environment: "staging",
+      items: {
+        releaseVerify: run("RELEASE_VERIFY"),
+        paidDeliveryProof: run("PAID_DELIVERY_PROOF"),
+        playwrightSmoke: null,
+        playwrightSmokeRequiredAuth: run("PLAYWRIGHT_SMOKE_REQUIRED_AUTH")
+      }
+    })
+  };
+}
+
 describe("PilotsService", () => {
   it("lists admin pilot workspaces with posture counts", async () => {
     const pg = createPg({ rows: [workspaceRow] });
@@ -160,7 +196,9 @@ describe("PilotsService", () => {
 
     expect(result.recommendation).toBe("NEEDS_REVIEW");
     expect(result.validationPosture.browserSmoke.status).toBe("UNKNOWN");
-    expect(result.recommendedNextActions).toContain("Run release verification, paid-delivery proof, and browser smoke before rehearsal.");
+    expect(result.recommendedNextActions).toContain(
+      "Run and record release verification, paid-delivery proof, and required-auth browser smoke within 24 hours of rehearsal."
+    );
   });
 
   it("returns ready for rehearsal when checks pass and no blockers remain", async () => {
@@ -170,12 +208,46 @@ describe("PilotsService", () => {
       { rows: [checkWith("paid_delivery_proof_current", "PASSED", "01"), checkWith("browser_smoke_current", "PASSED", "02")] },
       { rows: [{ unresolved_support_escalations: "0", high_critical_support_escalations: "0" }] }
     );
-    const service = new PilotsService(pg as never);
+    const validationEvidence = createValidationEvidence();
+    const service = new PilotsService(pg as never, validationEvidence as never);
 
     const result = await service.getAdminPilotRehearsal(PILOT_ID);
 
     expect(result.recommendation).toBe("READY_FOR_REHEARSAL");
+    expect(result.validationPosture.overallStatus).toBe("PASSED");
     expect(result.checklistSummary.passed).toBe(2);
     expect(result.operationalPosture.unresolvedSupportEscalations).toBe(0);
+  });
+
+  it("returns needs review when stored validation evidence is stale", async () => {
+    const staleDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const pg = createPg(
+      { rows: [{ ...workspaceRow, checklist_total: "2", checklist_passed: "2", unresolved_support_escalations: "0", payment_risks: "0" }] },
+      { rows: [] },
+      { rows: [checkWith("paid_delivery_proof_current", "PASSED", "01"), checkWith("browser_smoke_current", "PASSED", "02")] },
+      { rows: [{ unresolved_support_escalations: "0", high_critical_support_escalations: "0" }] }
+    );
+    const service = new PilotsService(pg as never, createValidationEvidence("PASSED", staleDate) as never);
+
+    const result = await service.getAdminPilotRehearsal(PILOT_ID);
+
+    expect(result.recommendation).toBe("NEEDS_REVIEW");
+    expect(result.validationPosture.overallStatus).toBe("UNKNOWN");
+    expect(result.validationPosture.releaseVerification.freshness).toBe("stale");
+  });
+
+  it("does not mark rehearsal ready when latest validation evidence failed", async () => {
+    const pg = createPg(
+      { rows: [{ ...workspaceRow, checklist_total: "2", checklist_passed: "2", unresolved_support_escalations: "0", payment_risks: "0" }] },
+      { rows: [] },
+      { rows: [checkWith("paid_delivery_proof_current", "PASSED", "01"), checkWith("browser_smoke_current", "PASSED", "02")] },
+      { rows: [{ unresolved_support_escalations: "0", high_critical_support_escalations: "0" }] }
+    );
+    const service = new PilotsService(pg as never, createValidationEvidence("FAILED") as never);
+
+    const result = await service.getAdminPilotRehearsal(PILOT_ID);
+
+    expect(result.recommendation).toBe("NEEDS_REVIEW");
+    expect(result.validationPosture.overallStatus).toBe("FAILED");
   });
 });

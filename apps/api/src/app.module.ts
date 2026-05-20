@@ -53,6 +53,8 @@ import { AdminDemoRequestsController, PublicDemoRequestsController } from "./dem
 import { DemoRequestsService } from "./demo-requests/demo-requests.service.js";
 import { AdminOperationalResetsController } from "./operational-resets/operational-resets.controller.js";
 import { OperationalResetsService } from "./operational-resets/operational-resets.service.js";
+import { AdminValidationEvidenceController } from "./validation-evidence/validation-evidence.controller.js";
+import { ValidationEvidenceService } from "./validation-evidence/validation-evidence.service.js";
 
 @Module({
   imports: [],
@@ -79,6 +81,7 @@ import { OperationalResetsService } from "./operational-resets/operational-reset
     PublicDemoRequestsController,
     AdminDemoRequestsController,
     AdminOperationalResetsController,
+    AdminValidationEvidenceController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,
@@ -104,6 +107,7 @@ import { OperationalResetsService } from "./operational-resets/operational-reset
     FleetsService,
     DemoRequestsService,
     OperationalResetsService,
+    ValidationEvidenceService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,

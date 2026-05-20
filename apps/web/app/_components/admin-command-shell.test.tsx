@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AdminCommandView } from "./admin-command-shell";
-import type { BusinessSession, DailyBriefing, DemoRequest, EndOfDayReport, PilotWorkspace, SupportEscalation } from "../_lib/product-state";
+import type { BusinessSession, DailyBriefing, DemoRequest, EndOfDayReport, PilotWorkspace, SupportEscalation, ValidationEvidenceLatest } from "../_lib/product-state";
 
 const session: BusinessSession = {
   accessToken: "access-token",
@@ -346,6 +346,31 @@ const demoRequests: DemoRequest[] = [
   }
 ];
 
+const validationEvidence: ValidationEvidenceLatest = {
+  environment: "staging",
+  items: {
+    releaseVerify: null,
+    paidDeliveryProof: {
+      id: "6cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      evidenceType: "PAID_DELIVERY_PROOF",
+      status: "PASSED",
+      environment: "staging",
+      source: "paid_delivery_proof_script",
+      command: "pnpm proof:staging-paid-delivery",
+      summary: {},
+      artifactPath: "docs/proofs/paid-delivery.json",
+      relatedOrderId: null,
+      relatedJobId: null,
+      relatedPaymentId: null,
+      relatedPodId: null,
+      createdBy: null,
+      createdAt: "2026-05-04T08:00:00.000Z"
+    },
+    playwrightSmoke: null,
+    playwrightSmokeRequiredAuth: null
+  }
+};
+
 describe("AdminCommandView", () => {
   it("renders cross-org command intelligence with human approval note", () => {
     const markup = renderToStaticMarkup(
@@ -358,6 +383,7 @@ describe("AdminCommandView", () => {
         selectedDate="2026-05-04"
         session={session}
         supportEscalations={supportEscalations}
+        validationEvidence={validationEvidence}
       />
     );
 
@@ -380,6 +406,8 @@ describe("AdminCommandView", () => {
     expect(markup).toContain("Notification skipped");
     expect(markup).toContain("Skipped notification delivery is acceptable");
     expect(markup).toContain("Operational reset tools");
+    expect(markup).toContain("Validation evidence");
+    expect(markup).toContain("1/1 latest validation records passed");
     expect(markup).toContain("Customer delay follow-up");
     expect(markup).toContain("href=\"/app/jobs/job-1\"");
   });
@@ -395,6 +423,7 @@ describe("AdminCommandView", () => {
         selectedDate="2026-05-04"
         session={session}
         supportEscalations={supportEscalations}
+        validationEvidence={validationEvidence}
       />
     );
 
@@ -424,6 +453,7 @@ describe("AdminCommandView", () => {
         operationalResets={[]}
         pilots={[]}
         supportEscalations={[]}
+        validationEvidence={null}
       />
     );
 

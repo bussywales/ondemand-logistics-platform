@@ -1532,6 +1532,67 @@ export const BusinessPilotStatusSchema = z.object({
 });
 export type BusinessPilotStatusDto = z.infer<typeof BusinessPilotStatusSchema>;
 
+export const ValidationEvidenceTypeSchema = z.enum([
+  "RELEASE_VERIFY",
+  "PAID_DELIVERY_PROOF",
+  "PLAYWRIGHT_SMOKE",
+  "PLAYWRIGHT_SMOKE_REQUIRED_AUTH"
+]);
+export type ValidationEvidenceType = z.infer<typeof ValidationEvidenceTypeSchema>;
+
+export const ValidationEvidenceStatusSchema = z.enum(["PASSED", "FAILED", "SKIPPED", "UNKNOWN"]);
+export type ValidationEvidenceStatus = z.infer<typeof ValidationEvidenceStatusSchema>;
+
+export const ValidationEvidenceRunSchema = z.object({
+  id: z.string().uuid(),
+  evidenceType: ValidationEvidenceTypeSchema,
+  status: ValidationEvidenceStatusSchema,
+  environment: z.string().min(2),
+  source: z.string().min(2),
+  command: z.string().nullable(),
+  summary: z.record(z.unknown()),
+  artifactPath: z.string().nullable(),
+  relatedOrderId: z.string().uuid().nullable(),
+  relatedJobId: z.string().uuid().nullable(),
+  relatedPaymentId: z.string().uuid().nullable(),
+  relatedPodId: z.string().uuid().nullable(),
+  createdBy: z.string().uuid().nullable(),
+  createdAt: IsoDateTimeSchema
+});
+export type ValidationEvidenceRunDto = z.infer<typeof ValidationEvidenceRunSchema>;
+
+export const ValidationEvidenceRunListSchema = z.object({
+  items: z.array(ValidationEvidenceRunSchema)
+});
+export type ValidationEvidenceRunListDto = z.infer<typeof ValidationEvidenceRunListSchema>;
+
+export const ValidationEvidenceLatestSchema = z.object({
+  environment: z.string().min(2),
+  items: z.object({
+    releaseVerify: ValidationEvidenceRunSchema.nullable(),
+    paidDeliveryProof: ValidationEvidenceRunSchema.nullable(),
+    playwrightSmoke: ValidationEvidenceRunSchema.nullable(),
+    playwrightSmokeRequiredAuth: ValidationEvidenceRunSchema.nullable()
+  })
+});
+export type ValidationEvidenceLatestDto = z.infer<typeof ValidationEvidenceLatestSchema>;
+
+export const CreateValidationEvidenceRunSchema = z.object({
+  evidenceType: ValidationEvidenceTypeSchema,
+  status: ValidationEvidenceStatusSchema,
+  environment: z.string().trim().min(2).max(80).default("staging"),
+  source: z.string().trim().min(2).max(160).default("manual"),
+  command: z.string().trim().min(2).nullable().optional(),
+  summary: z.record(z.unknown()).default({}),
+  artifactPath: z.string().trim().min(1).nullable().optional(),
+  relatedOrderId: z.string().uuid().nullable().optional(),
+  relatedJobId: z.string().uuid().nullable().optional(),
+  relatedPaymentId: z.string().uuid().nullable().optional(),
+  relatedPodId: z.string().uuid().nullable().optional(),
+  createdBy: z.string().uuid().nullable().optional()
+});
+export type CreateValidationEvidenceRunInput = z.infer<typeof CreateValidationEvidenceRunSchema>;
+
 export const PilotGuardrailLevelSchema = z.enum(["INFO", "CAUTION", "WARNING", "PAUSED", "READY"]);
 export type PilotGuardrailLevel = z.infer<typeof PilotGuardrailLevelSchema>;
 
@@ -1573,14 +1634,20 @@ export const PilotRehearsalValidationSignalSchema = z.object({
   status: PilotRehearsalValidationStatusSchema,
   label: z.string().min(2),
   summary: z.string().min(2),
-  evidenceAt: IsoDateTimeSchema.nullable()
+  evidenceAt: IsoDateTimeSchema.nullable(),
+  freshness: z.enum(["fresh", "stale", "missing"]).default("missing"),
+  evidence: ValidationEvidenceRunSchema.nullable().optional()
 });
 export type PilotRehearsalValidationSignalDto = z.infer<typeof PilotRehearsalValidationSignalSchema>;
 
 export const PilotRehearsalValidationPostureSchema = z.object({
   releaseVerification: PilotRehearsalValidationSignalSchema,
   paidDeliveryProof: PilotRehearsalValidationSignalSchema,
-  browserSmoke: PilotRehearsalValidationSignalSchema
+  browserSmoke: PilotRehearsalValidationSignalSchema,
+  requiredAuthSmoke: PilotRehearsalValidationSignalSchema,
+  freshnessWindowHours: z.number().int().positive(),
+  overallStatus: PilotRehearsalValidationStatusSchema,
+  recommendedAction: z.string().min(2)
 });
 export type PilotRehearsalValidationPostureDto = z.infer<typeof PilotRehearsalValidationPostureSchema>;
 

@@ -75,6 +75,9 @@ import type {
   TimelineEvent,
   TrackingSummary,
   UpdateDemoRequestInput,
+  ValidationEvidenceRun,
+  ValidationEvidenceRunList,
+  ValidationEvidenceLatest,
   VehicleType
 } from "./product-state";
 import { createId } from "./product-state";
@@ -197,6 +200,8 @@ type DemoRequestEventListResponse = {
 type OperationalResetRunListResponse = {
   items: OperationalResetRun[];
 };
+type ValidationEvidenceRunListResponse = ValidationEvidenceRunList;
+type ValidationEvidenceLatestResponse = ValidationEvidenceLatest;
 type PilotWorkspaceListResponse = PilotWorkspaceList;
 type PilotWorkspaceResponse = PilotWorkspace;
 type PilotReadinessCheckListResponse = PilotReadinessCheckList;
@@ -1223,6 +1228,35 @@ export async function listAdminOperationalResets(session: BusinessSession): Prom
   });
 
   return result.items;
+}
+
+export async function listAdminValidationEvidence(
+  session: BusinessSession,
+  filters: { evidenceType?: string; environment?: string; status?: string; limit?: number } = {}
+): Promise<ValidationEvidenceRun[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== null && `${value}`.trim()) {
+      params.set(key, `${value}`);
+    }
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const result = await apiFetch<ValidationEvidenceRunListResponse>(session, `/v1/admin/validation-evidence${query}`, {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function getLatestAdminValidationEvidence(
+  session: BusinessSession,
+  environment = "staging"
+): Promise<ValidationEvidenceLatest> {
+  return apiFetch<ValidationEvidenceLatestResponse>(
+    session,
+    `/v1/admin/validation-evidence/latest?environment=${encodeURIComponent(environment)}`,
+    { method: "GET" }
+  );
 }
 
 export async function previewAdminOperationalReset(

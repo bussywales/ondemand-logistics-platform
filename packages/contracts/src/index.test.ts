@@ -44,7 +44,8 @@ import {
   AddFleetDriverSchema,
   UpdateFleetDriverMembershipSchema,
   UpdateMenuItemSchema,
-  UpdateSupportEscalationSchema
+  UpdateSupportEscalationSchema,
+  ValidationEvidenceRunListSchema
 } from "./index.js";
 
 describe("CreateQuoteSchema", () => {
@@ -636,12 +637,43 @@ describe("admin schemas", () => {
           status: "UNKNOWN",
           label: "Browser smoke",
           summary: "Run pnpm --filter @shipwright/web test:smoke before rehearsal.",
-          evidenceAt: null
-        }
+          evidenceAt: null,
+          freshness: "missing"
+        },
+        requiredAuthSmoke: {
+          status: "UNKNOWN",
+          label: "Required-auth browser smoke",
+          summary: "Run SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke before rehearsal.",
+          evidenceAt: null,
+          freshness: "missing"
+        },
+        freshnessWindowHours: 24,
+        overallStatus: "UNKNOWN",
+        recommendedAction: "Run validation commands before rehearsal."
       },
       recommendation: "NEEDS_REVIEW",
       recommendedNextActions: ["Run validation commands before rehearsal."],
       guidance: "Human review is required before any pilot rehearsal."
+    }).success).toBe(true);
+    expect(ValidationEvidenceRunListSchema.safeParse({
+      items: [
+        {
+          id: "6cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+          evidenceType: "PAID_DELIVERY_PROOF",
+          status: "PASSED",
+          environment: "staging",
+          source: "paid_delivery_proof_script",
+          command: "pnpm proof:staging-paid-delivery",
+          summary: { finalJobStatus: "DELIVERED" },
+          artifactPath: "docs/proofs/paid-delivery.json",
+          relatedOrderId: null,
+          relatedJobId: null,
+          relatedPaymentId: null,
+          relatedPodId: null,
+          createdBy: null,
+          createdAt: new Date().toISOString()
+        }
+      ]
     }).success).toBe(true);
   });
 });

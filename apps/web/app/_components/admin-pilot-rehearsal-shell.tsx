@@ -55,7 +55,8 @@ export function AdminPilotRehearsalView(props: { summary: PilotRehearsalSummary 
   const validationSignals = [
     summary.validationPosture.releaseVerification,
     summary.validationPosture.paidDeliveryProof,
-    summary.validationPosture.browserSmoke
+    summary.validationPosture.browserSmoke,
+    summary.validationPosture.requiredAuthSmoke
   ];
 
   return (
@@ -150,9 +151,12 @@ export function AdminPilotRehearsalView(props: { summary: PilotRehearsalSummary 
         <div className="sw-card-header admin-section-header">
           <div>
             <p className="eyebrow">Validation posture</p>
-            <h2>Proof commands remain outside the UI</h2>
-            <p className="ops-detail-note">Production API does not read local proof artifacts. Run validation commands before rehearsal and record evidence in pilot checks.</p>
+            <h2>{summary.validationPosture.overallStatus === "PASSED" ? "Stored validation evidence is current" : "Stored validation evidence needs review"}</h2>
+            <p className="ops-detail-note">
+              {summary.validationPosture.recommendedAction} Freshness window: {summary.validationPosture.freshnessWindowHours} hours. The UI remains read-only and does not run validation commands.
+            </p>
           </div>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/validation-evidence">Open evidence</Link>
         </div>
         <div className="admin-command-list">
           {validationSignals.map((signal) => (
@@ -160,6 +164,10 @@ export function AdminPilotRehearsalView(props: { summary: PilotRehearsalSummary 
               <div>
                 <strong>{signal.label}</strong>
                 <p>{signal.summary}</p>
+                <p className="ops-detail-note">
+                  Evidence: {signal.evidenceAt ? `${new Date(signal.evidenceAt).toLocaleString("en-GB")} · ${signal.freshness}` : "not stored"}
+                  {signal.evidence?.artifactPath ? ` · ${signal.evidence.artifactPath}` : ""}
+                </p>
               </div>
               <span className={`sw-badge ${validationTone(signal.status)}`}>{formatLabel(signal.status)}</span>
             </article>
@@ -195,7 +203,7 @@ export function AdminPilotRehearsalView(props: { summary: PilotRehearsalSummary 
         <div className="briefing-evidence-row">
           <span>No autonomous recovery actions</span>
           <span>No UI-triggered proof commands</span>
-          <span>Validation artifacts remain local unless exported</span>
+          <span>Stored evidence is summary-only and keeps proof artifacts uncommitted</span>
         </div>
       </section>
     </section>

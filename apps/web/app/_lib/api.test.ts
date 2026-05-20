@@ -31,6 +31,7 @@ import {
   listAdminOrgs,
   listAdminUsers,
   listAdminPayments,
+  listAdminValidationEvidence,
   listEligibleDrivers,
   listBusinessNotifications,
   listBusinessOrders,
@@ -691,9 +692,13 @@ describe('authorizePayment', () => {
             readyCouriers: 2
           },
           validationPosture: {
-            releaseVerification: { status: 'UNKNOWN', label: 'Release verification', summary: 'Run release verification.', evidenceAt: null },
-            paidDeliveryProof: { status: 'UNKNOWN', label: 'Paid delivery proof', summary: 'Run paid-delivery proof.', evidenceAt: null },
-            browserSmoke: { status: 'UNKNOWN', label: 'Browser smoke', summary: 'Run browser smoke.', evidenceAt: null }
+            releaseVerification: { status: 'UNKNOWN', label: 'Release verification', summary: 'Run release verification.', evidenceAt: null, freshness: 'missing' },
+            paidDeliveryProof: { status: 'UNKNOWN', label: 'Paid delivery proof', summary: 'Run paid-delivery proof.', evidenceAt: null, freshness: 'missing' },
+            browserSmoke: { status: 'UNKNOWN', label: 'Browser smoke', summary: 'Run browser smoke.', evidenceAt: null, freshness: 'missing' },
+            requiredAuthSmoke: { status: 'UNKNOWN', label: 'Required-auth browser smoke', summary: 'Run required-auth smoke.', evidenceAt: null, freshness: 'missing' },
+            freshnessWindowHours: 24,
+            overallStatus: 'UNKNOWN',
+            recommendedAction: 'Run validation commands before rehearsal.'
           },
           recommendation: 'NEEDS_REVIEW',
           recommendedNextActions: ['Run validation commands before rehearsal.'],
@@ -708,6 +713,41 @@ describe('authorizePayment', () => {
     expect(url).toContain(`/v1/admin/pilots/${pilotId}/rehearsal`);
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(rehearsal.recommendation).toBe('NEEDS_REVIEW');
+  });
+
+  it('reads admin validation evidence', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: '6cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b',
+              evidenceType: 'PAID_DELIVERY_PROOF',
+              status: 'PASSED',
+              environment: 'staging',
+              source: 'paid_delivery_proof_script',
+              command: 'pnpm proof:staging-paid-delivery',
+              summary: { finalJobStatus: 'DELIVERED' },
+              artifactPath: 'docs/proofs/paid-delivery.json',
+              relatedOrderId: null,
+              relatedJobId: null,
+              relatedPaymentId: null,
+              relatedPodId: null,
+              createdBy: null,
+              createdAt: new Date().toISOString()
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const evidence = await listAdminValidationEvidence(session, { evidenceType: 'PAID_DELIVERY_PROOF', limit: 10 });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/admin/validation-evidence?evidenceType=PAID_DELIVERY_PROOF&limit=10');
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
+    expect(evidence[0]?.status).toBe('PASSED');
   });
 
   it('reads business notifications with bearer auth', async () => {

@@ -55,12 +55,25 @@ The paid-delivery proof must confirm:
 - support escalation event history remains append-only and available to order/job support timelines
 - pilot workspace schema readiness remains available for admin-led pilot mode, readiness, owner, and checklist tracking
 - pilot guardrail surfaces remain non-blocking and visible on business/admin pilot routes when a pilot profile is configured
-- pilot rehearsal cockpit remains read-only and shows validation posture as unknown unless evidence is recorded through pilot checks
+- pilot rehearsal cockpit remains read-only and uses stored validation evidence when `validation_evidence_runs` has current release/proof/smoke records
+- validation evidence older than 24 hours is treated as stale for rehearsal readiness
 - driver fleet organisation surfaces remain visibility-first and do not change dispatch preference, payout, billing, or courier suspension behavior
 - demo request persistence remains available for public commercial intake and platform-admin review
 - demo request creation records internal admin notification posture through `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` outbox events or an explicitly documented fallback
 - demo request/admin notification delivery no-ops safely when `DEMO_REQUEST_WEBHOOK_URL`, `ADMIN_NOTIFICATION_EMAIL`, or Resend sender env is absent
 - release readiness checks green
+
+## Stored Validation Evidence
+Validation commands do not write database evidence by default. To make rehearsal cockpit posture evidence-backed, record successful runs explicitly:
+
+```bash
+RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
+RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
+SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0}'
+```
+
+Stored evidence is admin-only at `/admin/validation-evidence`. It records status, command/source, summary, artifact path, and related proof IDs where available. It does not store secrets and does not cause the UI to execute release verification, paid proof, or browser smoke.
 
 The release verification must confirm:
 

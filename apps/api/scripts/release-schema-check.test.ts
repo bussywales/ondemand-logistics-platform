@@ -16,6 +16,7 @@ const BASE_TABLES = new Set([
   "demo_request_events",
   "operational_reset_runs",
   "operational_reset_items",
+  "validation_evidence_runs",
   "notification_reads",
   "platform_admins"
 ]);
@@ -64,7 +65,16 @@ const BASE_COLUMNS = new Set([
   "operational_reset_items.resource_id",
   "operational_reset_items.action",
   "operational_reset_items.metadata",
-  "operational_reset_items.created_at"
+  "operational_reset_items.created_at",
+  "validation_evidence_runs.evidence_type",
+  "validation_evidence_runs.status",
+  "validation_evidence_runs.environment",
+  "validation_evidence_runs.source",
+  "validation_evidence_runs.summary",
+  "validation_evidence_runs.artifact_path",
+  "validation_evidence_runs.related_order_id",
+  "validation_evidence_runs.related_job_id",
+  "validation_evidence_runs.created_at"
 ]);
 
 function buildClient(options?: {
@@ -329,6 +339,32 @@ describe("runReleaseSchemaCheck", () => {
       expect.arrayContaining([
         expect.objectContaining({
           name: "public.operational_reset_items.action",
+          ok: false,
+          detail: "column_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when validation evidence schema is missing", async () => {
+    const missingTable = await runReleaseSchemaCheck(buildClient({ missingTables: ["validation_evidence_runs"] }) as never);
+    expect(missingTable.ok).toBe(false);
+    expect(missingTable.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.validation_evidence_runs",
+          ok: false,
+          detail: "table_missing"
+        })
+      ])
+    );
+
+    const missingColumn = await runReleaseSchemaCheck(buildClient({ missingColumns: ["validation_evidence_runs.evidence_type"] }) as never);
+    expect(missingColumn.ok).toBe(false);
+    expect(missingColumn.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.validation_evidence_runs.evidence_type",
           ok: false,
           detail: "column_missing"
         })

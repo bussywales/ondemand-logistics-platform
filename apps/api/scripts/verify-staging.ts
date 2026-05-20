@@ -13,6 +13,7 @@ import {
 import { loadEnvFileIfPresent } from "./env-loader.ts";
 import { getGitCommit, writeProofArtifact } from "./proof-artifacts.ts";
 import { runReleaseSchemaCheck } from "./release-schema-check.ts";
+import { recordValidationEvidenceIfEnabled } from "./validation-evidence-recorder.ts";
 
 function createPgConfig(connectionString: string): ClientConfig {
   const url = new URL(connectionString);
@@ -268,6 +269,24 @@ async function main() {
       (!businessToken || (isRequiredCheckOk(businessRestaurants) && isRequiredCheckOk(businessJobs))) &&
       (!driverToken || isRequiredCheckOk(driverOffers)) &&
       (!adminToken || isRequiredCheckOk(adminOverview));
+
+    const evidenceId = await recordValidationEvidenceIfEnabled({
+      evidenceType: "RELEASE_VERIFY",
+      status: requiredPass ? "PASSED" : "FAILED",
+      environment: "staging",
+      source: "release_verify_script",
+      command: "pnpm release:verify-staging",
+      summary: {
+        healthzOk: healthz.ok,
+        readyzOk: readyz.ok,
+        schemaOk: "skipped" in schema ? null : schema.ok,
+        externalNotificationsStatus: externalNotifications.status
+      },
+      artifactPath: `docs/proofs/${proofArtifact.filename}`
+    });
+    if (evidenceId) {
+      console.log(`PASS validation evidence recorded | id=${evidenceId}`);
+    }
 
     if (!requiredPass) {
       console.error("FAIL verify:staging | staging is not healthy for release");

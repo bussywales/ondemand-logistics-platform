@@ -10,6 +10,7 @@
     "test:integration": "pnpm -r test:integration",
     "migration:validate": "pnpm --filter @shipwright/db migration:validate",
     "fixtures:staging-auth": "tsx scripts/seed-staging-auth-fixtures.ts",
+    "evidence:record": "pnpm --filter api evidence:record",
     "proof:staging-paid-delivery": "pnpm --filter api proof:staging-paid-delivery",
     "release:verify-staging": "pnpm --filter api verify:staging"
   },

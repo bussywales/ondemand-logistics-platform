@@ -297,6 +297,24 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "metadata",
       "created_at"
     ]
+  },
+  validationEvidence: {
+    validation_evidence_runs: [
+      "id",
+      "evidence_type",
+      "status",
+      "environment",
+      "source",
+      "command",
+      "summary",
+      "artifact_path",
+      "related_order_id",
+      "related_job_id",
+      "related_payment_id",
+      "related_pod_id",
+      "created_by",
+      "created_at"
+    ]
   }
 } as const;
 

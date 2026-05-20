@@ -104,7 +104,8 @@ For the selected pilot profile, open the rehearsal cockpit and confirm:
 - recommendation is not `BLOCKED`
 - blocked checks are either cleared or owned
 - high/critical support escalations are resolved or explicitly deferred by the demo owner
-- validation posture is understood as command-run evidence, not UI-executed proof
+- validation posture is backed by current stored evidence in `/admin/validation-evidence`, or explicitly called out as missing/stale
+- release verification, paid-delivery proof, and required-auth smoke evidence should be less than 24 hours old before a formal rehearsal
 
 ## 5. Prepare Browser State
 ## 5. Review Operational Reset Tools

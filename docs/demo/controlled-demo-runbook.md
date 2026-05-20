@@ -117,7 +117,7 @@ Recommended order:
 13. show admin command intelligence
 14. show `/admin/operational-resets` only if the audience asks how staging/demo clutter is prepared; explain preview, typed confirmation, reset-run evidence, and no hard deletes
 15. show pilot management mode, readiness stage, owners, and checklist evidence
-16. open the selected pilot rehearsal cockpit and confirm readiness recommendation, validation unknown copy, operational posture, and recommended next actions
+16. open `/admin/validation-evidence` and the selected pilot rehearsal cockpit; confirm stored release/proof/smoke evidence is current or explain any missing/stale posture
 17. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
 18. show `/pricing` as the controlled pilot package page; explain that ShipWright does not publish fake self-serve pricing and starts with fit review
 19. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet
@@ -153,6 +153,7 @@ Do not claim:
 - pilot mode as an automatic operating control; it is a human-reviewed readiness layer in v1
 - pilot guardrails as hard enforcement; they are soft warnings in v1
 - the rehearsal cockpit as proof execution; it is a read-only readiness cockpit and validation commands still run outside the UI
+- stored validation evidence as full proof artifacts; it stores summary/status/IDs while JSON proof artifacts remain local and uncommitted unless intentionally exported
 
 When Command Intelligence is shown, describe it as:
 - deterministic

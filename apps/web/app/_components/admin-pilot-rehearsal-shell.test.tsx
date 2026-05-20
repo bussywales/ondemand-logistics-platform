@@ -68,20 +68,33 @@ const summary: PilotRehearsalSummary = {
       status: "UNKNOWN",
       label: "Release verification",
       summary: "Run pnpm release:verify-staging before rehearsal.",
-      evidenceAt: null
+      evidenceAt: null,
+      freshness: "missing"
     },
     paidDeliveryProof: {
       status: "UNKNOWN",
       label: "Paid delivery proof",
       summary: "Run pnpm proof:staging-paid-delivery before rehearsal.",
-      evidenceAt: null
+      evidenceAt: null,
+      freshness: "missing"
     },
     browserSmoke: {
       status: "UNKNOWN",
       label: "Browser smoke",
       summary: "Run pnpm --filter @shipwright/web test:smoke before rehearsal.",
-      evidenceAt: null
-    }
+      evidenceAt: null,
+      freshness: "missing"
+    },
+    requiredAuthSmoke: {
+      status: "UNKNOWN",
+      label: "Required-auth browser smoke",
+      summary: "Run SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke before rehearsal.",
+      evidenceAt: null,
+      freshness: "missing"
+    },
+    freshnessWindowHours: 24,
+    overallStatus: "UNKNOWN",
+    recommendedAction: "Run validation commands before rehearsal."
   },
   recommendation: "NEEDS_REVIEW",
   recommendedNextActions: ["Run release verification, paid-delivery proof, and browser smoke before rehearsal."],
@@ -94,8 +107,9 @@ describe("AdminPilotRehearsalView", () => {
 
     expect(markup).toContain("Pilot Kitchen Org rehearsal readiness");
     expect(markup).toContain("Needs Review");
-    expect(markup).toContain("Proof commands remain outside the UI");
+    expect(markup).toContain("Stored validation evidence needs review");
     expect(markup).toContain("Run pnpm --filter @shipwright/web test:smoke before rehearsal.");
+    expect(markup).toContain("/admin/validation-evidence");
     expect(markup).toContain("/admin/pilots");
     expect(markup).toContain("/admin/command");
   });

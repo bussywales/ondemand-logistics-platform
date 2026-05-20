@@ -120,6 +120,16 @@ pnpm --filter @shipwright/web test:smoke
 
 The required staging-ready quality gate is documented in `docs/validation/staging-validation-standard.md`.
 
+Validation evidence can be stored for admin rehearsal review after successful gates:
+
+```bash
+RECORD_VALIDATION_EVIDENCE=true pnpm release:verify-staging
+RECORD_VALIDATION_EVIDENCE=true pnpm proof:staging-paid-delivery
+pnpm evidence:record -- --type PLAYWRIGHT_SMOKE_REQUIRED_AUTH --status PASSED --source playwright_smoke --command "SMOKE_REQUIRE_AUTH=true pnpm --filter @shipwright/web test:smoke" --summary-json '{"passed":7,"failed":0}'
+```
+
+Stored evidence is visible at `/admin/validation-evidence` and in pilot rehearsal cockpits. It stores summary IDs/status, not secrets; proof JSON artifacts remain local and uncommitted.
+
 ## Browser smoke testing (Playwright)
 Commit `4975b8c` adds a minimal Playwright setup for staging smoke checks.
 

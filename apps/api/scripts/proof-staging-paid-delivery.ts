@@ -5,6 +5,7 @@ import { createLogger } from "@shipwright/observability";
 import { dispatchSideEffect } from "../../worker/src/index.ts";
 import { loadEnvFileIfPresent } from "./env-loader.ts";
 import { getGitCommit, writeProofArtifact } from "./proof-artifacts.ts";
+import { recordValidationEvidenceIfEnabled } from "./validation-evidence-recorder.ts";
 
 type FixtureSlug = "business" | "driver";
 
@@ -786,6 +787,29 @@ export async function runPaidDeliveryProof() {
 
     const artifact = await writeProofArtifact("paid-delivery", proofResult);
     console.log(`PASS proof artifact written | ${artifact.filename}`);
+    const evidenceId = await recordValidationEvidenceIfEnabled({
+      evidenceType: "PAID_DELIVERY_PROOF",
+      status: "PASSED",
+      environment: "staging",
+      source: "paid_delivery_proof_script",
+      command: "pnpm proof:staging-paid-delivery",
+      summary: {
+        finalJobStatus,
+        finalOrderStatus,
+        paymentStatus,
+        customerOrderItemsCount: verified.customerOrderItemsCount,
+        jobEventsCount: verified.jobEventsCount,
+        auditLogCount: verified.auditLogCount
+      },
+      artifactPath: `docs/proofs/${artifact.filename}`,
+      relatedOrderId: proofResult.orderId,
+      relatedJobId: proofResult.jobId,
+      relatedPaymentId: proofResult.paymentId,
+      relatedPodId: proofResult.podId
+    });
+    if (evidenceId) {
+      console.log(`PASS validation evidence recorded | id=${evidenceId}`);
+    }
     console.log("PASS staging_paid_delivery_proof_complete");
     console.log(JSON.stringify(proofResult, null, 2));
     return proofResult;

@@ -870,6 +870,40 @@ export type BusinessPilotStatus = {
   guidance: string;
 };
 
+export type ValidationEvidenceType = "RELEASE_VERIFY" | "PAID_DELIVERY_PROOF" | "PLAYWRIGHT_SMOKE" | "PLAYWRIGHT_SMOKE_REQUIRED_AUTH";
+export type ValidationEvidenceStatus = "PASSED" | "FAILED" | "SKIPPED" | "UNKNOWN";
+
+export type ValidationEvidenceRun = {
+  id: string;
+  evidenceType: ValidationEvidenceType;
+  status: ValidationEvidenceStatus;
+  environment: string;
+  source: string;
+  command: string | null;
+  summary: Record<string, unknown>;
+  artifactPath: string | null;
+  relatedOrderId: string | null;
+  relatedJobId: string | null;
+  relatedPaymentId: string | null;
+  relatedPodId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+};
+
+export type ValidationEvidenceRunList = {
+  items: ValidationEvidenceRun[];
+};
+
+export type ValidationEvidenceLatest = {
+  environment: string;
+  items: {
+    releaseVerify: ValidationEvidenceRun | null;
+    paidDeliveryProof: ValidationEvidenceRun | null;
+    playwrightSmoke: ValidationEvidenceRun | null;
+    playwrightSmokeRequiredAuth: ValidationEvidenceRun | null;
+  };
+};
+
 export type PilotGuardrailLevel = "INFO" | "CAUTION" | "WARNING" | "PAUSED" | "READY";
 export type PilotRehearsalRecommendation = "READY_FOR_REHEARSAL" | "NEEDS_REVIEW" | "BLOCKED" | "UNKNOWN";
 export type PilotRehearsalValidationStatus = "UNKNOWN" | "PASSED" | "FAILED" | "SKIPPED";
@@ -903,6 +937,10 @@ export type PilotRehearsalSummary = {
     releaseVerification: PilotRehearsalValidationSignal;
     paidDeliveryProof: PilotRehearsalValidationSignal;
     browserSmoke: PilotRehearsalValidationSignal;
+    requiredAuthSmoke: PilotRehearsalValidationSignal;
+    freshnessWindowHours: number;
+    overallStatus: PilotRehearsalValidationStatus;
+    recommendedAction: string;
   };
   recommendation: PilotRehearsalRecommendation;
   recommendedNextActions: string[];
@@ -914,6 +952,8 @@ export type PilotRehearsalValidationSignal = {
   label: string;
   summary: string;
   evidenceAt: string | null;
+  freshness: "fresh" | "stale" | "missing";
+  evidence?: ValidationEvidenceRun | null;
 };
 
 export type SupportEscalationCategory =

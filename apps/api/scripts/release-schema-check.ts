@@ -74,7 +74,8 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     ["public", "org_invitations"],
     ["public", "demo_requests"],
     ["public", "operational_reset_runs"],
-    ["public", "operational_reset_items"]
+    ["public", "operational_reset_items"],
+    ["public", "validation_evidence_runs"]
   ] as const) {
     const exists = await tableExists(client, schema, table);
     items.push({
@@ -179,6 +180,25 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     const exists = await columnExists(client, "public", "operational_reset_items", column);
     items.push({
       name: `public.operational_reset_items.${column}`,
+      ok: exists,
+      detail: exists ? "column_present" : "column_missing"
+    });
+  }
+
+  for (const column of [
+    "evidence_type",
+    "status",
+    "environment",
+    "source",
+    "summary",
+    "artifact_path",
+    "related_order_id",
+    "related_job_id",
+    "created_at"
+  ]) {
+    const exists = await columnExists(client, "public", "validation_evidence_runs", column);
+    items.push({
+      name: `public.validation_evidence_runs.${column}`,
       ok: exists,
       detail: exists ? "column_present" : "column_missing"
     });

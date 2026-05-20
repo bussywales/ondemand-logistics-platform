@@ -27,7 +27,8 @@ const requiredTables = [
   "demo_requests",
   "demo_request_events",
   "operational_reset_runs",
-  "operational_reset_items"
+  "operational_reset_items",
+  "validation_evidence_runs"
 ];
 
 if (files.length < 2) {
