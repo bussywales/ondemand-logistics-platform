@@ -12557,6 +12557,10 @@ select:hover,
     margin-top: clamp(1.75rem, 9vw, 3rem);
   }
 
+  .landing-cinematic-scene {
+    overflow: hidden;
+  }
+
   .landing-story-hero h1 {
     font-size: clamp(3.05rem, 14vw, 4.9rem);
     letter-spacing: -0.062em;
@@ -12570,6 +12574,13 @@ select:hover,
     inset: 4% -15%;
     width: 130%;
     height: 80%;
+  }
+
+  .landing-motion-section,
+  .landing-dark-section,
+  .landing-final-scene {
+    margin-inline: 0;
+    padding-inline: clamp(1rem, 5vw, 1.25rem);
   }
 
   .landing-floating-card-command,

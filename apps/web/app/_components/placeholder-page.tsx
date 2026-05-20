@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PublicMarketingFooter } from "./public-marketing-footer";
 import { PublicMarketingNav } from "./public-marketing-nav";
 
 export function PlaceholderPage(props: {
@@ -30,6 +31,7 @@ export function PlaceholderPage(props: {
           )}
         </div>
       </section>
+      <PublicMarketingFooter />
     </main>
   );
 }

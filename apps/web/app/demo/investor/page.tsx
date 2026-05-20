@@ -3,6 +3,7 @@ import Link from "next/link";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { BrandLogo } from "../../_components/brand-logo";
+import { PublicMarketingFooter } from "../../_components/public-marketing-footer";
 import { PublicMarketingNav } from "../../_components/public-marketing-nav";
 import { ShipWrightIcon, type ShipWrightIconName } from "../../_components/shipwright-icon";
 import { investorDemoControlLinks, investorDemoSteps, investorDemoWarnings } from "../../_content/investor-demo";
@@ -238,6 +239,8 @@ export default function InvestorDemoPage() {
           </p>
         </section>
       </section>
+
+      <PublicMarketingFooter />
     </main>
   );
 }

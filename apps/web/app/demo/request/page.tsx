@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DemoRequestForm } from "../../_components/demo-request-form";
+import { PublicMarketingFooter } from "../../_components/public-marketing-footer";
 import { PublicMarketingNav } from "../../_components/public-marketing-nav";
 import { ShipWrightIcon } from "../../_components/shipwright-icon";
 import { normalizeDemoRequestInterest } from "../../_lib/demo-request-interest";
@@ -80,6 +81,8 @@ export default async function DemoRequestPage(props: {
           </div>
         </aside>
       </section>
+
+      <PublicMarketingFooter />
     </main>
   );
 }

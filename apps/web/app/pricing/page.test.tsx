@@ -14,6 +14,15 @@ describe("PricingPage", () => {
     expect(html).toContain("Pilot pricing discussed after fit review");
   });
 
+  it("renders the shared public footer", () => {
+    const html = renderToStaticMarkup(<PricingPage />);
+
+    expect(html).toContain("Route intelligence for local commerce");
+    expect(html).toContain('aria-label="Footer"');
+    expect(html).toContain('href="/demo/request"');
+    expect(html).toContain('href="/contact"');
+  });
+
   it("renders the three commercial paths with demo request CTAs", () => {
     const html = renderToStaticMarkup(<PricingPage />);
 

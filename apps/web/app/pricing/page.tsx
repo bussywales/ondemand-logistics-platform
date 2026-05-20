@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import React from "react";
+import { PublicMarketingFooter } from "../_components/public-marketing-footer";
 import { PublicMarketingNav } from "../_components/public-marketing-nav";
 import { ShipWrightIcon, type ShipWrightIconName } from "../_components/shipwright-icon";
 
@@ -253,6 +254,8 @@ export default function PricingPage() {
           </Link>
         </div>
       </section>
+
+      <PublicMarketingFooter />
     </main>
   );
 }
