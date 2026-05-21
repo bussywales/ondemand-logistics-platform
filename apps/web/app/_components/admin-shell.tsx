@@ -394,6 +394,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
             Demo requests
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/notifications">
+            Notifications
+          </Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/operational-resets">
             Reset tools
           </Link>
@@ -464,6 +467,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
               Demo requests
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/notifications">
+              Notifications
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/menu-history">
               Menu history

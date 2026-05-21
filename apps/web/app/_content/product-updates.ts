@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "commercial-notification-diagnostics",
+    title: "Commercial notification diagnostics are available",
+    summary: "Platform admins can now review notification delivery posture and queue safe email or webhook tests without exposing secrets.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin", "/admin/command", "/admin/notifications"],
+    releasedAt: "2026-05-21T23:00:00.000Z",
+    version: "v2.9",
+    ctaLabel: "Open notifications",
+    ctaHref: "/admin/notifications"
+  },
+  {
     id: "iam-invite-lifecycle-audit",
     title: "Team invites now have clearer lifecycle controls",
     summary: "Business owners and platform admins can now see pending invites, resend or cancel them, and review recent access changes from the team workspace.",

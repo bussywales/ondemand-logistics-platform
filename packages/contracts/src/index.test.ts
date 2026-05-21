@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   AdminPaymentListSchema,
   AdminMenuHistorySchema,
+  CreateNotificationTestSchema,
+  NotificationDiagnosticsSchema,
+  NotificationTestResponseSchema,
   AdminOverviewSchema,
   BusinessPaymentListSchema,
   BusinessContextSchema,
@@ -464,6 +467,51 @@ describe("admin schemas", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+
+  it("parses admin notification diagnostics and test payloads", () => {
+    const diagnostics = NotificationDiagnosticsSchema.safeParse({
+      configuration: {
+        emailConfigured: false,
+        webhookConfigured: true,
+        adminEmailConfigured: false,
+        fromEmailConfigured: false
+      },
+      counts: {
+        pending: 1,
+        sent: 2,
+        skipped: 3,
+        failed: 0,
+        retrying: 1
+      },
+      recentEvents: [
+        {
+          id: "audit:1",
+          outboxMessageId: null,
+          eventType: "TEST_ADMIN_NOTIFICATION",
+          notificationType: "DEMO_REQUEST_CREATED",
+          channel: "webhook",
+          status: "skipped",
+          provider: "noop",
+          lastAttemptAt: new Date().toISOString(),
+          retryCount: 0,
+          safeErrorSummary: "provider_not_configured",
+          createdAt: new Date().toISOString()
+        }
+      ],
+      recentTestEvents: []
+    });
+
+    expect(diagnostics.success).toBe(true);
+    expect(CreateNotificationTestSchema.safeParse({ channel: "EMAIL", notificationType: "ORG_INVITE_CREATED", recipientEmail: "admin@example.com" }).success).toBe(true);
+    expect(NotificationTestResponseSchema.safeParse({
+      outboxMessageId: "2cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b",
+      eventType: "TEST_ADMIN_NOTIFICATION",
+      channel: "WEBHOOK",
+      notificationType: "DEMO_REQUEST_CREATED",
+      status: "queued",
+      message: "Notification test event queued."
+    }).success).toBe(true);
   });
 
   it("parses business and admin payment visibility payloads", () => {

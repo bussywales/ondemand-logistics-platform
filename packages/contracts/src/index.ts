@@ -1316,6 +1316,66 @@ export const AdminOutboxListSchema = z.object({
 });
 export type AdminOutboxListDto = z.infer<typeof AdminOutboxListSchema>;
 
+export const AdminNotificationChannelSchema = z.enum(["EMAIL", "WEBHOOK"]);
+export type AdminNotificationChannel = z.infer<typeof AdminNotificationChannelSchema>;
+
+export const AdminNotificationTestTypeSchema = z.enum(["DEMO_REQUEST_CREATED", "ORG_INVITE_CREATED"]);
+export type AdminNotificationTestType = z.infer<typeof AdminNotificationTestTypeSchema>;
+
+export const CreateNotificationTestSchema = z.object({
+  channel: AdminNotificationChannelSchema,
+  notificationType: AdminNotificationTestTypeSchema,
+  recipientEmail: z.string().trim().email().max(254).optional()
+});
+export type CreateNotificationTestInput = z.infer<typeof CreateNotificationTestSchema>;
+
+export const AdminNotificationDeliveryStatusSchema = z.enum(["pending", "sent", "skipped", "failed", "retrying"]);
+export type AdminNotificationDeliveryStatus = z.infer<typeof AdminNotificationDeliveryStatusSchema>;
+
+export const AdminNotificationDiagnosticEventSchema = z.object({
+  id: z.string(),
+  outboxMessageId: z.string().uuid().nullable(),
+  eventType: z.string().min(2),
+  notificationType: z.string().nullable(),
+  channel: z.string().nullable(),
+  status: AdminNotificationDeliveryStatusSchema,
+  provider: z.string().nullable(),
+  lastAttemptAt: IsoDateTimeSchema.nullable(),
+  retryCount: z.number().int().nonnegative(),
+  safeErrorSummary: z.string().nullable(),
+  createdAt: IsoDateTimeSchema
+});
+export type AdminNotificationDiagnosticEventDto = z.infer<typeof AdminNotificationDiagnosticEventSchema>;
+
+export const NotificationDiagnosticsSchema = z.object({
+  configuration: z.object({
+    emailConfigured: z.boolean(),
+    webhookConfigured: z.boolean(),
+    adminEmailConfigured: z.boolean(),
+    fromEmailConfigured: z.boolean()
+  }),
+  counts: z.object({
+    pending: z.number().int().nonnegative(),
+    sent: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    retrying: z.number().int().nonnegative()
+  }),
+  recentEvents: z.array(AdminNotificationDiagnosticEventSchema),
+  recentTestEvents: z.array(AdminNotificationDiagnosticEventSchema)
+});
+export type NotificationDiagnosticsDto = z.infer<typeof NotificationDiagnosticsSchema>;
+
+export const NotificationTestResponseSchema = z.object({
+  outboxMessageId: z.string().uuid(),
+  eventType: z.literal("TEST_ADMIN_NOTIFICATION"),
+  channel: AdminNotificationChannelSchema,
+  notificationType: AdminNotificationTestTypeSchema,
+  status: z.literal("queued"),
+  message: z.string().min(2)
+});
+export type NotificationTestResponseDto = z.infer<typeof NotificationTestResponseSchema>;
+
 export const AdminSystemHealthSchema = z.object({
   liveness: z.object({
     status: z.enum(["ok", "error"]),

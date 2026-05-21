@@ -41,6 +41,7 @@ Core routes:
 - controlled pilot packages: `https://ondemand-logistics-platform-web.vercel.app/pricing`
 - demo request form: `https://ondemand-logistics-platform-web.vercel.app/demo/request`
 - demo request admin review: `https://ondemand-logistics-platform-web.vercel.app/admin/demo-requests`
+- notification diagnostics: `https://ondemand-logistics-platform-web.vercel.app/admin/notifications`
 - help: `https://ondemand-logistics-platform-web.vercel.app/help`
 
 API and health:
@@ -126,7 +127,7 @@ Recommended order:
 16. open `/admin/release-readiness`, `/admin/validation-evidence`, and the selected pilot rehearsal cockpit; confirm stored release/proof/smoke evidence is current or explain any missing/stale posture
 17. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
 18. show `/pricing` as the controlled pilot package page; explain that ShipWright does not publish fake self-serve pricing and starts with fit review
-19. show the public demo request form, `/admin/demo-requests`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and still not emailed or CRM-synced yet
+19. show the public demo request form, `/admin/demo-requests`, `/admin/notifications`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, internally surfaced for admin review, and notification channels can be tested when optional email/webhook env is configured
 20. show help and pilot playbooks
 21. close by referencing the proof artifacts and current known limitations
 
@@ -151,7 +152,7 @@ Do not claim:
 - live-map courier movement
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - CRM automation for demo requests; internal admin command/outbox visibility, owner assignment, follow-up scheduling, contact recording, event history, and optional webhook/admin-email notification delivery are available, but outbound follow-up remains manual unless configured and separately proven
-- notification delivery posture is visible to platform admins; skipped/unconfigured demo request notifications are acceptable when optional webhook/email secrets are intentionally absent
+- notification delivery posture is visible to platform admins in `/admin/notifications`, `/admin/demo-requests`, and `/admin/command`; skipped/unconfigured demo request, invite, or test notifications are acceptable when optional webhook/email secrets are intentionally absent
 - public fixed-price packages; `/pricing` explains controlled pilot paths and pricing is discussed after fit review
 - operational reset as deletion; reset tools are non-destructive, admin-only, previewed first, and do not mutate proof orders/jobs/payments
 - broad compliance completeness for live courier operations

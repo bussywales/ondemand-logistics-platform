@@ -447,9 +447,14 @@ export function AdminCommandView(props: {
             <h2>Demo request follow-up</h2>
             <p className="ops-detail-note">New demo and controlled-pilot requests are persisted for platform admin review. No email, CRM, or outbound automation is triggered yet.</p>
           </div>
-          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
-            Open demo requests
-          </Link>
+          <div className="admin-section-actions">
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
+              Open demo requests
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/notifications">
+              Test notifications
+            </Link>
+          </div>
         </div>
         {props.demoRequestsError ? (
           <div className="form-error-banner support-escalation-error">{props.demoRequestsError}</div>

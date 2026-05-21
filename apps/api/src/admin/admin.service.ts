@@ -3,22 +3,31 @@ import {
   AdminInterventionItemSchema,
   AdminJobListSchema,
   AdminJobSummarySchema,
+  AdminNotificationDiagnosticEventSchema,
   AdminOrderListSchema,
   AdminOrderSummarySchema,
   AdminOutboxListSchema,
   AdminOutboxItemSchema,
   AdminOverviewSchema,
+  CreateNotificationTestSchema,
+  NotificationDiagnosticsSchema,
+  NotificationTestResponseSchema,
   type AdminInterventionItemDto,
   type AdminInterventionSeverity,
   type AdminDriverReadinessStatus,
   type AdminDriverReadinessItemDto,
   type AdminDriverReadinessChecklistItemDto,
+  type AdminNotificationDiagnosticEventDto,
   AdminDriverReadinessListSchema,
   type AdminJobSummaryDto,
   type AdminOrderSummaryDto,
   type AdminOutboxItemDto,
-  type AdminOverviewDto
+  type AdminOverviewDto,
+  type NotificationDiagnosticsDto,
+  type NotificationTestResponseDto
 } from "@shipwright/contracts";
+import { randomUUID } from "node:crypto";
+import { UnprocessableEntityException } from "@nestjs/common";
 import { toIsoDateTime, toNullableIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 import {
@@ -91,6 +100,20 @@ type NotificationAuditRow = {
   created_at: string | Date;
 };
 
+type NotificationDiagnosticRow = {
+  id: string;
+  outbox_message_id: string | null;
+  event_type: string;
+  notification_type: string | null;
+  channel: string | null;
+  status: "pending" | "sent" | "skipped" | "failed" | "retrying";
+  provider: string | null;
+  last_attempt_at: string | Date | null;
+  retry_count: string | number;
+  safe_error_summary: string | null;
+  created_at: string | Date;
+};
+
 type AdminDriverReadinessRow = {
   driver_id: string;
   driver_name: string | null;
@@ -121,6 +144,16 @@ const ACTIVE_JOB_STATUSES = [
 ] as const;
 
 const DRIVER_LOCATION_RECENT_MINUTES = 15;
+const ADMIN_NOTIFICATION_EVENT_TYPES = [
+  "NOTIFY_ADMIN_DEMO_REQUEST_CREATED",
+  "DEMO_REQUEST_STATUS_UPDATED",
+  "DEMO_REQUEST_FOLLOW_UP_SCHEDULED",
+  "DEMO_REQUEST_CONTACT_RECORDED",
+  "ORG_INVITE_CREATED",
+  "ORG_INVITE_RESENT",
+  "ORG_INVITE_CANCELLED",
+  "TEST_ADMIN_NOTIFICATION"
+];
 
 function normalizeOrderStatus(status: AdminOrderRow["status"]) {
   return status === "COMPLETED" ? "FULFILLED" : status;
@@ -248,6 +281,75 @@ export class AdminService {
     return AdminOutboxListSchema.parse({
       items: result.rows.map((row) => this.mapOutbox(row))
     }).items;
+  }
+
+  async getNotificationDiagnostics(): Promise<NotificationDiagnosticsDto> {
+    const [counts, events, tests] = await Promise.all([
+      this.getNotificationCounts(),
+      this.listNotificationDiagnosticEvents(false),
+      this.listNotificationDiagnosticEvents(true)
+    ]);
+
+    return NotificationDiagnosticsSchema.parse({
+      configuration: {
+        emailConfigured: Boolean(process.env.RESEND_API_KEY?.trim() && process.env.NOTIFICATION_FROM_EMAIL?.trim() && process.env.ADMIN_NOTIFICATION_EMAIL?.trim()),
+        webhookConfigured: Boolean(process.env.DEMO_REQUEST_WEBHOOK_URL?.trim()),
+        adminEmailConfigured: Boolean(process.env.ADMIN_NOTIFICATION_EMAIL?.trim()),
+        fromEmailConfigured: Boolean(process.env.NOTIFICATION_FROM_EMAIL?.trim())
+      },
+      counts,
+      recentEvents: events,
+      recentTestEvents: tests
+    });
+  }
+
+  async createNotificationTest(input: unknown, actorId: string): Promise<NotificationTestResponseDto> {
+    const parsed = CreateNotificationTestSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_notification_test",
+        issues: parsed.error.issues
+      });
+    }
+
+    const outboxId = randomUUID();
+    const aggregateId = randomUUID();
+    const createdAt = new Date().toISOString();
+    await this.pg.query(
+      `insert into public.outbox_messages (
+         id,
+         aggregate_type,
+         aggregate_id,
+         event_type,
+         payload,
+         idempotency_key
+       )
+       values ($1, $2, $3, 'TEST_ADMIN_NOTIFICATION', $4::jsonb, $5)
+       on conflict (event_type, idempotency_key) do nothing`,
+      [
+        outboxId,
+        "admin_notification_test",
+        aggregateId,
+        JSON.stringify({
+          test: true,
+          notificationType: parsed.data.notificationType,
+          requestedChannel: parsed.data.channel,
+          recipientEmail: parsed.data.recipientEmail ?? null,
+          requestedBy: actorId,
+          createdAt
+        }),
+        `admin-notification-test:${outboxId}`
+      ]
+    );
+
+    return NotificationTestResponseSchema.parse({
+      outboxMessageId: outboxId,
+      eventType: "TEST_ADMIN_NOTIFICATION",
+      channel: parsed.data.channel,
+      notificationType: parsed.data.notificationType,
+      status: "queued",
+      message: "Notification test event queued for worker processing."
+    });
   }
 
   async listDriverReadiness() {
@@ -631,6 +733,111 @@ export class AdminService {
     };
   }
 
+  private async getNotificationCounts() {
+    const result = await this.pg.query<{
+      pending: string | number;
+      retrying: string | number;
+      failed: string | number;
+      sent: string | number;
+      skipped: string | number;
+    }>(
+      `with outbox_counts as (
+         select
+           count(*) filter (where processed_at is null and coalesce(last_error, '') = '') as pending,
+           count(*) filter (where processed_at is null and retry_count > 0 and last_error is not null) as retrying,
+           count(*) filter (where processed_at is null and last_error is not null) as failed
+         from public.outbox_messages
+         where event_type = any($1::text[])
+       ),
+       audit_counts as (
+         select
+           count(*) filter (where action = 'external_notification_sent') as sent,
+           count(*) filter (where action = 'external_notification_skipped') as skipped
+         from public.audit_log
+         where action in ('external_notification_sent', 'external_notification_skipped')
+           and metadata->>'eventType' = any($1::text[])
+       )
+       select
+         coalesce(o.pending, 0) as pending,
+         coalesce(o.retrying, 0) as retrying,
+         coalesce(o.failed, 0) as failed,
+         coalesce(a.sent, 0) as sent,
+         coalesce(a.skipped, 0) as skipped
+       from outbox_counts o cross join audit_counts a`,
+      [ADMIN_NOTIFICATION_EVENT_TYPES]
+    );
+    const row = result.rows[0] ?? { pending: 0, retrying: 0, failed: 0, sent: 0, skipped: 0 };
+    return {
+      pending: Number(row.pending),
+      retrying: Number(row.retrying),
+      failed: Number(row.failed),
+      sent: Number(row.sent),
+      skipped: Number(row.skipped)
+    };
+  }
+
+  private async listNotificationDiagnosticEvents(testOnly: boolean): Promise<AdminNotificationDiagnosticEventDto[]> {
+    const result = await this.pg.query<NotificationDiagnosticRow>(
+      `with outbox_events as (
+         select
+           om.id::text as id,
+           om.id as outbox_message_id,
+           om.event_type,
+           coalesce(om.payload->>'notificationType', om.payload->>'interestType') as notification_type,
+           om.payload->>'requestedChannel' as channel,
+           case
+             when om.processed_at is not null then 'sent'
+             when om.retry_count > 0 and om.last_error is not null then 'retrying'
+             when om.last_error is not null then 'failed'
+             else 'pending'
+           end as status,
+           null::text as provider,
+           coalesce(om.processed_at, om.next_attempt_at, om.created_at) as last_attempt_at,
+           om.retry_count,
+           om.last_error as safe_error_summary,
+           om.created_at
+         from public.outbox_messages om
+         where om.event_type = any($1::text[])
+           and (($2::boolean = false) or om.event_type = 'TEST_ADMIN_NOTIFICATION')
+       ),
+       audit_events as (
+         select
+           a.id::text as id,
+           null::uuid as outbox_message_id,
+           coalesce(a.metadata->>'eventType', a.action) as event_type,
+           coalesce(a.metadata->>'notificationType', a.metadata->>'interestType') as notification_type,
+           nullif(array_to_string(array(
+             select jsonb_array_elements_text(coalesce(a.metadata->'sentChannels', a.metadata->'skippedChannels', '[]'::jsonb))
+           ), ', '), '') as channel,
+           case
+             when a.action = 'external_notification_sent' then 'sent'
+             when a.action = 'external_notification_skipped' then 'skipped'
+             else 'failed'
+           end as status,
+           coalesce(a.metadata->>'emailProvider', a.metadata->>'provider') as provider,
+           a.created_at as last_attempt_at,
+           0 as retry_count,
+           coalesce(a.metadata->>'reason', a.metadata->>'error') as safe_error_summary,
+           a.created_at
+         from public.audit_log a
+         where a.action in ('external_notification_sent', 'external_notification_skipped')
+           and a.metadata->>'eventType' = any($1::text[])
+           and (($2::boolean = false) or coalesce((a.metadata->>'test')::boolean, false) = true)
+       )
+       select *
+       from (
+         select * from outbox_events
+         union all
+         select * from audit_events
+       ) combined
+       order by created_at desc
+       limit 30`,
+      [ADMIN_NOTIFICATION_EVENT_TYPES, testOnly]
+    );
+
+    return result.rows.map((row) => this.mapNotificationDiagnosticEvent(row));
+  }
+
   private mapJob(row: AdminJobRow): AdminJobSummaryDto {
     const attention = this.computeJobAttention(row);
     return AdminJobSummarySchema.parse({
@@ -691,6 +898,22 @@ export class AdminService {
       lastError: row.last_error,
       processedAt: row.processed_at ? toIsoDateTime(row.processed_at) : null,
       nextAttemptAt: toIsoDateTime(row.next_attempt_at),
+      createdAt: toIsoDateTime(row.created_at)
+    });
+  }
+
+  private mapNotificationDiagnosticEvent(row: NotificationDiagnosticRow) {
+    return AdminNotificationDiagnosticEventSchema.parse({
+      id: row.id,
+      outboxMessageId: row.outbox_message_id,
+      eventType: row.event_type,
+      notificationType: row.notification_type,
+      channel: row.channel,
+      status: row.status,
+      provider: row.provider,
+      lastAttemptAt: toNullableIsoDateTime(row.last_attempt_at),
+      retryCount: Number(row.retry_count),
+      safeErrorSummary: row.safe_error_summary ? row.safe_error_summary.slice(0, 240) : null,
       createdAt: toIsoDateTime(row.created_at)
     });
   }

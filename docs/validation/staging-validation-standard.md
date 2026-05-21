@@ -62,6 +62,7 @@ The paid-delivery proof must confirm:
 - demo request persistence remains available for public commercial intake and platform-admin review
 - demo request creation records internal admin notification posture through `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` outbox events or an explicitly documented fallback
 - demo request/admin notification delivery no-ops safely when `DEMO_REQUEST_WEBHOOK_URL`, `ADMIN_NOTIFICATION_EMAIL`, or Resend sender env is absent
+- notification diagnostics at `/admin/notifications` can create marked test events for configured email/webhook channels and must not expose secrets
 - release readiness checks green
 
 ## Stored Validation Evidence
@@ -118,6 +119,7 @@ Authenticated routes:
 - `/admin/orgs`
 - `/admin/fleets`
 - `/admin/demo-requests`
+- `/admin/notifications`
 - `/admin/operational-resets`
 - `/admin/pilots`
 - `/admin/pilots/[pilotId]/rehearsal`
@@ -131,7 +133,7 @@ For release/full smoke mode, set `SMOKE_REQUIRE_AUTH=true`; the smoke suite then
 
 Commercial intake smoke should also check `/demo/request` structurally when demo request capture changes. A staging verification may submit one non-sensitive test request and confirm it appears in `/admin/demo-requests` and is reflected in `/admin/command` commercial intake posture.
 
-When demo request follow-up or notification delivery changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, view append-only event history, and see notification delivery posture in `/admin/demo-requests`.
+When demo request follow-up or notification delivery changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, view append-only event history, see notification delivery posture in `/admin/demo-requests`, and open `/admin/notifications` to review configuration diagnostics plus recent test events.
 
 ## Smoke Users
 Use dedicated staging-only smoke accounts. Document roles, not secrets:
@@ -173,6 +175,14 @@ NOTIFICATION_REPLY_TO_EMAIL=
 ```
 
 When those notification env values are absent, skipped/unconfigured delivery is expected and should be visible to platform admins without blocking demo request persistence.
+
+Notification delivery testing:
+
+- use `/admin/notifications` to create `TEST_ADMIN_NOTIFICATION` outbox events for `EMAIL` or `WEBHOOK`
+- webhook tests use only the configured `DEMO_REQUEST_WEBHOOK_URL`; the browser must not accept arbitrary webhook URLs
+- email tests require `ADMIN_NOTIFICATION_EMAIL`, `RESEND_API_KEY`, and `NOTIFICATION_FROM_EMAIL`; optional test recipient email is admin-only and should be non-sensitive
+- skipped/unconfigured is acceptable when secrets are intentionally absent
+- never commit notification secrets or `.env.smoke`
 
 Do not commit passwords or `.env.smoke`.
 

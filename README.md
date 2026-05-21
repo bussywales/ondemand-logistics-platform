@@ -49,6 +49,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
 - Admin driver fleet organisations: `/admin/fleets`
 - Admin demo requests: `/admin/demo-requests`
+- Admin notification diagnostics: `/admin/notifications`
 - Admin operational reset tools: `/admin/operational-resets`
 - Fleet manager workspace: `/fleet`
 - Business team settings: `/app/settings/team`
@@ -82,6 +83,12 @@ Demo request/admin notification outbox events can optionally deliver to configur
 - `DEMO_REQUEST_WEBHOOK_URL` posts structured admin demo-request payloads to an external webhook
 - `ADMIN_NOTIFICATION_EMAIL` sends admin notification email when `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL` are also configured
 - when no webhook/email channel is configured, the worker records the notification as skipped/deferred and demo request persistence is not blocked
+
+Commercial notifications v2 adds platform-admin delivery diagnostics at `/admin/notifications`:
+- configuration checks report whether webhook, admin email, sender email, and Resend provider env are present without exposing secret values or webhook URLs
+- admins can create test notification outbox events for email or webhook delivery; test events are marked `test: true`
+- skipped/unconfigured test results are acceptable in environments without notification secrets
+- invite lifecycle events (`ORG_INVITE_CREATED`, `ORG_INVITE_RESENT`, `ORG_INVITE_CANCELLED`) follow the same worker skip/send/fail metadata conventions
 
 CRM sync and automated follow-up delivery remain deferred.
 

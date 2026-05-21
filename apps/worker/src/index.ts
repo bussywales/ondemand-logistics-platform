@@ -29,15 +29,46 @@ type OutboxMessage = {
   retry_count: number;
 };
 
-type AdminDemoRequestNotificationEventType =
+type AdminNotificationEventType =
   | "NOTIFY_ADMIN_DEMO_REQUEST_CREATED"
   | "DEMO_REQUEST_STATUS_UPDATED"
   | "DEMO_REQUEST_FOLLOW_UP_SCHEDULED"
-  | "DEMO_REQUEST_CONTACT_RECORDED";
+  | "DEMO_REQUEST_CONTACT_RECORDED"
+  | "ORG_INVITE_CREATED"
+  | "ORG_INVITE_RESENT"
+  | "ORG_INVITE_CANCELLED"
+  | "TEST_ADMIN_NOTIFICATION";
 
 type AdminNotificationConfig = {
   webhookUrl: string | null;
   adminEmail: string | null;
+};
+
+type AdminNotificationPayload = {
+  source: "shipwright";
+  channel: string;
+  eventType: AdminNotificationEventType;
+  outboxMessageId: string;
+  aggregateType: string;
+  aggregateId: string;
+  requestId: string | null;
+  test: boolean;
+  notificationType: string | null;
+  requestedChannel: string | null;
+  recipientEmail: string | null;
+  demoRequestId: string;
+  inviteId: string | null;
+  orgId: string | null;
+  requesterEmail: string | null;
+  requesterName: string | null;
+  organisation: string | null;
+  interestType: string | null;
+  status: string | null;
+  previousStatus: string | null;
+  newStatus: string | null;
+  nextFollowUpAt: string | null;
+  lastContactedAt: string | null;
+  occurredAt: string;
 };
 
 type DispatchJob = {
@@ -1139,7 +1170,7 @@ function stringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
-function buildAdminDemoRequestPayload(message: OutboxMessage, eventType: AdminDemoRequestNotificationEventType) {
+function buildAdminNotificationPayload(message: OutboxMessage, eventType: AdminNotificationEventType): AdminNotificationPayload {
   const occurredAt =
     stringOrNull(message.payload.updatedAt) ??
     stringOrNull(message.payload.createdAt) ??
@@ -1147,16 +1178,22 @@ function buildAdminDemoRequestPayload(message: OutboxMessage, eventType: AdminDe
 
   return {
     source: "shipwright",
-    channel: "admin_demo_request",
+    channel: eventType === "TEST_ADMIN_NOTIFICATION" ? "admin_notification_test" : eventType.startsWith("ORG_INVITE") ? "admin_org_invite" : "admin_demo_request",
     eventType,
     outboxMessageId: message.id,
-    demoRequestId: stringOrNull(message.payload.demoRequestId) ?? message.aggregate_id,
     aggregateType: message.aggregate_type,
     aggregateId: message.aggregate_id,
     requestId: stringOrNull(message.payload.requestId),
+    test: message.payload.test === true,
+    notificationType: stringOrNull(message.payload.notificationType),
+    requestedChannel: stringOrNull(message.payload.requestedChannel),
+    recipientEmail: stringOrNull(message.payload.recipientEmail),
+    demoRequestId: stringOrNull(message.payload.demoRequestId) ?? message.aggregate_id,
+    inviteId: stringOrNull(message.payload.inviteId) ?? (message.aggregate_type === "org_invitation" ? message.aggregate_id : null),
+    orgId: stringOrNull(message.payload.orgId),
     requesterEmail: stringOrNull(message.payload.requesterEmail),
     requesterName: stringOrNull(message.payload.requesterName),
-    organisation: stringOrNull(message.payload.organisation),
+    organisation: stringOrNull(message.payload.organisation) ?? stringOrNull(message.payload.orgName),
     interestType: stringOrNull(message.payload.interestType),
     status: stringOrNull(message.payload.status),
     previousStatus: stringOrNull(message.payload.previousStatus),
@@ -1167,7 +1204,7 @@ function buildAdminDemoRequestPayload(message: OutboxMessage, eventType: AdminDe
   };
 }
 
-async function postAdminNotificationWebhook(url: string, payload: ReturnType<typeof buildAdminDemoRequestPayload>) {
+async function postAdminNotificationWebhook(url: string, payload: AdminNotificationPayload) {
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -1183,49 +1220,96 @@ async function postAdminNotificationWebhook(url: string, payload: ReturnType<typ
   }
 }
 
-async function handleAdminDemoRequestNotification(
+function buildGenericAdminNotificationEmail(input: {
+  adminEmail: string;
+  eventType: AdminNotificationEventType;
+  payload: AdminNotificationPayload;
+}): ExternalNotificationEmail {
+  const subjectPrefix = input.payload.test ? "ShipWright notification test" : "ShipWright admin notification";
+  const subject = `${subjectPrefix} · ${input.payload.notificationType ?? input.eventType}`;
+  return {
+    to: input.payload.recipientEmail ?? input.adminEmail,
+    subject,
+    text: [
+      input.payload.test ? "This is a ShipWright admin notification test." : "A ShipWright admin notification event was processed.",
+      ``,
+      `Event: ${input.eventType}`,
+      input.payload.notificationType ? `Notification type: ${input.payload.notificationType}` : null,
+      input.payload.requestedChannel ? `Requested channel: ${input.payload.requestedChannel}` : null,
+      input.payload.organisation ? `Organisation: ${input.payload.organisation}` : null,
+      input.payload.requesterEmail ? `Requester: ${input.payload.requesterEmail}` : null,
+      input.payload.inviteId ? `Invite: ${input.payload.inviteId}` : null,
+      `Outbox message: ${input.payload.outboxMessageId}`,
+      `Occurred at: ${input.payload.occurredAt}`,
+      ``,
+      `ShipWright`
+    ].filter(Boolean).join("\n"),
+    metadata: {
+      category: "admin_notification",
+      eventType: input.eventType,
+      test: input.payload.test,
+      notificationType: input.payload.notificationType,
+      outboxMessageId: input.payload.outboxMessageId
+    }
+  };
+}
+
+async function handleAdminNotification(
   client: PoolClient,
   message: OutboxMessage,
   logger: AppLogger
 ) {
-  const eventType = message.event_type as AdminDemoRequestNotificationEventType;
-  const payload = buildAdminDemoRequestPayload(message, eventType);
+  const eventType = message.event_type as AdminNotificationEventType;
+  const payload = buildAdminNotificationPayload(message, eventType);
   const requestId = String(message.payload.requestId ?? message.id);
   const sentChannels: string[] = [];
   const skippedChannels: string[] = [];
+  const requestedChannel = payload.requestedChannel;
+  const shouldSendWebhook = !requestedChannel || requestedChannel === "WEBHOOK";
+  const shouldSendEmail = !requestedChannel || requestedChannel === "EMAIL";
 
-  if (adminNotificationConfig.webhookUrl) {
+  if (shouldSendWebhook && adminNotificationConfig.webhookUrl) {
     logger.info({ event_type: eventType, demo_request_id: payload.demoRequestId }, "admin_demo_request_webhook_send_start");
     await postAdminNotificationWebhook(adminNotificationConfig.webhookUrl, payload);
     sentChannels.push("webhook");
     logger.info({ event_type: eventType, demo_request_id: payload.demoRequestId }, "admin_demo_request_webhook_sent");
-  } else {
+  } else if (shouldSendWebhook) {
     skippedChannels.push("webhook:not_configured");
+  } else {
+    skippedChannels.push("webhook:not_requested");
   }
 
-  if (adminNotificationConfig.adminEmail && notificationProvider.isConfigured()) {
-    const email = buildAdminDemoRequestEmail({
-      adminEmail: adminNotificationConfig.adminEmail,
-      demoRequestId: payload.demoRequestId,
-      eventType,
-      requesterEmail: payload.requesterEmail,
-      requesterName: payload.requesterName,
-      organisation: payload.organisation,
-      interestType: payload.interestType,
-      status: payload.status,
-      previousStatus: payload.previousStatus,
-      newStatus: payload.newStatus,
-      nextFollowUpAt: payload.nextFollowUpAt,
-      lastContactedAt: payload.lastContactedAt,
-      occurredAt: payload.occurredAt
-    });
+  if (shouldSendEmail && adminNotificationConfig.adminEmail && notificationProvider.isConfigured()) {
+    const email = eventType.startsWith("DEMO_REQUEST") || eventType === "NOTIFY_ADMIN_DEMO_REQUEST_CREATED"
+      ? buildAdminDemoRequestEmail({
+          adminEmail: adminNotificationConfig.adminEmail,
+          demoRequestId: payload.demoRequestId,
+          eventType: eventType as Extract<AdminNotificationEventType, "NOTIFY_ADMIN_DEMO_REQUEST_CREATED" | "DEMO_REQUEST_STATUS_UPDATED" | "DEMO_REQUEST_FOLLOW_UP_SCHEDULED" | "DEMO_REQUEST_CONTACT_RECORDED">,
+          requesterEmail: payload.requesterEmail,
+          requesterName: payload.requesterName,
+          organisation: payload.organisation,
+          interestType: payload.interestType,
+          status: payload.status,
+          previousStatus: payload.previousStatus,
+          newStatus: payload.newStatus,
+          nextFollowUpAt: payload.nextFollowUpAt,
+          lastContactedAt: payload.lastContactedAt,
+          occurredAt: payload.occurredAt
+        })
+      : buildGenericAdminNotificationEmail({
+          adminEmail: adminNotificationConfig.adminEmail,
+          eventType,
+          payload
+        });
     const result = await notificationProvider.sendEmail(email);
     sentChannels.push("email");
     logger.info({ provider_message_id: result.providerMessageId }, "admin_demo_request_email_sent");
-  } else if (adminNotificationConfig.adminEmail) {
+  } else if (shouldSendEmail && adminNotificationConfig.adminEmail) {
     skippedChannels.push("email:provider_not_configured");
-  } else {
+  } else if (shouldSendEmail) {
     skippedChannels.push("email:admin_notification_email_not_configured");
+  } else {
+    skippedChannels.push("email:not_requested");
   }
 
   const action: "external_notification_sent" | "external_notification_skipped" =
@@ -1234,15 +1318,20 @@ async function handleAdminDemoRequestNotification(
   await recordExternalNotificationOutcome(client, {
     requestId,
     orgId: null,
-    entityType: "demo_request",
-    entityId: payload.demoRequestId,
+    entityType: message.aggregate_type,
+    entityId: message.aggregate_id,
     action,
     metadata: {
       eventType,
+      test: payload.test,
+      notificationType: payload.notificationType,
+      requestedChannel: payload.requestedChannel,
       sentChannels,
       skippedChannels,
       ...skipReason,
       demoRequestId: payload.demoRequestId,
+      inviteId: payload.inviteId,
+      orgId: payload.orgId,
       interestType: payload.interestType,
       status: payload.status,
       emailProvider: notificationProvider.provider,
@@ -1765,7 +1854,11 @@ export async function dispatchSideEffect(
     case "DEMO_REQUEST_STATUS_UPDATED":
     case "DEMO_REQUEST_FOLLOW_UP_SCHEDULED":
     case "DEMO_REQUEST_CONTACT_RECORDED":
-      await handleAdminDemoRequestNotification(client, message, logger);
+    case "ORG_INVITE_CREATED":
+    case "ORG_INVITE_RESENT":
+    case "ORG_INVITE_CANCELLED":
+    case "TEST_ADMIN_NOTIFICATION":
+      await handleAdminNotification(client, message, logger);
       return;
     case "PAYMENT_INTENT_CREATE_REQUESTED":
       await handlePaymentIntentCreateRequested(client, message, logger);

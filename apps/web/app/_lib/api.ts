@@ -19,6 +19,10 @@ import type {
   OperationalResetPreview,
   OperationalResetRequestInput,
   OperationalResetRun,
+  NotificationDiagnostics,
+  NotificationTestResponse,
+  AdminNotificationChannel,
+  AdminNotificationTestType,
   OperationalIncidentSummary,
   CreateSupportEscalationInput,
   CreatePilotWorkspaceInput,
@@ -247,6 +251,8 @@ type AdminDriverReadinessListResponse = AdminDriverReadinessList;
 type AdminOutboxListResponse = {
   items: AdminOutboxItem[];
 };
+type NotificationDiagnosticsResponse = NotificationDiagnostics;
+type NotificationTestResponsePayload = NotificationTestResponse;
 type BusinessNotificationReadResponse = {
   ok: true;
   notificationId: string;
@@ -1510,4 +1516,23 @@ export async function listAdminOutbox(session: BusinessSession): Promise<AdminOu
   });
 
   return result.items;
+}
+
+export async function getAdminNotificationDiagnostics(session: BusinessSession): Promise<NotificationDiagnostics> {
+  return apiFetch<NotificationDiagnosticsResponse>(session, "/v1/admin/notifications/diagnostics", {
+    method: "GET"
+  });
+}
+
+export async function createAdminNotificationTest(
+  session: BusinessSession,
+  input: { channel: AdminNotificationChannel; notificationType: AdminNotificationTestType; recipientEmail?: string }
+): Promise<NotificationTestResponse> {
+  return apiFetch<NotificationTestResponsePayload>(session, "/v1/admin/notifications/test", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-admin-notification-test`
+    },
+    body: JSON.stringify(input)
+  });
 }

@@ -56,7 +56,7 @@ Configuration:
 - Set `SMOKE_REQUIRE_AUTH=true` for release/full smoke mode; missing tracking or authenticated smoke credentials then fail instead of skipping.
 - Admin browser smoke includes `/admin`, `/admin/command`, and `/admin/drivers`.
 - Full authenticated admin smoke includes `/admin/validation-evidence`; it must render whether evidence exists or the empty state appears. After deployment, open `/admin/release-readiness` before demos/releases to confirm the stored-evidence verdict.
-- Admin browser smoke should include `/admin/demo-requests` when commercial intake changes.
+- Admin browser smoke should include `/admin/demo-requests` and `/admin/notifications` when commercial intake or notification delivery changes.
 - Commercial intake changes should verify that a non-sensitive staging request appears in `/admin/demo-requests` and that `/admin/command` shows the demo request posture.
 - Fleet-manager browser smoke includes `/fleet` with a dedicated `FLEET_MANAGER` smoke account.
 - Required/used auth variables:
@@ -198,8 +198,11 @@ What this means:
 - external notification send proof is optional until sender/domain setup is complete
 - `DEMO_REQUEST_WEBHOOK_URL` enables webhook delivery for demo request/admin follow-up events
 - `ADMIN_NOTIFICATION_EMAIL` plus `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL` enables admin notification email
+- `/admin/notifications` shows safe delivery diagnostics, recent notification outcomes, and admin-only test controls for configured email/webhook channels
+- `POST /v1/admin/notifications/test` creates marked `TEST_ADMIN_NOTIFICATION` outbox events; it does not accept webhook URLs from the browser
+- invite lifecycle outbox events (`ORG_INVITE_CREATED`, `ORG_INVITE_RESENT`, `ORG_INVITE_CANCELLED`) should process through the same worker skip/send/fail metadata conventions
 - missing webhook/email provider env should degrade safely, record a skipped/deferred notification outcome, and not crash the worker
-- `/admin/demo-requests` and `/admin/command` should show demo-request notification posture as pending, sent, skipped/unconfigured, failed, or retrying without exposing secrets or webhook URLs
+- `/admin/demo-requests`, `/admin/notifications`, and `/admin/command` should show notification posture as pending, sent, skipped/unconfigured, failed, or retrying without exposing secrets or webhook URLs
 - a parked email provider is not by itself a failed staging release unless the explicit release goal is outbound-email verification
 
 ## 8.5) Pilot fallback playbooks

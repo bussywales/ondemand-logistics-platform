@@ -243,7 +243,7 @@ Constraints:
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
 ## Workstream 7: Commercial Conversion Layer
-Status: In progress. Demo request persistence, internal notification posture, admin follow-up pipeline preparation, and controlled pilot package positioning are active.
+Status: In progress. Demo request persistence, internal notification posture, admin notification diagnostics, admin follow-up pipeline preparation, and controlled pilot package positioning are active.
 
 Scope:
 - real demo request persistence
@@ -263,11 +263,15 @@ Current posture:
 - `/admin/demo-requests` shows next-action guidance, reviewed metadata, owner, priority, next follow-up date, contact record, status quick actions, admin notes, close reason, and compact event history
 - meaningful admin updates record append-only `demo_request_events`
 - status, scheduled follow-up, and contact updates can enqueue internal outbox events for later automation wiring
+- optional email/webhook delivery can be tested from `/admin/notifications` through marked `TEST_ADMIN_NOTIFICATION` outbox events
+- `/admin/notifications` shows safe configuration booleans, delivery status counts, recent test events, and safe error summaries without exposing secrets
+- invite lifecycle outbox events use the same worker skip/send/fail metadata conventions as demo request notifications
 - pricing CTAs preselect the correct demo request interest type
-- outbound email, CRM sync, webhook delivery, and analytics workflows remain deferred
+- CRM sync and analytics workflows remain deferred; outbound email/webhook delivery is optional and only considered proven when configured and separately tested
 
 Constraints:
 - do not imply CRM/email automation is live until it is wired and verified
+- do not expose notification secrets, sender credentials, or full webhook URLs in admin diagnostics
 - do not expose internal docs or proof artifacts publicly without review
 - do not expose demo request lists outside platform-admin surfaces
 - do not add delete/destructive lead management in the follow-up pipeline

@@ -211,6 +211,7 @@ test('authenticated admin routes smoke', async ({ page }) => {
   await assertProtectedRouteLoads(page, '/admin/orgs');
   await assertProtectedRouteLoads(page, '/admin/fleets');
   await assertProtectedRouteLoads(page, '/admin/demo-requests');
+  await assertProtectedRouteLoads(page, '/admin/notifications');
   await assertProtectedRouteLoads(page, '/admin/operational-resets');
   await assertProtectedRouteLoads(page, '/admin/pilots');
   await assertReleaseReadinessPageRenders(page);

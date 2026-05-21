@@ -726,6 +726,90 @@ describe("dispatchSideEffect", () => {
       emailProvider: "resend"
     });
   });
+
+  it("processes test admin notification events as skipped when config is absent", async () => {
+    setAdminNotificationConfigForTests({ webhookUrl: null, adminEmail: null });
+    setNotificationProviderForTests({
+      provider: "noop",
+      isConfigured: () => false,
+      sendEmail: vi.fn()
+    });
+
+    const client = createClientStub([{ match: "insert into public.audit_log" }]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-test-1",
+        aggregate_type: "admin_notification_test",
+        aggregate_id: "test-1",
+        event_type: "TEST_ADMIN_NOTIFICATION",
+        payload: {
+          test: true,
+          notificationType: "DEMO_REQUEST_CREATED",
+          requestedChannel: "WEBHOOK",
+          requestedBy: "admin-1",
+          createdAt: "2026-05-21T10:00:00.000Z"
+        },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(client.remainingSteps()).toBe(0);
+    expect(latestAuditMetadata(client)).toMatchObject({
+      eventType: "TEST_ADMIN_NOTIFICATION",
+      test: true,
+      notificationType: "DEMO_REQUEST_CREATED",
+      requestedChannel: "WEBHOOK",
+      sentChannels: [],
+      skippedChannels: ["webhook:not_configured", "email:not_requested"],
+      reason: "admin_notification_not_configured"
+    });
+  });
+
+  it("processes invite lifecycle events through configured admin email", async () => {
+    const sendEmail = vi.fn().mockResolvedValue({ providerMessageId: "email_invite_1" });
+    setAdminNotificationConfigForTests({ webhookUrl: null, adminEmail: "admin@example.com" });
+    setNotificationProviderForTests({
+      provider: "resend",
+      isConfigured: () => true,
+      sendEmail
+    });
+
+    const client = createClientStub([{ match: "insert into public.audit_log" }]);
+
+    await dispatchSideEffect(
+      client as never,
+      {
+        id: "msg-invite-1",
+        aggregate_type: "org_invitation",
+        aggregate_id: "invite-1",
+        event_type: "ORG_INVITE_CREATED",
+        payload: {
+          inviteId: "invite-1",
+          orgId: "org-1",
+          email: "operator@example.com",
+          role: "OPERATOR",
+          status: "PENDING",
+          updatedAt: "2026-05-21T10:00:00.000Z"
+        },
+        retry_count: 0
+      },
+      createLoggerStub()
+    );
+
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      to: "admin@example.com",
+      subject: expect.stringContaining("ORG_INVITE_CREATED")
+    }));
+    expect(latestAuditMetadata(client)).toMatchObject({
+      eventType: "ORG_INVITE_CREATED",
+      inviteId: "invite-1",
+      sentChannels: ["email"],
+      skippedChannels: ["webhook:not_configured"]
+    });
+  });
 });
 
 describe("processBatchWithLogger", () => {

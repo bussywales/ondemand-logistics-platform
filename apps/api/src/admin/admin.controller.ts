@@ -1,8 +1,10 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { AdminService } from "./admin.service.js";
 import { PlatformAdminGuard } from "../security/platform-admin.guard.js";
 import { PaymentsService } from "../payments/payments.service.js";
 import { BriefingService } from "../briefing/briefing.service.js";
+import { RequestUser } from "../security/request-user.decorator.js";
+import type { AuthenticatedUser } from "../security/types.js";
 
 @UseGuards(PlatformAdminGuard)
 @Controller("v1/admin")
@@ -54,5 +56,15 @@ export class AdminController {
     return {
       items: await this.adminService.listOutbox()
     };
+  }
+
+  @Get("notifications/diagnostics")
+  getNotificationDiagnostics() {
+    return this.adminService.getNotificationDiagnostics();
+  }
+
+  @Post("notifications/test")
+  createNotificationTest(@Body() body: unknown, @RequestUser() user: AuthenticatedUser) {
+    return this.adminService.createNotificationTest(body, user.id);
   }
 }

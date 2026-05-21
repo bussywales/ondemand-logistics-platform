@@ -6,6 +6,7 @@ import {
   cancelAdminOrgInvite,
   cancelBusinessTeamInvite,
   createProofOfDelivery,
+  createAdminNotificationTest,
   addAdminFleetDriver,
   createAdminFleet,
   createBusinessTeamInvite,
@@ -16,6 +17,7 @@ import {
   getAdminReleaseReadiness,
   getAdminPilotRehearsal,
   getAdminOrgMembers,
+  getAdminNotificationDiagnostics,
   getFleetReadiness,
   getBusinessTeam,
   getBusinessDailyBriefing,
@@ -964,6 +966,54 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/admin/release-readiness?environment=staging');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(readiness.verdict).toBe('READY');
+  });
+
+  it('reads notification diagnostics and queues admin notification tests', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            configuration: {
+              emailConfigured: false,
+              webhookConfigured: true,
+              adminEmailConfigured: false,
+              fromEmailConfigured: false
+            },
+            counts: {
+              pending: 1,
+              sent: 2,
+              skipped: 3,
+              failed: 0,
+              retrying: 0
+            },
+            recentEvents: [],
+            recentTestEvents: []
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            outboxMessageId: '6cb2f7e9-6b75-4f34-bec6-b90dbfb0fe1b',
+            eventType: 'TEST_ADMIN_NOTIFICATION',
+            channel: 'WEBHOOK',
+            notificationType: 'DEMO_REQUEST_CREATED',
+            status: 'queued',
+            message: 'Notification test event queued for worker processing.'
+          })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const diagnostics = await getAdminNotificationDiagnostics(session);
+    const result = await createAdminNotificationTest(session, { channel: 'WEBHOOK', notificationType: 'DEMO_REQUEST_CREATED' });
+
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[0]).toContain('/v1/admin/notifications/diagnostics');
+    expect((fetchMock.mock.calls[1] as [string, RequestInit])[0]).toContain('/v1/admin/notifications/test');
+    expect((fetchMock.mock.calls[1] as [string, RequestInit])[1].method).toBe('POST');
+    expect(diagnostics.configuration.webhookConfigured).toBe(true);
+    expect(result.eventType).toBe('TEST_ADMIN_NOTIFICATION');
   });
 
   it('reads business notifications with bearer auth', async () => {

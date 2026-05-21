@@ -7,7 +7,11 @@ export type ExternalNotificationEventType =
   | "NOTIFY_ADMIN_DEMO_REQUEST_CREATED"
   | "DEMO_REQUEST_STATUS_UPDATED"
   | "DEMO_REQUEST_FOLLOW_UP_SCHEDULED"
-  | "DEMO_REQUEST_CONTACT_RECORDED";
+  | "DEMO_REQUEST_CONTACT_RECORDED"
+  | "ORG_INVITE_CREATED"
+  | "ORG_INVITE_RESENT"
+  | "ORG_INVITE_CANCELLED"
+  | "TEST_ADMIN_NOTIFICATION";
 
 export type ExternalNotificationEmail = {
   metadata: Record<string, unknown>;

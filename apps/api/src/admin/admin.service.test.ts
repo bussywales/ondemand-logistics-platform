@@ -236,4 +236,73 @@ describe("AdminService", () => {
     expect(readiness.items[0]?.fleetOrgName).toBe("Northside Couriers");
     expect(readiness.items[0]?.fleetRole).toBe("DRIVER");
   });
+
+  it("returns notification diagnostics without exposing secrets", async () => {
+    const previousWebhook = process.env.DEMO_REQUEST_WEBHOOK_URL;
+    const previousAdminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+    const previousResend = process.env.RESEND_API_KEY;
+    const previousFrom = process.env.NOTIFICATION_FROM_EMAIL;
+    process.env.DEMO_REQUEST_WEBHOOK_URL = "https://hooks.example.test/shipwright";
+    delete process.env.ADMIN_NOTIFICATION_EMAIL;
+    delete process.env.RESEND_API_KEY;
+    process.env.NOTIFICATION_FROM_EMAIL = "ShipWright <noreply@example.com>";
+
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ pending: 1, retrying: 0, failed: 0, sent: 2, skipped: 3 }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: "audit:1",
+              outbox_message_id: null,
+              event_type: "TEST_ADMIN_NOTIFICATION",
+              notification_type: "DEMO_REQUEST_CREATED",
+              channel: "webhook:not_configured",
+              status: "skipped",
+              provider: "noop",
+              last_attempt_at: new Date("2026-05-21T10:00:00.000Z"),
+              retry_count: 0,
+              safe_error_summary: "admin_notification_not_configured",
+              created_at: new Date("2026-05-21T10:00:00.000Z")
+            }
+          ]
+        })
+        .mockResolvedValueOnce({ rows: [] })
+    };
+
+    try {
+      const diagnostics = await new AdminService(pg as never, createSchemaReadiness() as never).getNotificationDiagnostics();
+      expect(diagnostics.configuration.webhookConfigured).toBe(true);
+      expect(diagnostics.configuration.emailConfigured).toBe(false);
+      expect(JSON.stringify(diagnostics)).not.toContain("hooks.example.test/shipwright");
+      expect(diagnostics.counts.skipped).toBe(3);
+    } finally {
+      if (previousWebhook === undefined) delete process.env.DEMO_REQUEST_WEBHOOK_URL;
+      else process.env.DEMO_REQUEST_WEBHOOK_URL = previousWebhook;
+      if (previousAdminEmail === undefined) delete process.env.ADMIN_NOTIFICATION_EMAIL;
+      else process.env.ADMIN_NOTIFICATION_EMAIL = previousAdminEmail;
+      if (previousResend === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = previousResend;
+      if (previousFrom === undefined) delete process.env.NOTIFICATION_FROM_EMAIL;
+      else process.env.NOTIFICATION_FROM_EMAIL = previousFrom;
+    }
+  });
+
+  it("queues admin notification test events", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValueOnce({ rows: [] })
+    };
+
+    const result = await new AdminService(pg as never, createSchemaReadiness() as never).createNotificationTest(
+      { channel: "WEBHOOK", notificationType: "DEMO_REQUEST_CREATED" },
+      "11111111-1111-4111-8111-111111111111"
+    );
+
+    expect(result.eventType).toBe("TEST_ADMIN_NOTIFICATION");
+    expect(result.status).toBe("queued");
+    expect(pg.query.mock.calls[0]?.[0]).toContain("insert into public.outbox_messages");
+    expect(pg.query.mock.calls[0]?.[1]?.[3]).toContain('"test":true');
+    expect(pg.query.mock.calls[0]?.[1]?.[3]).not.toContain("webhookUrl");
+  });
 });

@@ -1259,6 +1259,51 @@ export type AdminOutboxItem = {
   createdAt: string;
 };
 
+export type AdminNotificationChannel = "EMAIL" | "WEBHOOK";
+export type AdminNotificationTestType = "DEMO_REQUEST_CREATED" | "ORG_INVITE_CREATED";
+export type AdminNotificationDeliveryStatus = "pending" | "sent" | "skipped" | "failed" | "retrying";
+
+export type AdminNotificationDiagnosticEvent = {
+  id: string;
+  outboxMessageId: string | null;
+  eventType: string;
+  notificationType: string | null;
+  channel: string | null;
+  status: AdminNotificationDeliveryStatus;
+  provider: string | null;
+  lastAttemptAt: string | null;
+  retryCount: number;
+  safeErrorSummary: string | null;
+  createdAt: string;
+};
+
+export type NotificationDiagnostics = {
+  configuration: {
+    emailConfigured: boolean;
+    webhookConfigured: boolean;
+    adminEmailConfigured: boolean;
+    fromEmailConfigured: boolean;
+  };
+  counts: {
+    pending: number;
+    sent: number;
+    skipped: number;
+    failed: number;
+    retrying: number;
+  };
+  recentEvents: AdminNotificationDiagnosticEvent[];
+  recentTestEvents: AdminNotificationDiagnosticEvent[];
+};
+
+export type NotificationTestResponse = {
+  outboxMessageId: string;
+  eventType: "TEST_ADMIN_NOTIFICATION";
+  channel: AdminNotificationChannel;
+  notificationType: AdminNotificationTestType;
+  status: "queued";
+  message: string;
+};
+
 export type AdminDriverReadinessStatus = "READY" | "NEEDS_REVIEW" | "NOT_ELIGIBLE";
 
 export type AdminDriverReadinessChecklistItem = {
