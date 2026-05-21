@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AdminPaymentListSchema,
+  AdminMenuHistorySchema,
   AdminOverviewSchema,
   BusinessPaymentListSchema,
   BusinessContextSchema,
@@ -203,6 +204,31 @@ describe("Menu item schemas", () => {
           resourceName: "Chicken wrap",
           changedFields: ["priceCents"],
           metadata: { oldPriceCents: 1299, newPriceCents: 1499 }
+        }
+      ]
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses admin menu history audit events with organisation context", () => {
+    const parsed = AdminMenuHistorySchema.safeParse({
+      items: [
+        {
+          id: "123",
+          orgId: "a56c6fc5-ec1f-4b1c-b4f5-8e79ddf9fb86",
+          orgName: "Pilot Org",
+          restaurantId: "5b31aa8f-34c3-4471-8cc5-822c40f4ed79",
+          restaurantName: "Pilot Kitchen",
+          eventType: "MENU_ITEM_VISIBILITY_UPDATED",
+          actorName: null,
+          actorEmail: "operator@example.com",
+          createdAt: new Date().toISOString(),
+          summary: "Chicken wrap visibility changed to Hidden.",
+          resourceType: "item",
+          resourceName: "Chicken wrap",
+          changedFields: ["isActive"],
+          metadata: { previous: { isActive: true }, next: { isActive: false } }
         }
       ]
     });

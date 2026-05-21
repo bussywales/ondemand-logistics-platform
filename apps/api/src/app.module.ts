@@ -20,6 +20,7 @@ import { PaymentsService } from "./payments/payments.service.js";
 import { BusinessController } from "./business/business.controller.js";
 import { BusinessService } from "./business/business.service.js";
 import {
+  AdminMenuHistoryController,
   BusinessOrdersController,
   PublicOrderTrackingController,
   PublicRestaurantsController,
@@ -84,6 +85,7 @@ import { AdminReleaseReadinessController } from "./release-readiness/release-rea
     AdminOperationalResetsController,
     AdminValidationEvidenceController,
     AdminReleaseReadinessController,
+    AdminMenuHistoryController,
     AdminController,
     BusinessOrdersController,
     RestaurantsController,

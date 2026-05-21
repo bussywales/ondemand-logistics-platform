@@ -196,12 +196,14 @@ Show:
 - read-only support escalation overview
 - support escalation counts in the top command posture
 - support records closed today in the closeout posture
+- link to `/admin/menu-history` for read-only investigation of merchant menu edits across organisations
 
 Say:
 - this is deterministic command intelligence for platform oversight
 - it helps admins spot which organisations need support without silently taking action
 - support escalation visibility is oversight-only for admins in this pass; business operators still own direct follow-up unless delegated
 - business operators close support records with a resolution note and final action; ShipWright records the support history as append-only audit context but does not message, refund, cancel, or assign automatically
+- platform support can inspect menu change history for pilot troubleshooting, but admins cannot mutate or roll back merchant menus from the history view
 
 ### 9B. Driver readiness
 Open:

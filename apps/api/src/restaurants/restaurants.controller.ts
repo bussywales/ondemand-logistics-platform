@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
+import { PlatformAdminGuard } from "../security/platform-admin.guard.js";
 import { Public } from "../security/public.decorator.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
@@ -96,6 +97,17 @@ export class RestaurantsController {
   @Get(":restaurantId/menu")
   async getRestaurantMenu(@Param("restaurantId") restaurantId: string, @RequestUser() user: AuthenticatedUser) {
     return this.restaurantsService.getRestaurantMenu(restaurantId, user.id);
+  }
+}
+
+@UseGuards(PlatformAdminGuard)
+@Controller("v1/admin/menu-history")
+export class AdminMenuHistoryController {
+  constructor(private readonly restaurantsService: RestaurantsService) {}
+
+  @Get()
+  async getAdminMenuHistory(@Query() query: Record<string, string | undefined>) {
+    return this.restaurantsService.getAdminMenuHistory(query);
   }
 }
 

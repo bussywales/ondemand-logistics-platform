@@ -584,6 +584,77 @@ describe("RestaurantsService", () => {
     );
   });
 
+  it("lists admin menu history across organisations with filters", async () => {
+    const createdAt = new Date("2026-05-21T10:00:00.000Z");
+    const pg = {
+      query: vi.fn().mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: 42,
+            org_id: ORG_ID,
+            org_name: "Pilot Org",
+            restaurant_id: RESTAURANT_ID,
+            restaurant_name: "Pilot Kitchen",
+            actor_name: "Operator One",
+            actor_email: "operator@example.com",
+            entity_type: "menu_item",
+            entity_id: ITEM_ID,
+            action: "menu_item_updated",
+            metadata: {
+              restaurantId: RESTAURANT_ID,
+              itemName: "Chicken Wrap",
+              changedFields: ["isActive"],
+              previous: { isActive: true },
+              next: { isActive: false }
+            },
+            created_at: createdAt,
+            category_name: null,
+            item_name: "Chicken Wrap"
+          }
+        ]
+      })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.getAdminMenuHistory({
+      orgId: ORG_ID,
+      restaurantId: RESTAURANT_ID,
+      eventType: "MENU_ITEM_VISIBILITY_UPDATED",
+      resourceType: "item",
+      from: "2026-05-21T00:00:00.000Z",
+      to: "2026-05-22T00:00:00.000Z",
+      limit: "25"
+    });
+
+    const [sql, params] = pg.query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("from public.audit_log");
+    expect(sql).toContain("left join public.orgs");
+    expect(sql).toContain("a.org_id = $2");
+    expect(sql).toContain("a.metadata->>'restaurantId' = $3");
+    expect(sql).toContain("a.entity_type = 'menu_item'");
+    expect(sql).toContain("a.created_at >= $4");
+    expect(sql).toContain("a.created_at <= $5");
+    expect(params).toEqual([
+      ["menu_category_created", "menu_category_updated", "menu_item_created", "menu_item_updated"],
+      ORG_ID,
+      RESTAURANT_ID,
+      "2026-05-21T00:00:00.000Z",
+      "2026-05-22T00:00:00.000Z",
+      125
+    ]);
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({
+        orgId: ORG_ID,
+        orgName: "Pilot Org",
+        restaurantId: RESTAURANT_ID,
+        restaurantName: "Pilot Kitchen",
+        eventType: "MENU_ITEM_VISIBILITY_UPDATED",
+        summary: "Chicken Wrap was hidden from the public menu."
+      })
+    );
+  });
+
   it("rejects invalid menu item prices", async () => {
     const service = new RestaurantsService({ query: vi.fn() } as never, {} as never);
 

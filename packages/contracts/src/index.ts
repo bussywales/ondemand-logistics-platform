@@ -928,6 +928,19 @@ export const MenuHistorySchema = z.object({
 });
 export type MenuHistoryDto = z.infer<typeof MenuHistorySchema>;
 
+export const AdminMenuHistoryEventSchema = MenuHistoryEventSchema.extend({
+  orgId: z.string().nullable(),
+  orgName: z.string().nullable(),
+  restaurantId: z.string().nullable(),
+  restaurantName: z.string().nullable()
+});
+export type AdminMenuHistoryEventDto = z.infer<typeof AdminMenuHistoryEventSchema>;
+
+export const AdminMenuHistorySchema = z.object({
+  items: z.array(AdminMenuHistoryEventSchema)
+});
+export type AdminMenuHistoryDto = z.infer<typeof AdminMenuHistorySchema>;
+
 export const CustomerOrderStatusSchema = z.enum(["SUBMITTED", "PAYMENT_AUTHORIZED", "PAYMENT_FAILED", "FULFILLED"]);
 export type CustomerOrderStatus = z.infer<typeof CustomerOrderStatusSchema>;
 

@@ -17,6 +17,7 @@ describe("product updates content", () => {
   it("includes the current key product updates", () => {
     expect(productUpdates.map((update) => update.id)).toEqual(
       expect.arrayContaining([
+        "admin-menu-history",
         "merchant-menu-audit-history",
         "merchant-menu-availability-reordering",
         "operational-reset-tools",

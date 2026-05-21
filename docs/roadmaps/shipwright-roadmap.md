@@ -177,12 +177,15 @@ Implemented scope:
 - menu item updates write audit records with changed field names
 - `/app/restaurant` includes recent menu history so operators can review price, visibility, section, and ordering changes
 - `GET /v1/business/restaurants/:restaurantId/menu-history` reads menu-specific events from the existing append-only audit log
+- `/admin/menu-history` gives platform admins read-only cross-org visibility into menu price, visibility, section, and ordering changes for pilot support
+- `GET /v1/admin/menu-history` reads the existing append-only audit log with org, restaurant, event, resource, date, and limit filters
 
 Constraints:
 - no destructive menu deletion in this pass
 - no bulk import/export yet
 - no historical menu price ledger yet
 - no rollback from audit history in v1
+- no admin menu mutation or rollback from the cross-org history view
 - no public checkout behaviour change beyond reading the updated menu data
 
 ## Workstream 5: Driver Fleet Organisations

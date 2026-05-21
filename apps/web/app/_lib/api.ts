@@ -6,6 +6,7 @@ import type {
   AdminOrderSummary,
   AdminOutboxItem,
   AdminOverview,
+  AdminMenuHistory,
   AppJob,
   DailyBriefing,
   EndOfDayReport,
@@ -178,6 +179,7 @@ type RestaurantMenuResponse = {
 
 type PublicRestaurantMenuResponse = PublicRestaurantMenu;
 type MenuHistoryResponse = MenuHistory;
+type AdminMenuHistoryResponse = AdminMenuHistory;
 
 type SubmitCustomerOrderResponse = CustomerOrderSubmission;
 
@@ -601,6 +603,32 @@ export async function getRestaurantMenu(session: BusinessSession, restaurantId: 
 
 export async function getRestaurantMenuHistory(session: BusinessSession, restaurantId: string): Promise<MenuHistory> {
   return apiFetch<MenuHistoryResponse>(session, `/v1/business/restaurants/${restaurantId}/menu-history`, {
+    method: "GET"
+  });
+}
+
+export async function listAdminMenuHistory(
+  session: BusinessSession,
+  filters: {
+    orgId?: string;
+    restaurantId?: string;
+    eventType?: string;
+    resourceType?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+  } = {}
+): Promise<AdminMenuHistory> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    params.set(key, String(value));
+  }
+
+  const query = params.toString();
+  return apiFetch<AdminMenuHistoryResponse>(session, `/v1/admin/menu-history${query ? `?${query}` : ""}`, {
     method: "GET"
   });
 }

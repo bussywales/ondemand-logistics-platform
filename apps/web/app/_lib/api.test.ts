@@ -30,6 +30,7 @@ import {
   listAdminDriverReadiness,
   listAdminFleetDrivers,
   listAdminFleets,
+  listAdminMenuHistory,
   listAdminOrgs,
   listAdminUsers,
   listAdminPayments,
@@ -286,6 +287,52 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-history');
     expect(init.method).toBe('GET');
     expect(history.items[0]?.eventType).toBe('MENU_ITEM_PRICE_UPDATED');
+  });
+
+  it('reads admin menu history with filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: 'audit-1',
+              orgId: 'org-1',
+              orgName: 'Pilot Org',
+              restaurantId: 'restaurant-1',
+              restaurantName: 'Pilot Kitchen',
+              eventType: 'MENU_ITEM_VISIBILITY_UPDATED',
+              actorName: null,
+              actorEmail: 'operator@example.com',
+              createdAt: new Date().toISOString(),
+              summary: 'Chicken wrap visibility changed to Hidden.',
+              resourceType: 'item',
+              resourceName: 'Chicken wrap',
+              changedFields: ['isActive'],
+              metadata: { previous: { isActive: true }, next: { isActive: false } }
+            }
+          ]
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const history = await listAdminMenuHistory(session, {
+      orgId: 'org-1',
+      restaurantId: 'restaurant-1',
+      eventType: 'MENU_ITEM_VISIBILITY_UPDATED',
+      resourceType: 'item',
+      limit: 25
+    });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/admin/menu-history?');
+    expect(url).toContain('orgId=org-1');
+    expect(url).toContain('restaurantId=restaurant-1');
+    expect(url).toContain('eventType=MENU_ITEM_VISIBILITY_UPDATED');
+    expect(url).toContain('resourceType=item');
+    expect(url).toContain('limit=25');
+    expect(init.method).toBe('GET');
+    expect(history.items[0]?.orgName).toBe('Pilot Org');
   });
 
   it('reads a public restaurant menu by slug without bearer auth', async () => {

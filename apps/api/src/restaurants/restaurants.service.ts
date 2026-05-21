@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
+  AdminMenuHistorySchema,
   CreateMenuCategorySchema,
   CreateMenuItemSchema,
   CreateRestaurantSchema,
@@ -25,6 +26,8 @@ import {
   SubmitCustomerOrderSchema,
   UpdateMenuItemSchema,
   UpdateMenuCategorySchema,
+  type AdminMenuHistoryDto,
+  type AdminMenuHistoryEventDto,
   type MenuCategoryDto,
   type MenuHistoryDto,
   type MenuHistoryEventDto,
@@ -96,6 +99,13 @@ type MenuHistoryRow = {
   created_at: string | Date;
   category_name: string | null;
   item_name: string | null;
+};
+
+type AdminMenuHistoryRow = MenuHistoryRow & {
+  org_id: string | null;
+  org_name: string | null;
+  restaurant_id: string | null;
+  restaurant_name: string | null;
 };
 
 type CustomerOrderRow = {
@@ -217,6 +227,18 @@ const PILOT_ORDER_PICKUP_LATITUDE = Number(process.env.PILOT_ORDER_PICKUP_LATITU
 const PILOT_ORDER_PICKUP_LONGITUDE = Number(process.env.PILOT_ORDER_PICKUP_LONGITUDE ?? "-0.1099");
 const PILOT_ORDER_DROPOFF_LATITUDE = Number(process.env.PILOT_ORDER_DROPOFF_LATITUDE ?? "51.5396");
 const PILOT_ORDER_DROPOFF_LONGITUDE = Number(process.env.PILOT_ORDER_DROPOFF_LONGITUDE ?? "-0.1026");
+const MENU_AUDIT_ACTIONS = ["menu_category_created", "menu_category_updated", "menu_item_created", "menu_item_updated"];
+const MENU_HISTORY_EVENT_TYPES: MenuHistoryEventType[] = [
+  "MENU_CATEGORY_CREATED",
+  "MENU_CATEGORY_UPDATED",
+  "MENU_CATEGORY_REORDERED",
+  "MENU_ITEM_CREATED",
+  "MENU_ITEM_UPDATED",
+  "MENU_ITEM_PRICE_UPDATED",
+  "MENU_ITEM_VISIBILITY_UPDATED",
+  "MENU_ITEM_REORDERED",
+  "MENU_ITEM_MOVED_CATEGORY"
+];
 
 function normalizeRestaurantSlug(value: string) {
   return value
@@ -913,6 +935,92 @@ export class RestaurantsService {
     });
   }
 
+  async getAdminMenuHistory(query: Record<string, unknown> = {}): Promise<AdminMenuHistoryDto> {
+    const filters: string[] = [
+      `a.action = any($1)`,
+      `a.entity_type in ('menu_category', 'menu_item')`
+    ];
+    const values: unknown[] = [MENU_AUDIT_ACTIONS];
+    const addValue = (value: unknown) => {
+      values.push(value);
+      return `$${values.length}`;
+    };
+    const readFilter = (key: string) => (typeof query[key] === "string" && query[key].trim() ? query[key].trim() : null);
+    const orgId = readFilter("orgId");
+    const restaurantId = readFilter("restaurantId");
+    const resourceType = readFilter("resourceType");
+    const eventType = readFilter("eventType");
+    const from = readFilter("from");
+    const to = readFilter("to");
+    const requestedLimit = Number(readFilter("limit") ?? 50);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100) : 50;
+    const queryLimit = eventType ? Math.min(limit * 5, 250) : limit;
+
+    if (orgId) {
+      filters.push(`a.org_id = ${addValue(orgId)}`);
+    }
+
+    if (restaurantId) {
+      filters.push(`a.metadata->>'restaurantId' = ${addValue(restaurantId)}`);
+    }
+
+    if (resourceType === "category") {
+      filters.push(`a.entity_type = 'menu_category'`);
+    } else if (resourceType === "item") {
+      filters.push(`a.entity_type = 'menu_item'`);
+    }
+
+    if (from) {
+      filters.push(`a.created_at >= ${addValue(from)}`);
+    }
+
+    if (to) {
+      filters.push(`a.created_at <= ${addValue(to)}`);
+    }
+
+    const result = await this.pg.query<AdminMenuHistoryRow>(
+      `select
+          a.id,
+          a.org_id,
+          o.name as org_name,
+          r.id as restaurant_id,
+          r.name as restaurant_name,
+          u.display_name as actor_name,
+          u.email as actor_email,
+          a.entity_type,
+          a.entity_id,
+          a.action,
+          a.metadata,
+          a.created_at,
+          mc.name as category_name,
+          mi.name as item_name
+       from public.audit_log a
+       left join public.orgs o on o.id = a.org_id
+       left join public.restaurants r on r.id::text = a.metadata->>'restaurantId'
+       left join public.users u on u.id = a.actor_id
+       left join public.menu_categories mc
+         on a.entity_type = 'menu_category'
+        and mc.id = a.entity_id
+       left join public.menu_items mi
+         on a.entity_type = 'menu_item'
+        and mi.id = a.entity_id
+       where ${filters.join("\n         and ")}
+       order by a.created_at desc
+       limit ${addValue(queryLimit)}`,
+      values
+    );
+
+    const normalizedEventType = MENU_HISTORY_EVENT_TYPES.includes(eventType as MenuHistoryEventType)
+      ? (eventType as MenuHistoryEventType)
+      : null;
+    const items = result.rows
+      .map((row) => this.mapAdminMenuHistoryRow(row))
+      .filter((item) => !normalizedEventType || item.eventType === normalizedEventType)
+      .slice(0, limit);
+
+    return AdminMenuHistorySchema.parse({ items });
+  }
+
   async getPublicRestaurantMenu(slug: string): Promise<PublicRestaurantMenuDto> {
     const restaurantResult = await this.pg.query<RestaurantRow>(
       `select id, org_id, name, slug, status, created_at, updated_at
@@ -1569,6 +1677,16 @@ export class RestaurantsService {
       resourceName,
       changedFields,
       metadata
+    };
+  }
+
+  private mapAdminMenuHistoryRow(row: AdminMenuHistoryRow): AdminMenuHistoryEventDto {
+    return {
+      ...this.mapMenuHistoryRow(row),
+      orgId: row.org_id,
+      orgName: row.org_name,
+      restaurantId: row.restaurant_id,
+      restaurantName: row.restaurant_name
     };
   }
 

@@ -375,6 +375,17 @@ export type MenuHistory = {
   items: MenuHistoryEvent[];
 };
 
+export type AdminMenuHistoryEvent = MenuHistoryEvent & {
+  orgId: string | null;
+  orgName: string | null;
+  restaurantId: string | null;
+  restaurantName: string | null;
+};
+
+export type AdminMenuHistory = {
+  items: AdminMenuHistoryEvent[];
+};
+
 export type CustomerCheckoutDetails = {
   name: string;
   email: string;
