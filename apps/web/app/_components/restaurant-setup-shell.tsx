@@ -14,9 +14,11 @@ import {
   createMenuItem,
   createRestaurant,
   ApiRequestError,
+  applyMenuRollback,
   getRestaurantMenu,
   getRestaurantMenuHistory,
   listRestaurants,
+  previewMenuRollback,
   updateMenuCategory,
   updateMenuItem
 } from "../_lib/api";
@@ -25,6 +27,7 @@ import {
   formatDateTime,
   type BusinessSession,
   type MenuHistoryEvent,
+  type MenuRollbackPreview,
   type MenuItemSummary,
   type RestaurantMenu,
   type RestaurantSummary
@@ -243,7 +246,9 @@ function getMenuHistoryLabel(eventType: MenuHistoryEvent["eventType"]) {
     MENU_ITEM_PRICE_UPDATED: "Price updated",
     MENU_ITEM_VISIBILITY_UPDATED: "Visibility updated",
     MENU_ITEM_REORDERED: "Item reordered",
-    MENU_ITEM_MOVED_CATEGORY: "Item moved"
+    MENU_ITEM_MOVED_CATEGORY: "Item moved",
+    MENU_CATEGORY_ROLLBACK_APPLIED: "Section rollback applied",
+    MENU_ITEM_ROLLBACK_APPLIED: "Item rollback applied"
   };
 
   return labels[eventType];
@@ -279,7 +284,66 @@ function moveListItem<T extends { id: string }>(items: T[], itemId: string, dire
   return next;
 }
 
-export function MenuHistoryPanel({ events }: { events: MenuHistoryEvent[] }) {
+function formatRollbackValue(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return "Blank";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
+function mapRollbackError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "Could not apply rollback. Refresh and try again.";
+  }
+
+  if (error.message === "invalid_menu_rollback_payload") {
+    return "Type ROLLBACK MENU CHANGE to confirm this rollback.";
+  }
+
+  if (error.message === "menu_rollback_not_available") {
+    return "Rollback is not available for this history event.";
+  }
+
+  if (error.message === "menu_rollback_current_state_changed") {
+    return "The menu changed since this history event. Refresh and review the latest menu state before retrying.";
+  }
+
+  return "Could not apply rollback. Refresh and try again.";
+}
+
+type MenuRollbackState = {
+  activeAuditId: string | null;
+  applying: boolean;
+  confirmation: string;
+  error: string | null;
+  loading: boolean;
+  preview: MenuRollbackPreview | null;
+};
+
+export function MenuHistoryPanel({
+  events,
+  onApplyRollback,
+  onCancelRollback,
+  onConfirmationChange,
+  onPreviewRollback,
+  rollbackState
+}: {
+  events: MenuHistoryEvent[];
+  onApplyRollback?: () => void;
+  onCancelRollback?: () => void;
+  onConfirmationChange?: (value: string) => void;
+  onPreviewRollback?: (event: MenuHistoryEvent) => void;
+  rollbackState?: MenuRollbackState;
+}) {
   return (
     <section className="sw-supporting-surface merchant-menu-history">
       <div className="merchant-panel-heading">
@@ -288,7 +352,7 @@ export function MenuHistoryPanel({ events }: { events: MenuHistoryEvent[] }) {
           <h2>Menu history</h2>
           <p>Recent menu changes, who made them, and what changed.</p>
           <p className="ops-detail-note">
-            Rollback is not active yet. These labels show whether each change has enough audit data for future human-reviewed rollback.
+            Prepared changes can be rolled back after preview and typed confirmation. Create events and older rows remain read-only.
           </p>
         </div>
       </div>
@@ -317,6 +381,93 @@ export function MenuHistoryPanel({ events }: { events: MenuHistoryEvent[] }) {
                   {event.actorName ?? event.actorEmail ?? "Unknown actor"} · {formatDateTime(event.createdAt)}
                 </p>
                 <p className="ops-detail-note">{event.rollbackReason}</p>
+                {event.rollbackReadiness === "ROLLBACK_PREPARED" && onPreviewRollback ? (
+                  <div className="merchant-actions">
+                    <button
+                      className="button button-secondary"
+                      disabled={rollbackState?.loading || rollbackState?.applying}
+                      onClick={() => onPreviewRollback(event)}
+                      type="button"
+                    >
+                      {rollbackState?.activeAuditId === event.id && rollbackState.loading ? "Loading preview..." : "Preview rollback"}
+                    </button>
+                  </div>
+                ) : null}
+                {rollbackState?.activeAuditId === event.id ? (
+                  <div className="sw-supporting-surface merchant-rollback-preview">
+                    {rollbackState.loading ? (
+                      <p className="ops-detail-note">Preparing rollback preview...</p>
+                    ) : rollbackState.preview ? (
+                      <>
+                        <div className="merchant-panel-heading">
+                          <div>
+                            <p className="eyebrow">Rollback preview</p>
+                            <h3>{rollbackState.preview.eligible ? "Review the fields to restore" : "Rollback unavailable"}</h3>
+                            <p>{rollbackState.preview.reason}</p>
+                          </div>
+                        </div>
+                        {rollbackState.preview.fields.length ? (
+                          <div className="merchant-history-list">
+                            {rollbackState.preview.fields.map((field) => (
+                              <div className="sw-list-row" key={field.field}>
+                                <div>
+                                  <strong>{field.field}</strong>
+                                  <p className="ops-detail-note">
+                                    Current: {formatRollbackValue(field.currentValue)} · Rollback: {formatRollbackValue(field.rollbackValue)}
+                                  </p>
+                                  <p className="ops-detail-note">Audited new value: {formatRollbackValue(field.expectedValue)}</p>
+                                </div>
+                                <span className={field.willChange ? "sw-badge sw-badge--warning" : "sw-badge sw-badge--neutral"}>
+                                  {field.willChange ? "Will change" : "No change"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {rollbackState.preview.warnings.length ? (
+                          <div className="merchant-error" role="alert">
+                            {rollbackState.preview.warnings.map((warning) => (
+                              <p key={warning}>{warning}</p>
+                            ))}
+                          </div>
+                        ) : null}
+                        {rollbackState.error ? <p className="form-error-text" role="alert">{rollbackState.error}</p> : null}
+                        {rollbackState.preview.eligible ? (
+                          <div className="merchant-form">
+                            <label>
+                              <span>Typed confirmation</span>
+                              <input
+                                disabled={rollbackState.applying}
+                                onChange={(inputEvent) => onConfirmationChange?.(inputEvent.target.value)}
+                                placeholder="ROLLBACK MENU CHANGE"
+                                value={rollbackState.confirmation}
+                              />
+                            </label>
+                            <div className="merchant-actions">
+                              <button
+                                className="button button-primary"
+                                disabled={rollbackState.applying || rollbackState.confirmation !== "ROLLBACK MENU CHANGE"}
+                                onClick={onApplyRollback}
+                                type="button"
+                              >
+                                {rollbackState.applying ? "Applying rollback..." : "Apply rollback"}
+                              </button>
+                              <button className="button button-secondary" disabled={rollbackState.applying} onClick={onCancelRollback} type="button">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="merchant-actions">
+                            <button className="button button-secondary" onClick={onCancelRollback} type="button">
+                              Close preview
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <div className="merchant-history-fields">
                 {event.changedFields.length > 0 ? (
@@ -534,6 +685,14 @@ export function RestaurantSetupShell() {
   const [editingSubmitting, setEditingSubmitting] = useState(false);
   const [editForm, setEditForm] = useState<MenuItemEditForm | null>(null);
   const [reorderingKey, setReorderingKey] = useState<string | null>(null);
+  const [rollbackState, setRollbackState] = useState<MenuRollbackState>({
+    activeAuditId: null,
+    applying: false,
+    confirmation: "",
+    error: null,
+    loading: false,
+    preview: null
+  });
   const [restaurantForm, setRestaurantForm] = useState({ name: "", slug: "", slugManuallyEdited: false });
   const [categoryForm, setCategoryForm] = useState({ name: "", sortOrder: 0 });
   const [itemForm, setItemForm] = useState({
@@ -840,6 +999,81 @@ export function RestaurantSetupShell() {
     } finally {
       setReorderingKey(null);
     }
+  }
+
+  async function handlePreviewRollback(event: MenuHistoryEvent) {
+    if (!session || !selectedRestaurantId) {
+      return;
+    }
+
+    setRollbackState({
+      activeAuditId: event.id,
+      applying: false,
+      confirmation: "",
+      error: null,
+      loading: true,
+      preview: null
+    });
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const preview = await previewMenuRollback(session, selectedRestaurantId, event.id);
+      setRollbackState((current) => ({
+        ...current,
+        loading: false,
+        preview
+      }));
+    } catch (issue) {
+      setRollbackState((current) => ({
+        ...current,
+        error: mapRollbackError(issue),
+        loading: false
+      }));
+    }
+  }
+
+  async function handleApplyRollback() {
+    if (!session || !selectedRestaurantId || !rollbackState.activeAuditId) {
+      return;
+    }
+
+    setRollbackState((current) => ({ ...current, applying: true, error: null }));
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await applyMenuRollback(session, selectedRestaurantId, rollbackState.activeAuditId, {
+        confirmation: rollbackState.confirmation
+      });
+      await loadMenu(session, selectedRestaurantId);
+      setRollbackState({
+        activeAuditId: null,
+        applying: false,
+        confirmation: "",
+        error: null,
+        loading: false,
+        preview: null
+      });
+      setSuccess(`Menu rollback applied for ${result.restoredFields.join(", ")}.`);
+    } catch (issue) {
+      setRollbackState((current) => ({
+        ...current,
+        applying: false,
+        error: mapRollbackError(issue)
+      }));
+    }
+  }
+
+  function handleCancelRollback() {
+    setRollbackState({
+      activeAuditId: null,
+      applying: false,
+      confirmation: "",
+      error: null,
+      loading: false,
+      preview: null
+    });
   }
 
   async function handleRefresh() {
@@ -1372,7 +1606,14 @@ export function RestaurantSetupShell() {
             )}
           </section>
 
-          <MenuHistoryPanel events={menuHistory} />
+          <MenuHistoryPanel
+            events={menuHistory}
+            onApplyRollback={handleApplyRollback}
+            onCancelRollback={handleCancelRollback}
+            onConfirmationChange={(confirmation) => setRollbackState((current) => ({ ...current, confirmation }))}
+            onPreviewRollback={handlePreviewRollback}
+            rollbackState={rollbackState}
+          />
         </div>
       </section>
     </main>

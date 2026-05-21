@@ -32,6 +32,9 @@ import {
   IdentityOrgMembersSchema,
   IdentityUserListSchema,
   MenuHistorySchema,
+  MenuRollbackPreviewSchema,
+  ApplyMenuRollbackSchema,
+  MenuRollbackResultSchema,
   PaginatedJobsSchema,
   PaymentStatusSchema,
   PilotReadinessCheckListSchema,
@@ -204,7 +207,7 @@ describe("Menu item schemas", () => {
           resourceName: "Chicken wrap",
           changedFields: ["priceCents"],
           rollbackReadiness: "ROLLBACK_PREPARED",
-          rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+          rollbackReason: "This event has previous and new values for reversible menu fields and can be previewed before rollback.",
           reversibleFields: ["priceCents"],
           metadata: { previous: { priceCents: 1299 }, next: { priceCents: 1499 } }
         }
@@ -232,7 +235,7 @@ describe("Menu item schemas", () => {
           resourceName: "Chicken wrap",
           changedFields: ["isActive"],
           rollbackReadiness: "ROLLBACK_PREPARED",
-          rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+          rollbackReason: "This event has previous and new values for reversible menu fields and can be previewed before rollback.",
           reversibleFields: ["isActive"],
           metadata: { previous: { isActive: true }, next: { isActive: false } }
         }
@@ -240,6 +243,43 @@ describe("Menu item schemas", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+
+  it("parses menu rollback preview and execution contracts", () => {
+    const preview = MenuRollbackPreviewSchema.safeParse({
+      auditId: "123",
+      eligible: true,
+      reason: "Rollback can restore the recorded previous values.",
+      eventType: "MENU_ITEM_PRICE_UPDATED",
+      resourceType: "item",
+      resourceId: "item-1",
+      resourceName: "Chicken wrap",
+      fields: [
+        {
+          field: "priceCents",
+          currentValue: 1499,
+          expectedValue: 1499,
+          rollbackValue: 1299,
+          willChange: true
+        }
+      ],
+      warnings: []
+    });
+
+    expect(preview.success).toBe(true);
+    expect(ApplyMenuRollbackSchema.safeParse({ confirmation: "ROLLBACK MENU CHANGE" }).success).toBe(true);
+    expect(ApplyMenuRollbackSchema.safeParse({ confirmation: "rollback" }).success).toBe(false);
+    expect(
+      MenuRollbackResultSchema.safeParse({
+        auditId: "123",
+        rollbackAuditId: "124",
+        resourceType: "item",
+        resourceId: "item-1",
+        restoredFields: ["priceCents"],
+        warnings: [],
+        appliedAt: new Date().toISOString()
+      }).success
+    ).toBe(true);
   });
 });
 

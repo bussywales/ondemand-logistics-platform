@@ -94,6 +94,33 @@ export class RestaurantsController {
     return this.restaurantsService.getRestaurantMenuHistory(restaurantId, user.id);
   }
 
+  @Post(":restaurantId/menu-history/:auditId/rollback-preview")
+  async getMenuRollbackPreview(
+    @Param("restaurantId") restaurantId: string,
+    @Param("auditId") auditId: string,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.restaurantsService.getMenuRollbackPreview(restaurantId, auditId, user.id);
+  }
+
+  @Post(":restaurantId/menu-history/:auditId/rollback")
+  async applyMenuRollback(
+    @Param("restaurantId") restaurantId: string,
+    @Param("auditId") auditId: string,
+    @Body() body: unknown,
+    @IdempotencyKey() idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.restaurantsService.applyMenuRollback(restaurantId, auditId, body, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
   @Get(":restaurantId/menu")
   async getRestaurantMenu(@Param("restaurantId") restaurantId: string, @RequestUser() user: AuthenticatedUser) {
     return this.restaurantsService.getRestaurantMenu(restaurantId, user.id);

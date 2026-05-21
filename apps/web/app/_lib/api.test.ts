@@ -47,6 +47,8 @@ import {
   listFleetDrivers,
   markAllBusinessNotificationsRead,
   markBusinessNotificationRead,
+  applyMenuRollback,
+  previewMenuRollback,
   previewAdminOperationalReset,
   rejectDriverOffer,
   transitionDriverJob,
@@ -275,7 +277,7 @@ describe('authorizePayment', () => {
               resourceName: 'Chicken wrap',
               changedFields: ['priceCents'],
               rollbackReadiness: 'ROLLBACK_PREPARED',
-              rollbackReason: 'This event has previous and new values for reversible menu fields. Rollback is not active yet.',
+              rollbackReason: 'This event has previous and new values for reversible menu fields and can be previewed before rollback.',
               reversibleFields: ['priceCents'],
               metadata: { previous: { priceCents: 1299 }, next: { priceCents: 1499 } }
             }
@@ -290,6 +292,70 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-history');
     expect(init.method).toBe('GET');
     expect(history.items[0]?.eventType).toBe('MENU_ITEM_PRICE_UPDATED');
+  });
+
+  it('previews a prepared menu rollback with an idempotency key', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          auditId: 'audit-1',
+          eligible: true,
+          reason: 'Rollback can restore the recorded previous values.',
+          eventType: 'MENU_ITEM_PRICE_UPDATED',
+          resourceType: 'item',
+          resourceId: 'item-1',
+          resourceName: 'Chicken wrap',
+          fields: [
+            {
+              field: 'priceCents',
+              currentValue: 1499,
+              expectedValue: 1499,
+              rollbackValue: 1299,
+              willChange: true
+            }
+          ],
+          warnings: []
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const preview = await previewMenuRollback(session, 'restaurant-1', 'audit-1');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-history/audit-1/rollback-preview');
+    expect(init.method).toBe('POST');
+    expect(init.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.stringMatching(/^idem-[0-9a-f-]+-menu-rollback-preview$/) }));
+    expect(init.body).toBe(JSON.stringify({}));
+    expect(preview.fields[0]?.rollbackValue).toBe(1299);
+  });
+
+  it('applies a prepared menu rollback with typed confirmation and an idempotency key', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          auditId: 'audit-1',
+          rollbackAuditId: 'audit-rollback-1',
+          resourceType: 'item',
+          resourceId: 'item-1',
+          restoredFields: ['priceCents'],
+          warnings: [],
+          appliedAt: new Date().toISOString()
+        })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await applyMenuRollback(session, 'restaurant-1', 'audit-1', {
+      confirmation: 'ROLLBACK MENU CHANGE'
+    });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/business/restaurants/restaurant-1/menu-history/audit-1/rollback');
+    expect(init.method).toBe('POST');
+    expect(init.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.stringMatching(/^idem-[0-9a-f-]+-menu-rollback$/) }));
+    expect(init.body).toBe(JSON.stringify({ confirmation: 'ROLLBACK MENU CHANGE' }));
+    expect(result.restoredFields).toEqual(['priceCents']);
   });
 
   it('reads admin menu history with filters', async () => {
@@ -313,7 +379,7 @@ describe('authorizePayment', () => {
               resourceName: 'Chicken wrap',
               changedFields: ['isActive'],
               rollbackReadiness: 'ROLLBACK_PREPARED',
-              rollbackReason: 'This event has previous and new values for reversible menu fields. Rollback is not active yet.',
+              rollbackReason: 'This event has previous and new values for reversible menu fields and can be previewed before rollback.',
               reversibleFields: ['isActive'],
               metadata: { previous: { isActive: true }, next: { isActive: false } }
             }

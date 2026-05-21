@@ -204,7 +204,9 @@ Say:
 - support escalation visibility is oversight-only for admins in this pass; business operators still own direct follow-up unless delegated
 - business operators close support records with a resolution note and final action; ShipWright records the support history as append-only audit context but does not message, refund, cancel, or assign automatically
 - platform support can inspect menu change history for pilot troubleshooting, but admins cannot mutate or roll back merchant menus from the history view
-- menu history now labels whether a change has enough structured metadata for future rollback; rollback itself remains inactive and human-reviewed by design
+- menu history now labels whether a change has enough structured metadata for rollback
+- business operators can preview prepared rollback events and must type `ROLLBACK MENU CHANGE` before ShipWright restores the audited previous values
+- rollback is human-reviewed and audit-backed; it does not delete menu records and remains unavailable from the admin cross-org history view
 
 ### 9B. Driver readiness
 Open:

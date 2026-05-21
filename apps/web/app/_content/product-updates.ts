@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "merchant-menu-rollback",
+    title: "Menu rollback is available for prepared changes",
+    summary: "Restaurant operators can now preview and apply rollback for prepared menu history events with typed confirmation and a full audit trail.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/restaurant", "/admin/menu-history"],
+    releasedAt: "2026-05-21T18:00:00.000Z",
+    version: "v2.6",
+    ctaLabel: "Open menu history",
+    ctaHref: "/app/restaurant"
+  },
+  {
     id: "merchant-menu-rollback-prep",
     title: "Menu rollback readiness is now labelled",
     summary: "Menu history now shows whether price, visibility, section, and ordering changes have enough audit metadata for future human-reviewed rollback.",

@@ -897,12 +897,14 @@ export const MenuHistoryEventTypeSchema = z.enum([
   "MENU_CATEGORY_CREATED",
   "MENU_CATEGORY_UPDATED",
   "MENU_CATEGORY_REORDERED",
+  "MENU_CATEGORY_ROLLBACK_APPLIED",
   "MENU_ITEM_CREATED",
   "MENU_ITEM_UPDATED",
   "MENU_ITEM_PRICE_UPDATED",
   "MENU_ITEM_VISIBILITY_UPDATED",
   "MENU_ITEM_REORDERED",
-  "MENU_ITEM_MOVED_CATEGORY"
+  "MENU_ITEM_MOVED_CATEGORY",
+  "MENU_ITEM_ROLLBACK_APPLIED"
 ]);
 export type MenuHistoryEventType = z.infer<typeof MenuHistoryEventTypeSchema>;
 
@@ -946,6 +948,44 @@ export const AdminMenuHistorySchema = z.object({
   items: z.array(AdminMenuHistoryEventSchema)
 });
 export type AdminMenuHistoryDto = z.infer<typeof AdminMenuHistorySchema>;
+
+export const MenuRollbackFieldSchema = z.object({
+  field: z.string(),
+  currentValue: z.unknown().nullable(),
+  expectedValue: z.unknown().nullable(),
+  rollbackValue: z.unknown().nullable(),
+  willChange: z.boolean()
+});
+export type MenuRollbackFieldDto = z.infer<typeof MenuRollbackFieldSchema>;
+
+export const MenuRollbackPreviewSchema = z.object({
+  auditId: z.string(),
+  eligible: z.boolean(),
+  reason: z.string(),
+  eventType: MenuHistoryEventTypeSchema.nullable(),
+  resourceType: MenuHistoryResourceTypeSchema.nullable(),
+  resourceId: z.string().nullable(),
+  resourceName: z.string().nullable(),
+  fields: z.array(MenuRollbackFieldSchema),
+  warnings: z.array(z.string())
+});
+export type MenuRollbackPreviewDto = z.infer<typeof MenuRollbackPreviewSchema>;
+
+export const ApplyMenuRollbackSchema = z.object({
+  confirmation: z.literal("ROLLBACK MENU CHANGE")
+});
+export type ApplyMenuRollbackInput = z.infer<typeof ApplyMenuRollbackSchema>;
+
+export const MenuRollbackResultSchema = z.object({
+  auditId: z.string(),
+  rollbackAuditId: z.string(),
+  resourceType: MenuHistoryResourceTypeSchema,
+  resourceId: z.string(),
+  restoredFields: z.array(z.string()),
+  warnings: z.array(z.string()),
+  appliedAt: IsoDateTimeSchema
+});
+export type MenuRollbackResultDto = z.infer<typeof MenuRollbackResultSchema>;
 
 export const CustomerOrderStatusSchema = z.enum(["SUBMITTED", "PAYMENT_AUTHORIZED", "PAYMENT_FAILED", "FULFILLED"]);
 export type CustomerOrderStatus = z.infer<typeof CustomerOrderStatusSchema>;

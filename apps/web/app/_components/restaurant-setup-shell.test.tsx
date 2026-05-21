@@ -192,19 +192,83 @@ describe("MenuHistoryPanel", () => {
             resourceName: "Chicken wrap",
             changedFields: ["priceCents"],
             rollbackReadiness: "ROLLBACK_PREPARED",
-            rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+            rollbackReason: "This event has previous and new values for reversible menu fields and can be previewed before rollback.",
             reversibleFields: ["priceCents"],
             metadata: {}
           }
         ]}
+        onApplyRollback={() => undefined}
+        onCancelRollback={() => undefined}
+        onConfirmationChange={() => undefined}
+        onPreviewRollback={() => undefined}
       />
     );
 
     expect(html).toContain("Menu history");
     expect(html).toContain("Price updated");
     expect(html).toContain("Rollback prepared");
-    expect(html).toContain("Rollback is not active yet.");
+    expect(html).toContain("Preview rollback");
     expect(html).toContain("Operator One");
+    expect(html).toContain("priceCents");
+  });
+
+  it("renders rollback preview and confirmation state", () => {
+    const html = renderToStaticMarkup(
+      <MenuHistoryPanel
+        events={[
+          {
+            id: "audit-1",
+            eventType: "MENU_ITEM_PRICE_UPDATED",
+            actorName: "Operator One",
+            actorEmail: "operator@example.com",
+            createdAt: "2026-05-21T10:00:00.000Z",
+            summary: "Chicken wrap price changed from £12.99 to £14.99.",
+            resourceType: "item",
+            resourceName: "Chicken wrap",
+            changedFields: ["priceCents"],
+            rollbackReadiness: "ROLLBACK_PREPARED",
+            rollbackReason: "This event has previous and new values for reversible menu fields and can be previewed before rollback.",
+            reversibleFields: ["priceCents"],
+            metadata: {}
+          }
+        ]}
+        onApplyRollback={() => undefined}
+        onCancelRollback={() => undefined}
+        onConfirmationChange={() => undefined}
+        onPreviewRollback={() => undefined}
+        rollbackState={{
+          activeAuditId: "audit-1",
+          applying: false,
+          confirmation: "",
+          error: null,
+          loading: false,
+          preview: {
+            auditId: "audit-1",
+            eligible: true,
+            reason: "Rollback can restore the recorded previous values.",
+            eventType: "MENU_ITEM_PRICE_UPDATED",
+            resourceType: "item",
+            resourceId: "item-1",
+            resourceName: "Chicken wrap",
+            fields: [
+              {
+                field: "priceCents",
+                currentValue: 1499,
+                expectedValue: 1499,
+                rollbackValue: 1299,
+                willChange: true
+              }
+            ],
+            warnings: []
+          }
+        }}
+      />
+    );
+
+    expect(html).toContain("Rollback preview");
+    expect(html).toContain("Review the fields to restore");
+    expect(html).toContain("Typed confirmation");
+    expect(html).toContain("Apply rollback");
     expect(html).toContain("priceCents");
   });
 

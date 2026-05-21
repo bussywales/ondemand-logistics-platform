@@ -159,7 +159,7 @@ Constraints:
 - no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
 
 ## Workstream 4: Merchant Menu Operations
-Status: Implemented through v1.4 for price editing, availability clarity, simple reordering, menu-specific audit visibility, and rollback-readiness preparation.
+Status: Implemented through v1.5 for price editing, availability clarity, simple reordering, menu-specific audit visibility, rollback readiness, and business-scoped rollback.
 
 Goal:
 Make restaurant menu management complete enough for controlled pilots by allowing authorised business users to update existing menu item details, especially price.
@@ -181,15 +181,17 @@ Implemented scope:
 - `GET /v1/admin/menu-history` reads the existing append-only audit log with org, restaurant, event, resource, date, and limit filters
 - menu history now classifies each change as rollback prepared, not reversible, or needing more metadata
 - menu mutation audit metadata consistently records restaurant/resource identity plus previous and new values for reversible fields where available
-- rollback remains inactive; this phase prepares metadata and display rules for a future human-reviewed rollback workflow
+- business operators can preview prepared menu history rollback from `/app/restaurant`
+- rollback execution requires typed confirmation, an idempotency key, current-state drift checks, and a scoped restaurant/org match
+- rollback writes a new append-only audit event (`menu_item_rollback_applied` or `menu_category_rollback_applied`) with original audit ID, restored fields, before/after state, and actor context
+- `/admin/menu-history` remains read-only and only indicates that rollback is available from the business workspace
 
 Constraints:
 - no destructive menu deletion in this pass
 - no bulk import/export yet
 - no historical menu price ledger yet
-- no rollback from audit history in v1
 - no admin menu mutation or rollback from the cross-org history view
-- future rollback must remain human-reviewed, scoped, and restricted to events with complete reversible metadata
+- rollback remains human-reviewed, scoped, and restricted to events with complete reversible metadata
 - no public checkout behaviour change beyond reading the updated menu data
 
 ## Workstream 5: Driver Fleet Organisations

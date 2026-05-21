@@ -21,7 +21,9 @@ const EVENT_OPTIONS: Array<{ label: string; value: MenuHistoryEventType }> = [
   { label: "Price updated", value: "MENU_ITEM_PRICE_UPDATED" },
   { label: "Visibility updated", value: "MENU_ITEM_VISIBILITY_UPDATED" },
   { label: "Item reordered", value: "MENU_ITEM_REORDERED" },
-  { label: "Item moved section", value: "MENU_ITEM_MOVED_CATEGORY" }
+  { label: "Item moved section", value: "MENU_ITEM_MOVED_CATEGORY" },
+  { label: "Category rollback applied", value: "MENU_CATEGORY_ROLLBACK_APPLIED" },
+  { label: "Item rollback applied", value: "MENU_ITEM_ROLLBACK_APPLIED" }
 ];
 
 function formatDate(value: string) {
@@ -80,6 +82,9 @@ function MenuHistoryRow(props: { event: AdminMenuHistoryEvent }) {
           {org} · {restaurant} · {actor}
         </p>
         <p className="ops-detail-note">{props.event.rollbackReason}</p>
+        {props.event.rollbackReadiness === "ROLLBACK_PREPARED" ? (
+          <p className="ops-detail-note">Rollback is available only from the merchant business workspace after preview and typed confirmation.</p>
+        ) : null}
         <div className="admin-demo-request-follow-up-meta">
           <span>Resource: {props.event.resourceName ?? props.event.resourceType}</span>
           <span>Org: {props.event.orgId ?? "not recorded"}</span>

@@ -61,6 +61,8 @@ import type {
   DispatchAttempt,
   MenuCategorySummary,
   MenuHistory,
+  MenuRollbackPreview,
+  MenuRollbackResult,
   MenuItemSummary,
   FleetDriver,
   FleetDriverList,
@@ -179,6 +181,8 @@ type RestaurantMenuResponse = {
 
 type PublicRestaurantMenuResponse = PublicRestaurantMenu;
 type MenuHistoryResponse = MenuHistory;
+type MenuRollbackPreviewResponse = MenuRollbackPreview;
+type MenuRollbackResultResponse = MenuRollbackResult;
 type AdminMenuHistoryResponse = AdminMenuHistory;
 
 type SubmitCustomerOrderResponse = CustomerOrderSubmission;
@@ -605,6 +609,39 @@ export async function getRestaurantMenuHistory(session: BusinessSession, restaur
   return apiFetch<MenuHistoryResponse>(session, `/v1/business/restaurants/${restaurantId}/menu-history`, {
     method: "GET"
   });
+}
+
+export async function previewMenuRollback(session: BusinessSession, restaurantId: string, auditId: string): Promise<MenuRollbackPreview> {
+  return apiFetch<MenuRollbackPreviewResponse>(
+    session,
+    `/v1/business/restaurants/${restaurantId}/menu-history/${auditId}/rollback-preview`,
+    {
+      method: "POST",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-menu-rollback-preview`
+      },
+      body: JSON.stringify({})
+    }
+  );
+}
+
+export async function applyMenuRollback(
+  session: BusinessSession,
+  restaurantId: string,
+  auditId: string,
+  input: { confirmation: string }
+): Promise<MenuRollbackResult> {
+  return apiFetch<MenuRollbackResultResponse>(
+    session,
+    `/v1/business/restaurants/${restaurantId}/menu-history/${auditId}/rollback`,
+    {
+      method: "POST",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-menu-rollback`
+      },
+      body: JSON.stringify(input)
+    }
+  );
 }
 
 export async function listAdminMenuHistory(

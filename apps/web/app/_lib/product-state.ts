@@ -349,12 +349,14 @@ export type MenuHistoryEventType =
   | "MENU_CATEGORY_CREATED"
   | "MENU_CATEGORY_UPDATED"
   | "MENU_CATEGORY_REORDERED"
+  | "MENU_CATEGORY_ROLLBACK_APPLIED"
   | "MENU_ITEM_CREATED"
   | "MENU_ITEM_UPDATED"
   | "MENU_ITEM_PRICE_UPDATED"
   | "MENU_ITEM_VISIBILITY_UPDATED"
   | "MENU_ITEM_REORDERED"
-  | "MENU_ITEM_MOVED_CATEGORY";
+  | "MENU_ITEM_MOVED_CATEGORY"
+  | "MENU_ITEM_ROLLBACK_APPLIED";
 
 export type MenuHistoryResourceType = "category" | "item";
 export type MenuRollbackReadiness = "ROLLBACK_PREPARED" | "NOT_REVERSIBLE" | "INSUFFICIENT_METADATA";
@@ -377,6 +379,36 @@ export type MenuHistoryEvent = {
 
 export type MenuHistory = {
   items: MenuHistoryEvent[];
+};
+
+export type MenuRollbackField = {
+  field: string;
+  currentValue: unknown | null;
+  expectedValue: unknown | null;
+  rollbackValue: unknown | null;
+  willChange: boolean;
+};
+
+export type MenuRollbackPreview = {
+  auditId: string;
+  eligible: boolean;
+  reason: string;
+  eventType: MenuHistoryEventType | null;
+  resourceType: MenuHistoryResourceType | null;
+  resourceId: string | null;
+  resourceName: string | null;
+  fields: MenuRollbackField[];
+  warnings: string[];
+};
+
+export type MenuRollbackResult = {
+  auditId: string;
+  rollbackAuditId: string;
+  resourceType: MenuHistoryResourceType;
+  resourceId: string;
+  restoredFields: string[];
+  warnings: string[];
+  appliedAt: string;
 };
 
 export type AdminMenuHistoryEvent = MenuHistoryEvent & {

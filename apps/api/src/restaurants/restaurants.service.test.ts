@@ -578,7 +578,18 @@ describe("RestaurantsService", () => {
     const result = await service.getRestaurantMenuHistory(RESTAURANT_ID, USER_ID);
 
     expect(pg.query.mock.calls[1]?.[0]).toContain("from public.audit_log");
-    expect(pg.query.mock.calls[1]?.[1]).toEqual([ORG_ID, RESTAURANT_ID]);
+    expect(pg.query.mock.calls[1]?.[1]).toEqual([
+      ORG_ID,
+      RESTAURANT_ID,
+      [
+        "menu_category_created",
+        "menu_category_updated",
+        "menu_category_rollback_applied",
+        "menu_item_created",
+        "menu_item_updated",
+        "menu_item_rollback_applied"
+      ]
+    ]);
     expect(result.items[0]).toEqual(
       expect.objectContaining({
         id: "42",
@@ -592,6 +603,239 @@ describe("RestaurantsService", () => {
         reversibleFields: ["priceCents"]
       })
     );
+  });
+
+  it("previews a prepared menu item price rollback", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: 42,
+              actor_name: "Operator One",
+              actor_email: "operator@example.com",
+              entity_type: "menu_item",
+              entity_id: ITEM_ID,
+              action: "menu_item_updated",
+              metadata: {
+                restaurantId: RESTAURANT_ID,
+                itemName: "Chicken Wrap",
+                resourceType: "item",
+                resourceId: ITEM_ID,
+                resourceName: "Chicken Wrap",
+                changedFields: ["priceCents"],
+                previous: { priceCents: 1299 },
+                next: { priceCents: 1499 }
+              },
+              created_at: new Date("2026-05-21T10:00:00.000Z"),
+              category_name: null,
+              item_name: "Chicken Wrap"
+            }
+          ]
+        })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [itemRow({ price_cents: 1499 })] })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.getMenuRollbackPreview(RESTAURANT_ID, "42", USER_ID);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        eligible: true,
+        resourceType: "item",
+        resourceId: ITEM_ID,
+        warnings: []
+      })
+    );
+    expect(result.fields[0]).toEqual(
+      expect.objectContaining({
+        field: "priceCents",
+        currentValue: 1499,
+        expectedValue: 1499,
+        rollbackValue: 1299,
+        willChange: true
+      })
+    );
+  });
+
+  it("rejects rollback preview for a non-prepared audit event", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: 43,
+              actor_name: "Operator One",
+              actor_email: "operator@example.com",
+              entity_type: "menu_item",
+              entity_id: ITEM_ID,
+              action: "menu_item_created",
+              metadata: {
+                restaurantId: RESTAURANT_ID,
+                itemName: "Chicken Wrap",
+                changedFields: ["name"]
+              },
+              created_at: new Date("2026-05-21T10:00:00.000Z"),
+              category_name: null,
+              item_name: "Chicken Wrap"
+            }
+          ]
+        })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.getMenuRollbackPreview(RESTAURANT_ID, "43", USER_ID);
+
+    expect(result.eligible).toBe(false);
+    expect(result.reason).toContain("cannot be rolled back");
+    expect(result.fields).toEqual([]);
+  });
+
+  it("requires typed confirmation before applying a menu rollback", async () => {
+    const service = new RestaurantsService({ query: vi.fn(), withIdempotency: vi.fn() } as never, {} as never);
+
+    await expect(service.applyMenuRollback(RESTAURANT_ID, "42", { confirmation: "ROLLBACK" }, USER_ID, "idem-rollback")).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: "invalid_menu_rollback_payload"
+      })
+    });
+  });
+
+  it("rejects cross-org menu rollback access", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] }),
+      withIdempotency: vi.fn()
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+
+    await expect(
+      service.applyMenuRollback(RESTAURANT_ID, "42", { confirmation: "ROLLBACK MENU CHANGE" }, USER_ID, "idem-rollback")
+    ).rejects.toThrow(NotFoundException);
+    expect(pg.withIdempotency).not.toHaveBeenCalled();
+  });
+
+  it("applies a menu item price rollback and writes an audit event", async () => {
+    const rollbackCreatedAt = new Date("2026-05-21T10:05:00.000Z");
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: 42,
+            actor_name: "Operator One",
+            actor_email: "operator@example.com",
+            entity_type: "menu_item",
+            entity_id: ITEM_ID,
+            action: "menu_item_updated",
+            metadata: {
+              restaurantId: RESTAURANT_ID,
+              restaurantName: "Pilot Kitchen",
+              itemName: "Chicken Wrap",
+              resourceType: "item",
+              resourceId: ITEM_ID,
+              resourceName: "Chicken Wrap",
+              changedFields: ["priceCents"],
+              previous: { priceCents: 1299 },
+              next: { priceCents: 1499 }
+            },
+            created_at: new Date("2026-05-21T10:00:00.000Z"),
+            category_name: null,
+            item_name: "Chicken Wrap"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [itemRow({ price_cents: 1499 })] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [itemRow({ price_cents: 1299 })] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 99, created_at: rollbackCreatedAt }] });
+    const pg = {
+      query: vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] }),
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => ({
+        replay: false,
+        ...(await execute({ query: clientQuery }))
+      }))
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.applyMenuRollback(
+      RESTAURANT_ID,
+      "42",
+      { confirmation: "ROLLBACK MENU CHANGE" },
+      USER_ID,
+      "idem-rollback-price"
+    );
+
+    expect(result.body).toEqual(
+      expect.objectContaining({
+        auditId: "42",
+        rollbackAuditId: "99",
+        resourceType: "item",
+        resourceId: ITEM_ID,
+        restoredFields: ["priceCents"],
+        appliedAt: rollbackCreatedAt.toISOString()
+      })
+    );
+    expect(clientQuery).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("update public.menu_items"),
+      [ITEM_ID, RESTAURANT_ID, CATEGORY_ID, "Chicken Wrap", "Fresh and hot", 1299, 0, true]
+    );
+    expect(clientQuery.mock.calls[3]?.[0]).toContain("menu_item_rollback_applied");
+    expect(JSON.parse((clientQuery.mock.calls[3]?.[1] as unknown[])[4] as string)).toEqual(
+      expect.objectContaining({
+        originalAuditId: "42",
+        restoredFields: ["priceCents"],
+        beforeRollback: expect.objectContaining({ priceCents: 1499 }),
+        afterRollback: expect.objectContaining({ priceCents: 1299 }),
+        confirmation: "ROLLBACK MENU CHANGE"
+      })
+    );
+  });
+
+  it("rejects rollback when current menu state drifted from the audited new value", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: 42,
+            actor_name: "Operator One",
+            actor_email: "operator@example.com",
+            entity_type: "menu_item",
+            entity_id: ITEM_ID,
+            action: "menu_item_updated",
+            metadata: {
+              restaurantId: RESTAURANT_ID,
+              itemName: "Chicken Wrap",
+              changedFields: ["isActive"],
+              previous: { isActive: true },
+              next: { isActive: false }
+            },
+            created_at: new Date("2026-05-21T10:00:00.000Z"),
+            category_name: null,
+            item_name: "Chicken Wrap"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [itemRow({ is_active: true })] });
+    const pg = {
+      query: vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] }),
+      withIdempotency: vi.fn().mockImplementation(async ({ execute }) => execute({ query: clientQuery }))
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+
+    await expect(
+      service.applyMenuRollback(RESTAURANT_ID, "42", { confirmation: "ROLLBACK MENU CHANGE" }, USER_ID, "idem-rollback-conflict")
+    ).rejects.toThrow(ConflictException);
   });
 
   it("lists admin menu history across organisations with filters", async () => {
@@ -646,7 +890,14 @@ describe("RestaurantsService", () => {
     expect(sql).toContain("a.created_at >= $4");
     expect(sql).toContain("a.created_at <= $5");
     expect(params).toEqual([
-      ["menu_category_created", "menu_category_updated", "menu_item_created", "menu_item_updated"],
+      [
+        "menu_category_created",
+        "menu_category_updated",
+        "menu_category_rollback_applied",
+        "menu_item_created",
+        "menu_item_updated",
+        "menu_item_rollback_applied"
+      ],
       ORG_ID,
       RESTAURANT_ID,
       "2026-05-21T00:00:00.000Z",

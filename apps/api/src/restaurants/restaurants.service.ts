@@ -10,12 +10,15 @@ import {
 import { randomUUID } from "node:crypto";
 import {
   AdminMenuHistorySchema,
+  ApplyMenuRollbackSchema,
   CreateMenuCategorySchema,
   CreateMenuItemSchema,
   CreateRestaurantSchema,
   IdempotencyHeaderSchema,
   MenuCategorySchema,
   MenuHistorySchema,
+  MenuRollbackPreviewSchema,
+  MenuRollbackResultSchema,
   MenuItemSchema,
   PublicCustomerOrderSchema,
   PublicRestaurantMenuSchema,
@@ -28,6 +31,8 @@ import {
   UpdateMenuCategorySchema,
   type AdminMenuHistoryDto,
   type AdminMenuHistoryEventDto,
+  type MenuRollbackPreviewDto,
+  type MenuRollbackResultDto,
   type MenuCategoryDto,
   type MenuHistoryDto,
   type MenuHistoryEventDto,
@@ -49,7 +54,7 @@ import {
   type BusinessCustomerOrderDto
 } from "@shipwright/contracts";
 import { createLogger } from "@shipwright/observability";
-import type { PoolClient } from "pg";
+import type { PoolClient, QueryResultRow } from "pg";
 import { toInteger, toIsoDateTime } from "../database/mapper.js";
 import { PgService } from "../database/pg.service.js";
 import { PaymentsService } from "../payments/payments.service.js";
@@ -107,6 +112,19 @@ type AdminMenuHistoryRow = MenuHistoryRow & {
   org_name: string | null;
   restaurant_id: string | null;
   restaurant_name: string | null;
+};
+
+type MenuRollbackResourceRow = MenuCategoryRow | MenuItemRow;
+type QueryRunner = {
+  query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<{ rowCount: number; rows: T[] }>;
+};
+
+type MenuRollbackPreviewInternal = MenuRollbackPreviewDto & {
+  restaurant: RestaurantRow;
+  history: MenuHistoryEventDto;
+  currentValues: Record<string, unknown>;
+  rollbackValues: Record<string, unknown>;
+  expectedValues: Record<string, unknown>;
 };
 
 type CustomerOrderRow = {
@@ -228,17 +246,26 @@ const PILOT_ORDER_PICKUP_LATITUDE = Number(process.env.PILOT_ORDER_PICKUP_LATITU
 const PILOT_ORDER_PICKUP_LONGITUDE = Number(process.env.PILOT_ORDER_PICKUP_LONGITUDE ?? "-0.1099");
 const PILOT_ORDER_DROPOFF_LATITUDE = Number(process.env.PILOT_ORDER_DROPOFF_LATITUDE ?? "51.5396");
 const PILOT_ORDER_DROPOFF_LONGITUDE = Number(process.env.PILOT_ORDER_DROPOFF_LONGITUDE ?? "-0.1026");
-const MENU_AUDIT_ACTIONS = ["menu_category_created", "menu_category_updated", "menu_item_created", "menu_item_updated"];
+const MENU_AUDIT_ACTIONS = [
+  "menu_category_created",
+  "menu_category_updated",
+  "menu_category_rollback_applied",
+  "menu_item_created",
+  "menu_item_updated",
+  "menu_item_rollback_applied"
+];
 const MENU_HISTORY_EVENT_TYPES: MenuHistoryEventType[] = [
   "MENU_CATEGORY_CREATED",
   "MENU_CATEGORY_UPDATED",
   "MENU_CATEGORY_REORDERED",
+  "MENU_CATEGORY_ROLLBACK_APPLIED",
   "MENU_ITEM_CREATED",
   "MENU_ITEM_UPDATED",
   "MENU_ITEM_PRICE_UPDATED",
   "MENU_ITEM_VISIBILITY_UPDATED",
   "MENU_ITEM_REORDERED",
-  "MENU_ITEM_MOVED_CATEGORY"
+  "MENU_ITEM_MOVED_CATEGORY",
+  "MENU_ITEM_ROLLBACK_APPLIED"
 ];
 const REVERSIBLE_MENU_FIELDS = new Set(["name", "description", "priceCents", "isActive", "sortOrder", "categoryId"]);
 
@@ -310,6 +337,14 @@ function getMenuHistoryEventType(
     return "MENU_ITEM_CREATED";
   }
 
+  if (action === "menu_category_rollback_applied") {
+    return "MENU_CATEGORY_ROLLBACK_APPLIED";
+  }
+
+  if (action === "menu_item_rollback_applied") {
+    return "MENU_ITEM_ROLLBACK_APPLIED";
+  }
+
   if (resourceType === "category" && changedFields.length === 1 && changedFields[0] === "sortOrder") {
     return "MENU_CATEGORY_REORDERED";
   }
@@ -354,6 +389,10 @@ function buildMenuHistorySummary(eventType: MenuHistoryEventType, resourceName: 
     return `${name} section details were updated.`;
   }
 
+  if (eventType === "MENU_CATEGORY_ROLLBACK_APPLIED") {
+    return `${name} section was restored from a previous menu change.`;
+  }
+
   if (eventType === "MENU_ITEM_CREATED") {
     return `${name} was added to the menu.`;
   }
@@ -374,6 +413,10 @@ function buildMenuHistorySummary(eventType: MenuHistoryEventType, resourceName: 
     return `${name} moved to another section.`;
   }
 
+  if (eventType === "MENU_ITEM_ROLLBACK_APPLIED") {
+    return `${name} was restored from a previous menu change.`;
+  }
+
   return `${name} details were updated.`;
 }
 
@@ -382,7 +425,12 @@ function classifyMenuRollbackReadiness(
   changedFields: string[],
   metadata: Record<string, unknown>
 ): { rollbackReadiness: MenuRollbackReadiness; rollbackReason: string; reversibleFields: string[] } {
-  if (eventType === "MENU_CATEGORY_CREATED" || eventType === "MENU_ITEM_CREATED") {
+  if (
+    eventType === "MENU_CATEGORY_CREATED" ||
+    eventType === "MENU_ITEM_CREATED" ||
+    eventType === "MENU_CATEGORY_ROLLBACK_APPLIED" ||
+    eventType === "MENU_ITEM_ROLLBACK_APPLIED"
+  ) {
     return {
       rollbackReadiness: "NOT_REVERSIBLE",
       rollbackReason: "Create events are audit-only in this version and cannot be rolled back safely.",
@@ -413,8 +461,35 @@ function classifyMenuRollbackReadiness(
 
   return {
     rollbackReadiness: "ROLLBACK_PREPARED",
-    rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+    rollbackReason: "This event has previous and new values for reversible menu fields and can be previewed before rollback.",
     reversibleFields
+  };
+}
+
+function valuesEqual(left: unknown, right: unknown) {
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
+
+function pickFields(record: Record<string, unknown>, fields: string[]) {
+  return Object.fromEntries(fields.map((field) => [field, record[field] ?? null]));
+}
+
+function mapCategoryRollbackValues(row: MenuCategoryRow): Record<string, unknown> {
+  return {
+    name: row.name,
+    sortOrder: toInteger(row.sort_order, "menu_category.sort_order"),
+    isActive: row.is_active
+  };
+}
+
+function mapItemRollbackValues(row: MenuItemRow): Record<string, unknown> {
+  return {
+    categoryId: row.category_id,
+    name: row.name,
+    description: row.description,
+    priceCents: toInteger(row.price_cents, "menu_item.price_cents"),
+    sortOrder: toInteger(row.sort_order, "menu_item.sort_order"),
+    isActive: row.is_active
   };
 }
 
@@ -1004,16 +1079,189 @@ export class RestaurantsService {
          on a.entity_type = 'menu_item'
         and mi.id = a.entity_id
        where a.org_id = $1
-         and a.action in ('menu_category_created', 'menu_category_updated', 'menu_item_created', 'menu_item_updated')
+         and a.action = any($3)
          and a.metadata->>'restaurantId' = $2
        order by a.created_at desc
        limit 40`,
-      [restaurant.org_id, restaurantId]
+      [restaurant.org_id, restaurantId, MENU_AUDIT_ACTIONS]
     );
 
     return MenuHistorySchema.parse({
       items: result.rows.map((row) => this.mapMenuHistoryRow(row))
     });
+  }
+
+  async getMenuRollbackPreview(restaurantId: string, auditId: string, userId: string): Promise<MenuRollbackPreviewDto> {
+    const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
+    const preview = await this.buildMenuRollbackPreview(this.pg as QueryRunner, restaurant, auditId);
+    return MenuRollbackPreviewSchema.parse({
+      auditId: preview.auditId,
+      eligible: preview.eligible,
+      reason: preview.reason,
+      eventType: preview.eventType,
+      resourceType: preview.resourceType,
+      resourceId: preview.resourceId,
+      resourceName: preview.resourceName,
+      fields: preview.fields,
+      warnings: preview.warnings
+    });
+  }
+
+  async applyMenuRollback(
+    restaurantId: string,
+    auditId: string,
+    input: unknown,
+    userId: string,
+    idempotencyKey: string
+  ): Promise<{ replay: boolean; responseCode: number; body: MenuRollbackResultDto }> {
+    const parsed = ApplyMenuRollbackSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_menu_rollback_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
+    const result = await this.pg.withIdempotency<MenuRollbackResultDto>({
+      actorId: userId,
+      endpoint: `/v1/business/restaurants/${restaurantId}/menu-history/${auditId}/rollback`,
+      idempotencyKey,
+      execute: async (client) => {
+        const preview = await this.buildMenuRollbackPreview(client as QueryRunner, restaurant, auditId);
+        if (!preview.eligible || !preview.resourceType || !preview.resourceId) {
+          throw new UnprocessableEntityException({
+            message: "menu_rollback_not_available",
+            reason: preview.reason
+          });
+        }
+
+        if (preview.warnings.length > 0) {
+          throw new ConflictException({
+            message: "menu_rollback_current_state_changed",
+            warnings: preview.warnings
+          });
+        }
+
+        const fields = preview.history.reversibleFields;
+        const rollbackValues = preview.rollbackValues;
+        let rollbackAuditId: string;
+        let appliedAt: string;
+
+        if (preview.resourceType === "category") {
+          const current = preview.currentValues;
+          const next = {
+            name: typeof rollbackValues.name === "string" ? rollbackValues.name : current.name,
+            sortOrder: typeof rollbackValues.sortOrder === "number" ? rollbackValues.sortOrder : current.sortOrder,
+            isActive: typeof rollbackValues.isActive === "boolean" ? rollbackValues.isActive : current.isActive
+          };
+          await client.query<MenuCategoryRow>(
+            `update public.menu_categories
+             set name = $3,
+                 sort_order = $4,
+                 is_active = $5,
+                 updated_at = now()
+             where id = $1
+               and restaurant_id = $2
+             returning id, restaurant_id, name, sort_order, is_active, created_at, updated_at`,
+            [preview.resourceId, restaurantId, next.name, next.sortOrder, next.isActive]
+          );
+          const audit = await client.query<{ id: string | number; created_at: string | Date }>(
+            `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
+             values ($1, $2, $3, 'menu_category', $4, 'menu_category_rollback_applied', $5::jsonb)
+             returning id, created_at`,
+            [
+              randomUUID(),
+              userId,
+              restaurant.org_id,
+              preview.resourceId,
+              JSON.stringify({
+                restaurantId,
+                restaurantName: restaurant.name,
+                resourceType: "category",
+                resourceId: preview.resourceId,
+                resourceName: next.name,
+                categoryName: next.name,
+                originalAuditId: auditId,
+                restoredFields: fields,
+                beforeRollback: preview.currentValues,
+                afterRollback: pickFields(next, fields),
+                confirmation: parsed.data.confirmation
+              })
+            ]
+          );
+          rollbackAuditId = String(audit.rows[0].id);
+          appliedAt = toIsoDateTime(audit.rows[0].created_at);
+        } else {
+          const current = preview.currentValues;
+          const next = {
+            categoryId: typeof rollbackValues.categoryId === "string" ? rollbackValues.categoryId : current.categoryId,
+            name: typeof rollbackValues.name === "string" ? rollbackValues.name : current.name,
+            description: hasOwnValue(rollbackValues, "description") ? (rollbackValues.description as string | null) : (current.description as string | null),
+            priceCents: typeof rollbackValues.priceCents === "number" ? rollbackValues.priceCents : current.priceCents,
+            sortOrder: typeof rollbackValues.sortOrder === "number" ? rollbackValues.sortOrder : current.sortOrder,
+            isActive: typeof rollbackValues.isActive === "boolean" ? rollbackValues.isActive : current.isActive
+          };
+          await client.query<MenuItemRow>(
+            `update public.menu_items
+             set category_id = $3,
+                 name = $4,
+                 description = $5,
+                 price_cents = $6,
+                 sort_order = $7,
+                 is_active = $8,
+                 updated_at = now()
+             where id = $1
+               and restaurant_id = $2
+             returning id, restaurant_id, category_id, name, description, price_cents, currency, is_active, sort_order, created_at, updated_at`,
+            [preview.resourceId, restaurantId, next.categoryId, next.name, next.description, next.priceCents, next.sortOrder, next.isActive]
+          );
+          const audit = await client.query<{ id: string | number; created_at: string | Date }>(
+            `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
+             values ($1, $2, $3, 'menu_item', $4, 'menu_item_rollback_applied', $5::jsonb)
+             returning id, created_at`,
+            [
+              randomUUID(),
+              userId,
+              restaurant.org_id,
+              preview.resourceId,
+              JSON.stringify({
+                restaurantId,
+                restaurantName: restaurant.name,
+                resourceType: "item",
+                resourceId: preview.resourceId,
+                resourceName: next.name,
+                itemName: next.name,
+                categoryId: next.categoryId,
+                originalAuditId: auditId,
+                restoredFields: fields,
+                beforeRollback: preview.currentValues,
+                afterRollback: pickFields(next, fields),
+                confirmation: parsed.data.confirmation
+              })
+            ]
+          );
+          rollbackAuditId = String(audit.rows[0].id);
+          appliedAt = toIsoDateTime(audit.rows[0].created_at);
+        }
+
+        return {
+          responseCode: 200,
+          body: MenuRollbackResultSchema.parse({
+            auditId,
+            rollbackAuditId,
+            resourceType: preview.resourceType,
+            resourceId: preview.resourceId,
+            restoredFields: fields,
+            warnings: preview.warnings,
+            appliedAt
+          })
+        };
+      }
+    });
+
+    this.logger.info({ actor_id: userId, restaurant_id: restaurantId, audit_id: auditId }, "menu_rollback_applied");
+    return result;
   }
 
   async getAdminMenuHistory(query: Record<string, unknown> = {}): Promise<AdminMenuHistoryDto> {
@@ -1732,6 +1980,191 @@ export class RestaurantsService {
     }
 
     return inserted;
+  }
+
+  private async buildMenuRollbackPreview(
+    runner: QueryRunner,
+    restaurant: RestaurantRow,
+    auditId: string
+  ): Promise<MenuRollbackPreviewInternal> {
+    const audit = await runner.query<MenuHistoryRow>(
+      `select
+          a.id,
+          u.display_name as actor_name,
+          u.email as actor_email,
+          a.entity_type,
+          a.entity_id,
+          a.action,
+          a.metadata,
+          a.created_at,
+          mc.name as category_name,
+          mi.name as item_name
+       from public.audit_log a
+       left join public.users u on u.id = a.actor_id
+       left join public.menu_categories mc
+         on a.entity_type = 'menu_category'
+        and mc.id = a.entity_id
+       left join public.menu_items mi
+         on a.entity_type = 'menu_item'
+        and mi.id = a.entity_id
+       where a.id::text = $1
+         and a.org_id = $2
+         and a.action = any($3)
+         and a.metadata->>'restaurantId' = $4
+       limit 1`,
+      [auditId, restaurant.org_id, MENU_AUDIT_ACTIONS, restaurant.id]
+    );
+
+    if (audit.rowCount !== 1) {
+      throw new NotFoundException("menu_history_event_not_found");
+    }
+
+    const history = this.mapMenuHistoryRow(audit.rows[0]);
+    const metadata = parseAuditMetadata(audit.rows[0].metadata);
+    const resourceId = readString(metadata.resourceId) ?? audit.rows[0].entity_id;
+    const base = {
+      auditId,
+      eventType: history.eventType,
+      resourceType: history.resourceType,
+      resourceId,
+      resourceName: history.resourceName,
+      fields: [],
+      warnings: []
+    };
+
+    if (history.rollbackReadiness !== "ROLLBACK_PREPARED") {
+      return {
+        ...base,
+        eligible: false,
+        reason: history.rollbackReason,
+        restaurant,
+        history,
+        currentValues: {},
+        rollbackValues: {},
+        expectedValues: {}
+      };
+    }
+
+    if (!resourceId) {
+      return {
+        ...base,
+        eligible: false,
+        reason: "The audit event does not identify the menu resource to restore.",
+        restaurant,
+        history,
+        currentValues: {},
+        rollbackValues: {},
+        expectedValues: {}
+      };
+    }
+
+    let currentValues: Record<string, unknown>;
+    let resourceRow: MenuRollbackResourceRow | null = null;
+    if (history.resourceType === "category") {
+      const current = await runner.query<MenuCategoryRow>(
+        `select id, restaurant_id, name, sort_order, is_active, created_at, updated_at
+         from public.menu_categories
+         where id = $1 and restaurant_id = $2
+         limit 1`,
+        [resourceId, restaurant.id]
+      );
+      resourceRow = current.rows[0] ?? null;
+      currentValues = resourceRow ? mapCategoryRollbackValues(resourceRow as MenuCategoryRow) : {};
+    } else {
+      const current = await runner.query<MenuItemRow>(
+        `select id, restaurant_id, category_id, name, description, price_cents, currency, is_active, sort_order, created_at, updated_at
+         from public.menu_items
+         where id = $1 and restaurant_id = $2
+         limit 1`,
+        [resourceId, restaurant.id]
+      );
+      resourceRow = current.rows[0] ?? null;
+      currentValues = resourceRow ? mapItemRollbackValues(resourceRow as MenuItemRow) : {};
+    }
+
+    if (!resourceRow) {
+      return {
+        ...base,
+        eligible: false,
+        reason: "The menu resource no longer exists in this restaurant.",
+        restaurant,
+        history,
+        currentValues: {},
+        rollbackValues: {},
+        expectedValues: {}
+      };
+    }
+
+    const rollbackValues = readRecord(metadata.previous);
+    const expectedValues = readRecord(metadata.next);
+
+    if (history.reversibleFields.includes("categoryId")) {
+      const rollbackCategoryId = readString(rollbackValues.categoryId);
+      if (!rollbackCategoryId) {
+        return {
+          ...base,
+          eligible: false,
+          reason: "The audit event does not include the previous section needed for rollback.",
+          restaurant,
+          history,
+          currentValues,
+          rollbackValues,
+          expectedValues
+        };
+      }
+
+      const category = await runner.query<{ id: string }>(
+        `select id from public.menu_categories where id = $1 and restaurant_id = $2 limit 1`,
+        [rollbackCategoryId, restaurant.id]
+      );
+      if (category.rowCount !== 1) {
+        return {
+          ...base,
+          eligible: false,
+          reason: "The previous section for this item no longer exists.",
+          restaurant,
+          history,
+          currentValues,
+          rollbackValues,
+          expectedValues
+        };
+      }
+    }
+
+    const warnings: string[] = [];
+    const fields = history.reversibleFields.map((field) => {
+      const currentValue = currentValues[field] ?? null;
+      const expectedValue = expectedValues[field] ?? null;
+      const rollbackValue = rollbackValues[field] ?? null;
+      if (!valuesEqual(currentValue, expectedValue)) {
+        warnings.push(`Current ${field} no longer matches the audited new value.`);
+      }
+
+      return {
+        field,
+        currentValue,
+        expectedValue,
+        rollbackValue,
+        willChange: !valuesEqual(currentValue, rollbackValue)
+      };
+    });
+
+    const parsed = MenuRollbackPreviewSchema.parse({
+      ...base,
+      eligible: true,
+      reason: "Rollback can restore the recorded previous values. Review every field before confirming.",
+      fields,
+      warnings
+    });
+
+    return {
+      ...parsed,
+      restaurant,
+      history,
+      currentValues,
+      rollbackValues,
+      expectedValues
+    };
   }
 
   private mapMenuHistoryRow(row: MenuHistoryRow): MenuHistoryEventDto {
