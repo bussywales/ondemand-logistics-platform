@@ -3,8 +3,8 @@
   --sw-color-background: #f1f3f0;
   --sw-color-surface: #ffffff;
   --sw-color-surface-elevated: #fbfcfb;
-  --sw-color-navy-950: #111b2a;
-  --sw-color-navy-900: #1a2a40;
+  --sw-color-navy-950: #101b33;
+  --sw-color-navy-900: #172554;
   --sw-color-navy-800: #263a56;
   --sw-color-navy-700: #3d506b;
   --sw-color-navy-100: #e8edf3;
@@ -20,15 +20,18 @@
   --sw-color-danger: #a7434b;
   --sw-color-info: #315f9b;
   --sw-color-teal: #2c807f;
-  --sw-color-command-blue: #2563eb;
-  --sw-color-command-blue-hover: #1d4ed8;
-  --sw-color-command-blue-deep: #2447c7;
+  --sw-color-command-blue: #243c96;
+  --sw-color-command-blue-hover: #2563eb;
+  --sw-color-command-blue-deep: #172554;
+  --sw-color-sidebar-navy: #101b33;
+  --sw-color-sidebar-navy-elevated: #152447;
+  --sw-color-sidebar-active: rgba(37, 99, 235, 0.14);
   --sw-color-commerce-orange: #ea7a1a;
   --sw-color-commerce-amber: #f59e0b;
   --sw-color-commerce-amber-soft: #fff4df;
   --sw-color-proof-green: #3b8f6b;
   --sw-color-route-glow: rgba(245, 158, 11, 0.34);
-  --sw-focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
+  --sw-focus-ring: 0 0 0 4px rgba(36, 60, 150, 0.22);
   --sw-color-success-soft: rgba(49, 122, 75, 0.1);
   --sw-color-warning-soft: rgba(162, 109, 27, 0.11);
   --sw-color-danger-soft: rgba(167, 67, 75, 0.1);
@@ -391,7 +394,8 @@
 }
 
 .sw-button--primary {
-  background: var(--sw-color-navy-900);
+  border-color: var(--sw-color-command-blue);
+  background: var(--sw-color-command-blue);
   color: var(--sw-color-text-inverse);
 }
 
@@ -707,8 +711,8 @@
   --sw-color-background: #f7f7f4;
   --sw-color-surface: #ffffff;
   --sw-color-surface-elevated: #fbfbf8;
-  --sw-color-navy-950: #111827;
-  --sw-color-navy-900: #1f2937;
+  --sw-color-navy-950: #101b33;
+  --sw-color-navy-900: #172554;
   --sw-color-navy-800: #334155;
   --sw-color-navy-700: #475569;
   --sw-color-navy-100: #e9edf2;
@@ -723,15 +727,18 @@
   --sw-color-danger: #9f424b;
   --sw-color-info: #3d5f8f;
   --sw-color-teal: #3a7876;
-  --sw-color-command-blue: #2563eb;
-  --sw-color-command-blue-hover: #1d4ed8;
-  --sw-color-command-blue-deep: #2447c7;
+  --sw-color-command-blue: #243c96;
+  --sw-color-command-blue-hover: #2563eb;
+  --sw-color-command-blue-deep: #172554;
+  --sw-color-sidebar-navy: #101b33;
+  --sw-color-sidebar-navy-elevated: #152447;
+  --sw-color-sidebar-active: rgba(37, 99, 235, 0.14);
   --sw-color-commerce-orange: #ea7a1a;
   --sw-color-commerce-amber: #f59e0b;
   --sw-color-commerce-amber-soft: #fff4df;
   --sw-color-proof-green: #3b8f6b;
   --sw-color-route-glow: rgba(245, 158, 11, 0.34);
-  --sw-focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
+  --sw-focus-ring: 0 0 0 4px rgba(36, 60, 150, 0.22);
   --sw-color-success-soft: rgba(47, 111, 78, 0.08);
   --sw-color-warning-soft: rgba(148, 103, 34, 0.08);
   --sw-color-danger-soft: rgba(159, 66, 75, 0.08);
@@ -1871,5 +1878,170 @@ p,
   .ops-decision-summary-list,
   .incident-drafts-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Premium royal blue + command sidebar refinement. */
+.sw-button--primary,
+.button-primary,
+.ops-command-actions .button-primary,
+.ops-decision-banner .button-primary,
+.landing-button-primary,
+.landing-nav-cta,
+.demo-request-form .button-primary,
+.pricing-page .button-primary {
+  border-color: var(--sw-color-command-blue);
+  background: var(--sw-color-command-blue);
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(36, 60, 150, 0.18);
+}
+
+.sw-button--primary:hover,
+.button-primary:hover,
+.landing-button-primary:hover,
+.landing-nav-cta:hover,
+.sw-button--primary:focus-visible,
+.button-primary:focus-visible,
+.landing-button-primary:focus-visible,
+.landing-nav-cta:focus-visible {
+  border-color: var(--sw-color-command-blue-hover);
+  background: var(--sw-color-command-blue-hover);
+  color: #ffffff;
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.24);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.sw-button--primary:active,
+.button-primary:active,
+.landing-button-primary:active,
+.landing-nav-cta:active {
+  border-color: var(--sw-color-command-blue-deep);
+  background: var(--sw-color-command-blue-deep);
+  box-shadow: 0 8px 18px rgba(23, 37, 84, 0.18);
+  transform: translateY(0);
+}
+
+.sw-button--secondary,
+.button-secondary,
+.landing-button-secondary {
+  border-color: rgba(36, 60, 150, 0.16);
+  color: var(--sw-color-navy-900);
+}
+
+.sw-button--secondary:hover,
+.button-secondary:hover,
+.landing-button-secondary:hover,
+.sw-button--secondary:focus-visible,
+.button-secondary:focus-visible,
+.landing-button-secondary:focus-visible {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: color-mix(in srgb, #ffffff 88%, var(--sw-color-command-blue-hover) 12%);
+  color: var(--sw-color-navy-950);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--sw-focus-ring);
+}
+
+.ops-sidebar,
+.merchant-sidebar {
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(37, 99, 235, 0.14), transparent 17rem),
+    linear-gradient(180deg, var(--sw-color-sidebar-navy) 0%, #0b1428 100%);
+  color: rgba(248, 250, 252, 0.94);
+  box-shadow: 0 22px 70px rgba(16, 27, 51, 0.18);
+}
+
+.ops-sidebar p,
+.ops-sidebar span,
+.merchant-sidebar p,
+.merchant-sidebar span,
+.ops-sidebar .ops-section-label,
+.merchant-sidebar .ops-section-label {
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.ops-sidebar strong,
+.merchant-sidebar strong,
+.ops-sidebar .brand-wordmark,
+.merchant-sidebar .brand-wordmark {
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.ops-nav,
+.merchant-nav,
+.ops-sidebar-section,
+.merchant-side-section {
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.ops-nav-link,
+.merchant-nav a {
+  color: rgba(226, 232, 240, 0.74);
+}
+
+.ops-nav-link.active,
+.merchant-nav a.active {
+  position: relative;
+  background: var(--sw-color-sidebar-active);
+  color: #ffffff;
+  box-shadow: inset 3px 0 0 var(--sw-color-command-blue-hover);
+}
+
+.ops-nav-link:hover,
+.merchant-nav a:hover {
+  background: rgba(37, 99, 235, 0.1);
+  color: #ffffff;
+}
+
+.ops-sidebar-live,
+.merchant-next-action,
+.team-sidebar-card {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(21, 36, 71, 0.78);
+  box-shadow: none;
+}
+
+.ops-sidebar-live .ops-section-label,
+.ops-sidebar-live strong,
+.merchant-next-action strong,
+.team-sidebar-card strong,
+.team-sidebar-card h2 {
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.ops-sidebar-live p,
+.merchant-next-action p,
+.team-sidebar-card p {
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.landing-mega-trigger:hover,
+.landing-mega-trigger:focus-visible,
+.landing-nav-link:hover,
+.landing-nav-link:focus-visible,
+.landing-nav-pricing-link:hover,
+.landing-nav-pricing-link:focus-visible {
+  color: var(--sw-color-command-blue-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sw-button--primary:hover,
+  .button-primary:hover,
+  .landing-button-primary:hover,
+  .landing-nav-cta:hover,
+  .sw-button--secondary:hover,
+  .button-secondary:hover,
+  .landing-button-secondary:hover {
+    transform: none;
   }
 }

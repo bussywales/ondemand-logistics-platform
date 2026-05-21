@@ -41,8 +41,11 @@ Use CSS custom properties from `apps/web/app/design-system.css`:
 | `--sw-color-warning` | Risk/delay |
 | `--sw-color-danger` | Blocker/failure/destructive |
 | `--sw-color-info` | Active/in-progress/system info |
-| `--sw-color-command-blue` | Primary action, command, and trust tone |
-| `--sw-color-command-blue-hover` | Hover/pressed tone for primary actions |
+| `--sw-color-command-blue` | Royal primary action, command, and trust tone |
+| `--sw-color-command-blue-hover` | Brighter hover/highlight/signal blue |
+| `--sw-color-command-blue-deep` | Active/deep command blue for pressed states |
+| `--sw-color-sidebar-navy` | Internal command sidebar surface |
+| `--sw-color-sidebar-active` | Blue-tinted active sidebar state |
 | `--sw-color-commerce-orange` | Commerce, order movement, and route warmth accent |
 | `--sw-color-commerce-amber-soft` | Soft amber wash for commerce/pilot context |
 | `--sw-color-proof-green` | Proof, completion, and closeout confidence |
@@ -169,7 +172,7 @@ Use one primary action per surface where possible:
 - `.sw-button--danger`
 - `.sw-button--ghost`
 
-Primary actions use command blue, white text, a deeper blue hover state, and a restrained lift/shadow interaction. This applies to public CTAs such as `Start controlled pilot`, `Request demo`, `Book walkthrough`, and `Submit demo request`, plus safe product save actions. Do not use black as the default public primary CTA.
+Primary actions use royal command blue, white text, a brighter blue hover state, a deeper active state, and a restrained lift/shadow interaction. This applies to public CTAs such as `Start controlled pilot`, `Request demo`, `Book walkthrough`, and `Submit demo request`, plus safe product save actions. Do not use black as the default public primary CTA.
 
 Secondary actions should stay white/off-white with subtle blue borders or navy text. They may use a soft blue/amber hover tint, but should not visually compete with the primary action.
 
@@ -199,7 +202,9 @@ Use empty states to instruct the operator/customer:
 - Red/danger only means blocker, failure, destructive action, or urgent attention.
 - Amber/warning only means risk or delay in operational product surfaces.
 - Commerce orange/amber means order movement, merchant/customer warmth, or route-entry context on public and pilot/commercial surfaces. It must not be used to make operational risk feel cheerful.
-- Command blue means primary action, trust, operator intelligence, in-progress command context, or system information.
+- Royal command blue means primary action, trust, operator intelligence, in-progress command context, or system information.
+- Bright blue means hover, highlight, selected signal, or route-light emphasis. It should not be the default filled button colour.
+- Command navy means internal sidebar and command-surface depth. Use it for serious operational framing without falling back to pure black.
 - Green/success means completed, healthy, ready, proof, or closeout confidence.
 - Red/danger remains reserved for true risk, failure, destructive action, or urgent attention.
 - Icons must support meaning, not decorate randomly.
