@@ -85,8 +85,8 @@ Do not use:
 ## Colour Atmosphere
 Use colour as atmosphere and meaning, not decoration:
 
-- Royal command blue: primary CTAs, dispatch intelligence, operator context, platform oversight, and trust. Public primary buttons should use this deeper blue rather than black or generic bright SaaS blue.
-- Bright blue: hover states, selected highlights, route-light signals, and small command accents. It should add energy around action without becoming the default filled surface.
+- Bright operational blue: primary CTAs, dispatch intelligence, operator context, platform oversight, and trust. Public primary buttons should use this blue rather than black.
+- Deeper royal blue: hover states, selected highlights, route-light signals, and command emphasis. It adds depth without making default actions feel heavy.
 - Commerce orange/amber: order intake, merchant/customer activity, route-start warmth, controlled pilot packaging, and commercial movement accents.
 - Proof green: delivery completion, payment capture, closeout, readiness, and validated proof moments.
 - Deep navy/command navy: editorial typography, internal sidebar surfaces, serious infrastructure tone, and restrained product framing.
@@ -109,7 +109,7 @@ Most page surfaces should stay white, off-white, pale grey-blue, or warm ivory s
 
 Button and CTA colour rules:
 
-- Primary public CTAs use royal command blue with a brighter blue hover state and deeper active state.
+- Primary public CTAs use bright operational blue with a deeper royal hover state and deep active state.
 - Secondary CTAs stay white/off-white with subtle blue borders or navy text.
 - Orange is an accent for route movement and commerce warmth, not the primary button colour.
 - Green is reserved for proof/completion cues.
