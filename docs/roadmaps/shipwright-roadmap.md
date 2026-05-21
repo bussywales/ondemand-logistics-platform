@@ -89,7 +89,7 @@ Expected entry shape:
 - CTA link when relevant
 
 ## Workstream 3: Platform Identity & Access Management v1
-Status: Implemented foundation; continue hardening with real invite delivery, richer audit views, and fleet/org policy refinement.
+Status: Implemented foundation with invite lifecycle polish; continue hardening with real invite delivery, richer policy tooling, and fleet/org policy refinement.
 
 Goal:
 Make user, organisation, membership, role, and profile management explicit enough for pilots, support operations, and future driver fleet organisations.
@@ -111,9 +111,11 @@ Core capabilities:
 - organisation membership management: implemented at `/admin/orgs` and `/admin/orgs/[orgId]/members`
 - restaurant/team management: implemented at `/app/settings/team`
 - invite/add member by email foundation: implemented as local invitation record plus membership creation; no external email delivery yet
+- pending invite lifecycle: implemented with pending/expired resend, non-destructive cancellation, and accepted/cancelled safeguards
 - role assignment: implemented for platform admin and business team managers
 - remove or deactivate membership: implemented as non-destructive deactivation/reactivation
 - access-change audit trail: implemented through append-only `audit_log`
+- business and admin team screens show recent access history for invites, resends, cancellations, membership role changes, and activation changes
 - safe role-boundary checks for platform, business, driver, and support users
 
 Organisation types to plan for:
@@ -157,6 +159,7 @@ Constraints:
 - do not let IAM replace pilot guardrail or rehearsal discipline
 - every access mutation needs auditability
 - no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
+- invite resend records an outbox/audit event; actual email delivery still depends on notification integration
 
 ## Workstream 4: Merchant Menu Operations
 Status: Implemented through v1.5 for price editing, availability clarity, simple reordering, menu-specific audit visibility, rollback readiness, and business-scoped rollback.

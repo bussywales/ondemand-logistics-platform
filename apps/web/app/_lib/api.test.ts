@@ -3,6 +3,8 @@ import {
   ApiRequestError,
   acceptDriverOffer,
   authorizePayment,
+  cancelAdminOrgInvite,
+  cancelBusinessTeamInvite,
   createProofOfDelivery,
   addAdminFleetDriver,
   createAdminFleet,
@@ -51,6 +53,8 @@ import {
   previewMenuRollback,
   previewAdminOperationalReset,
   rejectDriverOffer,
+  resendAdminOrgInvite,
+  resendBusinessTeamInvite,
   transitionDriverJob,
   executeAdminOperationalReset,
   updateAdminOrgMembership,
@@ -1568,6 +1572,62 @@ describe('authorizePayment', () => {
         ok: true,
         text: async () =>
           JSON.stringify({
+            id: '44444444-4444-4444-8444-444444444444',
+            orgId: '22222222-2222-4222-8222-222222222222',
+            email: 'new@example.com',
+            role: 'OPERATOR',
+            status: 'PENDING',
+            invitedBy: session.userId,
+            createdAt: '2026-05-19T10:00:00.000Z',
+            updatedAt: '2026-05-19T10:05:00.000Z'
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: '44444444-4444-4444-8444-444444444444',
+            orgId: '22222222-2222-4222-8222-222222222222',
+            email: 'new@example.com',
+            role: 'OPERATOR',
+            status: 'CANCELLED',
+            invitedBy: session.userId,
+            createdAt: '2026-05-19T10:00:00.000Z',
+            updatedAt: '2026-05-19T10:06:00.000Z'
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: '44444444-4444-4444-8444-444444444444',
+            orgId: '22222222-2222-4222-8222-222222222222',
+            email: 'new@example.com',
+            role: 'OPERATOR',
+            status: 'PENDING',
+            invitedBy: session.userId,
+            createdAt: '2026-05-19T10:00:00.000Z',
+            updatedAt: '2026-05-19T10:07:00.000Z'
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: '44444444-4444-4444-8444-444444444444',
+            orgId: '22222222-2222-4222-8222-222222222222',
+            email: 'new@example.com',
+            role: 'OPERATOR',
+            status: 'CANCELLED',
+            invitedBy: session.userId,
+            createdAt: '2026-05-19T10:00:00.000Z',
+            updatedAt: '2026-05-19T10:08:00.000Z'
+          })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
             id: '33333333-3333-4333-8333-333333333333',
             orgId: '22222222-2222-4222-8222-222222222222',
             orgName: 'Pilot Org',
@@ -1590,6 +1650,10 @@ describe('authorizePayment', () => {
     await updateAdminOrgMembership(session, '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333', { role: 'MANAGER' });
     await getBusinessTeam(session);
     await createBusinessTeamInvite(session, { email: 'new@example.com', role: 'OPERATOR' });
+    await resendBusinessTeamInvite(session, '44444444-4444-4444-8444-444444444444');
+    await cancelBusinessTeamInvite(session, '44444444-4444-4444-8444-444444444444');
+    await resendAdminOrgInvite(session, '22222222-2222-4222-8222-222222222222', '44444444-4444-4444-8444-444444444444');
+    await cancelAdminOrgInvite(session, '22222222-2222-4222-8222-222222222222', '44444444-4444-4444-8444-444444444444');
     await updateBusinessTeamMembership(session, '33333333-3333-4333-8333-333333333333', { isActive: false });
 
     expect((fetchMock.mock.calls[0] as [string, RequestInit])[0]).toContain('/v1/admin/users?search=ops');
@@ -1598,7 +1662,11 @@ describe('authorizePayment', () => {
     expect((fetchMock.mock.calls[3] as [string, RequestInit])[1].method).toBe('PATCH');
     expect((fetchMock.mock.calls[4] as [string, RequestInit])[0]).toContain('/v1/business/team');
     expect((fetchMock.mock.calls[5] as [string, RequestInit])[0]).toContain('/v1/business/team/invites');
-    expect((fetchMock.mock.calls[6] as [string, RequestInit])[1].method).toBe('PATCH');
+    expect((fetchMock.mock.calls[6] as [string, RequestInit])[0]).toContain('/v1/business/team/invites/44444444-4444-4444-8444-444444444444/resend');
+    expect((fetchMock.mock.calls[7] as [string, RequestInit])[0]).toContain('/v1/business/team/invites/44444444-4444-4444-8444-444444444444/cancel');
+    expect((fetchMock.mock.calls[8] as [string, RequestInit])[0]).toContain('/v1/admin/orgs/22222222-2222-4222-8222-222222222222/invites/44444444-4444-4444-8444-444444444444/resend');
+    expect((fetchMock.mock.calls[9] as [string, RequestInit])[0]).toContain('/v1/admin/orgs/22222222-2222-4222-8222-222222222222/invites/44444444-4444-4444-8444-444444444444/cancel');
+    expect((fetchMock.mock.calls[10] as [string, RequestInit])[1].method).toBe('PATCH');
   });
 
   it('calls fleet organisation and fleet manager endpoints', async () => {

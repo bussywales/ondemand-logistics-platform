@@ -25,6 +25,17 @@ const FLEET_MANAGER_TEST_ACCOUNT = {
   password: process.env.SMOKE_FLEET_MANAGER_PASSWORD || ''
 };
 
+async function continueExistingSession(page: Page) {
+  const existingSessionLink = page.getByRole('link', { name: /continue to dashboard/i }).first();
+  if (!(await existingSessionLink.isVisible({ timeout: 2000 }).catch(() => false))) {
+    return false;
+  }
+
+  await existingSessionLink.click();
+  await page.waitForURL((url) => !url.pathname.includes('/get-started'), { timeout: 10000 }).catch(() => undefined);
+  return !page.url().includes('/get-started');
+}
+
 function requireOrSkip(condition: boolean, message: string) {
   if (condition) return;
   if (SMOKE_REQUIRE_AUTH) {
@@ -41,6 +52,10 @@ async function signInOperator(page: Page, credentials: { email: string; password
   const target = options?.returnTo ? buildAuthRedirectTarget({ pathname: options.returnTo }) : '/get-started';
   await page.goto(target, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => undefined);
+
+  if (await continueExistingSession(page)) {
+    return true;
+  }
 
   const signInMode = page.getByRole('button', { name: /^sign in$/i }).first();
   if (await signInMode.isVisible({ timeout: 10000 }).catch(() => false)) {
@@ -59,11 +74,19 @@ async function signInOperator(page: Page, credentials: { email: string; password
   await page.getByRole('textbox', { name: /password/i }).fill(credentials.password);
   await page.getByRole('button', { name: /continue to business setup/i }).click();
 
+  if (await continueExistingSession(page)) {
+    return true;
+  }
+
   for (let attempt = 0; attempt < 40; attempt += 1) {
     await page.waitForLoadState('domcontentloaded');
 
     const url = page.url();
     if (!url.includes('/get-started')) {
+      return true;
+    }
+
+    if (await continueExistingSession(page)) {
       return true;
     }
 

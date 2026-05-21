@@ -69,6 +69,7 @@ describe("IdentityService", () => {
         })
         .mockResolvedValueOnce({ rows: [membershipRow] })
         .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
     };
 
     const result = await new IdentityService(pg as never).getBusinessTeam({ id: USER_ID, token: {} });
@@ -142,6 +143,7 @@ describe("IdentityService", () => {
           ]
         })
         .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
     };
 
     const result = await new IdentityService(pg as never).createBusinessInvite(
@@ -152,5 +154,109 @@ describe("IdentityService", () => {
     expect(result.status).toBe("PENDING");
     expect(pg.query.mock.calls.map((call) => call[0]).join("\n")).not.toContain("insert into public.users");
     expect(pg.query.mock.calls[2]?.[0]).toContain("insert into public.org_invitations");
+  });
+
+  it("allows business managers to resend and cancel pending invites in their org", async () => {
+    const inviteRow = {
+      id: "44444444-4444-4444-8444-444444444444",
+      org_id: ORG_ID,
+      email: "new@example.com",
+      role: "OPERATOR",
+      status: "PENDING",
+      invited_by: USER_ID,
+      created_at: new Date("2026-05-19T10:00:00.000Z"),
+      updated_at: new Date("2026-05-19T10:00:00.000Z")
+    };
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ org_id: ORG_ID }] })
+        .mockResolvedValueOnce({ rows: [inviteRow] })
+        .mockResolvedValueOnce({ rows: [{ ...inviteRow, updated_at: new Date("2026-05-19T10:05:00.000Z") }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ org_id: ORG_ID }] })
+        .mockResolvedValueOnce({ rows: [{ ...inviteRow, updated_at: new Date("2026-05-19T10:05:00.000Z") }] })
+        .mockResolvedValueOnce({ rows: [{ ...inviteRow, status: "CANCELLED", updated_at: new Date("2026-05-19T10:06:00.000Z") }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+    };
+    const service = new IdentityService(pg as never);
+
+    const resent = await service.resendBusinessInvite(inviteRow.id, { id: USER_ID, token: {} });
+    const cancelled = await service.cancelBusinessInvite(inviteRow.id, { id: USER_ID, token: {} });
+
+    expect(resent.status).toBe("PENDING");
+    expect(cancelled.status).toBe("CANCELLED");
+    expect(pg.query.mock.calls.some((call) => String(call[0]).includes("insert into public.audit_log"))).toBe(true);
+    expect(pg.query.mock.calls.some((call) => String(call[0]).includes("insert into public.outbox_messages"))).toBe(true);
+  });
+
+  it("rejects resending cancelled or accepted invites", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ org_id: ORG_ID }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: "44444444-4444-4444-8444-444444444444",
+              org_id: ORG_ID,
+              email: "new@example.com",
+              role: "OPERATOR",
+              status: "CANCELLED",
+              invited_by: USER_ID,
+              created_at: new Date("2026-05-19T10:00:00.000Z"),
+              updated_at: new Date("2026-05-19T10:00:00.000Z")
+            }
+          ]
+        })
+    };
+
+    await expect(
+      new IdentityService(pg as never).resendBusinessInvite("44444444-4444-4444-8444-444444444444", { id: USER_ID, token: {} })
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
+  it("rejects cancelling accepted invites", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: ORG_ID,
+              name: "Pilot Org",
+              org_type: "RESTAURANT",
+              status: "ACTIVE",
+              contact_name: null,
+              contact_email: null,
+              operating_city: "London",
+              member_count: 1,
+              active_member_count: 1,
+              created_at: new Date("2026-05-19T10:00:00.000Z"),
+              updated_at: new Date("2026-05-19T10:00:00.000Z")
+            }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: "44444444-4444-4444-8444-444444444444",
+              org_id: ORG_ID,
+              email: "new@example.com",
+              role: "OPERATOR",
+              status: "ACCEPTED",
+              invited_by: USER_ID,
+              created_at: new Date("2026-05-19T10:00:00.000Z"),
+              updated_at: new Date("2026-05-19T10:00:00.000Z")
+            }
+          ]
+        })
+    };
+
+    await expect(
+      new IdentityService(pg as never).cancelAdminInvite(ORG_ID, "44444444-4444-4444-8444-444444444444", { id: USER_ID, token: {} })
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 });

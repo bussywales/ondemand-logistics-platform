@@ -857,6 +857,50 @@ export async function createBusinessTeamInvite(
   });
 }
 
+export async function resendBusinessTeamInvite(session: BusinessSession, inviteId: string): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(session, `/v1/business/team/invites/${encodeURIComponent(inviteId)}/resend`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-team-invite-resend`
+    }
+  });
+}
+
+export async function cancelBusinessTeamInvite(session: BusinessSession, inviteId: string): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(session, `/v1/business/team/invites/${encodeURIComponent(inviteId)}/cancel`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-team-invite-cancel`
+    }
+  });
+}
+
+export async function resendAdminOrgInvite(session: BusinessSession, orgId: string, inviteId: string): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(
+    session,
+    `/v1/admin/orgs/${encodeURIComponent(orgId)}/invites/${encodeURIComponent(inviteId)}/resend`,
+    {
+      method: "POST",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-admin-invite-resend`
+      }
+    }
+  );
+}
+
+export async function cancelAdminOrgInvite(session: BusinessSession, orgId: string, inviteId: string): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(
+    session,
+    `/v1/admin/orgs/${encodeURIComponent(orgId)}/invites/${encodeURIComponent(inviteId)}/cancel`,
+    {
+      method: "POST",
+      headers: {
+        "Idempotency-Key": `${createId("idem")}-admin-invite-cancel`
+      }
+    }
+  );
+}
+
 export async function updateBusinessTeamMembership(
   session: BusinessSession,
   membershipId: string,

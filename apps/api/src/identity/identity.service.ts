@@ -7,6 +7,7 @@ import {
 import {
   BusinessTeamSchema,
   CreateTeamInviteSchema,
+  IdentityAccessEventSchema,
   IdentityInvitationSchema,
   IdentityOrgListSchema,
   IdentityOrgMembersSchema,
@@ -14,7 +15,7 @@ import {
   OrgRoleSchema,
   UpdateMembershipSchema,
   type BusinessTeamDto,
-  type CreateTeamInviteInput,
+  type IdentityAccessEventDto,
   type IdentityInvitationDto,
   type IdentityMembershipDto,
   type IdentityOrgDto,
@@ -49,6 +50,17 @@ const BUSINESS_ASSIGNABLE_ROLES = new Set<OrgRole>([
   "BUSINESS_OPERATOR",
   "ADMIN"
 ]);
+
+const ACCESS_AUDIT_ACTIONS = [
+  "team_invite_created",
+  "team_member_added",
+  "business_membership_updated",
+  "admin_membership_updated",
+  "team_invite_resent",
+  "team_invite_cancelled",
+  "admin_invite_resent",
+  "admin_invite_cancelled"
+];
 
 type UserMembershipRow = QueryResultRow & {
   user_id: string;
@@ -87,10 +99,20 @@ type InvitationRow = QueryResultRow & {
   org_id: string;
   email: string;
   role: OrgRole;
-  status: "PENDING" | "ACCEPTED" | "CANCELLED";
+  status: "PENDING" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
   invited_by: string | null;
   created_at: string | Date;
   updated_at: string | Date;
+};
+
+type AccessEventRow = QueryResultRow & {
+  id: string | number;
+  org_id: string;
+  action: string;
+  actor_name: string | null;
+  actor_email: string | null;
+  metadata: Record<string, unknown> | string | null;
+  created_at: string | Date;
 };
 
 type MembershipRow = UserMembershipRow & {
@@ -205,12 +227,13 @@ export class IdentityService {
 
   async getAdminOrgMembers(orgId: string): Promise<IdentityOrgMembersDto> {
     const org = await this.getOrg(orgId);
-    const [members, invitations] = await Promise.all([
+    const [members, invitations, accessEvents] = await Promise.all([
       this.listOrgMembers(orgId),
-      this.listOrgInvitations(orgId)
+      this.listOrgInvitations(orgId),
+      this.listAccessEvents(orgId)
     ]);
 
-    return IdentityOrgMembersSchema.parse({ org, members, invitations });
+    return IdentityOrgMembersSchema.parse({ org, members, invitations, accessEvents });
   }
 
   async updateAdminMembership(orgId: string, membershipId: string, input: unknown, actor: AuthenticatedUser) {
@@ -269,6 +292,14 @@ export class IdentityService {
              updated_at = now()`,
         [orgId, userId, role]
       );
+      await this.insertAuditLog({
+        actorId: user.id,
+        orgId,
+        entityType: "org_membership",
+        entityId: userId,
+        action: "team_member_added",
+        metadata: { email: parsed.data.email, role }
+      });
     }
 
     const invitation = await this.pg.query<InvitationRow>(
@@ -291,8 +322,52 @@ export class IdentityService {
       action: "team_invite_created",
       metadata: { email: parsed.data.email, role }
     });
+    await this.enqueueInviteOutbox("ORG_INVITE_CREATED", invitation.rows[0], {
+      action: "created",
+      actorId: user.id
+    });
 
     return IdentityInvitationSchema.parse(this.mapInvitation(invitation.rows[0]));
+  }
+
+  async resendBusinessInvite(inviteId: string, actor: AuthenticatedUser): Promise<IdentityInvitationDto> {
+    const orgId = await this.getManageableBusinessOrgId(actor.id);
+    return this.resendInvite({
+      orgId,
+      inviteId,
+      actor,
+      auditAction: "team_invite_resent"
+    });
+  }
+
+  async cancelBusinessInvite(inviteId: string, actor: AuthenticatedUser): Promise<IdentityInvitationDto> {
+    const orgId = await this.getManageableBusinessOrgId(actor.id);
+    return this.cancelInvite({
+      orgId,
+      inviteId,
+      actor,
+      auditAction: "team_invite_cancelled"
+    });
+  }
+
+  async resendAdminInvite(orgId: string, inviteId: string, actor: AuthenticatedUser): Promise<IdentityInvitationDto> {
+    await this.getOrg(orgId);
+    return this.resendInvite({
+      orgId,
+      inviteId,
+      actor,
+      auditAction: "admin_invite_resent"
+    });
+  }
+
+  async cancelAdminInvite(orgId: string, inviteId: string, actor: AuthenticatedUser): Promise<IdentityInvitationDto> {
+    await this.getOrg(orgId);
+    return this.cancelInvite({
+      orgId,
+      inviteId,
+      actor,
+      auditAction: "admin_invite_cancelled"
+    });
   }
 
   async updateBusinessMembership(membershipId: string, input: unknown, actor: AuthenticatedUser) {
@@ -317,6 +392,98 @@ export class IdentityService {
       allowedRoles: BUSINESS_ASSIGNABLE_ROLES,
       auditAction: "business_membership_updated"
     });
+  }
+
+  private async resendInvite(input: {
+    orgId: string;
+    inviteId: string;
+    actor: AuthenticatedUser;
+    auditAction: "team_invite_resent" | "admin_invite_resent";
+  }) {
+    const existing = await this.getInvitation(input.orgId, input.inviteId);
+    if (existing.status === "ACCEPTED" || existing.status === "CANCELLED") {
+      throw new UnprocessableEntityException("invite_not_resendable");
+    }
+
+    const result = await this.pg.query<InvitationRow>(
+      `update public.org_invitations
+       set status = 'PENDING',
+           invited_by = $3,
+           updated_at = now()
+       where id = $1
+         and org_id = $2
+       returning id, org_id, email, role::text as role, status, invited_by, created_at, updated_at`,
+      [input.inviteId, input.orgId, input.actor.id]
+    );
+    const invite = result.rows[0];
+
+    await this.insertAuditLog({
+      actorId: input.actor.id,
+      orgId: input.orgId,
+      entityType: "org_invitation",
+      entityId: input.inviteId,
+      action: input.auditAction,
+      metadata: {
+        email: invite.email,
+        role: invite.role,
+        previousStatus: existing.status,
+        nextStatus: invite.status
+      }
+    });
+    await this.enqueueInviteOutbox("ORG_INVITE_RESENT", invite, {
+      action: "resent",
+      actorId: input.actor.id,
+      previousStatus: existing.status
+    });
+
+    return IdentityInvitationSchema.parse(this.mapInvitation(invite));
+  }
+
+  private async cancelInvite(input: {
+    orgId: string;
+    inviteId: string;
+    actor: AuthenticatedUser;
+    auditAction: "team_invite_cancelled" | "admin_invite_cancelled";
+  }) {
+    const existing = await this.getInvitation(input.orgId, input.inviteId);
+    if (existing.status === "ACCEPTED") {
+      throw new UnprocessableEntityException("accepted_invite_cannot_be_cancelled");
+    }
+    if (existing.status === "CANCELLED") {
+      throw new UnprocessableEntityException("invite_already_cancelled");
+    }
+
+    const result = await this.pg.query<InvitationRow>(
+      `update public.org_invitations
+       set status = 'CANCELLED',
+           updated_at = now()
+       where id = $1
+         and org_id = $2
+       returning id, org_id, email, role::text as role, status, invited_by, created_at, updated_at`,
+      [input.inviteId, input.orgId]
+    );
+    const invite = result.rows[0];
+
+    await this.insertAuditLog({
+      actorId: input.actor.id,
+      orgId: input.orgId,
+      entityType: "org_invitation",
+      entityId: input.inviteId,
+      action: input.auditAction,
+      metadata: {
+        email: invite.email,
+        role: invite.role,
+        previousStatus: existing.status,
+        nextStatus: invite.status
+      }
+    });
+    await this.enqueueInviteOutbox("ORG_INVITE_CANCELLED", invite, {
+      action: "cancelled",
+      actorId: input.actor.id,
+      previousStatus: existing.status
+    });
+
+    return IdentityInvitationSchema.parse(this.mapInvitation(invite));
   }
 
   private async updateMembership(input: {
@@ -455,6 +622,43 @@ export class IdentityService {
     return result.rows.map((row) => this.mapInvitation(row));
   }
 
+  private async listAccessEvents(orgId: string): Promise<IdentityAccessEventDto[]> {
+    const result = await this.pg.query<AccessEventRow>(
+      `select
+          a.id,
+          a.org_id,
+          a.action,
+          u.display_name as actor_name,
+          u.email as actor_email,
+          a.metadata,
+          a.created_at
+       from public.audit_log a
+       left join public.users u on u.id = a.actor_id
+       where a.org_id = $1
+         and a.action = any($2::text[])
+       order by a.created_at desc
+       limit 30`,
+      [orgId, ACCESS_AUDIT_ACTIONS]
+    );
+    return result.rows.map((row) => this.mapAccessEvent(row));
+  }
+
+  private async getInvitation(orgId: string, inviteId: string) {
+    const result = await this.pg.query<InvitationRow>(
+      `select id, org_id, email, role::text as role, status, invited_by, created_at, updated_at
+       from public.org_invitations
+       where id = $1
+         and org_id = $2
+       limit 1`,
+      [inviteId, orgId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      throw new NotFoundException("invite_not_found");
+    }
+    return row;
+  }
+
   private membershipSelectSql(whereClause: string) {
     return `select
         u.id as user_id,
@@ -524,6 +728,46 @@ export class IdentityService {
     };
   }
 
+  private mapAccessEvent(row: AccessEventRow): IdentityAccessEventDto {
+    const metadata = typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata ?? {};
+    return IdentityAccessEventSchema.parse({
+      id: String(row.id),
+      orgId: row.org_id,
+      eventType: row.action,
+      actorName: row.actor_name,
+      actorEmail: row.actor_email,
+      createdAt: toIsoDateTime(row.created_at),
+      summary: this.accessEventSummary(row.action, metadata),
+      metadata
+    });
+  }
+
+  private accessEventSummary(action: string, metadata: Record<string, unknown>) {
+    const email = typeof metadata.email === "string" ? metadata.email : "team access";
+    const role = typeof metadata.role === "string" ? ` as ${roleLabel(metadata.role)}` : "";
+    switch (action) {
+      case "team_invite_created":
+        return `Invite created for ${email}${role}.`;
+      case "team_invite_resent":
+      case "admin_invite_resent":
+        return `Invite resent to ${email}.`;
+      case "team_invite_cancelled":
+      case "admin_invite_cancelled":
+        return `Invite cancelled for ${email}.`;
+      case "team_member_added":
+        return `Member access added for ${email}${role}.`;
+      case "business_membership_updated":
+      case "admin_membership_updated": {
+        const previousRole = typeof metadata.previousRole === "string" ? roleLabel(metadata.previousRole) : "previous role";
+        const nextRole = typeof metadata.nextRole === "string" ? roleLabel(metadata.nextRole) : "next role";
+        const nextActive = typeof metadata.nextActive === "boolean" ? (metadata.nextActive ? "active" : "inactive") : "updated";
+        return `Membership changed from ${previousRole} to ${nextRole}; status ${nextActive}.`;
+      }
+      default:
+        return action.replace(/_/g, " ").toLowerCase();
+    }
+  }
+
   private async insertAuditLog(input: {
     actorId: string;
     orgId: string;
@@ -538,4 +782,41 @@ export class IdentityService {
       [randomUUID(), input.actorId, input.orgId, input.entityType, input.entityId, input.action, JSON.stringify(input.metadata)]
     );
   }
+
+  private async enqueueInviteOutbox(eventType: "ORG_INVITE_CREATED" | "ORG_INVITE_RESENT" | "ORG_INVITE_CANCELLED", invite: InvitationRow, metadata: Record<string, unknown>) {
+    await this.pg.query(
+      `insert into public.outbox_messages (
+         aggregate_type,
+         aggregate_id,
+         event_type,
+         payload,
+         idempotency_key
+       )
+       values ($1, $2, $3, $4::jsonb, $5)
+       on conflict (event_type, idempotency_key) do nothing`,
+      [
+        "org_invitation",
+        invite.id,
+        eventType,
+        JSON.stringify({
+          inviteId: invite.id,
+          orgId: invite.org_id,
+          email: invite.email,
+          role: invite.role,
+          status: invite.status,
+          updatedAt: toIsoDateTime(invite.updated_at),
+          ...metadata
+        }),
+        `${eventType.toLowerCase()}:${invite.id}:${toIsoDateTime(invite.updated_at)}`
+      ]
+    );
+  }
+}
+
+function roleLabel(role: string) {
+  return role
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

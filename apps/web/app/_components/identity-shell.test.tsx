@@ -33,6 +33,28 @@ const member = {
   updatedAt: "2026-05-19T10:00:00.000Z"
 };
 
+const invitation = {
+  id: "44444444-4444-4444-8444-444444444444",
+  orgId: org.id,
+  email: "new@example.com",
+  role: "OPERATOR" as const,
+  status: "PENDING" as const,
+  invitedBy: member.userId,
+  createdAt: "2026-05-19T10:00:00.000Z",
+  updatedAt: "2026-05-19T10:00:00.000Z"
+};
+
+const accessEvent = {
+  id: "1",
+  orgId: org.id,
+  eventType: "team_invite_created",
+  actorName: "Operator One",
+  actorEmail: "operator@example.com",
+  createdAt: "2026-05-19T10:00:00.000Z",
+  summary: "Invite created for new@example.com as Operator.",
+  metadata: { email: "new@example.com", role: "OPERATOR" }
+};
+
 describe("identity shells", () => {
   it("renders admin users with membership links", () => {
     const users: IdentityUser[] = [
@@ -60,17 +82,30 @@ describe("identity shells", () => {
     expect(orgHtml).toContain("Organisation registry");
     expect(orgHtml).toContain("Manage members");
 
-    const data: IdentityOrgMembers = { org, members: [member], invitations: [] };
-    const membersHtml = renderToStaticMarkup(<OrgMembersView data={data} onUpdate={vi.fn()} />);
+    const data: IdentityOrgMembers = { org, members: [member], invitations: [invitation], accessEvents: [accessEvent] };
+    const membersHtml = renderToStaticMarkup(<OrgMembersView data={data} onCancelInvite={vi.fn()} onResendInvite={vi.fn()} onUpdate={vi.fn()} />);
     expect(membersHtml).toContain("Role and activation changes are human-reviewed");
     expect(membersHtml).toContain("Deactivate");
+    expect(membersHtml).toContain("Pending invitations");
+    expect(membersHtml).toContain("Resend invite");
+    expect(membersHtml).toContain("Access history");
   });
 
   it("renders the business team page", () => {
-    const team: BusinessTeam = { org, members: [member], invitations: [] };
-    const html = renderToStaticMarkup(<BusinessTeamView team={team} onInvite={vi.fn()} onUpdate={vi.fn()} />);
+    const team: BusinessTeam = { org, members: [member], invitations: [invitation], accessEvents: [accessEvent] };
+    const html = renderToStaticMarkup(
+      <BusinessTeamView
+        team={team}
+        onCancelInvite={vi.fn()}
+        onInvite={vi.fn()}
+        onResendInvite={vi.fn()}
+        onUpdate={vi.fn()}
+      />
+    );
     expect(html).toContain("Manage who belongs to this workspace");
     expect(html).toContain("Add access by email");
     expect(html).toContain("Operator One");
+    expect(html).toContain("new@example.com");
+    expect(html).toContain("Email delivery may depend on notification configuration");
   });
 });

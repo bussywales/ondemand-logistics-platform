@@ -932,10 +932,22 @@ describe("identity and access schemas", () => {
             orgId: org.id,
             email: "new@example.com",
             role: "OPERATOR",
-            status: "PENDING",
+            status: "EXPIRED",
             invitedBy: member.userId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
+          }
+        ],
+        accessEvents: [
+          {
+            id: "1",
+            orgId: org.id,
+            eventType: "team_invite_created",
+            actorName: "Busayo Adewale",
+            actorEmail: "ops@example.com",
+            createdAt: new Date().toISOString(),
+            summary: "Invite created for new@example.com.",
+            metadata: { email: "new@example.com" }
           }
         ]
       }).success

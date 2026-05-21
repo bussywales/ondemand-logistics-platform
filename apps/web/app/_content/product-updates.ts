@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "iam-invite-lifecycle-audit",
+    title: "Team invites now have clearer lifecycle controls",
+    summary: "Business owners and platform admins can now see pending invites, resend or cancel them, and review recent access changes from the team workspace.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/settings/team", "/admin/orgs"],
+    releasedAt: "2026-05-21T22:00:00.000Z",
+    version: "v2.8",
+    ctaLabel: "Open team settings",
+    ctaHref: "/app/settings/team"
+  },
+  {
     id: "operational-reset-selection",
     title: "Operational resets now support per-record selection",
     summary: "Platform admins can preview eligible staging/demo reset records, select exactly which ones to include, and execute a non-destructive reset with typed confirmation.",

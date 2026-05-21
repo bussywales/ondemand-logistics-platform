@@ -9,17 +9,31 @@ import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon } from "./shipwright-icon";
 import { AdminWorkspaceLink, WorkspaceNav } from "./workspace-nav";
 import {
+  cancelAdminOrgInvite,
+  cancelBusinessTeamInvite,
   createBusinessTeamInvite,
   getAdminOrgMembers,
   getBusinessTeam,
   getUserFacingApiError,
   listAdminOrgs,
   listAdminUsers,
+  resendAdminOrgInvite,
+  resendBusinessTeamInvite,
   updateAdminOrgMembership,
   updateBusinessTeamMembership
 } from "../_lib/api";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
-import type { BusinessSession, BusinessTeam, IdentityMembership, IdentityOrg, IdentityOrgMembers, IdentityUser, OrgRole } from "../_lib/product-state";
+import type {
+  BusinessSession,
+  BusinessTeam,
+  IdentityAccessEvent,
+  IdentityInvitation,
+  IdentityMembership,
+  IdentityOrg,
+  IdentityOrgMembers,
+  IdentityUser,
+  OrgRole
+} from "../_lib/product-state";
 
 const BUSINESS_ROLE_OPTIONS: OrgRole[] = ["OWNER", "MANAGER", "OPERATOR", "FINANCE_VIEWER", "SUPPORT_USER", "MENU_MANAGER"];
 const ADMIN_ROLE_OPTIONS: OrgRole[] = [
@@ -50,7 +64,7 @@ function statusBadgeClass(value: string) {
   if (["ACTIVE", "READY", "PLATFORM_ADMIN"].includes(value)) {
     return "sw-badge--success";
   }
-  if (["INACTIVE", "SUSPENDED"].includes(value)) {
+  if (["INACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"].includes(value)) {
     return "sw-badge--warning";
   }
   return "sw-badge--info";
@@ -122,6 +136,88 @@ function MemberRow(props: {
         ) : null}
       </div>
     </div>
+  );
+}
+
+function canResendInvite(invite: IdentityInvitation) {
+  return invite.status === "PENDING" || invite.status === "EXPIRED";
+}
+
+function canCancelInvite(invite: IdentityInvitation) {
+  return invite.status === "PENDING" || invite.status === "EXPIRED";
+}
+
+function InviteRow(props: {
+  invite: IdentityInvitation;
+  disabled?: boolean;
+  onCancel?: (invite: IdentityInvitation) => void;
+  onResend?: (invite: IdentityInvitation) => void;
+}) {
+  return (
+    <div className="sw-list-row team-invite-row">
+      <div className="sw-stack-sm">
+        <div className="sw-row">
+          <strong>{props.invite.email}</strong>
+          <span className={`sw-badge ${statusBadgeClass(props.invite.status)}`}>{formatLabel(props.invite.status)}</span>
+        </div>
+        <p className="ops-detail-note">
+          {formatLabel(props.invite.role)} · Created {new Date(props.invite.createdAt).toLocaleDateString()}
+        </p>
+      </div>
+      {props.onResend || props.onCancel ? (
+        <div className="sw-row">
+          <button
+            className="sw-button sw-button--secondary button button-secondary"
+            disabled={props.disabled || !canResendInvite(props.invite)}
+            onClick={() => props.onResend?.(props.invite)}
+            type="button"
+          >
+            Resend invite
+          </button>
+          <button
+            className="sw-button sw-button--ghost button button-secondary"
+            disabled={props.disabled || !canCancelInvite(props.invite)}
+            onClick={() => props.onCancel?.(props.invite)}
+            type="button"
+          >
+            Cancel invite
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AccessHistoryPanel(props: { events: IdentityAccessEvent[] }) {
+  return (
+    <section className="sw-supporting-surface team-members-surface">
+      <div className="sw-card-header">
+        <div>
+          <p className="eyebrow">Access history</p>
+          <h2>{props.events.length} recent access changes</h2>
+          <p className="ops-detail-note">Invitation and membership changes are recorded for pilot support and audit review.</p>
+        </div>
+      </div>
+      {props.events.length === 0 ? (
+        <p className="ops-detail-note">Access changes will appear here after invites, role updates, or membership status changes.</p>
+      ) : (
+        <div className="sw-stack">
+          {props.events.map((event) => (
+            <div className="sw-list-row" key={event.id}>
+              <div className="sw-stack-sm">
+                <div className="sw-row">
+                  <strong>{event.summary}</strong>
+                  <span className="sw-badge sw-badge--neutral">{formatLabel(event.eventType)}</span>
+                </div>
+                <p className="ops-detail-note">
+                  {event.actorName ?? event.actorEmail ?? "System"} · {new Date(event.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -244,8 +340,13 @@ export function AdminOrgsView(props: { orgs: IdentityOrg[]; search: string; onSe
 
 export function OrgMembersView(props: {
   data: IdentityOrgMembers;
+  pending?: boolean;
+  onCancelInvite?: (invite: IdentityInvitation) => void;
+  onResendInvite?: (invite: IdentityInvitation) => void;
   onUpdate?: (member: IdentityMembership, patch: { role?: OrgRole; isActive?: boolean }) => void;
 }) {
+  const pendingInvitations = props.data.invitations.filter((invite) => invite.status === "PENDING" || invite.status === "EXPIRED");
+  const historicalInvitations = props.data.invitations.filter((invite) => invite.status === "ACCEPTED" || invite.status === "CANCELLED");
   return (
     <main className="app-shell admin-shell-page">
       <div className="sw-row-between admin-shell-header">
@@ -275,20 +376,33 @@ export function OrgMembersView(props: {
       <section className="sw-supporting-surface">
         <div className="sw-card-header">
           <div>
-            <p className="eyebrow">Invitations</p>
-            <h2>{props.data.invitations.length} pending/history records</h2>
+            <p className="eyebrow">Pending invitations</p>
+            <h2>{pendingInvitations.length} awaiting action</h2>
+            <p className="ops-detail-note">Email delivery may depend on notification configuration. Resend records a new delivery event without creating a duplicate invite.</p>
           </div>
         </div>
         <div className="sw-stack">
-          {props.data.invitations.length === 0 ? <p className="ops-detail-note">No invitation records yet.</p> : props.data.invitations.map((invite) => (
-            <div className="sw-list-row" key={invite.id}>
-              <span>{invite.email}</span>
-              <span className="sw-badge sw-badge--info">{formatLabel(invite.role)}</span>
-              <span className={`sw-badge ${statusBadgeClass(invite.status)}`}>{formatLabel(invite.status)}</span>
-            </div>
+          {pendingInvitations.length === 0 ? <p className="ops-detail-note">No pending invitation records.</p> : pendingInvitations.map((invite) => (
+            <InviteRow disabled={props.pending} invite={invite} key={invite.id} onCancel={props.onCancelInvite} onResend={props.onResendInvite} />
           ))}
         </div>
       </section>
+      <section className="sw-supporting-surface">
+        <div className="sw-card-header">
+          <div>
+            <p className="eyebrow">Invitation history</p>
+            <h2>{historicalInvitations.length} completed records</h2>
+          </div>
+        </div>
+        {historicalInvitations.length === 0 ? (
+          <p className="ops-detail-note">Accepted and cancelled invitations will appear here.</p>
+        ) : (
+          <div className="sw-stack">
+            {historicalInvitations.map((invite) => <InviteRow invite={invite} key={invite.id} />)}
+          </div>
+        )}
+      </section>
+      <AccessHistoryPanel events={props.data.accessEvents ?? []} />
     </main>
   );
 }
@@ -337,13 +451,16 @@ function TeamInviteForm(props: { disabled: boolean; onInvite: (input: { email: s
 export function BusinessTeamView(props: {
   team: BusinessTeam;
   session?: BusinessSession | null;
+  onCancelInvite?: (invite: IdentityInvitation) => void;
   onInvite?: (input: { email: string; displayName?: string; role: OrgRole }) => void;
+  onResendInvite?: (invite: IdentityInvitation) => void;
   onUpdate?: (member: IdentityMembership, patch: { role?: OrgRole; isActive?: boolean }) => void;
   pending?: boolean;
 }) {
   const activeMembers = props.team.members.filter((member) => member.isActive).length;
   const inactiveMembers = props.team.members.length - activeMembers;
-  const pendingInvites = props.team.invitations.filter((invite) => invite.status !== "ACCEPTED").length;
+  const pendingInvites = props.team.invitations.filter((invite) => invite.status === "PENDING" || invite.status === "EXPIRED");
+  const historicalInvites = props.team.invitations.filter((invite) => invite.status === "ACCEPTED" || invite.status === "CANCELLED");
   const platformAdmin = Boolean(props.session?.context.platformAdmin);
   const currentUserRole =
     props.session?.context.memberships.find((item) => item.membership.orgId === props.team.org.id)?.membership.role ?? null;
@@ -369,7 +486,7 @@ export function BusinessTeamView(props: {
             <div className="sw-stack-sm">
               <span className="sw-badge sw-badge--success">{activeMembers} active</span>
               <span className="sw-badge sw-badge--neutral">{inactiveMembers} inactive</span>
-              <span className="sw-badge sw-badge--info">{pendingInvites} invite records</span>
+              <span className="sw-badge sw-badge--info">{pendingInvites.length} pending invites</span>
             </div>
           </section>
           {props.session ? (
@@ -400,8 +517,8 @@ export function BusinessTeamView(props: {
                 <strong>{inactiveMembers}</strong>
               </div>
               <div className="sw-list-row">
-                <span>Invitation records</span>
-                <strong>{props.team.invitations.length}</strong>
+                <span>Pending invites</span>
+                <strong>{pendingInvites.length}</strong>
               </div>
             </div>
           </section>
@@ -421,24 +538,43 @@ export function BusinessTeamView(props: {
           <section className="sw-supporting-surface team-members-surface">
             <div className="sw-card-header">
               <div>
-                <p className="eyebrow">Invitation records</p>
-                <h2>{props.team.invitations.length} records</h2>
+                <p className="eyebrow">Pending invitations</p>
+                <h2>{pendingInvites.length} awaiting action</h2>
+                <p className="ops-detail-note">Email delivery may depend on notification configuration. Resend records follow-up without creating duplicate access.</p>
               </div>
             </div>
-            {props.team.invitations.length === 0 ? (
-              <p className="ops-detail-note">No invitation records yet.</p>
+            {pendingInvites.length === 0 ? (
+              <p className="ops-detail-note">No pending invitation records.</p>
             ) : (
               <div className="sw-stack">
-                {props.team.invitations.map((invite) => (
-                  <div className="sw-list-row" key={invite.id}>
-                    <span>{invite.email}</span>
-                    <span className="sw-badge sw-badge--info">{formatLabel(invite.role)}</span>
-                    <span className={`sw-badge ${statusBadgeClass(invite.status)}`}>{formatLabel(invite.status)}</span>
-                  </div>
+                {pendingInvites.map((invite) => (
+                  <InviteRow
+                    disabled={props.pending}
+                    invite={invite}
+                    key={invite.id}
+                    onCancel={props.onCancelInvite}
+                    onResend={props.onResendInvite}
+                  />
                 ))}
               </div>
             )}
           </section>
+          <section className="sw-supporting-surface team-members-surface">
+            <div className="sw-card-header">
+              <div>
+                <p className="eyebrow">Invitation history</p>
+                <h2>{historicalInvites.length} completed records</h2>
+              </div>
+            </div>
+            {historicalInvites.length === 0 ? (
+              <p className="ops-detail-note">Accepted and cancelled invitations will appear here.</p>
+            ) : (
+              <div className="sw-stack">
+                {historicalInvites.map((invite) => <InviteRow invite={invite} key={invite.id} />)}
+              </div>
+            )}
+          </section>
+          <AccessHistoryPanel events={props.team.accessEvents ?? []} />
         </div>
       </section>
     </main>
@@ -496,6 +632,7 @@ export function AdminOrgMembersShell(props: { orgId: string }) {
   const { status, session } = useBusinessAuth();
   const [data, setData] = useState<IdentityOrgMembers | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace(buildAuthRedirectTarget({ pathname: `/admin/orgs/${props.orgId}/members` }));
@@ -513,18 +650,55 @@ export function AdminOrgMembersShell(props: { orgId: string }) {
 
   async function handleUpdate(member: IdentityMembership, patch: { role?: OrgRole; isActive?: boolean }) {
     if (!session) return;
+    setPending(true);
     try {
       await updateAdminOrgMembership(session, props.orgId, member.id, patch);
       await refresh(session);
     } catch (issue) {
       setError(getUserFacingApiError(issue, "Unable to update membership."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleResendInvite(invite: IdentityInvitation) {
+    if (!session) return;
+    setPending(true);
+    try {
+      await resendAdminOrgInvite(session, props.orgId, invite.id);
+      await refresh(session);
+    } catch (issue) {
+      setError(getUserFacingApiError(issue, "Unable to resend invite."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleCancelInvite(invite: IdentityInvitation) {
+    if (!session) return;
+    setPending(true);
+    try {
+      await cancelAdminOrgInvite(session, props.orgId, invite.id);
+      await refresh(session);
+    } catch (issue) {
+      setError(getUserFacingApiError(issue, "Unable to cancel invite."));
+    } finally {
+      setPending(false);
     }
   }
 
   if (status === "loading" || !session) return <LoadingState copy="Restoring platform admin session." />;
   if (!session.context.platformAdmin) return <PlatformAdminRequired />;
   if (!data) return <LoadingState copy={error ?? "Loading organisation members."} />;
-  return <OrgMembersView data={data} onUpdate={handleUpdate} />;
+  return (
+    <OrgMembersView
+      data={data}
+      onCancelInvite={handleCancelInvite}
+      onResendInvite={handleResendInvite}
+      onUpdate={handleUpdate}
+      pending={pending}
+    />
+  );
 }
 
 export function BusinessTeamShell() {
@@ -574,10 +748,46 @@ export function BusinessTeamShell() {
     }
   }
 
+  async function handleResendInvite(invite: IdentityInvitation) {
+    if (!session) return;
+    setPending(true);
+    try {
+      await resendBusinessTeamInvite(session, invite.id);
+      await refresh(session);
+    } catch (issue) {
+      setError(getUserFacingApiError(issue, "Unable to resend invite."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleCancelInvite(invite: IdentityInvitation) {
+    if (!session) return;
+    setPending(true);
+    try {
+      await cancelBusinessTeamInvite(session, invite.id);
+      await refresh(session);
+    } catch (issue) {
+      setError(getUserFacingApiError(issue, "Unable to cancel invite."));
+    } finally {
+      setPending(false);
+    }
+  }
+
   const content = useMemo(() => {
     if (status === "loading" || !session) return <LoadingState copy="Restoring workspace session." />;
     if (!team) return <LoadingState copy={error ?? "Loading team settings."} />;
-    return <BusinessTeamView onInvite={handleInvite} onUpdate={handleUpdate} pending={pending} session={session} team={team} />;
+    return (
+      <BusinessTeamView
+        onCancelInvite={handleCancelInvite}
+        onInvite={handleInvite}
+        onResendInvite={handleResendInvite}
+        onUpdate={handleUpdate}
+        pending={pending}
+        session={session}
+        team={team}
+      />
+    );
   }, [error, pending, session, status, team]);
 
   return content;

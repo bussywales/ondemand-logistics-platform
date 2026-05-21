@@ -55,6 +55,8 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
 
+IAM v1.1 adds pending invite management on `/app/settings/team` and `/admin/orgs/[orgId]/members`: business owners and platform admins can resend or cancel pending/expired invitations and review recent access history. Invite email delivery still depends on notification configuration; no account deletion, impersonation, SSO, or SCIM is included.
+
 ## Commercial intake
 Public demo and controlled-pilot requests are captured through:
 - `/pricing`
@@ -169,6 +171,7 @@ See the full migration history in:
 - `packages/db/migrations`
 
 Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, platform admin support, and identity/team management.
+Identity/team management now includes local invite lifecycle statuses (`PENDING`, `ACCEPTED`, `CANCELLED`, `EXPIRED`) and access-change audit visibility.
 Pilot management schema now tracks workspace mode, readiness stage, owners, readiness checklist evidence, and posture counts for admin-led controlled pilot review.
 Driver fleet organisations reuse the IAM organisation and membership model with `DRIVER_COMPANY` orgs and fleet roles; v1 is readiness/management visibility only, not fleet billing, payout, dispatch preference, or courier suspension automation.
 

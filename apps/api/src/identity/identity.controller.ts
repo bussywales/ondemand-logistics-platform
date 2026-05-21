@@ -33,6 +33,24 @@ export class AdminIdentityController {
   ) {
     return this.identity.updateAdminMembership(orgId, membershipId, body, user);
   }
+
+  @Post("orgs/:orgId/invites/:inviteId/resend")
+  resendOrgInvite(
+    @Param("orgId") orgId: string,
+    @Param("inviteId") inviteId: string,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.identity.resendAdminInvite(orgId, inviteId, user);
+  }
+
+  @Post("orgs/:orgId/invites/:inviteId/cancel")
+  cancelOrgInvite(
+    @Param("orgId") orgId: string,
+    @Param("inviteId") inviteId: string,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.identity.cancelAdminInvite(orgId, inviteId, user);
+  }
 }
 
 @Controller("v1/business/team")
@@ -47,6 +65,16 @@ export class BusinessTeamController {
   @Post("invites")
   createInvite(@Body() body: unknown, @RequestUser() user: AuthenticatedUser) {
     return this.identity.createBusinessInvite(body, user);
+  }
+
+  @Post("invites/:inviteId/resend")
+  resendInvite(@Param("inviteId") inviteId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.identity.resendBusinessInvite(inviteId, user);
+  }
+
+  @Post("invites/:inviteId/cancel")
+  cancelInvite(@Param("inviteId") inviteId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.identity.cancelBusinessInvite(inviteId, user);
   }
 
   @Patch(":membershipId")

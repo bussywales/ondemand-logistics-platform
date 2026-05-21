@@ -707,7 +707,7 @@ export const IdentityOrgListSchema = z.object({
 });
 export type IdentityOrgListDto = z.infer<typeof IdentityOrgListSchema>;
 
-export const IdentityInvitationStatusSchema = z.enum(["PENDING", "ACCEPTED", "CANCELLED"]);
+export const IdentityInvitationStatusSchema = z.enum(["PENDING", "ACCEPTED", "CANCELLED", "EXPIRED"]);
 export type IdentityInvitationStatus = z.infer<typeof IdentityInvitationStatusSchema>;
 
 export const IdentityInvitationSchema = z.object({
@@ -722,10 +722,23 @@ export const IdentityInvitationSchema = z.object({
 });
 export type IdentityInvitationDto = z.infer<typeof IdentityInvitationSchema>;
 
+export const IdentityAccessEventSchema = z.object({
+  id: z.string(),
+  orgId: z.string().uuid(),
+  eventType: z.string().min(2),
+  actorName: z.string().nullable(),
+  actorEmail: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  summary: z.string().min(2),
+  metadata: z.record(z.unknown())
+});
+export type IdentityAccessEventDto = z.infer<typeof IdentityAccessEventSchema>;
+
 export const IdentityOrgMembersSchema = z.object({
   org: IdentityOrgSchema,
   members: z.array(IdentityMembershipSchema),
-  invitations: z.array(IdentityInvitationSchema)
+  invitations: z.array(IdentityInvitationSchema),
+  accessEvents: z.array(IdentityAccessEventSchema).default([])
 });
 export type IdentityOrgMembersDto = z.infer<typeof IdentityOrgMembersSchema>;
 

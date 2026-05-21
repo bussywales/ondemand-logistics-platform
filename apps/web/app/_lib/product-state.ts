@@ -134,16 +134,28 @@ export type IdentityInvitation = {
   orgId: string;
   email: string;
   role: OrgRole;
-  status: "PENDING" | "ACCEPTED" | "CANCELLED";
+  status: "PENDING" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
   invitedBy: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type IdentityAccessEvent = {
+  id: string;
+  orgId: string;
+  eventType: string;
+  actorName: string | null;
+  actorEmail: string | null;
+  createdAt: string;
+  summary: string;
+  metadata: Record<string, unknown>;
 };
 
 export type IdentityOrgMembers = {
   org: IdentityOrg;
   members: IdentityMembership[];
   invitations: IdentityInvitation[];
+  accessEvents: IdentityAccessEvent[];
 };
 
 export type BusinessTeam = IdentityOrgMembers;
