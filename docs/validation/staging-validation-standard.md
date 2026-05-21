@@ -201,7 +201,7 @@ Playwright artifacts remain local and ignored:
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
 - Public smoke should not require authentication.
 - Demo request follow-up changes should keep `/admin/demo-requests` and `/admin/command` calm, admin-only, event-audited, and free of CRM/email overclaims.
-- Operational reset changes should keep `/admin/operational-resets` admin-only, preview-first, typed-confirmation gated, and non-destructive. Proof orders, jobs, payments, audit events, and proof artifacts must remain historical.
+- Operational reset changes should keep `/admin/operational-resets` admin-only, preview-first, per-record selectable, typed-confirmation gated, and non-destructive. Proof orders, jobs, payments, audit events, and proof artifacts must remain historical.
 - Release readiness must include support/escalation schema dependencies because order, job, admin command, closeout, and support history surfaces depend on them.
 - Support history events must be system-created from support create/update operations; new work must not add manual event creation or deletion paths.
 - Rehearsal cockpit should not execute release verification, paid-delivery proof, browser smoke, or destructive pilot controls from the UI in v1.

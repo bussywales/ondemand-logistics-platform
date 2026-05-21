@@ -117,8 +117,10 @@ If staging/demo records are cluttering the walkthrough, open `/admin/operational
 
 Use reset tools only for non-destructive tidy actions:
 - preview first
-- confirm affected items
-- execute only with typed confirmation: `RESET DEMO DATA`
+- confirm affected items and select the exact eligible records to include
+- use Select all eligible only after reviewing the preview list
+- leave ineligible records disabled and unresolved in the reset tool
+- execute selected records only with typed confirmation: `RESET DEMO DATA`
 - close/archive old demo requests when appropriate
 - close clearly marked test/demo support escalations with reset closeout evidence
 - record stale pilot rehearsal recommendations without mutating proof records

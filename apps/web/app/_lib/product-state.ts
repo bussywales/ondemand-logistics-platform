@@ -214,11 +214,17 @@ export type OperationalResetMode =
   | "FULL_DEMO_TIDY";
 
 export type OperationalResetPreviewItem = {
+  selectionId: string;
   resourceType: "demo_request" | "support_escalation" | "pilot_workspace" | "proof_record";
   resourceId: string;
   label: string;
+  proposedAction: string;
   action: string;
   reason: string;
+  eligible: boolean;
+  warning: string | null;
+  createdAt: string | null;
+  currentStatus: string | null;
   metadata: Record<string, unknown>;
 };
 
@@ -261,6 +267,7 @@ export type OperationalResetRequestInput = {
 
 export type ExecuteOperationalResetInput = OperationalResetRequestInput & {
   confirmation: "RESET DEMO DATA";
+  selectedItems?: Array<string | { resourceType: OperationalResetPreviewItem["resourceType"]; resourceId: string; action: string }>;
 };
 
 export type CreateDemoRequestInput = {

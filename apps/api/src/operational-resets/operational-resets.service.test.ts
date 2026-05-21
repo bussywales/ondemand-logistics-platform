@@ -60,6 +60,15 @@ describe("OperationalResetsService", () => {
     expect(result.summary.affectedCount).toBe(2);
     expect(result.summary.proofRecordsUntouched).toBe(true);
     expect(result.items.map((item) => item.resourceType)).toEqual(["demo_request", "support_escalation"]);
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({
+        selectionId: `demo_request:${DEMO_ROW.id}:close-or-archive-demo-request`,
+        proposedAction: "Close or archive demo request",
+        eligible: true,
+        currentStatus: "CLOSED",
+        createdAt: "2026-05-01T10:00:00.000Z"
+      })
+    );
     expect(query).not.toHaveBeenCalledWith(expect.stringContaining("update public.demo_requests"), expect.anything());
   });
 
@@ -105,6 +114,97 @@ describe("OperationalResetsService", () => {
     expect(query).toHaveBeenCalledWith(expect.stringContaining("insert into public.operational_reset_runs"), expect.arrayContaining([USER_ID, "staging_demo", "FULL_DEMO_TIDY"]));
     expect(query).toHaveBeenCalledWith(expect.stringContaining("insert into public.operational_reset_items"), expect.arrayContaining([RUN_ROW.id, "demo_request", DEMO_ROW.id]));
     expect(query).toHaveBeenCalledWith(expect.stringContaining("insert into public.operational_reset_items"), expect.arrayContaining([RUN_ROW.id, "support_escalation", SUPPORT_ROW.id]));
+  });
+
+  it("executes only selected eligible preview items", async () => {
+    const selectedRunRow = {
+      ...RUN_ROW,
+      summary: {
+        affectedCount: 1,
+        demoRequests: 1,
+        supportEscalations: 0,
+        pilotRecommendations: 0,
+        proofRecordsUntouched: true,
+        message: "1 eligible non-destructive reset action identified. Proof orders, jobs, payments, and audit evidence are not mutated."
+      }
+    };
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [DEMO_ROW] })
+      .mockResolvedValueOnce({ rows: [SUPPORT_ROW] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [selectedRunRow] })
+      .mockResolvedValue({ rows: [] });
+    const withTransaction = vi.fn((callback) => callback({ query }));
+    const service = new OperationalResetsService({ query, withTransaction } as never);
+
+    const result = await service.execute(USER_ID, {
+      mode: "FULL_DEMO_TIDY",
+      scope: "staging_demo",
+      reason: "Prepare staging for a controlled demo rehearsal.",
+      olderThan: "2026-05-10T00:00:00.000Z",
+      confirmation: "RESET DEMO DATA",
+      selectedItems: [`demo_request:${DEMO_ROW.id}:close-or-archive-demo-request`]
+    });
+
+    expect(result.summary.affectedCount).toBe(1);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("update public.demo_requests"), expect.arrayContaining([[DEMO_ROW.id]]));
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining("update public.support_escalations"), expect.anything());
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("insert into public.operational_reset_items"), expect.arrayContaining([RUN_ROW.id, "demo_request", DEMO_ROW.id]));
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining("insert into public.operational_reset_items"), expect.arrayContaining([RUN_ROW.id, "support_escalation", SUPPORT_ROW.id]));
+  });
+
+  it("rejects unknown selected reset items after recomputing preview", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [DEMO_ROW] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    const withTransaction = vi.fn((callback) => callback({ query }));
+    const service = new OperationalResetsService({ query, withTransaction } as never);
+
+    await expect(
+      service.execute(USER_ID, {
+        mode: "FULL_DEMO_TIDY",
+        scope: "staging_demo",
+        reason: "Prepare staging for a controlled demo rehearsal.",
+        olderThan: "2026-05-10T00:00:00.000Z",
+        confirmation: "RESET DEMO DATA",
+        selectedItems: ["demo_request:99999999-9999-4999-8999-999999999999:close-or-archive-demo-request"]
+      })
+    ).rejects.toThrow(new UnprocessableEntityException("operational_reset_selected_item_unknown"));
+
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining("update public.demo_requests"), expect.anything());
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining("insert into public.operational_reset_runs"), expect.anything());
+  });
+
+  it("rejects ineligible selected reset items", () => {
+    const service = new OperationalResetsService({ query: vi.fn() } as never);
+
+    expect(() =>
+      (service as unknown as {
+        selectExecutionItems: (items: unknown[], selectedItems: string[]) => unknown[];
+      }).selectExecutionItems(
+        [
+          {
+            selectionId: "proof_record:66666666-6666-4666-8666-666666666666:do-not-mutate-proof-record",
+            resourceType: "proof_record",
+            resourceId: "66666666-6666-4666-8666-666666666666",
+            label: "Paid proof order",
+            proposedAction: "Do not mutate proof record",
+            action: "Do not mutate proof record",
+            reason: "Proof records remain historical.",
+            eligible: false,
+            warning: "Proof/order/job/payment records are not changed by reset tools.",
+            createdAt: null,
+            currentStatus: "DELIVERED",
+            metadata: {}
+          }
+        ],
+        ["proof_record:66666666-6666-4666-8666-666666666666:do-not-mutate-proof-record"]
+      )
+    ).toThrow(new UnprocessableEntityException("operational_reset_selected_item_ineligible"));
   });
 
   it("lists reset history", async () => {

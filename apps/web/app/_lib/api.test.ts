@@ -1730,7 +1730,8 @@ describe('authorizePayment', () => {
       mode: 'FULL_DEMO_TIDY',
       scope: 'staging_demo',
       reason: 'Prepare staging for a controlled demo rehearsal.',
-      confirmation: 'RESET DEMO DATA'
+      confirmation: 'RESET DEMO DATA',
+      selectedItems: ['demo_request:11111111-1111-4111-8111-111111111111:close-or-archive-demo-request']
     });
 
     const previewInit = (fetchMock.mock.calls[0] as [string, RequestInit])[1];
@@ -1739,5 +1740,6 @@ describe('authorizePayment', () => {
     expect(String(previewInit.headers && (previewInit.headers as Record<string, string>)['Idempotency-Key'])).toContain('operational-reset-preview');
     expect(executeInit.method).toBe('POST');
     expect(String(executeInit.headers && (executeInit.headers as Record<string, string>)['Idempotency-Key'])).toContain('operational-reset-execute');
+    expect(executeInit.body).toContain('selectedItems');
   });
 });

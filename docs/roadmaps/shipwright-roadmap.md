@@ -226,6 +226,7 @@ Active foundations:
 - pilot guardrails
 - support/incident closeout reporting
 - operational reset tools for staging/demo tidy runs
+- per-record operational reset selection so admins can preview, include, or exclude eligible demo/staging records before typed confirmation
 
 Next candidates:
 - support/incident closeout reporting polish
@@ -234,7 +235,7 @@ Next candidates:
 - pilot owner accountability reporting
 
 Constraints:
-- reset tools remain admin-only, preview-first, typed-confirmation gated, and non-destructive
+- reset tools remain admin-only, preview-first, per-record selectable, typed-confirmation gated, and non-destructive
 - reset tools must not mutate proof orders, jobs, payments, proof artifacts, or audit events
 - no automatic customer messaging, refund, cancellation, or driver assignment
 

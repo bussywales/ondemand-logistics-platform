@@ -19,19 +19,31 @@ const preview: OperationalResetPreview = {
   },
   items: [
     {
+      selectionId: "demo_request:11111111-1111-4111-8111-111111111111:close-or-archive-demo-request",
       resourceType: "demo_request",
       resourceId: "11111111-1111-4111-8111-111111111111",
       label: "Demo Lead",
+      proposedAction: "Close or archive demo request",
       action: "Close or archive demo request",
       reason: "Request is older than the selected threshold and not qualified.",
+      eligible: true,
+      warning: null,
+      createdAt: "2026-05-01T10:00:00.000Z",
+      currentStatus: "CLOSED",
       metadata: {}
     },
     {
+      selectionId: "support_escalation:22222222-2222-4222-8222-222222222222:resolve-test-demo-support-escalation",
       resourceType: "support_escalation",
       resourceId: "22222222-2222-4222-8222-222222222222",
       label: "Smoke test support record",
+      proposedAction: "Resolve test/demo support escalation",
       action: "Resolve test/demo support escalation",
       reason: "Open support escalation is clearly marked as test, demo, smoke, or staging data.",
+      eligible: true,
+      warning: null,
+      createdAt: "2026-05-01T10:00:00.000Z",
+      currentStatus: "OPEN",
       metadata: {}
     }
   ]
@@ -58,15 +70,19 @@ describe("AdminOperationalResetsView", () => {
         error={null}
         mode="FULL_DEMO_TIDY"
         olderThan="2026-05-10"
+        onClearSelection={vi.fn()}
         onConfirmationChange={vi.fn()}
         onExecute={vi.fn()}
         onModeChange={vi.fn()}
         onOlderThanChange={vi.fn()}
         onPreview={vi.fn()}
         onReasonChange={vi.fn()}
+        onSelectAllEligible={vi.fn()}
+        onToggleSelection={vi.fn()}
         preview={preview}
         reason="Prepare staging for a controlled demo rehearsal."
         runs={[run]}
+        selectedItemIds={preview.items.map((item) => item.selectionId)}
       />
     );
 
@@ -75,6 +91,8 @@ describe("AdminOperationalResetsView", () => {
     expect(html).toContain("Proof untouched");
     expect(html).toContain("Demo Lead");
     expect(html).toContain("Smoke test support record");
+    expect(html).toContain("2 selected");
+    expect(html).toContain("Select all eligible");
     expect(html).toContain("RESET DEMO DATA");
     expect(html).toContain("Latest run");
   });
@@ -87,15 +105,19 @@ describe("AdminOperationalResetsView", () => {
         error={null}
         mode="ARCHIVE_DEMO_REQUESTS"
         olderThan="2026-05-10"
+        onClearSelection={vi.fn()}
         onConfirmationChange={vi.fn()}
         onExecute={vi.fn()}
         onModeChange={vi.fn()}
         onOlderThanChange={vi.fn()}
         onPreview={vi.fn()}
         onReasonChange={vi.fn()}
+        onSelectAllEligible={vi.fn()}
+        onToggleSelection={vi.fn()}
         preview={null}
         reason="Prepare staging for a controlled demo rehearsal."
         runs={[]}
+        selectedItemIds={[]}
       />
     );
 

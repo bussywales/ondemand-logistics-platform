@@ -10,6 +10,7 @@ import {
   type OperationalResetMode,
   type OperationalResetPreviewDto,
   type OperationalResetPreviewItemDto,
+  type OperationalResetSelectedItemDto,
   type OperationalResetRunDto,
   type OperationalResetSummaryDto
 } from "@shipwright/contracts";
@@ -111,16 +112,37 @@ function mapRun(row: ResetRunRow): OperationalResetRunDto {
 }
 
 function summarizeItems(items: OperationalResetPreviewItemDto[]): OperationalResetSummaryDto {
+  const eligibleItems = items.filter((item) => item.eligible);
   return {
-    affectedCount: items.length,
-    demoRequests: items.filter((item) => item.resourceType === "demo_request").length,
-    supportEscalations: items.filter((item) => item.resourceType === "support_escalation").length,
-    pilotRecommendations: items.filter((item) => item.resourceType === "pilot_workspace").length,
+    affectedCount: eligibleItems.length,
+    demoRequests: eligibleItems.filter((item) => item.resourceType === "demo_request").length,
+    supportEscalations: eligibleItems.filter((item) => item.resourceType === "support_escalation").length,
+    pilotRecommendations: eligibleItems.filter((item) => item.resourceType === "pilot_workspace").length,
     proofRecordsUntouched: true,
-    message: items.length
-      ? `${items.length} non-destructive reset action${items.length === 1 ? "" : "s"} identified. Proof orders, jobs, payments, and audit evidence are not mutated.`
+    message: eligibleItems.length
+      ? `${eligibleItems.length} eligible non-destructive reset action${eligibleItems.length === 1 ? "" : "s"} identified. Proof orders, jobs, payments, and audit evidence are not mutated.`
       : "No safe reset actions match this mode. Proof orders, jobs, payments, and audit evidence are not mutated."
   };
+}
+
+function normalizeSelectionPart(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function buildSelectionId(resourceType: OperationalResetPreviewItemDto["resourceType"], resourceId: string, action: string) {
+  return `${resourceType}:${resourceId}:${normalizeSelectionPart(action)}`;
+}
+
+function isSelectionMatch(item: OperationalResetPreviewItemDto, selected: OperationalResetSelectedItemDto) {
+  if (typeof selected === "string") {
+    return item.selectionId === selected;
+  }
+
+  return (
+    item.resourceType === selected.resourceType &&
+    item.resourceId === selected.resourceId &&
+    (item.proposedAction === selected.action || item.action === selected.action)
+  );
 }
 
 @Injectable()
@@ -156,7 +178,9 @@ export class OperationalResetsService {
     const input = parsed.data;
     return this.pg.withTransaction(async (client) => {
       const preview = await this.buildPreview(client, input);
-      await this.applyResetActions(client, userId, input, preview.items);
+      const executionItems = this.selectExecutionItems(preview.items, input.selectedItems);
+      const selectedSummary = summarizeItems(executionItems);
+      await this.applyResetActions(client, userId, input, executionItems);
 
       const inserted = await client.query<ResetRunRow>(
         `insert into public.operational_reset_runs (
@@ -170,7 +194,7 @@ export class OperationalResetsService {
          )
          values ($1, $2, $3, $4, 'COMPLETED', $5::jsonb, now())
          returning id, created_by, scope, mode, reason, status, summary, created_at, completed_at`,
-        [userId, input.scope, input.mode, input.reason, JSON.stringify(preview.summary)]
+        [userId, input.scope, input.mode, input.reason, JSON.stringify(selectedSummary)]
       );
 
       const run = inserted.rows[0];
@@ -178,9 +202,33 @@ export class OperationalResetsService {
         throw new UnprocessableEntityException("operational_reset_run_create_failed");
       }
 
-      await this.recordItems(client, run.id, preview.items);
+      await this.recordItems(client, run.id, executionItems);
       return mapRun(run);
     });
+  }
+
+  private selectExecutionItems(
+    previewItems: OperationalResetPreviewItemDto[],
+    selectedItems: ExecuteOperationalResetInput["selectedItems"]
+  ) {
+    const eligibleItems = previewItems.filter((item) => item.eligible);
+    if (!selectedItems) {
+      return eligibleItems;
+    }
+
+    const selected = new Set<OperationalResetPreviewItemDto>();
+    for (const candidate of selectedItems) {
+      const match = previewItems.find((item) => isSelectionMatch(item, candidate));
+      if (!match) {
+        throw new UnprocessableEntityException("operational_reset_selected_item_unknown");
+      }
+      if (!match.eligible) {
+        throw new UnprocessableEntityException("operational_reset_selected_item_ineligible");
+      }
+      selected.add(match);
+    }
+
+    return [...selected];
   }
 
   private async buildPreview(queryable: Queryable, input: ExecuteOperationalResetInput | Omit<ExecuteOperationalResetInput, "confirmation">) {
@@ -220,20 +268,29 @@ export class OperationalResetsService {
       [olderThan]
     );
 
-    return result.rows.map((row): OperationalResetPreviewItemDto => ({
-      resourceType: "demo_request",
-      resourceId: row.id,
-      label: `${row.name}${row.organisation ? ` · ${row.organisation}` : ""}`,
-      action: row.status === "SPAM" ? "Archive spam/demo request" : "Close or archive demo request",
-      reason: row.status === "CLOSED" || row.status === "SPAM"
-        ? "Request is already closed or spam and can be included in reset evidence."
-        : "Request is older than the selected threshold and not qualified.",
-      metadata: {
-        status: row.status,
-        email: row.email,
-        createdAt: toIsoDateTime(row.created_at)
-      }
-    }));
+    return result.rows.map((row): OperationalResetPreviewItemDto => {
+      const proposedAction = row.status === "SPAM" ? "Archive spam/demo request" : "Close or archive demo request";
+      return {
+        selectionId: buildSelectionId("demo_request", row.id, proposedAction),
+        resourceType: "demo_request",
+        resourceId: row.id,
+        label: `${row.name}${row.organisation ? ` · ${row.organisation}` : ""}`,
+        proposedAction,
+        action: proposedAction,
+        reason: row.status === "CLOSED" || row.status === "SPAM"
+          ? "Request is already closed or spam and can be included in reset evidence."
+          : "Request is older than the selected threshold and not qualified.",
+        eligible: true,
+        warning: null,
+        createdAt: toIsoDateTime(row.created_at),
+        currentStatus: row.status,
+        metadata: {
+          status: row.status,
+          email: row.email,
+          createdAt: toIsoDateTime(row.created_at)
+        }
+      };
+    });
   }
 
   private async previewSupportEscalations(queryable: Queryable) {
@@ -247,19 +304,28 @@ export class OperationalResetsService {
       [TEST_SUPPORT_PATTERN]
     );
 
-    return result.rows.map((row): OperationalResetPreviewItemDto => ({
-      resourceType: "support_escalation",
-      resourceId: row.id,
-      label: row.title,
-      action: "Resolve test/demo support escalation",
-      reason: "Open support escalation is clearly marked as test, demo, smoke, or staging data.",
-      metadata: {
-        orgId: row.org_id,
-        status: row.status,
-        severity: row.severity,
-        createdAt: toIsoDateTime(row.created_at)
-      }
-    }));
+    return result.rows.map((row): OperationalResetPreviewItemDto => {
+      const proposedAction = "Resolve test/demo support escalation";
+      return {
+        selectionId: buildSelectionId("support_escalation", row.id, proposedAction),
+        resourceType: "support_escalation",
+        resourceId: row.id,
+        label: row.title,
+        proposedAction,
+        action: proposedAction,
+        reason: "Open support escalation is clearly marked as test, demo, smoke, or staging data.",
+        eligible: true,
+        warning: row.severity === "HIGH" || row.severity === "CRITICAL" ? "High-severity test records should be reviewed before reset." : null,
+        createdAt: toIsoDateTime(row.created_at),
+        currentStatus: row.status,
+        metadata: {
+          orgId: row.org_id,
+          status: row.status,
+          severity: row.severity,
+          createdAt: toIsoDateTime(row.created_at)
+        }
+      };
+    });
   }
 
   private async previewPilotRehearsal(queryable: Queryable, olderThan: Date) {
@@ -274,19 +340,28 @@ export class OperationalResetsService {
       [olderThan]
     );
 
-    return result.rows.map((row): OperationalResetPreviewItemDto => ({
-      resourceType: "pilot_workspace",
-      resourceId: row.id,
-      label: row.org_name ?? row.id,
-      action: "Review stale pilot rehearsal posture",
-      reason: "Pilot rehearsal state is older than the selected threshold. v1 records a reset recommendation only.",
-      metadata: {
-        mode: row.mode,
-        status: row.status,
-        readinessStage: row.readiness_stage,
-        updatedAt: toIsoDateTime(row.updated_at)
-      }
-    }));
+    return result.rows.map((row): OperationalResetPreviewItemDto => {
+      const proposedAction = "Review stale pilot rehearsal posture";
+      return {
+        selectionId: buildSelectionId("pilot_workspace", row.id, proposedAction),
+        resourceType: "pilot_workspace",
+        resourceId: row.id,
+        label: row.org_name ?? row.id,
+        proposedAction,
+        action: proposedAction,
+        reason: "Pilot rehearsal state is older than the selected threshold. v1 records a reset recommendation only.",
+        eligible: true,
+        warning: "Recommendation only: pilot state will not be mutated.",
+        createdAt: toIsoDateTime(row.updated_at),
+        currentStatus: row.status,
+        metadata: {
+          mode: row.mode,
+          status: row.status,
+          readinessStage: row.readiness_stage,
+          updatedAt: toIsoDateTime(row.updated_at)
+        }
+      };
+    });
   }
 
   private async applyResetActions(
@@ -366,10 +441,16 @@ export class OperationalResetsService {
           resetRunId,
           item.resourceType,
           item.resourceId,
-          item.action,
+          item.proposedAction,
           JSON.stringify({
+            selectionId: item.selectionId,
             label: item.label,
             reason: item.reason,
+            proposedAction: item.proposedAction,
+            eligible: item.eligible,
+            warning: item.warning,
+            currentStatus: item.currentStatus,
+            createdAt: item.createdAt,
             ...item.metadata
           })
         ]

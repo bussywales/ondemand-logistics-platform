@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "operational-reset-selection",
+    title: "Operational resets now support per-record selection",
+    summary: "Platform admins can preview eligible staging/demo reset records, select exactly which ones to include, and execute a non-destructive reset with typed confirmation.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin", "/admin/command", "/admin/operational-resets"],
+    releasedAt: "2026-05-21T20:00:00.000Z",
+    version: "v2.7",
+    ctaLabel: "Open reset tools",
+    ctaHref: "/admin/operational-resets"
+  },
+  {
     id: "merchant-menu-rollback",
     title: "Menu rollback is available for prepared changes",
     summary: "Restaurant operators can now preview and apply rollback for prepared menu history events with typed confirmation and a full audit trail.",

@@ -87,15 +87,22 @@ export function AdminOperationalResetsView(props: {
   olderThan: string;
   onConfirmationChange: (value: string) => void;
   onExecute: () => void;
+  onClearSelection: () => void;
   onModeChange: (mode: Exclude<OperationalResetMode, "PREVIEW">) => void;
   onOlderThanChange: (value: string) => void;
   onPreview: () => void;
   onReasonChange: (value: string) => void;
+  onSelectAllEligible: () => void;
+  onToggleSelection: (selectionId: string) => void;
   preview: OperationalResetPreview | null;
   reason: string;
   runs: OperationalResetRun[];
+  selectedItemIds: string[];
 }) {
-  const canExecute = props.confirmation === "RESET DEMO DATA" && Boolean(props.preview?.items.length) && !props.busy;
+  const eligibleCount = props.preview?.items.filter((item) => item.eligible).length ?? 0;
+  const ineligibleCount = props.preview?.items.filter((item) => !item.eligible).length ?? 0;
+  const selectedCount = props.selectedItemIds.length;
+  const canExecute = props.confirmation === "RESET DEMO DATA" && selectedCount > 0 && !props.busy;
   const latestRun = props.runs[0] ?? null;
 
   return (
@@ -176,19 +183,50 @@ export function AdminOperationalResetsView(props: {
               <SummaryTile label="Pilot recommendations" value={props.preview.summary.pilotRecommendations} copy="Stale rehearsal states reported but not mutated." />
               <SummaryTile label="Hard deletes" value="0" copy="Reset tools only close, record, or recommend." />
             </div>
+            <div className="sw-row-between admin-operational-reset-selection">
+              <div>
+                <strong>{selectedCount} selected</strong>
+                <p className="ops-detail-note">
+                  {eligibleCount} eligible · {ineligibleCount} ineligible · Proof/order/job/payment records will not be changed.
+                </p>
+              </div>
+              <div className="hero-actions">
+                <button className="button button-secondary" disabled={!eligibleCount || props.busy} onClick={props.onSelectAllEligible} type="button">
+                  Select all eligible
+                </button>
+                <button className="button button-secondary" disabled={!selectedCount || props.busy} onClick={props.onClearSelection} type="button">
+                  Clear selection
+                </button>
+              </div>
+            </div>
             {props.preview.items.length ? (
               <div className="admin-command-list">
                 {props.preview.items.map((item) => (
-                  <article className="sw-list-row admin-command-report-action" key={`${item.resourceType}:${item.resourceId}`}>
+                  <article className="sw-list-row admin-command-report-action" key={item.selectionId}>
+                    <label className="admin-operational-reset-select">
+                      <input
+                        checked={props.selectedItemIds.includes(item.selectionId)}
+                        disabled={!item.eligible || props.busy}
+                        onChange={() => props.onToggleSelection(item.selectionId)}
+                        type="checkbox"
+                      />
+                      <span className="sr-only">Select {item.label}</span>
+                    </label>
                     <div>
                       <div className="admin-command-item-meta">
                         <span className="sw-badge sw-badge--neutral">{item.resourceType.replaceAll("_", " ")}</span>
+                        <span className={item.eligible ? "sw-badge sw-badge--success" : "sw-badge sw-badge--neutral"}>
+                          {item.eligible ? "Eligible" : "Ineligible"}
+                        </span>
+                        {item.currentStatus ? <span>{item.currentStatus}</span> : null}
                         <span>{item.resourceId.slice(0, 8).toUpperCase()}</span>
                       </div>
                       <strong>{item.label}</strong>
                       <p>{item.reason}</p>
+                      {item.warning ? <p className="ops-detail-note">{item.warning}</p> : null}
+                      {item.createdAt ? <p className="ops-detail-note">Created/updated {formatDateTime(item.createdAt)}</p> : null}
                     </div>
-                    <span className="sw-badge sw-badge--info">{item.action}</span>
+                    <span className="sw-badge sw-badge--info">{item.proposedAction}</span>
                   </article>
                 ))}
               </div>
@@ -207,7 +245,7 @@ export function AdminOperationalResetsView(props: {
           <div>
             <p className="eyebrow">Execute</p>
             <h2>Typed confirmation required</h2>
-            <p className="ops-detail-note">Type RESET DEMO DATA to execute the current preview. This records a reset run and affected reset items.</p>
+            <p className="ops-detail-note">Type RESET DEMO DATA to execute selected eligible items from the current preview. This records a reset run and affected reset items.</p>
           </div>
         </div>
         <div className="support-escalation-form admin-operational-reset-form">
@@ -216,7 +254,7 @@ export function AdminOperationalResetsView(props: {
             <input value={props.confirmation} onChange={(event) => props.onConfirmationChange(event.target.value)} placeholder="RESET DEMO DATA" />
           </label>
           <button className="sw-button sw-button--primary button button-primary" disabled={!canExecute} onClick={props.onExecute} type="button">
-            Execute non-destructive reset
+            Execute selected non-destructive reset
           </button>
         </div>
       </section>
@@ -241,8 +279,12 @@ export function AdminOperationalResetsView(props: {
                   </div>
                   <strong>{run.reason}</strong>
                   <p>{run.summary.message}</p>
+                  <p className="ops-detail-note">
+                    Action summary: {run.summary.demoRequests} demo requests, {run.summary.supportEscalations} support records, {run.summary.pilotRecommendations} pilot recommendations.
+                    {run.completedAt ? ` Completed ${formatDateTime(run.completedAt)}.` : ""}
+                  </p>
                 </div>
-                <span className="sw-badge sw-badge--neutral">{run.summary.affectedCount} affected</span>
+                <span className="sw-badge sw-badge--neutral">{run.summary.affectedCount} selected</span>
               </article>
             ))}
           </div>
@@ -266,6 +308,7 @@ export function AdminOperationalResetsShell() {
   const [olderThan, setOlderThan] = useState(defaultOlderThanInput());
   const [reason, setReason] = useState("Prepare staging for a controlled demo rehearsal.");
   const [confirmation, setConfirmation] = useState("");
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -313,7 +356,9 @@ export function AdminOperationalResetsShell() {
     setBusy(true);
     setLoadError(null);
     try {
-      setPreview(await previewAdminOperationalReset(session, currentInput));
+      const nextPreview = await previewAdminOperationalReset(session, currentInput);
+      setPreview(nextPreview);
+      setSelectedItemIds(nextPreview.items.filter((item) => item.eligible).map((item) => item.selectionId));
       setConfirmation("");
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, "Unable to preview reset. Check the reason and threshold."));
@@ -329,16 +374,32 @@ export function AdminOperationalResetsShell() {
     try {
       const run = await executeAdminOperationalReset(session, {
         ...currentInput,
-        confirmation
+        confirmation,
+        selectedItems: selectedItemIds
       } as ExecuteOperationalResetInput);
       setRuns((current) => [run, ...current]);
       setPreview(null);
       setConfirmation("");
+      setSelectedItemIds([]);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, "Unable to execute reset. No hard deletes were attempted."));
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleToggleSelection(selectionId: string) {
+    setSelectedItemIds((current) =>
+      current.includes(selectionId)
+        ? current.filter((item) => item !== selectionId)
+        : [...current, selectionId]
+    );
+  }
+
+  function resetPreviewState() {
+    setPreview(null);
+    setSelectedItemIds([]);
+    setConfirmation("");
   }
 
   if (status === "loading" || loading) {
@@ -384,15 +445,28 @@ export function AdminOperationalResetsShell() {
         error={loadError}
         mode={mode}
         olderThan={olderThan}
+        onClearSelection={() => setSelectedItemIds([])}
         onConfirmationChange={setConfirmation}
         onExecute={() => void handleExecute()}
-        onModeChange={setMode}
-        onOlderThanChange={setOlderThan}
+        onModeChange={(nextMode) => {
+          setMode(nextMode);
+          resetPreviewState();
+        }}
+        onOlderThanChange={(nextOlderThan) => {
+          setOlderThan(nextOlderThan);
+          resetPreviewState();
+        }}
         onPreview={() => void handlePreview()}
-        onReasonChange={setReason}
+        onReasonChange={(nextReason) => {
+          setReason(nextReason);
+          resetPreviewState();
+        }}
+        onSelectAllEligible={() => setSelectedItemIds(preview?.items.filter((item) => item.eligible).map((item) => item.selectionId) ?? [])}
+        onToggleSelection={handleToggleSelection}
         preview={preview}
         reason={reason}
         runs={runs}
+        selectedItemIds={selectedItemIds}
       />
     </main>
   );

@@ -121,7 +121,7 @@ Recommended order:
 11. show the driver execution route
 12. show the admin control plane
 13. show admin command intelligence
-14. show `/admin/operational-resets` only if the audience asks how staging/demo clutter is prepared; explain preview, typed confirmation, reset-run evidence, and no hard deletes
+14. show `/admin/operational-resets` only if the audience asks how staging/demo clutter is prepared; explain preview, per-record selection, typed confirmation, reset-run evidence, and no hard deletes
 15. show pilot management mode, readiness stage, owners, and checklist evidence
 16. open `/admin/release-readiness`, `/admin/validation-evidence`, and the selected pilot rehearsal cockpit; confirm stored release/proof/smoke evidence is current or explain any missing/stale posture
 17. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1

@@ -35,6 +35,8 @@ import {
   MenuRollbackPreviewSchema,
   ApplyMenuRollbackSchema,
   MenuRollbackResultSchema,
+  OperationalResetPreviewSchema,
+  ExecuteOperationalResetSchema,
   PaginatedJobsSchema,
   PaymentStatusSchema,
   PilotReadinessCheckListSchema,
@@ -280,6 +282,61 @@ describe("Menu item schemas", () => {
         appliedAt: new Date().toISOString()
       }).success
     ).toBe(true);
+  });
+});
+
+describe("operational reset schemas", () => {
+  it("parses selectable preview items and selected execute payloads", () => {
+    const preview = OperationalResetPreviewSchema.safeParse({
+      mode: "FULL_DEMO_TIDY",
+      scope: "staging_demo",
+      reason: "Prepare staging for a controlled demo rehearsal.",
+      olderThan: new Date().toISOString(),
+      summary: {
+        affectedCount: 1,
+        demoRequests: 1,
+        supportEscalations: 0,
+        pilotRecommendations: 0,
+        proofRecordsUntouched: true,
+        message: "1 eligible non-destructive reset action identified."
+      },
+      items: [
+        {
+          selectionId: "demo_request:33333333-3333-4333-8333-333333333333:close-or-archive-demo-request",
+          resourceType: "demo_request",
+          resourceId: "33333333-3333-4333-8333-333333333333",
+          label: "Demo Lead",
+          proposedAction: "Close or archive demo request",
+          action: "Close or archive demo request",
+          reason: "Request is older than the selected threshold.",
+          eligible: true,
+          warning: null,
+          createdAt: new Date().toISOString(),
+          currentStatus: "NEW",
+          metadata: { status: "NEW" }
+        }
+      ]
+    });
+
+    expect(preview.success).toBe(true);
+    expect(
+      ExecuteOperationalResetSchema.safeParse({
+        mode: "FULL_DEMO_TIDY",
+        scope: "staging_demo",
+        reason: "Prepare staging for a controlled demo rehearsal.",
+        confirmation: "RESET DEMO DATA",
+        selectedItems: ["demo_request:33333333-3333-4333-8333-333333333333:close-or-archive-demo-request"]
+      }).success
+    ).toBe(true);
+    expect(
+      ExecuteOperationalResetSchema.safeParse({
+        mode: "FULL_DEMO_TIDY",
+        scope: "staging_demo",
+        reason: "Prepare staging for a controlled demo rehearsal.",
+        confirmation: "RESET",
+        selectedItems: []
+      }).success
+    ).toBe(false);
   });
 });
 

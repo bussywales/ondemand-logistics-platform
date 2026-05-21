@@ -13610,6 +13610,23 @@ select:hover,
   width: 100%;
 }
 
+.admin-operational-reset-selection {
+  align-items: center;
+  gap: var(--sw-space-3);
+  margin: var(--sw-space-3) 0;
+}
+
+.admin-operational-reset-select {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.admin-operational-reset-select input {
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
 @media (max-width: 820px) {
   .pilot-guardrail {
     flex-direction: column;

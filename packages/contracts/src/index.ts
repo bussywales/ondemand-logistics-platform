@@ -2121,11 +2121,17 @@ export const OperationalResetStatusSchema = z.enum(["COMPLETED", "FAILED"]);
 export type OperationalResetStatus = z.infer<typeof OperationalResetStatusSchema>;
 
 export const OperationalResetPreviewItemSchema = z.object({
+  selectionId: z.string().min(4),
   resourceType: z.enum(["demo_request", "support_escalation", "pilot_workspace", "proof_record"]),
   resourceId: z.string().uuid(),
   label: z.string().min(2),
-  action: z.string().min(2),
+  proposedAction: z.string().min(2),
+  action: z.string().min(2).optional(),
   reason: z.string().min(2),
+  eligible: z.boolean().default(true),
+  warning: z.string().nullable().default(null),
+  createdAt: IsoDateTimeSchema.nullable().default(null),
+  currentStatus: z.string().nullable().default(null),
   metadata: z.record(z.string(), z.unknown()).default({})
 });
 export type OperationalResetPreviewItemDto = z.infer<typeof OperationalResetPreviewItemSchema>;
@@ -2176,8 +2182,19 @@ export const OperationalResetRequestSchema = z.object({
 });
 export type OperationalResetRequestInput = z.infer<typeof OperationalResetRequestSchema>;
 
+export const OperationalResetSelectedItemSchema = z.union([
+  z.string().min(4),
+  z.object({
+    resourceType: OperationalResetPreviewItemSchema.shape.resourceType,
+    resourceId: z.string().uuid(),
+    action: z.string().min(2)
+  })
+]);
+export type OperationalResetSelectedItemDto = z.infer<typeof OperationalResetSelectedItemSchema>;
+
 export const ExecuteOperationalResetSchema = OperationalResetRequestSchema.extend({
-  confirmation: z.literal("RESET DEMO DATA")
+  confirmation: z.literal("RESET DEMO DATA"),
+  selectedItems: z.array(OperationalResetSelectedItemSchema).optional()
 });
 export type ExecuteOperationalResetInput = z.infer<typeof ExecuteOperationalResetSchema>;
 
