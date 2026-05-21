@@ -48,16 +48,30 @@ function eventTone(eventType: MenuHistoryEventType) {
   return "sw-badge--neutral";
 }
 
+function rollbackReadinessBadge(value: AdminMenuHistoryEvent["rollbackReadiness"]) {
+  if (value === "ROLLBACK_PREPARED") {
+    return { label: "Rollback prepared", className: "sw-badge sw-badge--success" };
+  }
+
+  if (value === "NOT_REVERSIBLE") {
+    return { label: "Not reversible", className: "sw-badge sw-badge--neutral" };
+  }
+
+  return { label: "Needs more metadata", className: "sw-badge sw-badge--warning" };
+}
+
 function MenuHistoryRow(props: { event: AdminMenuHistoryEvent }) {
   const actor = props.event.actorName ?? props.event.actorEmail ?? "Unknown actor";
   const org = props.event.orgName ?? props.event.orgId ?? "Unknown org";
   const restaurant = props.event.restaurantName ?? props.event.restaurantId ?? "Unknown restaurant";
+  const rollbackBadge = rollbackReadinessBadge(props.event.rollbackReadiness);
 
   return (
     <article className="sw-list-row admin-menu-history-row">
       <div className="sw-stack-sm admin-menu-history-row-copy">
         <div className="admin-command-item-meta">
           <span className={`sw-badge ${eventTone(props.event.eventType)}`}>{formatLabel(props.event.eventType)}</span>
+          <span className={rollbackBadge.className}>{rollbackBadge.label}</span>
           <span>{formatLabel(props.event.resourceType)}</span>
           <span>{formatDate(props.event.createdAt)}</span>
         </div>
@@ -65,6 +79,7 @@ function MenuHistoryRow(props: { event: AdminMenuHistoryEvent }) {
         <p className="ops-detail-note">
           {org} · {restaurant} · {actor}
         </p>
+        <p className="ops-detail-note">{props.event.rollbackReason}</p>
         <div className="admin-demo-request-follow-up-meta">
           <span>Resource: {props.event.resourceName ?? props.event.resourceType}</span>
           <span>Org: {props.event.orgId ?? "not recorded"}</span>
@@ -142,7 +157,7 @@ export function AdminMenuHistoryView(props: { history: AdminMenuHistoryEvent[] }
           <div>
             <p className="eyebrow">Audit trail</p>
             <h2>{props.history.length ? "Recent menu changes" : "No menu changes found"}</h2>
-            <p className="ops-detail-note">Use filters to narrow by organisation, restaurant, event type, resource type, or date range.</p>
+            <p className="ops-detail-note">Use filters to narrow by organisation, restaurant, event type, resource type, rollback readiness, or date range.</p>
           </div>
         </div>
         {props.history.length ? (
@@ -172,6 +187,7 @@ export function AdminMenuHistoryShell() {
     restaurantId: "",
     eventType: "",
     resourceType: "",
+    rollbackReadiness: "",
     from: "",
     to: "",
     limit: "50"
@@ -195,6 +211,7 @@ export function AdminMenuHistoryShell() {
       restaurantId: appliedFilters.restaurantId || undefined,
       eventType: appliedFilters.eventType || undefined,
       resourceType: appliedFilters.resourceType || undefined,
+      rollbackReadiness: appliedFilters.rollbackReadiness || undefined,
       from: appliedFilters.from || undefined,
       to: appliedFilters.to || undefined,
       limit: appliedFilters.limit ? Number(appliedFilters.limit) : 50
@@ -278,6 +295,15 @@ export function AdminMenuHistoryShell() {
             </select>
           </label>
           <label>
+            <span>Rollback readiness</span>
+            <select value={filters.rollbackReadiness} onChange={(event) => setFilters((current) => ({ ...current, rollbackReadiness: event.target.value }))}>
+              <option value="">All readiness states</option>
+              <option value="ROLLBACK_PREPARED">Rollback prepared</option>
+              <option value="NOT_REVERSIBLE">Not reversible</option>
+              <option value="INSUFFICIENT_METADATA">Needs more metadata</option>
+            </select>
+          </label>
+          <label>
             <span>From</span>
             <input type="date" value={filters.from} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} />
           </label>
@@ -295,7 +321,7 @@ export function AdminMenuHistoryShell() {
               className="sw-button sw-button--secondary button button-secondary"
               type="button"
               onClick={() => {
-                const reset = { orgId: "", restaurantId: "", eventType: "", resourceType: "", from: "", to: "", limit: "50" };
+                const reset = { orgId: "", restaurantId: "", eventType: "", resourceType: "", rollbackReadiness: "", from: "", to: "", limit: "50" };
                 setFilters(reset);
                 setAppliedFilters(reset);
               }}

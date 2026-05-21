@@ -159,7 +159,7 @@ Constraints:
 - no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
 
 ## Workstream 4: Merchant Menu Operations
-Status: Implemented through v1.3 for price editing, availability clarity, simple reordering, and menu-specific audit visibility.
+Status: Implemented through v1.4 for price editing, availability clarity, simple reordering, menu-specific audit visibility, and rollback-readiness preparation.
 
 Goal:
 Make restaurant menu management complete enough for controlled pilots by allowing authorised business users to update existing menu item details, especially price.
@@ -179,6 +179,9 @@ Implemented scope:
 - `GET /v1/business/restaurants/:restaurantId/menu-history` reads menu-specific events from the existing append-only audit log
 - `/admin/menu-history` gives platform admins read-only cross-org visibility into menu price, visibility, section, and ordering changes for pilot support
 - `GET /v1/admin/menu-history` reads the existing append-only audit log with org, restaurant, event, resource, date, and limit filters
+- menu history now classifies each change as rollback prepared, not reversible, or needing more metadata
+- menu mutation audit metadata consistently records restaurant/resource identity plus previous and new values for reversible fields where available
+- rollback remains inactive; this phase prepares metadata and display rules for a future human-reviewed rollback workflow
 
 Constraints:
 - no destructive menu deletion in this pass
@@ -186,6 +189,7 @@ Constraints:
 - no historical menu price ledger yet
 - no rollback from audit history in v1
 - no admin menu mutation or rollback from the cross-org history view
+- future rollback must remain human-reviewed, scoped, and restricted to events with complete reversible metadata
 - no public checkout behaviour change beyond reading the updated menu data
 
 ## Workstream 5: Driver Fleet Organisations

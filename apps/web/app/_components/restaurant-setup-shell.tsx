@@ -249,6 +249,18 @@ function getMenuHistoryLabel(eventType: MenuHistoryEvent["eventType"]) {
   return labels[eventType];
 }
 
+function getRollbackReadinessLabel(value: MenuHistoryEvent["rollbackReadiness"]) {
+  if (value === "ROLLBACK_PREPARED") {
+    return { label: "Rollback prepared", className: "sw-badge sw-badge--success" };
+  }
+
+  if (value === "NOT_REVERSIBLE") {
+    return { label: "Not reversible", className: "sw-badge sw-badge--neutral" };
+  }
+
+  return { label: "Needs more metadata", className: "sw-badge sw-badge--warning" };
+}
+
 function moveListItem<T extends { id: string }>(items: T[], itemId: string, direction: "up" | "down") {
   const index = items.findIndex((item) => item.id === itemId);
   if (index < 0) {
@@ -275,6 +287,9 @@ export function MenuHistoryPanel({ events }: { events: MenuHistoryEvent[] }) {
           <p className="eyebrow">Audit trail</p>
           <h2>Menu history</h2>
           <p>Recent menu changes, who made them, and what changed.</p>
+          <p className="ops-detail-note">
+            Rollback is not active yet. These labels show whether each change has enough audit data for future human-reviewed rollback.
+          </p>
         </div>
       </div>
 
@@ -291,11 +306,17 @@ export function MenuHistoryPanel({ events }: { events: MenuHistoryEvent[] }) {
           {events.slice(0, 12).map((event) => (
             <article className="sw-list-row merchant-history-row" key={event.id}>
               <div>
-                <span className="sw-badge sw-badge--neutral">{getMenuHistoryLabel(event.eventType)}</span>
+                <div className="merchant-history-badge-row">
+                  <span className="sw-badge sw-badge--neutral">{getMenuHistoryLabel(event.eventType)}</span>
+                  <span className={getRollbackReadinessLabel(event.rollbackReadiness).className}>
+                    {getRollbackReadinessLabel(event.rollbackReadiness).label}
+                  </span>
+                </div>
                 <strong>{event.summary}</strong>
                 <p>
                   {event.actorName ?? event.actorEmail ?? "Unknown actor"} · {formatDateTime(event.createdAt)}
                 </p>
+                <p className="ops-detail-note">{event.rollbackReason}</p>
               </div>
               <div className="merchant-history-fields">
                 {event.changedFields.length > 0 ? (

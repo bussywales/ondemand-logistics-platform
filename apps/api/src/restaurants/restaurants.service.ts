@@ -32,6 +32,7 @@ import {
   type MenuHistoryDto,
   type MenuHistoryEventDto,
   type MenuHistoryEventType,
+  type MenuRollbackReadiness,
   type MenuItemDto,
   type PaymentDto,
   BusinessCustomerOrderListSchema,
@@ -239,6 +240,7 @@ const MENU_HISTORY_EVENT_TYPES: MenuHistoryEventType[] = [
   "MENU_ITEM_REORDERED",
   "MENU_ITEM_MOVED_CATEGORY"
 ];
+const REVERSIBLE_MENU_FIELDS = new Set(["name", "description", "priceCents", "isActive", "sortOrder", "categoryId"]);
 
 function normalizeRestaurantSlug(value: string) {
   return value
@@ -284,6 +286,10 @@ function readNumber(value: unknown) {
   }
 
   return null;
+}
+
+function hasOwnValue(record: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(record, key);
 }
 
 function formatAuditPrice(value: unknown) {
@@ -369,6 +375,47 @@ function buildMenuHistorySummary(eventType: MenuHistoryEventType, resourceName: 
   }
 
   return `${name} details were updated.`;
+}
+
+function classifyMenuRollbackReadiness(
+  eventType: MenuHistoryEventType,
+  changedFields: string[],
+  metadata: Record<string, unknown>
+): { rollbackReadiness: MenuRollbackReadiness; rollbackReason: string; reversibleFields: string[] } {
+  if (eventType === "MENU_CATEGORY_CREATED" || eventType === "MENU_ITEM_CREATED") {
+    return {
+      rollbackReadiness: "NOT_REVERSIBLE",
+      rollbackReason: "Create events are audit-only in this version and cannot be rolled back safely.",
+      reversibleFields: []
+    };
+  }
+
+  const previous = readRecord(metadata.previous);
+  const next = readRecord(metadata.next);
+  const candidateFields = changedFields.filter((field) => REVERSIBLE_MENU_FIELDS.has(field));
+
+  if (!candidateFields.length) {
+    return {
+      rollbackReadiness: "INSUFFICIENT_METADATA",
+      rollbackReason: "No reversible menu fields were recorded for this change.",
+      reversibleFields: []
+    };
+  }
+
+  const reversibleFields = candidateFields.filter((field) => hasOwnValue(previous, field) && hasOwnValue(next, field));
+  if (reversibleFields.length !== candidateFields.length) {
+    return {
+      rollbackReadiness: "INSUFFICIENT_METADATA",
+      rollbackReason: "This audit event is missing previous or new values needed for future rollback.",
+      reversibleFields
+    };
+  }
+
+  return {
+    rollbackReadiness: "ROLLBACK_PREPARED",
+    rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+    reversibleFields
+  };
 }
 
 @Injectable()
@@ -599,10 +646,19 @@ export class RestaurantsService {
             category.id,
             JSON.stringify({
               restaurantId,
+              restaurantName: restaurant.name,
+              resourceType: "category",
+              resourceId: category.id,
+              resourceName: category.name,
               categoryName: category.name,
               sortOrder: toInteger(category.sort_order, "menu_category.sort_order"),
               isActive: category.is_active,
-              changedFields: ["name", "sortOrder", "isActive"]
+              changedFields: ["name", "sortOrder", "isActive"],
+              next: {
+                name: category.name,
+                sortOrder: toInteger(category.sort_order, "menu_category.sort_order"),
+                isActive: category.is_active
+              }
             })
           ]
         );
@@ -674,6 +730,10 @@ export class RestaurantsService {
         categoryId,
         JSON.stringify({
           restaurantId,
+          restaurantName: restaurant.name,
+          resourceType: "category",
+          resourceId: categoryId,
+          resourceName: next.name,
           categoryName: next.name,
           changedFields: Object.keys(parsed.data),
           previous: {
@@ -701,8 +761,8 @@ export class RestaurantsService {
 
     const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
 
-    const categoryResult = await this.pg.query<{ id: string }>(
-      `select id
+    const categoryResult = await this.pg.query<{ id: string; name: string }>(
+      `select id, name
        from public.menu_categories
        where id = $1 and restaurant_id = $2`,
       [parsed.data.categoryId, restaurantId]
@@ -752,12 +812,25 @@ export class RestaurantsService {
             item.id,
             JSON.stringify({
               restaurantId,
+              restaurantName: restaurant.name,
+              resourceType: "item",
+              resourceId: item.id,
+              resourceName: item.name,
               categoryId: item.category_id,
+              categoryName: categoryResult.rows[0]?.name ?? null,
               itemName: item.name,
               priceCents: toInteger(item.price_cents, "menu_item.price_cents"),
               isActive: item.is_active,
               sortOrder: toInteger(item.sort_order, "menu_item.sort_order"),
-              changedFields: ["categoryId", "name", "description", "priceCents", "currency", "sortOrder", "isActive"]
+              changedFields: ["categoryId", "name", "description", "priceCents", "currency", "sortOrder", "isActive"],
+              next: {
+                categoryId: item.category_id,
+                name: item.name,
+                description: item.description,
+                priceCents: toInteger(item.price_cents, "menu_item.price_cents"),
+                sortOrder: toInteger(item.sort_order, "menu_item.sort_order"),
+                isActive: item.is_active
+              }
             })
           ]
         );
@@ -783,9 +856,10 @@ export class RestaurantsService {
     }
 
     const restaurant = await this.loadOperatorRestaurant(restaurantId, userId);
+    let nextCategoryName: string | null = null;
     if (parsed.data.categoryId) {
-      const categoryResult = await this.pg.query<{ id: string }>(
-        `select id
+      const categoryResult = await this.pg.query<{ id: string; name: string }>(
+        `select id, name
          from public.menu_categories
          where id = $1 and restaurant_id = $2`,
         [parsed.data.categoryId, restaurantId]
@@ -794,6 +868,7 @@ export class RestaurantsService {
       if (categoryResult.rowCount !== 1) {
         throw new NotFoundException("menu_category_not_found");
       }
+      nextCategoryName = categoryResult.rows[0]?.name ?? null;
     }
 
     const existingResult = await this.pg.query<MenuItemRow>(
@@ -852,7 +927,13 @@ export class RestaurantsService {
         itemId,
         JSON.stringify({
           restaurantId,
+          restaurantName: restaurant.name,
+          resourceType: "item",
+          resourceId: itemId,
+          resourceName: next.name,
           itemName: next.name,
+          categoryId: next.categoryId,
+          categoryName: nextCategoryName,
           changedFields: Object.keys(parsed.data),
           previous,
           next
@@ -950,11 +1031,12 @@ export class RestaurantsService {
     const restaurantId = readFilter("restaurantId");
     const resourceType = readFilter("resourceType");
     const eventType = readFilter("eventType");
+    const rollbackReadiness = readFilter("rollbackReadiness");
     const from = readFilter("from");
     const to = readFilter("to");
     const requestedLimit = Number(readFilter("limit") ?? 50);
     const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100) : 50;
-    const queryLimit = eventType ? Math.min(limit * 5, 250) : limit;
+    const queryLimit = eventType || rollbackReadiness ? Math.min(limit * 5, 250) : limit;
 
     if (orgId) {
       filters.push(`a.org_id = ${addValue(orgId)}`);
@@ -1016,6 +1098,7 @@ export class RestaurantsService {
     const items = result.rows
       .map((row) => this.mapAdminMenuHistoryRow(row))
       .filter((item) => !normalizedEventType || item.eventType === normalizedEventType)
+      .filter((item) => !rollbackReadiness || item.rollbackReadiness === rollbackReadiness)
       .slice(0, limit);
 
     return AdminMenuHistorySchema.parse({ items });
@@ -1665,6 +1748,7 @@ export class RestaurantsService {
       row.category_name ??
       null;
     const eventType = getMenuHistoryEventType(row.action, resourceType, changedFields);
+    const rollback = classifyMenuRollbackReadiness(eventType, changedFields, metadata);
 
     return {
       id: String(row.id),
@@ -1676,6 +1760,9 @@ export class RestaurantsService {
       resourceType,
       resourceName,
       changedFields,
+      rollbackReadiness: rollback.rollbackReadiness,
+      rollbackReason: rollback.rollbackReason,
+      reversibleFields: rollback.reversibleFields,
       metadata
     };
   }

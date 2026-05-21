@@ -357,6 +357,7 @@ export type MenuHistoryEventType =
   | "MENU_ITEM_MOVED_CATEGORY";
 
 export type MenuHistoryResourceType = "category" | "item";
+export type MenuRollbackReadiness = "ROLLBACK_PREPARED" | "NOT_REVERSIBLE" | "INSUFFICIENT_METADATA";
 
 export type MenuHistoryEvent = {
   id: string;
@@ -368,6 +369,9 @@ export type MenuHistoryEvent = {
   resourceType: MenuHistoryResourceType;
   resourceName: string | null;
   changedFields: string[];
+  rollbackReadiness: MenuRollbackReadiness;
+  rollbackReason: string;
+  reversibleFields: string[];
   metadata: Record<string, unknown>;
 };
 

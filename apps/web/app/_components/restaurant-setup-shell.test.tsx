@@ -191,6 +191,9 @@ describe("MenuHistoryPanel", () => {
             resourceType: "item",
             resourceName: "Chicken wrap",
             changedFields: ["priceCents"],
+            rollbackReadiness: "ROLLBACK_PREPARED",
+            rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+            reversibleFields: ["priceCents"],
             metadata: {}
           }
         ]}
@@ -199,6 +202,8 @@ describe("MenuHistoryPanel", () => {
 
     expect(html).toContain("Menu history");
     expect(html).toContain("Price updated");
+    expect(html).toContain("Rollback prepared");
+    expect(html).toContain("Rollback is not active yet.");
     expect(html).toContain("Operator One");
     expect(html).toContain("priceCents");
   });

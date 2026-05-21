@@ -18,6 +18,9 @@ const event: AdminMenuHistoryEvent = {
   resourceType: "item",
   resourceName: "Chicken wrap",
   changedFields: ["priceCents"],
+  rollbackReadiness: "ROLLBACK_PREPARED",
+  rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+  reversibleFields: ["priceCents"],
   metadata: { previous: { priceCents: 1299 }, next: { priceCents: 1499 } }
 };
 
@@ -30,6 +33,7 @@ describe("AdminMenuHistoryView", () => {
     expect(html).toContain("Chicken wrap price changed from £12.99 to £14.99.");
     expect(html).toContain("Pilot Org");
     expect(html).toContain("Pilot Kitchen");
+    expect(html).toContain("Rollback prepared");
     expect(html).toContain("priceCents");
     expect(html).toContain("append-only audit log");
   });

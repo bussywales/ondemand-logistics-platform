@@ -274,7 +274,10 @@ describe('authorizePayment', () => {
               resourceType: 'item',
               resourceName: 'Chicken wrap',
               changedFields: ['priceCents'],
-              metadata: { oldPriceCents: 1299, newPriceCents: 1499 }
+              rollbackReadiness: 'ROLLBACK_PREPARED',
+              rollbackReason: 'This event has previous and new values for reversible menu fields. Rollback is not active yet.',
+              reversibleFields: ['priceCents'],
+              metadata: { previous: { priceCents: 1299 }, next: { priceCents: 1499 } }
             }
           ]
         })
@@ -309,6 +312,9 @@ describe('authorizePayment', () => {
               resourceType: 'item',
               resourceName: 'Chicken wrap',
               changedFields: ['isActive'],
+              rollbackReadiness: 'ROLLBACK_PREPARED',
+              rollbackReason: 'This event has previous and new values for reversible menu fields. Rollback is not active yet.',
+              reversibleFields: ['isActive'],
               metadata: { previous: { isActive: true }, next: { isActive: false } }
             }
           ]
@@ -321,6 +327,7 @@ describe('authorizePayment', () => {
       restaurantId: 'restaurant-1',
       eventType: 'MENU_ITEM_VISIBILITY_UPDATED',
       resourceType: 'item',
+      rollbackReadiness: 'ROLLBACK_PREPARED',
       limit: 25
     });
 
@@ -330,6 +337,7 @@ describe('authorizePayment', () => {
     expect(url).toContain('restaurantId=restaurant-1');
     expect(url).toContain('eventType=MENU_ITEM_VISIBILITY_UPDATED');
     expect(url).toContain('resourceType=item');
+    expect(url).toContain('rollbackReadiness=ROLLBACK_PREPARED');
     expect(url).toContain('limit=25');
     expect(init.method).toBe('GET');
     expect(history.items[0]?.orgName).toBe('Pilot Org');

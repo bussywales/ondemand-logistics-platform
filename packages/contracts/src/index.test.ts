@@ -203,7 +203,10 @@ describe("Menu item schemas", () => {
           resourceType: "item",
           resourceName: "Chicken wrap",
           changedFields: ["priceCents"],
-          metadata: { oldPriceCents: 1299, newPriceCents: 1499 }
+          rollbackReadiness: "ROLLBACK_PREPARED",
+          rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+          reversibleFields: ["priceCents"],
+          metadata: { previous: { priceCents: 1299 }, next: { priceCents: 1499 } }
         }
       ]
     });
@@ -228,6 +231,9 @@ describe("Menu item schemas", () => {
           resourceType: "item",
           resourceName: "Chicken wrap",
           changedFields: ["isActive"],
+          rollbackReadiness: "ROLLBACK_PREPARED",
+          rollbackReason: "This event has previous and new values for reversible menu fields. Rollback is not active yet.",
+          reversibleFields: ["isActive"],
           metadata: { previous: { isActive: true }, next: { isActive: false } }
         }
       ]

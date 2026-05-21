@@ -614,6 +614,7 @@ export async function listAdminMenuHistory(
     restaurantId?: string;
     eventType?: string;
     resourceType?: string;
+    rollbackReadiness?: string;
     from?: string;
     to?: string;
     limit?: number;

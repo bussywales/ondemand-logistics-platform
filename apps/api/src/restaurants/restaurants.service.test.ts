@@ -482,6 +482,10 @@ describe("RestaurantsService", () => {
     expect(JSON.parse(pg.query.mock.calls[3]?.[1]?.[4])).toEqual(
       expect.objectContaining({
         restaurantId: RESTAURANT_ID,
+        restaurantName: "Pilot Kitchen",
+        resourceType: "item",
+        resourceId: ITEM_ID,
+        resourceName: "Chicken Wrap Meal",
         itemName: "Chicken Wrap Meal",
         changedFields: ["name", "priceCents"],
         previous: expect.objectContaining({ priceCents: 1299 }),
@@ -512,6 +516,10 @@ describe("RestaurantsService", () => {
     expect(JSON.parse(pg.query.mock.calls[3]?.[1]?.[4])).toEqual(
       expect.objectContaining({
         restaurantId: RESTAURANT_ID,
+        restaurantName: "Pilot Kitchen",
+        resourceType: "category",
+        resourceId: CATEGORY_ID,
+        resourceName: "Mains",
         categoryName: "Mains",
         changedFields: ["sortOrder"],
         previous: expect.objectContaining({ sortOrder: 0 }),
@@ -579,7 +587,9 @@ describe("RestaurantsService", () => {
         summary: "Chicken Wrap price changed from £12.99 to £14.99.",
         resourceType: "item",
         resourceName: "Chicken Wrap",
-        changedFields: ["priceCents"]
+        changedFields: ["priceCents"],
+        rollbackReadiness: "ROLLBACK_PREPARED",
+        reversibleFields: ["priceCents"]
       })
     );
   });
@@ -650,7 +660,93 @@ describe("RestaurantsService", () => {
         restaurantId: RESTAURANT_ID,
         restaurantName: "Pilot Kitchen",
         eventType: "MENU_ITEM_VISIBILITY_UPDATED",
-        summary: "Chicken Wrap was hidden from the public menu."
+        summary: "Chicken Wrap was hidden from the public menu.",
+        rollbackReadiness: "ROLLBACK_PREPARED",
+        reversibleFields: ["isActive"]
+      })
+    );
+  });
+
+  it("marks menu create audit rows as not reversible", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: 43,
+              actor_name: "Operator One",
+              actor_email: "operator@example.com",
+              entity_type: "menu_item",
+              entity_id: ITEM_ID,
+              action: "menu_item_created",
+              metadata: {
+                restaurantId: RESTAURANT_ID,
+                restaurantName: "Pilot Kitchen",
+                resourceType: "item",
+                resourceId: ITEM_ID,
+                resourceName: "Chicken Wrap",
+                itemName: "Chicken Wrap",
+                changedFields: ["name", "priceCents"]
+              },
+              created_at: new Date("2026-05-21T10:00:00.000Z"),
+              category_name: null,
+              item_name: "Chicken Wrap"
+            }
+          ]
+        })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.getRestaurantMenuHistory(RESTAURANT_ID, USER_ID);
+
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({
+        eventType: "MENU_ITEM_CREATED",
+        rollbackReadiness: "NOT_REVERSIBLE",
+        reversibleFields: []
+      })
+    );
+  });
+
+  it("marks legacy menu audit rows without previous and next values as insufficient metadata", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [restaurantRow()] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: 44,
+              actor_name: "Operator One",
+              actor_email: "operator@example.com",
+              entity_type: "menu_item",
+              entity_id: ITEM_ID,
+              action: "menu_item_updated",
+              metadata: {
+                restaurantId: RESTAURANT_ID,
+                itemName: "Chicken Wrap",
+                changedFields: ["priceCents"]
+              },
+              created_at: new Date("2026-05-21T10:00:00.000Z"),
+              category_name: null,
+              item_name: "Chicken Wrap"
+            }
+          ]
+        })
+    };
+
+    const service = new RestaurantsService(pg as never, {} as never);
+    const result = await service.getRestaurantMenuHistory(RESTAURANT_ID, USER_ID);
+
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({
+        eventType: "MENU_ITEM_PRICE_UPDATED",
+        rollbackReadiness: "INSUFFICIENT_METADATA",
+        reversibleFields: []
       })
     );
   });

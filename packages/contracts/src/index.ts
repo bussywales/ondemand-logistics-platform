@@ -909,6 +909,9 @@ export type MenuHistoryEventType = z.infer<typeof MenuHistoryEventTypeSchema>;
 export const MenuHistoryResourceTypeSchema = z.enum(["category", "item"]);
 export type MenuHistoryResourceType = z.infer<typeof MenuHistoryResourceTypeSchema>;
 
+export const MenuRollbackReadinessSchema = z.enum(["ROLLBACK_PREPARED", "NOT_REVERSIBLE", "INSUFFICIENT_METADATA"]);
+export type MenuRollbackReadiness = z.infer<typeof MenuRollbackReadinessSchema>;
+
 export const MenuHistoryEventSchema = z.object({
   id: z.string(),
   eventType: MenuHistoryEventTypeSchema,
@@ -919,6 +922,9 @@ export const MenuHistoryEventSchema = z.object({
   resourceType: MenuHistoryResourceTypeSchema,
   resourceName: z.string().nullable(),
   changedFields: z.array(z.string()),
+  rollbackReadiness: MenuRollbackReadinessSchema,
+  rollbackReason: z.string(),
+  reversibleFields: z.array(z.string()),
   metadata: z.record(z.string(), z.unknown()).default({})
 });
 export type MenuHistoryEventDto = z.infer<typeof MenuHistoryEventSchema>;
