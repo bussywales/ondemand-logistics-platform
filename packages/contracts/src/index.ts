@@ -33,7 +33,7 @@ export const OrgTypeSchema = z.enum([
 ]);
 export type OrgType = z.infer<typeof OrgTypeSchema>;
 
-export const OrgStatusSchema = z.enum(["ACTIVE", "INACTIVE", "ONBOARDING", "SUSPENDED"]);
+export const OrgStatusSchema = z.enum(["ACTIVE", "INACTIVE", "ONBOARDING", "SUSPENDED", "CLOSED"]);
 export type OrgStatus = z.infer<typeof OrgStatusSchema>;
 
 export const VehicleTypeSchema = z.enum(["BIKE", "CAR"]);
@@ -712,6 +712,7 @@ export type CreateBusinessOrgInput = z.infer<typeof CreateBusinessOrgSchema>;
 export const OrgSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(2),
+  status: OrgStatusSchema.default("ACTIVE"),
   contactName: z.string().nullable(),
   contactEmail: z.string().nullable(),
   contactPhone: z.string().nullable(),
@@ -747,8 +748,38 @@ export const BusinessContextSchema = z.object({
 });
 export type BusinessContextDto = z.infer<typeof BusinessContextSchema>;
 
-export const IdentityUserStatusSchema = z.enum(["ACTIVE", "INVITED", "INACTIVE"]);
+export const IdentityUserStatusSchema = z.enum(["ACTIVE", "INVITED", "INACTIVE", "SUSPENDED", "DISABLED"]);
 export type IdentityUserStatus = z.infer<typeof IdentityUserStatusSchema>;
+
+export const AdminOrgStatusUpdateSchema = z.object({
+  status: z.enum(["ACTIVE", "SUSPENDED", "CLOSED"]),
+  reason: z.string().trim().min(2).max(240).optional(),
+  note: z.string().trim().max(1000).nullable().optional(),
+  confirmation: z.string().trim().optional()
+}).superRefine((value, context) => {
+  if ((value.status === "SUSPENDED" || value.status === "CLOSED") && !value.reason) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "reason_required_for_restricted_org_status", path: ["reason"] });
+  }
+  if ((value.status === "SUSPENDED" || value.status === "CLOSED") && value.confirmation !== "CONFIRM ORG STATUS CHANGE") {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "confirmation_required_for_org_status_change", path: ["confirmation"] });
+  }
+});
+export type AdminOrgStatusUpdateInput = z.infer<typeof AdminOrgStatusUpdateSchema>;
+
+export const AdminUserStatusUpdateSchema = z.object({
+  status: z.enum(["ACTIVE", "SUSPENDED", "DISABLED"]),
+  reason: z.string().trim().min(2).max(240).optional(),
+  note: z.string().trim().max(1000).nullable().optional(),
+  confirmation: z.string().trim().optional()
+}).superRefine((value, context) => {
+  if ((value.status === "SUSPENDED" || value.status === "DISABLED") && !value.reason) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "reason_required_for_restricted_user_status", path: ["reason"] });
+  }
+  if ((value.status === "SUSPENDED" || value.status === "DISABLED") && value.confirmation !== "CONFIRM USER STATUS CHANGE") {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "confirmation_required_for_user_status_change", path: ["confirmation"] });
+  }
+});
+export type AdminUserStatusUpdateInput = z.infer<typeof AdminUserStatusUpdateSchema>;
 
 export const IdentityMembershipSchema = z.object({
   id: z.string().uuid(),
@@ -821,7 +852,7 @@ export type IdentityInvitationDto = z.infer<typeof IdentityInvitationSchema>;
 
 export const IdentityAccessEventSchema = z.object({
   id: z.string(),
-  orgId: z.string().uuid(),
+  orgId: z.string().uuid().nullable(),
   eventType: z.string().min(2),
   actorName: z.string().nullable(),
   actorEmail: z.string().nullable(),
@@ -830,6 +861,21 @@ export const IdentityAccessEventSchema = z.object({
   metadata: z.record(z.unknown())
 });
 export type IdentityAccessEventDto = z.infer<typeof IdentityAccessEventSchema>;
+
+export const ImpersonationPreviewSchema = z.object({
+  allowed: z.literal(false),
+  userId: z.string().uuid(),
+  requirements: z.array(z.string()),
+  message: z.string()
+});
+export type ImpersonationPreviewDto = z.infer<typeof ImpersonationPreviewSchema>;
+
+export const AdminGovernanceSummarySchema = z.object({
+  suspendedOrgs: z.array(IdentityOrgSchema),
+  suspendedUsers: z.array(IdentityUserSchema),
+  recentEvents: z.array(IdentityAccessEventSchema)
+});
+export type AdminGovernanceSummaryDto = z.infer<typeof AdminGovernanceSummarySchema>;
 
 export const IdentityOrgMembersSchema = z.object({
   org: IdentityOrgSchema,

@@ -13,19 +13,24 @@ import {
   cancelBusinessTeamInvite,
   createBusinessTeamInvite,
   getAdminOrgMembers,
+  getAdminGovernanceSummary,
   getBusinessTeam,
   getUserFacingApiError,
   listAdminOrgs,
   listAdminUsers,
+  previewAdminUserImpersonation,
   resendAdminOrgInvite,
   resendBusinessTeamInvite,
+  updateAdminOrgStatus,
   updateAdminOrgMembership,
+  updateAdminUserStatus,
   updateBusinessTeamMembership
 } from "../_lib/api";
 import { buildAuthRedirectTarget } from "../_lib/route-protection";
 import type {
   BusinessSession,
   BusinessTeam,
+  AdminGovernanceSummary,
   IdentityAccessEvent,
   IdentityInvitation,
   IdentityMembership,
@@ -221,7 +226,74 @@ function AccessHistoryPanel(props: { events: IdentityAccessEvent[] }) {
   );
 }
 
-export function AdminUsersView(props: { users: IdentityUser[]; search: string; onSearch: (value: string) => void }) {
+function GovernanceStatusControl(props: {
+  currentStatus: string;
+  disabled?: boolean;
+  kind: "org" | "user";
+  onSubmit: (input: { status: "ACTIVE" | "SUSPENDED" | "CLOSED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string }) => void;
+}) {
+  const [status, setStatus] = useState<"ACTIVE" | "SUSPENDED" | "CLOSED" | "DISABLED">("ACTIVE");
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const restricted = status !== "ACTIVE";
+  const confirmationCopy = props.kind === "org" ? "CONFIRM ORG STATUS CHANGE" : "CONFIRM USER STATUS CHANGE";
+  const options = props.kind === "org" ? ["ACTIVE", "SUSPENDED", "CLOSED"] : ["ACTIVE", "SUSPENDED", "DISABLED"];
+
+  return (
+    <form
+      className="sw-stack-sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        props.onSubmit({
+          status,
+          reason: reason.trim() || undefined,
+          note: note.trim() || null,
+          confirmation: confirmation.trim() || undefined
+        });
+        setReason("");
+        setNote("");
+        setConfirmation("");
+      }}
+    >
+      <p className="ops-detail-note">Current status: {formatLabel(props.currentStatus)}. Changes are reversible except any future CLOSED policy review.</p>
+      <div className="form-grid two-column">
+        <label className="sw-field">
+          <span className="sw-label">Next status</span>
+          <select className="sw-input" disabled={props.disabled} onChange={(event) => setStatus(event.target.value as typeof status)} value={status}>
+            {options.map((option) => <option key={option} value={option}>{formatLabel(option)}</option>)}
+          </select>
+        </label>
+        <label className="sw-field">
+          <span className="sw-label">Reason {restricted ? "required" : "optional"}</span>
+          <input className="sw-input" disabled={props.disabled} onChange={(event) => setReason(event.target.value)} value={reason} />
+        </label>
+      </div>
+      <label className="sw-field">
+        <span className="sw-label">Governance note optional</span>
+        <textarea className="sw-input" disabled={props.disabled} onChange={(event) => setNote(event.target.value)} rows={2} value={note} />
+      </label>
+      {restricted ? (
+        <label className="sw-field">
+          <span className="sw-label">Typed confirmation</span>
+          <input className="sw-input" disabled={props.disabled} onChange={(event) => setConfirmation(event.target.value)} placeholder={confirmationCopy} value={confirmation} />
+        </label>
+      ) : null}
+      <button className="sw-button sw-button--secondary button button-secondary" disabled={props.disabled || (restricted && confirmation.trim() !== confirmationCopy)} type="submit">
+        Apply status change
+      </button>
+    </form>
+  );
+}
+
+export function AdminUsersView(props: {
+  users: IdentityUser[];
+  search: string;
+  onSearch: (value: string) => void;
+  onPreviewImpersonation?: (user: IdentityUser) => void;
+  onUpdateStatus?: (user: IdentityUser, input: { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string }) => void;
+  pending?: boolean;
+}) {
   return (
     <main className="app-shell admin-shell-page">
       <div className="sw-row-between admin-shell-header">
@@ -234,6 +306,7 @@ export function AdminUsersView(props: { users: IdentityUser[]; search: string; o
         <div className="hero-actions">
           <AdminWorkspaceLink />
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/orgs">Organisations</Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/governance">Governance</Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin">Admin home</Link>
         </div>
       </div>
@@ -277,6 +350,19 @@ export function AdminUsersView(props: { users: IdentityUser[]; search: string; o
                     {membership.orgName} · {formatLabel(membership.role)}
                   </Link>
                 )) : <span className="sw-badge sw-badge--neutral">No memberships</span>}
+                {props.onUpdateStatus ? (
+                  <GovernanceStatusControl
+                    currentStatus={user.status}
+                    disabled={props.pending}
+                    kind="user"
+                    onSubmit={(input) => props.onUpdateStatus?.(user, input as { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string })}
+                  />
+                ) : null}
+                {props.onPreviewImpersonation ? (
+                  <button className="sw-button sw-button--ghost button button-secondary" disabled={props.pending} onClick={() => props.onPreviewImpersonation?.(user)} type="button">
+                    Preview impersonation requirements
+                  </button>
+                ) : null}
               </div>
             </article>
           ))}
@@ -286,7 +372,13 @@ export function AdminUsersView(props: { users: IdentityUser[]; search: string; o
   );
 }
 
-export function AdminOrgsView(props: { orgs: IdentityOrg[]; search: string; onSearch: (value: string) => void }) {
+export function AdminOrgsView(props: {
+  orgs: IdentityOrg[];
+  search: string;
+  onSearch: (value: string) => void;
+  onUpdateStatus?: (org: IdentityOrg, input: { status: "ACTIVE" | "SUSPENDED" | "CLOSED"; reason?: string; note?: string | null; confirmation?: string }) => void;
+  pending?: boolean;
+}) {
   return (
     <main className="app-shell admin-shell-page">
       <div className="sw-row-between admin-shell-header">
@@ -299,6 +391,7 @@ export function AdminOrgsView(props: { orgs: IdentityOrg[]; search: string; onSe
         <div className="hero-actions">
           <AdminWorkspaceLink />
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/users">Users</Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/governance">Governance</Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin">Admin home</Link>
         </div>
       </div>
@@ -330,6 +423,14 @@ export function AdminOrgsView(props: { orgs: IdentityOrg[]; search: string; onSe
                 <span className="sw-badge sw-badge--neutral">{org.activeMemberCount}/{org.memberCount} active members</span>
                 <Link className="sw-button sw-button--secondary button button-secondary" href={`/admin/orgs/${org.id}/members`}>Manage members</Link>
               </div>
+              {props.onUpdateStatus ? (
+                <GovernanceStatusControl
+                  currentStatus={org.status}
+                  disabled={props.pending}
+                  kind="org"
+                  onSubmit={(input) => props.onUpdateStatus?.(org, input as { status: "ACTIVE" | "SUSPENDED" | "CLOSED"; reason?: string; note?: string | null; confirmation?: string })}
+                />
+              ) : null}
             </article>
           ))}
         </div>
@@ -343,6 +444,7 @@ export function OrgMembersView(props: {
   pending?: boolean;
   onCancelInvite?: (invite: IdentityInvitation) => void;
   onResendInvite?: (invite: IdentityInvitation) => void;
+  onUpdateOrgStatus?: (input: { status: "ACTIVE" | "SUSPENDED" | "CLOSED"; reason?: string; note?: string | null; confirmation?: string }) => void;
   onUpdate?: (member: IdentityMembership, patch: { role?: OrgRole; isActive?: boolean }) => void;
 }) {
   const pendingInvitations = props.data.invitations.filter((invite) => invite.status === "PENDING" || invite.status === "EXPIRED");
@@ -359,8 +461,29 @@ export function OrgMembersView(props: {
         <div className="hero-actions">
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/orgs">All organisations</Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/users">Users</Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/governance">Governance</Link>
         </div>
       </div>
+      <section className="sw-command-surface">
+        <div className="sw-card-header">
+          <div>
+            <p className="eyebrow">Enterprise governance</p>
+            <h2>Organisation access status</h2>
+            <p className="ops-detail-note">Suspension and closure are human-reviewed controls. No data is deleted.</p>
+          </div>
+        </div>
+        {props.data.org.status === "SUSPENDED" || props.data.org.status === "CLOSED" ? (
+          <div className="form-error-banner support-escalation-error">This organisation is {formatLabel(props.data.org.status)}. Business users should treat workspace operations as restricted until reactivated.</div>
+        ) : null}
+        {props.onUpdateOrgStatus ? (
+          <GovernanceStatusControl
+            currentStatus={props.data.org.status}
+            disabled={props.pending}
+            kind="org"
+            onSubmit={(input) => props.onUpdateOrgStatus?.(input as { status: "ACTIVE" | "SUSPENDED" | "CLOSED"; reason?: string; note?: string | null; confirmation?: string })}
+          />
+        ) : null}
+      </section>
       <section className="sw-operational-surface">
         <div className="sw-card-header">
           <div>
@@ -507,6 +630,11 @@ export function BusinessTeamView(props: {
                 <p>Manage who belongs to this workspace and which operational role they hold. Changes are audited.</p>
               </div>
             </div>
+            {props.team.org.status === "SUSPENDED" || props.team.org.status === "CLOSED" ? (
+              <div className="form-error-banner support-escalation-error">
+                This workspace is {formatLabel(props.team.org.status)}. Treat operations as restricted and contact platform support before making changes.
+              </div>
+            ) : null}
             <div className="team-summary-grid">
               <div className="sw-list-row">
                 <span>Active members</span>
@@ -581,11 +709,97 @@ export function BusinessTeamView(props: {
   );
 }
 
+export function AdminGovernanceView(props: { summary: AdminGovernanceSummary }) {
+  return (
+    <main className="app-shell admin-shell-page">
+      <div className="sw-row-between admin-shell-header">
+        <div>
+          <BrandLogo />
+          <p className="eyebrow">Enterprise governance</p>
+          <h1>Suspension and support access audit</h1>
+          <p>Reversible access controls and audited support-access preparation. No impersonation session is active in v1.</p>
+        </div>
+        <div className="hero-actions">
+          <AdminWorkspaceLink />
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/users">Users</Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/orgs">Organisations</Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin">Admin home</Link>
+        </div>
+      </div>
+      <section className="sw-command-surface">
+        <div className="sw-card-header">
+          <div>
+            <p className="eyebrow">Governance posture</p>
+            <h2>{props.summary.suspendedOrgs.length + props.summary.suspendedUsers.length} restricted records</h2>
+            <p className="ops-detail-note">Suspension is non-destructive. Impersonation remains disabled pending audited session controls, expiry, and explicit end action.</p>
+          </div>
+        </div>
+        <div className="team-summary-grid">
+          <div className="sw-list-row"><span>Suspended or closed orgs</span><strong>{props.summary.suspendedOrgs.length}</strong></div>
+          <div className="sw-list-row"><span>Suspended or disabled users</span><strong>{props.summary.suspendedUsers.length}</strong></div>
+          <div className="sw-list-row"><span>Recent governance events</span><strong>{props.summary.recentEvents.length}</strong></div>
+        </div>
+      </section>
+      <section className="sw-operational-surface">
+        <div className="sw-card-header"><div><p className="eyebrow">Organisations</p><h2>Restricted organisations</h2></div></div>
+        <div className="sw-stack">
+          {props.summary.suspendedOrgs.length === 0 ? <p className="ops-detail-note">No suspended or closed organisations.</p> : props.summary.suspendedOrgs.map((org) => (
+            <div className="sw-list-row" key={org.id}>
+              <div><strong>{org.name}</strong><p className="ops-detail-note">{formatLabel(org.type)} · {org.contactEmail ?? "No contact email"}</p></div>
+              <div className="sw-row">
+                <span className={`sw-badge ${statusBadgeClass(org.status)}`}>{formatLabel(org.status)}</span>
+                <Link className="sw-button sw-button--secondary button button-secondary" href={`/admin/orgs/${org.id}/members`}>Review</Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="sw-operational-surface">
+        <div className="sw-card-header"><div><p className="eyebrow">Users</p><h2>Restricted users</h2></div></div>
+        <div className="sw-stack">
+          {props.summary.suspendedUsers.length === 0 ? <p className="ops-detail-note">No suspended or disabled users.</p> : props.summary.suspendedUsers.map((user) => (
+            <div className="sw-list-row" key={user.id}>
+              <div><strong>{user.displayName}</strong><p className="ops-detail-note">{user.email}</p></div>
+              <span className={`sw-badge ${statusBadgeClass(user.status)}`}>{formatLabel(user.status)}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <AccessHistoryPanel events={props.summary.recentEvents} />
+    </main>
+  );
+}
+
+export function AdminGovernanceShell() {
+  const router = useRouter();
+  const { status, session } = useBusinessAuth();
+  const [summary, setSummary] = useState<AdminGovernanceSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace(buildAuthRedirectTarget({ pathname: "/admin/governance" }));
+  }, [router, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.context.platformAdmin) return;
+    void getAdminGovernanceSummary(session)
+      .then(setSummary)
+      .catch((issue) => setError(getUserFacingApiError(issue, "Unable to load governance controls.")));
+  }, [session, status]);
+
+  if (status === "loading" || !session) return <LoadingState copy="Restoring platform admin session." />;
+  if (!session.context.platformAdmin) return <PlatformAdminRequired />;
+  if (!summary) return <LoadingState copy={error ?? "Loading enterprise governance posture."} />;
+  return <AdminGovernanceView summary={summary} />;
+}
+
 export function AdminUsersShell() {
   const router = useRouter();
   const { status, session } = useBusinessAuth();
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<IdentityUser[]>([]);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace(buildAuthRedirectTarget({ pathname: "/admin/users" }));
@@ -596,13 +810,55 @@ export function AdminUsersShell() {
     void listAdminUsers(session, search).then(setUsers);
   }, [search, session, status]);
 
+  async function refresh(currentSession = session) {
+    if (!currentSession) return;
+    setUsers(await listAdminUsers(currentSession, search));
+  }
+
+  async function handleUpdateStatus(user: IdentityUser, input: { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string }) {
+    if (!session) return;
+    setPending(true);
+    setMessage(null);
+    try {
+      await updateAdminUserStatus(session, user.id, input);
+      await refresh(session);
+      setMessage("User status change recorded in the access audit.");
+    } catch (issue) {
+      setMessage(getUserFacingApiError(issue, "Unable to update user status."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handlePreviewImpersonation(user: IdentityUser) {
+    if (!session) return;
+    setPending(true);
+    setMessage(null);
+    try {
+      const preview = await previewAdminUserImpersonation(session, user.id);
+      setMessage(`${preview.message} Requirements: ${preview.requirements.join(", ")}.`);
+    } catch (issue) {
+      setMessage(getUserFacingApiError(issue, "Unable to preview impersonation requirements."));
+    } finally {
+      setPending(false);
+    }
+  }
+
   if (status === "loading" || !session) return <LoadingState copy="Restoring platform admin session." />;
   if (!session.context.platformAdmin) return <PlatformAdminRequired />;
 
   return (
     <>
       <ProductUpdateAnnouncement routePath="/admin/users" viewer="platform_admin" viewerKey={session.userId} />
-      <AdminUsersView users={users} search={search} onSearch={setSearch} />
+      {message ? <div className="form-error-banner support-escalation-error">{message}</div> : null}
+      <AdminUsersView
+        users={users}
+        search={search}
+        onPreviewImpersonation={handlePreviewImpersonation}
+        onSearch={setSearch}
+        onUpdateStatus={handleUpdateStatus}
+        pending={pending}
+      />
     </>
   );
 }
@@ -612,6 +868,8 @@ export function AdminOrgsShell() {
   const { status, session } = useBusinessAuth();
   const [search, setSearch] = useState("");
   const [orgs, setOrgs] = useState<IdentityOrg[]>([]);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace(buildAuthRedirectTarget({ pathname: "/admin/orgs" }));
@@ -622,9 +880,34 @@ export function AdminOrgsShell() {
     void listAdminOrgs(session, search).then(setOrgs);
   }, [search, session, status]);
 
+  async function refresh(currentSession = session) {
+    if (!currentSession) return;
+    setOrgs(await listAdminOrgs(currentSession, search));
+  }
+
+  async function handleUpdateStatus(org: IdentityOrg, input: { status: "ACTIVE" | "SUSPENDED" | "CLOSED"; reason?: string; note?: string | null; confirmation?: string }) {
+    if (!session) return;
+    setPending(true);
+    setMessage(null);
+    try {
+      await updateAdminOrgStatus(session, org.id, input);
+      await refresh(session);
+      setMessage("Organisation status change recorded in the access audit.");
+    } catch (issue) {
+      setMessage(getUserFacingApiError(issue, "Unable to update organisation status."));
+    } finally {
+      setPending(false);
+    }
+  }
+
   if (status === "loading" || !session) return <LoadingState copy="Restoring platform admin session." />;
   if (!session.context.platformAdmin) return <PlatformAdminRequired />;
-  return <AdminOrgsView orgs={orgs} search={search} onSearch={setSearch} />;
+  return (
+    <>
+      {message ? <div className="form-error-banner support-escalation-error">{message}</div> : null}
+      <AdminOrgsView orgs={orgs} search={search} onSearch={setSearch} onUpdateStatus={handleUpdateStatus} pending={pending} />
+    </>
+  );
 }
 
 export function AdminOrgMembersShell(props: { orgId: string }) {
@@ -687,6 +970,19 @@ export function AdminOrgMembersShell(props: { orgId: string }) {
     }
   }
 
+  async function handleUpdateOrgStatus(input: { status: "ACTIVE" | "SUSPENDED" | "CLOSED"; reason?: string; note?: string | null; confirmation?: string }) {
+    if (!session) return;
+    setPending(true);
+    try {
+      await updateAdminOrgStatus(session, props.orgId, input);
+      await refresh(session);
+    } catch (issue) {
+      setError(getUserFacingApiError(issue, "Unable to update organisation status."));
+    } finally {
+      setPending(false);
+    }
+  }
+
   if (status === "loading" || !session) return <LoadingState copy="Restoring platform admin session." />;
   if (!session.context.platformAdmin) return <PlatformAdminRequired />;
   if (!data) return <LoadingState copy={error ?? "Loading organisation members."} />;
@@ -695,6 +991,7 @@ export function AdminOrgMembersShell(props: { orgId: string }) {
       data={data}
       onCancelInvite={handleCancelInvite}
       onResendInvite={handleResendInvite}
+      onUpdateOrgStatus={handleUpdateOrgStatus}
       onUpdate={handleUpdate}
       pending={pending}
     />

@@ -21,7 +21,7 @@ export type OrgRole =
   | "DISPATCHER"
   | "COMPLIANCE_MANAGER";
 export type OrgType = "PLATFORM" | "RESTAURANT" | "RETAILER" | "DRIVER_COMPANY" | "INDEPENDENT_COURIER" | "SUPPORT_PARTNER";
-export type OrgStatus = "ACTIVE" | "INACTIVE" | "ONBOARDING" | "SUSPENDED";
+export type OrgStatus = "ACTIVE" | "INACTIVE" | "ONBOARDING" | "SUSPENDED" | "CLOSED";
 export type DemoRequestInterestType = "PILOT_MERCHANT" | "OPERATOR_PLATFORM" | "INVESTOR_PARTNER" | "OTHER";
 export type DemoRequestStatus = "NEW" | "REVIEWED" | "CONTACTED" | "QUALIFIED" | "CLOSED" | "SPAM";
 export type DemoRequestFollowUpPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -71,6 +71,7 @@ export type JobStatus =
 export type OrgSummary = {
   id: string;
   name: string;
+  status: OrgStatus;
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -107,7 +108,7 @@ export type IdentityUser = {
   id: string;
   email: string;
   displayName: string;
-  status: "ACTIVE" | "INVITED" | "INACTIVE";
+  status: "ACTIVE" | "INVITED" | "INACTIVE" | "SUSPENDED" | "DISABLED";
   platformAdmin: boolean;
   lastSignInAt: string | null;
   createdAt: string;
@@ -142,7 +143,7 @@ export type IdentityInvitation = {
 
 export type IdentityAccessEvent = {
   id: string;
-  orgId: string;
+  orgId: string | null;
   eventType: string;
   actorName: string | null;
   actorEmail: string | null;
@@ -159,6 +160,19 @@ export type IdentityOrgMembers = {
 };
 
 export type BusinessTeam = IdentityOrgMembers;
+
+export type AdminGovernanceSummary = {
+  suspendedOrgs: IdentityOrg[];
+  suspendedUsers: IdentityUser[];
+  recentEvents: IdentityAccessEvent[];
+};
+
+export type ImpersonationPreview = {
+  allowed: false;
+  userId: string;
+  requirements: string[];
+  message: string;
+};
 
 export type BusinessContext = {
   userId: string;

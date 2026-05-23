@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { AdminOrgsView, AdminUsersView, BusinessTeamView, OrgMembersView } from "./identity-shell";
+import { AdminGovernanceView, AdminOrgsView, AdminUsersView, BusinessTeamView, OrgMembersView } from "./identity-shell";
 import type { BusinessTeam, IdentityOrg, IdentityOrgMembers, IdentityUser } from "../_lib/product-state";
 
 const org: IdentityOrg = {
@@ -107,5 +107,44 @@ describe("identity shells", () => {
     expect(html).toContain("Operator One");
     expect(html).toContain("new@example.com");
     expect(html).toContain("Email delivery may depend on notification configuration");
+  });
+
+  it("renders enterprise governance posture and suspended workspace copy", () => {
+    const governanceHtml = renderToStaticMarkup(
+      <AdminGovernanceView
+        summary={{
+          suspendedOrgs: [{ ...org, status: "SUSPENDED" }],
+          suspendedUsers: [
+            {
+              id: member.userId,
+              email: member.email,
+              displayName: member.displayName,
+              status: "DISABLED",
+              platformAdmin: false,
+              lastSignInAt: null,
+              createdAt: "2026-05-19T10:00:00.000Z",
+              updatedAt: "2026-05-19T10:00:00.000Z",
+              memberships: [member]
+            }
+          ],
+          recentEvents: [{ ...accessEvent, orgId: null, eventType: "user_status_changed", summary: "User status changed from Active to Disabled." }]
+        }}
+      />
+    );
+
+    expect(governanceHtml).toContain("Suspension and support access audit");
+    expect(governanceHtml).toContain("Impersonation remains disabled");
+    expect(governanceHtml).toContain("Restricted organisations");
+
+    const teamHtml = renderToStaticMarkup(
+      <BusinessTeamView
+        team={{ org: { ...org, status: "SUSPENDED" }, members: [member], invitations: [invitation], accessEvents: [accessEvent] }}
+        onCancelInvite={vi.fn()}
+        onInvite={vi.fn()}
+        onResendInvite={vi.fn()}
+        onUpdate={vi.fn()}
+      />
+    );
+    expect(teamHtml).toContain("Treat operations as restricted");
   });
 });

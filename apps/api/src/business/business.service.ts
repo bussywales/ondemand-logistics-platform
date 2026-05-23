@@ -23,6 +23,7 @@ type UserRow = {
   id: string;
   email: string;
   display_name: string;
+  status?: string;
 };
 
 type OrgRow = {
@@ -32,6 +33,7 @@ type OrgRow = {
   contact_email: string | null;
   contact_phone: string | null;
   operating_city: string | null;
+  status?: string;
   created_by: string;
   created_at: string;
 };
@@ -58,6 +60,7 @@ type ContextRow = {
   org_contact_email: string | null;
   org_contact_phone: string | null;
   org_operating_city: string | null;
+  org_status: string;
   org_created_by: string;
   org_created_at: string;
 };
@@ -226,11 +229,14 @@ export class BusinessService {
     const hasOrgProfileColumns = await this.hasOrgProfileColumns(this.pg);
     const isPlatformAdmin = await this.platformAdmins.isPlatformAdmin(user.id);
     const userResult = await this.pg.query<UserRow>(
-      `select id, email, display_name
+      `select id, email, display_name, coalesce(status, 'ACTIVE') as status
        from public.users
        where id = $1`,
       [user.id]
     );
+    if (userResult.rows[0]?.status === "SUSPENDED" || userResult.rows[0]?.status === "DISABLED") {
+      throw new ForbiddenException("user_access_suspended");
+    }
 
     const memberships = await this.readBusinessMemberships(this.pg, user.id, hasOrgProfileColumns);
     const hasNonBusinessWorkspaceAccess =
@@ -241,7 +247,8 @@ export class BusinessService {
     const userRow = userResult.rows[0] ?? {
       id: user.id,
       email: fallbackEmail,
-      display_name: fallbackDisplayName
+      display_name: fallbackDisplayName,
+      status: "ACTIVE"
     };
 
     return this.mapContext(
@@ -321,6 +328,7 @@ export class BusinessService {
           m.created_at as membership_created_at,
           o.id as org_id,
           o.name as org_name,
+          coalesce(o.status, 'ACTIVE') as org_status,
           ${
             hasOrgProfileColumns
               ? `o.contact_name as org_contact_name,
@@ -359,6 +367,7 @@ export class BusinessService {
         contact_email: row.org_contact_email,
         contact_phone: row.org_contact_phone,
         operating_city: row.org_operating_city,
+        status: row.org_status,
         created_by: row.org_created_by,
         created_at: row.org_created_at
       }
@@ -403,6 +412,7 @@ export class BusinessService {
       org: OrgSummarySchema.parse({
         id: row.org.id,
         name: row.org.name,
+        status: row.org.status ?? "ACTIVE",
         contactName: row.org.contact_name,
         contactEmail: row.org.contact_email,
         contactPhone: row.org.contact_phone,

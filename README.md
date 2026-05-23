@@ -48,6 +48,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin control plane: `/admin`
 - Admin pilot management: `/admin/pilots`
 - Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
+- Admin enterprise governance: `/admin/governance`
 - Admin driver fleet organisations: `/admin/fleets`
 - Admin demo requests: `/admin/demo-requests`
 - Admin product analytics: `/admin/analytics`
@@ -61,6 +62,8 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
 
 IAM v1.1 adds pending invite management on `/app/settings/team` and `/admin/orgs/[orgId]/members`: business owners and platform admins can resend or cancel pending/expired invitations and review recent access history. Invite email delivery still depends on notification configuration; no account deletion, impersonation, SSO, or SCIM is included.
+
+Enterprise Readiness v1 adds reversible organisation and user access controls for platform admins. `/admin/governance`, `/admin/users`, and `/admin/orgs` expose suspension/reactivation status, typed confirmation, reason capture, and access audit history. The implementation does not add SSO/SCIM, user deletion, or live impersonation; impersonation preview only records audit intent and explains the controls required before support-session switching can be enabled.
 
 ## Commercial intake
 Public demo and controlled-pilot requests are captured through:

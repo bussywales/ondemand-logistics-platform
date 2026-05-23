@@ -388,6 +388,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/orgs">
             Orgs
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/governance">
+            Governance
+          </Link>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/fleets">
             Fleets
           </Link>
@@ -470,6 +473,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/orgs">
               Identity & access
+            </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/governance">
+              Governance
             </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
               Demo requests

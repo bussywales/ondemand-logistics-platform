@@ -14,9 +14,29 @@ export class AdminIdentityController {
     return this.identity.listAdminUsers(search);
   }
 
+  @Patch("users/:userId/status")
+  updateUserStatus(@Param("userId") userId: string, @Body() body: unknown, @RequestUser() user: AuthenticatedUser) {
+    return this.identity.updateAdminUserStatus(userId, body, user);
+  }
+
+  @Post("users/:userId/impersonation-preview")
+  previewImpersonation(@Param("userId") userId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.identity.previewImpersonation(userId, user);
+  }
+
   @Get("orgs")
   listOrgs(@Query("search") search?: string) {
     return this.identity.listAdminOrgs(search);
+  }
+
+  @Get("governance")
+  getGovernanceSummary() {
+    return this.identity.getAdminGovernanceSummary();
+  }
+
+  @Patch("orgs/:orgId/status")
+  updateOrgStatus(@Param("orgId") orgId: string, @Body() body: unknown, @RequestUser() user: AuthenticatedUser) {
+    return this.identity.updateAdminOrgStatus(orgId, body, user);
   }
 
   @Get("orgs/:orgId/members")

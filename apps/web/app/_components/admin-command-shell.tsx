@@ -1134,6 +1134,9 @@ export function AdminCommandShell() {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/dispatch-audit">
             Dispatch audit
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/governance">
+            Governance
+          </Link>
           <button className="button button-secondary" onClick={() => void handleRefresh()} type="button">
             Refresh
           </button>

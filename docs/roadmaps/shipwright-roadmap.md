@@ -163,6 +163,14 @@ Constraints:
 - no impersonation, SSO/SCIM, destructive account deletion, or external invite email in v1
 - invite resend records an outbox/audit event; actual email delivery still depends on notification integration
 
+Enterprise Readiness v1:
+- platform admins can suspend/reactivate organisations from `/admin/orgs`, `/admin/orgs/[orgId]/members`, and review posture at `/admin/governance`
+- platform admins can suspend/reactivate/disable users from `/admin/users`
+- status changes require reason capture and typed confirmation for restricted states
+- access changes are written to the existing append-only audit log
+- impersonation remains disabled; preview records audit intent and documents required future controls rather than creating a support session
+- suspended users are rejected by business context restoration; broad suspended-organisation mutation enforcement remains a follow-up hardening item where endpoints do not share a central mutation guard
+
 ## Workstream 4: Merchant Menu Operations
 Status: Implemented through v1.5 for price editing, availability clarity, simple reordering, menu-specific audit visibility, rollback readiness, and business-scoped rollback.
 

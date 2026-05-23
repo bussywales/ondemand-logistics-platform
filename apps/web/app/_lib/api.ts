@@ -59,6 +59,8 @@ import type {
   IdentityOrg,
   IdentityOrgMembers,
   IdentityUser,
+  AdminGovernanceSummary,
+  ImpersonationPreview,
   OrgRole,
   EligibleDriver,
   EligibleDriverSuitabilityFlag,
@@ -246,6 +248,8 @@ type IdentityOrgMembersResponse = IdentityOrgMembers;
 type BusinessTeamResponse = BusinessTeam;
 type IdentityMembershipResponse = IdentityMembership;
 type IdentityInvitationResponse = IdentityInvitation;
+type AdminGovernanceSummaryResponse = AdminGovernanceSummary;
+type ImpersonationPreviewResponse = ImpersonationPreview;
 type FleetOrganisationListResponse = FleetOrganisationList;
 type FleetOrganisationResponse = FleetOrganisation;
 type FleetDriverListResponse = FleetDriverList;
@@ -852,10 +856,51 @@ export async function listAdminUsers(session: BusinessSession, search?: string):
   return payload.items;
 }
 
+export async function updateAdminUserStatus(
+  session: BusinessSession,
+  userId: string,
+  input: { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string }
+): Promise<IdentityUser> {
+  return apiFetch<IdentityUser>(session, `/v1/admin/users/${encodeURIComponent(userId)}/status`, {
+    method: "PATCH",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-admin-user-status`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function previewAdminUserImpersonation(session: BusinessSession, userId: string): Promise<ImpersonationPreview> {
+  return apiFetch<ImpersonationPreviewResponse>(session, `/v1/admin/users/${encodeURIComponent(userId)}/impersonation-preview`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-impersonation-preview`
+    }
+  });
+}
+
 export async function listAdminOrgs(session: BusinessSession, search?: string): Promise<IdentityOrg[]> {
   const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
   const payload = await apiFetch<IdentityOrgListResponse>(session, `/v1/admin/orgs${query}`, { method: "GET" });
   return payload.items;
+}
+
+export async function updateAdminOrgStatus(
+  session: BusinessSession,
+  orgId: string,
+  input: { status: "ACTIVE" | "SUSPENDED" | "CLOSED"; reason?: string; note?: string | null; confirmation?: string }
+): Promise<IdentityOrg> {
+  return apiFetch<IdentityOrg>(session, `/v1/admin/orgs/${encodeURIComponent(orgId)}/status`, {
+    method: "PATCH",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-admin-org-status`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function getAdminGovernanceSummary(session: BusinessSession): Promise<AdminGovernanceSummary> {
+  return apiFetch<AdminGovernanceSummaryResponse>(session, "/v1/admin/governance", { method: "GET" });
 }
 
 export async function getAdminOrgMembers(session: BusinessSession, orgId: string): Promise<IdentityOrgMembers> {

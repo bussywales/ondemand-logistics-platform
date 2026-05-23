@@ -3,6 +3,9 @@ import {
   AdminPaymentListSchema,
   AdminAnalyticsSummarySchema,
   AdminMenuHistorySchema,
+  AdminGovernanceSummarySchema,
+  AdminOrgStatusUpdateSchema,
+  AdminUserStatusUpdateSchema,
   CreateNotificationTestSchema,
   NotificationDiagnosticsSchema,
   NotificationTestResponseSchema,
@@ -43,6 +46,7 @@ import {
   JobStatusSchema,
   IdentityOrgMembersSchema,
   IdentityUserListSchema,
+  ImpersonationPreviewSchema,
   MenuHistorySchema,
   MenuRollbackPreviewSchema,
   ApplyMenuRollbackSchema,
@@ -1240,6 +1244,55 @@ describe("identity and access schemas", () => {
     expect(CreateTeamInviteSchema.safeParse({ email: "new@example.com", role: "OPERATOR" }).success).toBe(true);
     expect(UpdateMembershipSchema.safeParse({ role: "MANAGER", isActive: false }).success).toBe(true);
     expect(UpdateMembershipSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("validates enterprise governance status changes and audit previews", () => {
+    expect(AdminOrgStatusUpdateSchema.safeParse({ status: "ACTIVE" }).success).toBe(true);
+    expect(AdminOrgStatusUpdateSchema.safeParse({ status: "SUSPENDED" }).success).toBe(false);
+    expect(
+      AdminOrgStatusUpdateSchema.safeParse({
+        status: "SUSPENDED",
+        reason: "Pilot paused",
+        confirmation: "CONFIRM ORG STATUS CHANGE"
+      }).success
+    ).toBe(true);
+
+    expect(AdminUserStatusUpdateSchema.safeParse({ status: "DISABLED", reason: "Left organisation" }).success).toBe(false);
+    expect(
+      AdminUserStatusUpdateSchema.safeParse({
+        status: "DISABLED",
+        reason: "Left organisation",
+        confirmation: "CONFIRM USER STATUS CHANGE"
+      }).success
+    ).toBe(true);
+
+    expect(
+      ImpersonationPreviewSchema.safeParse({
+        allowed: false,
+        userId: member.userId,
+        requirements: ["reason", "ticket"],
+        message: "Impersonation is disabled."
+      }).success
+    ).toBe(true);
+
+    expect(
+      AdminGovernanceSummarySchema.safeParse({
+        suspendedOrgs: [],
+        suspendedUsers: [],
+        recentEvents: [
+          {
+            id: "2",
+            orgId: null,
+            eventType: "user_status_changed",
+            actorName: "Platform Admin",
+            actorEmail: "admin@example.com",
+            createdAt: new Date().toISOString(),
+            summary: "User status changed.",
+            metadata: { previousStatus: "ACTIVE", nextStatus: "SUSPENDED" }
+          }
+        ]
+      }).success
+    ).toBe(true);
   });
 });
 

@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "enterprise-governance-suspension-audit",
+    title: "Enterprise governance controls are available",
+    summary: "Platform admins can now suspend or reactivate organisations and users with typed confirmation, reason capture, and access audit history. Impersonation remains disabled pending audited session controls.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin/governance", "/admin/users", "/admin/orgs"],
+    releasedAt: "2026-05-23T22:00:00.000Z",
+    version: "v3.4",
+    ctaLabel: "Open governance",
+    ctaHref: "/admin/governance"
+  },
+  {
     id: "dispatch-governance-assignment-audit",
     title: "Dispatch governance is now auditable",
     summary: "Operators can record human dispatch review context, while platform admins can inspect assignment and override history across organisations.",

@@ -5,6 +5,9 @@ import {
   UnprocessableEntityException
 } from "@nestjs/common";
 import {
+  AdminGovernanceSummarySchema,
+  AdminOrgStatusUpdateSchema,
+  AdminUserStatusUpdateSchema,
   BusinessTeamSchema,
   CreateTeamInviteSchema,
   IdentityAccessEventSchema,
@@ -12,8 +15,10 @@ import {
   IdentityOrgListSchema,
   IdentityOrgMembersSchema,
   IdentityUserListSchema,
+  ImpersonationPreviewSchema,
   OrgRoleSchema,
   UpdateMembershipSchema,
+  type AdminGovernanceSummaryDto,
   type BusinessTeamDto,
   type IdentityAccessEventDto,
   type IdentityInvitationDto,
@@ -59,7 +64,11 @@ const ACCESS_AUDIT_ACTIONS = [
   "team_invite_resent",
   "team_invite_cancelled",
   "admin_invite_resent",
-  "admin_invite_cancelled"
+  "admin_invite_cancelled",
+  "org_status_changed",
+  "user_status_changed",
+  "impersonation_requested",
+  "impersonation_denied"
 ];
 
 type UserMembershipRow = QueryResultRow & {
@@ -68,6 +77,7 @@ type UserMembershipRow = QueryResultRow & {
   display_name: string;
   user_created_at: string | Date;
   user_updated_at: string | Date;
+  user_status: string;
   platform_admin: boolean;
   membership_id: string | null;
   org_id: string | null;
@@ -107,7 +117,7 @@ type InvitationRow = QueryResultRow & {
 
 type AccessEventRow = QueryResultRow & {
   id: string | number;
-  org_id: string;
+  org_id: string | null;
   action: string;
   actor_name: string | null;
   actor_email: string | null;
@@ -153,6 +163,7 @@ export class IdentityService {
           u.id as user_id,
           u.email,
           u.display_name,
+          coalesce(u.status, 'ACTIVE') as user_status,
           u.created_at as user_created_at,
           u.updated_at as user_updated_at,
           (pa.user_id is not null and pa.is_active = true) as platform_admin,
@@ -181,7 +192,7 @@ export class IdentityService {
         id: row.user_id,
         email: row.email,
         displayName: row.display_name,
-        status: "ACTIVE",
+        status: row.user_status as IdentityUserDto["status"],
         platformAdmin: row.platform_admin,
         lastSignInAt: null,
         createdAt: toIsoDateTime(row.user_created_at),
@@ -252,6 +263,209 @@ export class IdentityService {
       input: parsed.data,
       allowedRoles: null,
       auditAction: "admin_membership_updated"
+    });
+  }
+
+  async updateAdminOrgStatus(orgId: string, input: unknown, actor: AuthenticatedUser): Promise<IdentityOrgDto> {
+    const parsed = AdminOrgStatusUpdateSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_org_status_update",
+        issues: parsed.error.issues
+      });
+    }
+
+    const payload = parsed.data;
+    const existing = await this.getOrg(orgId);
+    if (existing.type === "PLATFORM" && payload.status !== "ACTIVE") {
+      throw new UnprocessableEntityException("platform_org_status_change_blocked");
+    }
+
+    await this.pg.query(
+      `update public.orgs
+       set status = $2,
+           updated_at = now()
+       where id = $1`,
+      [orgId, payload.status]
+    );
+
+    await this.insertAuditLog({
+      actorId: actor.id,
+      orgId,
+      entityType: "org",
+      entityId: orgId,
+      action: "org_status_changed",
+      metadata: {
+        previousStatus: existing.status,
+        nextStatus: payload.status,
+        reason: payload.reason ?? null,
+        note: payload.note ?? null,
+        confirmation: payload.confirmation ?? null,
+        destructiveDelete: false
+      }
+    });
+
+    return this.getOrg(orgId);
+  }
+
+  async updateAdminUserStatus(userId: string, input: unknown, actor: AuthenticatedUser): Promise<IdentityUserDto> {
+    const parsed = AdminUserStatusUpdateSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_user_status_update",
+        issues: parsed.error.issues
+      });
+    }
+
+    const payload = parsed.data;
+    if (userId === actor.id && payload.status !== "ACTIVE") {
+      throw new UnprocessableEntityException("cannot_suspend_self");
+    }
+
+    const existing = await this.getUserForGovernance(userId);
+    if (existing.platformAdmin && payload.status !== "ACTIVE") {
+      const activeAdminCount = await this.pg.query<{ count: string | number }>(
+        `select count(*) as count
+         from public.platform_admins pa
+         join public.users u on u.id = pa.user_id
+         where pa.is_active = true
+           and coalesce(u.status, 'ACTIVE') = 'ACTIVE'`
+      );
+      if (toNumber(activeAdminCount.rows[0]?.count ?? 0) <= 1) {
+        throw new UnprocessableEntityException("cannot_suspend_last_platform_admin");
+      }
+    }
+
+    await this.pg.query(
+      `update public.users
+       set status = $2,
+           updated_at = now()
+       where id = $1`,
+      [userId, payload.status]
+    );
+
+    await this.insertAuditLog({
+      actorId: actor.id,
+      orgId: null,
+      entityType: "user",
+      entityId: userId,
+      action: "user_status_changed",
+      metadata: {
+        email: existing.email,
+        previousStatus: existing.status,
+        nextStatus: payload.status,
+        reason: payload.reason ?? null,
+        note: payload.note ?? null,
+        confirmation: payload.confirmation ?? null,
+        destructiveDelete: false
+      }
+    });
+
+    return this.getUserForGovernance(userId);
+  }
+
+  async getAdminGovernanceSummary(): Promise<AdminGovernanceSummaryDto> {
+    const [orgs, users, events] = await Promise.all([
+      this.pg.query<OrgRow>(
+        `select
+            o.id,
+            o.name,
+            coalesce(o.org_type, 'RESTAURANT') as org_type,
+            coalesce(o.status, 'ACTIVE') as status,
+            o.contact_name,
+            o.contact_email,
+            o.operating_city,
+            count(m.id) as member_count,
+            count(m.id) filter (where m.is_active = true) as active_member_count,
+            o.created_at,
+            o.updated_at
+         from public.orgs o
+         left join public.org_memberships m on m.org_id = o.id
+         where coalesce(o.status, 'ACTIVE') in ('SUSPENDED', 'CLOSED')
+         group by o.id
+         order by o.updated_at desc
+         limit 50`
+      ),
+      this.pg.query<UserMembershipRow>(
+        `select
+            u.id as user_id,
+            u.email,
+            u.display_name,
+            coalesce(u.status, 'ACTIVE') as user_status,
+            u.created_at as user_created_at,
+            u.updated_at as user_updated_at,
+            (pa.user_id is not null and pa.is_active = true) as platform_admin,
+            m.id as membership_id,
+            o.id as org_id,
+            o.name as org_name,
+            coalesce(o.org_type, 'RESTAURANT') as org_type,
+            coalesce(o.status, 'ACTIVE') as org_status,
+            m.role::text as role,
+            m.is_active,
+            m.created_at as membership_created_at,
+            m.updated_at as membership_updated_at
+         from public.users u
+         left join public.platform_admins pa on pa.user_id = u.id
+         left join public.org_memberships m on m.user_id = u.id
+         left join public.orgs o on o.id = m.org_id
+         where coalesce(u.status, 'ACTIVE') in ('SUSPENDED', 'DISABLED')
+         order by u.updated_at desc, m.created_at desc
+         limit 250`
+      ),
+      this.listGovernanceEvents()
+    ]);
+
+    const mappedUsers = new Map<string, IdentityUserDto>();
+    for (const row of users.rows) {
+      const current = mappedUsers.get(row.user_id) ?? {
+        id: row.user_id,
+        email: row.email,
+        displayName: row.display_name,
+        status: row.user_status as IdentityUserDto["status"],
+        platformAdmin: row.platform_admin,
+        lastSignInAt: null,
+        createdAt: toIsoDateTime(row.user_created_at),
+        updatedAt: toIsoDateTime(row.user_updated_at),
+        memberships: []
+      };
+      if (row.membership_id && row.org_id && row.org_name && row.role && row.membership_created_at && row.membership_updated_at) {
+        current.memberships.push(this.mapMembership(row as MembershipRow));
+      }
+      mappedUsers.set(row.user_id, current);
+    }
+
+    return AdminGovernanceSummarySchema.parse({
+      suspendedOrgs: orgs.rows.map((row) => this.mapOrg(row)),
+      suspendedUsers: [...mappedUsers.values()],
+      recentEvents: events
+    });
+  }
+
+  async previewImpersonation(userId: string, actor: AuthenticatedUser) {
+    await this.getUserForGovernance(userId);
+    await this.insertAuditLog({
+      actorId: actor.id,
+      orgId: null,
+      entityType: "user",
+      entityId: userId,
+      action: "impersonation_denied",
+      metadata: {
+        requestedUserId: userId,
+        reason: "impersonation_disabled_in_v1",
+        liveSessionCreated: false
+      }
+    });
+    return ImpersonationPreviewSchema.parse({
+      allowed: false,
+      userId,
+      requirements: [
+        "Support reason",
+        "Ticket or customer reference",
+        "Append-only audit session",
+        "Short expiry window",
+        "Explicit end action"
+      ],
+      message: "Impersonation is disabled in Enterprise Readiness v1. This preview records audit intent only and does not create a session."
     });
   }
 
@@ -603,6 +817,56 @@ export class IdentityService {
     return this.mapOrg(row);
   }
 
+  private async getUserForGovernance(userId: string): Promise<IdentityUserDto> {
+    const result = await this.pg.query<UserMembershipRow>(
+      `select
+          u.id as user_id,
+          u.email,
+          u.display_name,
+          coalesce(u.status, 'ACTIVE') as user_status,
+          u.created_at as user_created_at,
+          u.updated_at as user_updated_at,
+          (pa.user_id is not null and pa.is_active = true) as platform_admin,
+          m.id as membership_id,
+          o.id as org_id,
+          o.name as org_name,
+          coalesce(o.org_type, 'RESTAURANT') as org_type,
+          coalesce(o.status, 'ACTIVE') as org_status,
+          m.role::text as role,
+          m.is_active,
+          m.created_at as membership_created_at,
+          m.updated_at as membership_updated_at
+       from public.users u
+       left join public.platform_admins pa on pa.user_id = u.id
+       left join public.org_memberships m on m.user_id = u.id
+       left join public.orgs o on o.id = m.org_id
+       where u.id = $1
+       order by m.created_at desc`,
+      [userId]
+    );
+    const first = result.rows[0];
+    if (!first) {
+      throw new NotFoundException("user_not_found");
+    }
+    return IdentityUserListSchema.parse({
+      items: [
+        {
+          id: first.user_id,
+          email: first.email,
+          displayName: first.display_name,
+          status: first.user_status,
+          platformAdmin: first.platform_admin,
+          lastSignInAt: null,
+          createdAt: toIsoDateTime(first.user_created_at),
+          updatedAt: toIsoDateTime(first.user_updated_at),
+          memberships: result.rows
+            .filter((row) => row.membership_id && row.org_id && row.org_name && row.role && row.membership_created_at && row.membership_updated_at)
+            .map((row) => this.mapMembership(row as MembershipRow))
+        }
+      ]
+    }).items[0];
+  }
+
   private async listOrgMembers(orgId: string) {
     const result = await this.pg.query<MembershipRow>(
       this.membershipSelectSql("where m.org_id = $1 order by m.created_at desc"),
@@ -643,6 +907,26 @@ export class IdentityService {
     return result.rows.map((row) => this.mapAccessEvent(row));
   }
 
+  private async listGovernanceEvents(): Promise<IdentityAccessEventDto[]> {
+    const result = await this.pg.query<AccessEventRow>(
+      `select
+          a.id,
+          a.org_id,
+          a.action,
+          u.display_name as actor_name,
+          u.email as actor_email,
+          a.metadata,
+          a.created_at
+       from public.audit_log a
+       left join public.users u on u.id = a.actor_id
+       where a.action = any($1::text[])
+       order by a.created_at desc
+       limit 50`,
+      [ACCESS_AUDIT_ACTIONS]
+    );
+    return result.rows.map((row) => this.mapAccessEvent(row));
+  }
+
   private async getInvitation(orgId: string, inviteId: string) {
     const result = await this.pg.query<InvitationRow>(
       `select id, org_id, email, role::text as role, status, invited_by, created_at, updated_at
@@ -664,6 +948,7 @@ export class IdentityService {
         u.id as user_id,
         u.email,
         u.display_name,
+        coalesce(u.status, 'ACTIVE') as user_status,
         u.created_at as user_created_at,
         u.updated_at as user_updated_at,
         false as platform_admin,
@@ -763,6 +1048,13 @@ export class IdentityService {
         const nextActive = typeof metadata.nextActive === "boolean" ? (metadata.nextActive ? "active" : "inactive") : "updated";
         return `Membership changed from ${previousRole} to ${nextRole}; status ${nextActive}.`;
       }
+      case "org_status_changed":
+        return `Organisation status changed from ${metadata.previousStatus ?? "unknown"} to ${metadata.nextStatus ?? "unknown"}.`;
+      case "user_status_changed":
+        return `User status changed from ${metadata.previousStatus ?? "unknown"} to ${metadata.nextStatus ?? "unknown"}.`;
+      case "impersonation_requested":
+      case "impersonation_denied":
+        return "Impersonation preview requested; no support session was created.";
       default:
         return action.replace(/_/g, " ").toLowerCase();
     }
@@ -770,7 +1062,7 @@ export class IdentityService {
 
   private async insertAuditLog(input: {
     actorId: string;
-    orgId: string;
+    orgId: string | null;
     entityType: string;
     entityId: string;
     action: string;

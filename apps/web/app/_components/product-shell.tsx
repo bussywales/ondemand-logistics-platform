@@ -550,6 +550,8 @@ export function ProductShell(props: ProductShellProps) {
   const job = props.view === "job-detail" ? selectedJob : null;
   const jobsToRender = jobs.slice(0, 20);
   const recentOrders = orders.slice(0, 3);
+  const currentOrgStatus = session.context.currentOrg?.status ?? "ACTIVE";
+  const workspaceRestricted = currentOrgStatus === "SUSPENDED" || currentOrgStatus === "CLOSED";
 
   return (
     <main className="app-shell ops-shell">
@@ -618,6 +620,11 @@ export function ProductShell(props: ProductShellProps) {
 
         <div className="ops-main">
           <ProductUpdateAnnouncement routePath={props.view === "home" ? "/app" : "/app/jobs"} viewer="business" viewerKey={session.userId} />
+          {workspaceRestricted ? (
+            <div className="form-error-banner support-escalation-error">
+              This workspace is {currentOrgStatus.toLowerCase()}. Treat operations as read-only until a platform admin reactivates access.
+            </div>
+          ) : null}
           {error ? <div className="form-error-banner">{error}</div> : null}
           <PilotGuardrailBanner
             canManagePilots={Boolean(session.context.platformAdmin)}

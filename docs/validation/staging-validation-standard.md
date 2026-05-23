@@ -65,6 +65,7 @@ The paid-delivery proof must confirm:
 - demo request/admin notification delivery no-ops safely when `DEMO_REQUEST_WEBHOOK_URL`, `ADMIN_NOTIFICATION_EMAIL`, or Resend sender env is absent
 - notification diagnostics at `/admin/notifications` can create marked test events for configured email/webhook channels and must not expose secrets
 - first-party analytics at `/admin/analytics` remains admin-only and does not store raw IP addresses or raw user agents
+- enterprise governance at `/admin/governance`, `/admin/users`, and `/admin/orgs` remains platform-admin only; suspension/reactivation requires reason capture, typed confirmation, and access audit records, while impersonation remains preview-only with no support session created
 - release readiness checks green
 
 ## Stored Validation Evidence
@@ -142,6 +143,8 @@ When public conversion or pricing changes ship, staging verification should open
 When demo request follow-up or notification delivery changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, view append-only event history, see notification delivery posture in `/admin/demo-requests`, and open `/admin/notifications` to review configuration diagnostics plus recent test events.
 
 When finance visibility changes ship, staging verification should open `/app/finance`, `/admin/finance`, and `/admin/command` to confirm captured/pending/failed totals, refund-review counts, and transaction rows render. Finance v1 is review-only: no automated refunds, payout automation, or payment-provider mutation should appear.
+
+When enterprise governance changes ship, staging verification should open `/admin/governance`, `/admin/users`, and `/admin/orgs` to confirm status badges, typed-confirmation controls, recent governance events, and impersonation-disabled copy render for platform admins.
 
 When dispatch governance changes ship, staging verification should open a recent `/app/jobs/[latestJobId]` detail page and `/admin/dispatch-audit` to confirm manual review controls, assignment audit rows or empty state, courier affiliation copy, and the absence of autonomous scoring/suspension language.
 
