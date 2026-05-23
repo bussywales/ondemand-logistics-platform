@@ -371,4 +371,50 @@ describe("PaymentsService", () => {
     expect(payments[0]?.payoutHoldReason).toBe("Banking check pending");
     expect(payments[0]?.paymentStatus).toBe("AUTHORIZED");
   });
+
+  it("summarises finance posture and computes refund review candidates", async () => {
+    const pg = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [
+          {
+            id: PAYMENT_ID,
+            org_id: "33333333-3333-4333-8333-333333333333",
+            org_name: "Pilot Org",
+            order_id: "44444444-4444-4444-8444-444444444444",
+            job_id: JOB_ID,
+            restaurant_id: "55555555-5555-4555-8555-555555555555",
+            restaurant_name: "Pilot Kitchen",
+            restaurant_slug: "pilot-kitchen",
+            customer_name: "Ada Customer",
+            order_status: "PAYMENT_AUTHORIZED",
+            job_status: "DISPATCH_FAILED",
+            payment_status: "CAPTURED",
+            customer_total_cents: 1886,
+            amount_authorized_cents: 1886,
+            amount_captured_cents: 1886,
+            amount_refunded_cents: 0,
+            currency: "gbp",
+            platform_fee_cents: 500,
+            payout_gross_cents: 1386,
+            payout_status: null,
+            payout_hold_reason: null,
+            support_refund_review_count: 1,
+            created_at: new Date("2026-05-02T09:00:00.000Z"),
+            updated_at: new Date("2026-05-02T09:30:00.000Z")
+          }
+        ]
+      })
+    };
+
+    const service = new PaymentsService(pg as never, providerStub() as never);
+    const summary = await service.getAdminFinanceSummary();
+    const transactions = await service.listAdminFinanceTransactions();
+
+    expect(summary.totalCapturedAmountCents).toBe(1886);
+    expect(summary.refundReviewCandidates).toBe(1);
+    expect(transactions[0]?.financeReviewStatus).toBe("REFUND_REVIEW");
+    expect(transactions[0]?.refundReviewReason).toContain("support escalation");
+    expect(String(pg.query.mock.calls[0]?.[0])).toContain("support_escalations");
+  });
 });

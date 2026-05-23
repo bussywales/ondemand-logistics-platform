@@ -75,6 +75,9 @@ import type {
   FleetDriverDetail,
   FleetDriverList,
   FleetTeam,
+  FinanceSummary,
+  FinanceTransaction,
+  FinanceTransactionList,
   FleetOrganisation,
   FleetOrganisationList,
   FleetReadinessSummary,
@@ -203,6 +206,8 @@ type BusinessNotificationListResponse = BusinessNotificationList;
 type BusinessPaymentListResponse = {
   items: BusinessPaymentSummary[];
 };
+type FinanceSummaryResponse = FinanceSummary;
+type FinanceTransactionListResponse = FinanceTransactionList;
 type DailyBriefingResponse = DailyBriefing;
 type EndOfDayReportResponse = EndOfDayReport;
 type SupportEscalationListResponse = SupportEscalationList;
@@ -717,6 +722,20 @@ export async function listBusinessOrders(session: BusinessSession): Promise<Busi
 
 export async function listBusinessPayments(session: BusinessSession): Promise<BusinessPaymentSummary[]> {
   const payload = await apiFetch<BusinessPaymentListResponse>(session, "/v1/business/payments", {
+    method: "GET"
+  });
+
+  return payload.items;
+}
+
+export async function getBusinessFinanceSummary(session: BusinessSession): Promise<FinanceSummary> {
+  return apiFetch<FinanceSummaryResponse>(session, "/v1/business/finance/summary", {
+    method: "GET"
+  });
+}
+
+export async function listBusinessFinanceTransactions(session: BusinessSession): Promise<FinanceTransaction[]> {
+  const payload = await apiFetch<FinanceTransactionListResponse>(session, "/v1/business/finance/transactions", {
     method: "GET"
   });
 
@@ -1333,6 +1352,20 @@ export async function listAdminOrders(session: BusinessSession): Promise<AdminOr
 
 export async function listAdminPayments(session: BusinessSession): Promise<AdminPaymentSummary[]> {
   const result = await apiFetch<AdminPaymentListResponse>(session, "/v1/admin/payments", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function getAdminFinanceSummary(session: BusinessSession): Promise<FinanceSummary> {
+  return apiFetch<FinanceSummaryResponse>(session, "/v1/admin/finance/summary", {
+    method: "GET"
+  });
+}
+
+export async function listAdminFinanceTransactions(session: BusinessSession): Promise<FinanceTransaction[]> {
+  const result = await apiFetch<FinanceTransactionListResponse>(session, "/v1/admin/finance/transactions", {
     method: "GET"
   });
 

@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   Res
 } from "@nestjs/common";
@@ -31,6 +32,18 @@ export class PaymentsController {
   async listBusinessPayments(@RequestUser() user: AuthenticatedUser) {
     return {
       items: await this.paymentsService.listBusinessPayments(user.id)
+    };
+  }
+
+  @Get("business/finance/summary")
+  async getBusinessFinanceSummary(@Query() query: Record<string, string | undefined>, @RequestUser() user: AuthenticatedUser) {
+    return this.paymentsService.getBusinessFinanceSummary(user.id, query);
+  }
+
+  @Get("business/finance/transactions")
+  async listBusinessFinanceTransactions(@Query() query: Record<string, string | undefined>, @RequestUser() user: AuthenticatedUser) {
+    return {
+      items: await this.paymentsService.listBusinessFinanceTransactions(user.id, query)
     };
   }
 

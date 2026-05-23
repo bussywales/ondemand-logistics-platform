@@ -112,7 +112,21 @@ Say:
 - this is not a finance ledger dashboard
 - it is an operational payment risk surface tied to fulfilment
 
-### 6A. End-of-day report
+### 6A. Finance visibility
+Open:
+- `/app/finance`
+
+Show:
+- captured, pending, and failed payment totals
+- fulfilled/delivered closeout posture
+- refund review candidates when support or fulfilment signals require human review
+
+Say:
+- finance visibility is review-only in v1
+- ShipWright does not automatically refund customers or automate payouts
+- refund decisions require support context and human confirmation
+
+### 6B. End-of-day report
 Open:
 - `/app/reports/end-of-day`
 

@@ -191,7 +191,7 @@ test('authenticated business workspace routes smoke', async ({ page }) => {
   const signedIn = await signInOperator(page, BUSINESS_TEST_ACCOUNT);
   expect(signedIn, 'Business smoke credentials should sign in when configured.').toBe(true);
 
-  const routes = ['/app', '/app/orders', '/app/payments', '/app/reports/end-of-day', '/app/settings/team'];
+  const routes = ['/app', '/app/orders', '/app/payments', '/app/finance', '/app/reports/end-of-day', '/app/settings/team'];
   for (const route of routes) {
     await assertProtectedRouteLoads(page, route);
   }
@@ -215,6 +215,7 @@ test('authenticated admin routes smoke', async ({ page }) => {
   await assertProtectedRouteLoads(page, '/admin/users');
   await assertProtectedRouteLoads(page, '/admin/orgs');
   await assertProtectedRouteLoads(page, '/admin/fleets');
+  await assertProtectedRouteLoads(page, '/admin/finance');
   await assertProtectedRouteLoads(page, '/admin/demo-requests');
   await assertProtectedRouteLoads(page, '/admin/notifications');
   await assertProtectedRouteLoads(page, '/admin/operational-resets');

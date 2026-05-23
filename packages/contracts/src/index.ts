@@ -2458,6 +2458,60 @@ export const AdminPaymentListSchema = z.object({
 });
 export type AdminPaymentListDto = z.infer<typeof AdminPaymentListSchema>;
 
+export const FinanceReviewStatusSchema = z.enum(["CLEAR", "NEEDS_REVIEW", "REFUND_REVIEW"]);
+export type FinanceReviewStatus = z.infer<typeof FinanceReviewStatusSchema>;
+
+export const FinanceTransactionSchema = z.object({
+  orgId: z.string().uuid().nullable(),
+  orgName: z.string().min(2).nullable(),
+  restaurantId: z.string().uuid(),
+  restaurantName: z.string().min(2),
+  orderId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  paymentId: z.string().uuid(),
+  customerReference: z.string().min(2).nullable(),
+  amountCents: CurrencyAmountSchema,
+  capturedAmountCents: CurrencyAmountSchema,
+  pendingAmountCents: CurrencyAmountSchema,
+  refundedAmountCents: CurrencyAmountSchema,
+  currency: z.string().length(3),
+  paymentStatus: PaymentStatusSchema,
+  orderStatus: CustomerOrderStatusSchema,
+  jobStatus: JobStatusSchema,
+  payoutStatus: PayoutLedgerStatusSchema.nullable(),
+  capturedAt: IsoDateTimeSchema.nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+  financeReviewStatus: FinanceReviewStatusSchema,
+  refundReviewRequired: z.boolean(),
+  refundReviewReason: z.string().nullable(),
+  recommendedNextAction: z.string().min(2)
+});
+export type FinanceTransactionDto = z.infer<typeof FinanceTransactionSchema>;
+
+export const FinanceTransactionListSchema = z.object({
+  items: z.array(FinanceTransactionSchema)
+});
+export type FinanceTransactionListDto = z.infer<typeof FinanceTransactionListSchema>;
+
+export const FinanceSummarySchema = z.object({
+  scope: z.enum(["business", "admin"]),
+  currency: z.string().length(3),
+  totalCapturedAmountCents: CurrencyAmountSchema,
+  totalPendingAmountCents: CurrencyAmountSchema,
+  totalFailedAmountCents: CurrencyAmountSchema,
+  capturedPaymentCount: z.number().int().nonnegative(),
+  pendingPaymentCount: z.number().int().nonnegative(),
+  failedPaymentCount: z.number().int().nonnegative(),
+  fulfilledOrderCount: z.number().int().nonnegative(),
+  deliveredJobCount: z.number().int().nonnegative(),
+  ordersNeedingFinanceReview: z.number().int().nonnegative(),
+  refundReviewCandidates: z.number().int().nonnegative(),
+  latestFinanceEvents: z.array(FinanceTransactionSchema),
+  generatedAt: IsoDateTimeSchema
+});
+export type FinanceSummaryDto = z.infer<typeof FinanceSummarySchema>;
+
 export const PaymentSchema = z.object({
   id: z.string().uuid(),
   jobId: z.string().uuid(),

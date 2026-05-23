@@ -247,6 +247,26 @@ Constraints:
 - reset tools must not mutate proof orders, jobs, payments, proof artifacts, or audit events
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
+## Workstream 6A: Payments / Finance Visibility
+Status: Implemented v1 review foundation.
+
+Goal:
+Give business operators and platform admins clear settlement and refund-review posture without adding automated refunds, payout automation, or payment-provider changes.
+
+Implemented scope:
+- business finance surface at `/app/finance`
+- admin finance surface at `/admin/finance`
+- read-only finance summary endpoints for captured, pending, failed, delivered, and refund-review posture
+- transaction rows avoid sensitive card/provider details and link operators back to order/job context
+- refund review candidates are computed from captured payments with failed/cancelled fulfilment and unresolved `REFUND_REVIEW` support escalations
+- Admin Command includes finance counts and links to the finance surface
+
+Constraints:
+- no automated refunds
+- no payout automation or settlement-to-bank automation
+- no destructive payment mutation
+- refund decisions remain human-reviewed and support-context dependent
+
 ## Workstream 7: Commercial Conversion Layer
 Status: In progress. Demo request persistence, internal notification posture, admin notification diagnostics, admin follow-up pipeline preparation, controlled pilot package positioning, and first-party public funnel analytics are active.
 

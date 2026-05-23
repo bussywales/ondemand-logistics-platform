@@ -14,11 +14,13 @@ import {
   createRestaurant,
   getAdminDailyBriefing,
   getAdminEndOfDayReport,
+  getAdminFinanceSummary,
   getAdminReleaseReadiness,
   getAdminPilotRehearsal,
   getAdminOrgMembers,
   getAdminNotificationDiagnostics,
   getFleetReadiness,
+  getBusinessFinanceSummary,
   getBusinessTeam,
   getBusinessDailyBriefing,
   getBusinessEndOfDayReport,
@@ -38,11 +40,13 @@ import {
   listAdminOrgs,
   listAdminUsers,
   listAdminPayments,
+  listAdminFinanceTransactions,
   listAdminValidationEvidence,
   listEligibleDrivers,
   listBusinessNotifications,
   listBusinessOrders,
   listBusinessPayments,
+  listBusinessFinanceTransactions,
   listBusinessSupportEscalations,
   listBusinessSupportEscalationEvents,
   listAdminSupportEscalations,
@@ -529,6 +533,38 @@ describe('authorizePayment', () => {
     expect(payments[0]?.paymentStatus).toBe('AUTHORIZED');
   });
 
+  it('reads business finance summary and transactions with bearer auth', async () => {
+    const financePayload = {
+      scope: 'business',
+      currency: 'GBP',
+      totalCapturedAmountCents: 1886,
+      totalPendingAmountCents: 0,
+      totalFailedAmountCents: 0,
+      capturedPaymentCount: 1,
+      pendingPaymentCount: 0,
+      failedPaymentCount: 0,
+      fulfilledOrderCount: 0,
+      deliveredJobCount: 0,
+      ordersNeedingFinanceReview: 1,
+      refundReviewCandidates: 1,
+      latestFinanceEvents: [],
+      generatedAt: new Date().toISOString()
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(financePayload) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const summary = await getBusinessFinanceSummary(session);
+    const transactions = await listBusinessFinanceTransactions(session);
+
+    expect((fetchMock.mock.calls[0]?.[0] as string)).toContain('/v1/business/finance/summary');
+    expect((fetchMock.mock.calls[1]?.[0] as string)).toContain('/v1/business/finance/transactions');
+    expect(summary.refundReviewCandidates).toBe(1);
+    expect(transactions).toEqual([]);
+  });
+
   it('reads the daily briefing with bearer auth', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -789,6 +825,38 @@ describe('authorizePayment', () => {
     expect(url).toContain('/v1/admin/payments');
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer access-token');
     expect(payments[0]?.orgName).toBe('Pilot Org');
+  });
+
+  it('reads admin finance summary and transactions with bearer auth', async () => {
+    const financePayload = {
+      scope: 'admin',
+      currency: 'GBP',
+      totalCapturedAmountCents: 1886,
+      totalPendingAmountCents: 0,
+      totalFailedAmountCents: 0,
+      capturedPaymentCount: 1,
+      pendingPaymentCount: 0,
+      failedPaymentCount: 0,
+      fulfilledOrderCount: 0,
+      deliveredJobCount: 0,
+      ordersNeedingFinanceReview: 1,
+      refundReviewCandidates: 1,
+      latestFinanceEvents: [],
+      generatedAt: new Date().toISOString()
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(financePayload) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const summary = await getAdminFinanceSummary(session);
+    const transactions = await listAdminFinanceTransactions(session);
+
+    expect((fetchMock.mock.calls[0]?.[0] as string)).toContain('/v1/admin/finance/summary');
+    expect((fetchMock.mock.calls[1]?.[0] as string)).toContain('/v1/admin/finance/transactions');
+    expect(summary.capturedPaymentCount).toBe(1);
+    expect(transactions).toEqual([]);
   });
 
   it('reads admin driver readiness with bearer auth', async () => {

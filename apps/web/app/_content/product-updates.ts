@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "finance-settlement-refund-review",
+    title: "Finance review surfaces are available",
+    summary: "Business operators and platform admins can now review captured, pending, failed, and refund-review payment posture without automated refunds or payouts.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/finance", "/admin/finance", "/admin/command"],
+    releasedAt: "2026-05-23T19:00:00.000Z",
+    version: "v3.2",
+    ctaLabel: "Open finance",
+    ctaHref: "/app/finance"
+  },
+  {
     id: "fleet-driver-detail-team-invites",
     title: "Fleet workspace now includes driver detail and team invites",
     summary: "Fleet managers can now open driver readiness detail, review pending fleet invites, and manage invitation follow-up without changing dispatch or payout rules.",

@@ -34,6 +34,8 @@ import {
   FleetTeamSchema,
   FleetOrganisationListSchema,
   FleetReadinessSummarySchema,
+  FinanceSummarySchema,
+  FinanceTransactionListSchema,
   JobPaymentSummarySchema,
   JobTrackingSchema,
   JobStatusSchema,
@@ -543,6 +545,58 @@ describe("fleet organisation schemas", () => {
     expect(summary.readyDrivers).toBe(1);
     expect(detail.recentWork[0]?.status).toBe("COMPLETED");
     expect(team.invitations[0]?.status).toBe("PENDING");
+  });
+});
+
+describe("finance schemas", () => {
+  it("parses finance summaries and transactions without sensitive card data", () => {
+    const now = new Date().toISOString();
+    const transaction = {
+      orgId: "33333333-3333-4333-8333-333333333333",
+      orgName: "Pilot Org",
+      restaurantId: "55555555-5555-4555-8555-555555555555",
+      restaurantName: "Pilot Kitchen",
+      orderId: "44444444-4444-4444-8444-444444444444",
+      jobId: "57bf7cf0-7ac2-47a7-8fd5-83a96be6c848",
+      paymentId: "97077fd3-d5dc-4c4d-9d40-db262f6eab54",
+      customerReference: "Ada Customer",
+      amountCents: 1886,
+      capturedAmountCents: 1886,
+      pendingAmountCents: 0,
+      refundedAmountCents: 0,
+      currency: "GBP",
+      paymentStatus: "CAPTURED",
+      orderStatus: "PAYMENT_AUTHORIZED",
+      jobStatus: "DISPATCH_FAILED",
+      payoutStatus: null,
+      capturedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      financeReviewStatus: "REFUND_REVIEW",
+      refundReviewRequired: true,
+      refundReviewReason: "Payment was captured but fulfilment failed.",
+      recommendedNextAction: "Review support log before refund decision."
+    };
+
+    expect(FinanceTransactionListSchema.parse({ items: [transaction] }).items[0]?.refundReviewRequired).toBe(true);
+    expect(
+      FinanceSummarySchema.parse({
+        scope: "admin",
+        currency: "GBP",
+        totalCapturedAmountCents: 1886,
+        totalPendingAmountCents: 0,
+        totalFailedAmountCents: 0,
+        capturedPaymentCount: 1,
+        pendingPaymentCount: 0,
+        failedPaymentCount: 0,
+        fulfilledOrderCount: 0,
+        deliveredJobCount: 0,
+        ordersNeedingFinanceReview: 1,
+        refundReviewCandidates: 1,
+        latestFinanceEvents: [transaction],
+        generatedAt: now
+      }).refundReviewCandidates
+    ).toBe(1);
   });
 });
 

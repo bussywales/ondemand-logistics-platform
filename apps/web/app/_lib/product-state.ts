@@ -1286,7 +1286,7 @@ export type BusinessPaymentSummary = {
     slug: string;
   };
   customerName: string;
-  orderStatus: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "FULFILLED";
+  orderStatus: "SUBMITTED" | "PAYMENT_AUTHORIZED" | "PAYMENT_FAILED" | "COMPLETED" | "FULFILLED";
   jobStatus: JobStatus;
   paymentStatus: PaymentStatus;
   customerTotalCents: number;
@@ -1305,6 +1305,56 @@ export type BusinessPaymentSummary = {
 export type AdminPaymentSummary = BusinessPaymentSummary & {
   orgId: string;
   orgName: string;
+};
+
+export type FinanceReviewStatus = "CLEAR" | "NEEDS_REVIEW" | "REFUND_REVIEW";
+
+export type FinanceTransaction = {
+  orgId: string | null;
+  orgName: string | null;
+  restaurantId: string;
+  restaurantName: string;
+  orderId: string;
+  jobId: string;
+  paymentId: string;
+  customerReference: string | null;
+  amountCents: number;
+  capturedAmountCents: number;
+  pendingAmountCents: number;
+  refundedAmountCents: number;
+  currency: string;
+  paymentStatus: PaymentStatus;
+  orderStatus: BusinessPaymentSummary["orderStatus"];
+  jobStatus: JobStatus;
+  payoutStatus: PayoutLedgerStatus | null;
+  capturedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  financeReviewStatus: FinanceReviewStatus;
+  refundReviewRequired: boolean;
+  refundReviewReason: string | null;
+  recommendedNextAction: string;
+};
+
+export type FinanceTransactionList = {
+  items: FinanceTransaction[];
+};
+
+export type FinanceSummary = {
+  scope: "business" | "admin";
+  currency: string;
+  totalCapturedAmountCents: number;
+  totalPendingAmountCents: number;
+  totalFailedAmountCents: number;
+  capturedPaymentCount: number;
+  pendingPaymentCount: number;
+  failedPaymentCount: number;
+  fulfilledOrderCount: number;
+  deliveredJobCount: number;
+  ordersNeedingFinanceReview: number;
+  refundReviewCandidates: number;
+  latestFinanceEvents: FinanceTransaction[];
+  generatedAt: string;
 };
 
 export type AdminOutboxItem = {

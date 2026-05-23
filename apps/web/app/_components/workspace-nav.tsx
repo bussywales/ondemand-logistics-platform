@@ -7,6 +7,7 @@ type WorkspaceNavView =
   | "jobs"
   | "orders"
   | "payments"
+  | "finance"
   | "reports"
   | "team"
   | "notifications"
@@ -19,6 +20,7 @@ const items = [
   { href: "/app/jobs", label: "Jobs", view: "jobs" },
   { href: "/app/orders", label: "Orders", view: "orders" },
   { href: "/app/payments", label: "Payment risk", view: "payments" },
+  { href: "/app/finance", label: "Finance", view: "finance" },
   { href: "/app/reports/end-of-day", label: "Reports", view: "reports" },
   { href: "/app/settings/team", label: "Team", view: "team" },
   { href: "/app/notifications", label: "Notifications", view: "notifications" },

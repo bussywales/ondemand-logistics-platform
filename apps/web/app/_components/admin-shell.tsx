@@ -522,6 +522,24 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
         </p>
       </section>
 
+      <section className="sw-supporting-surface admin-section admin-command-intelligence-link">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Finance</p>
+            <h2>Settlement and refund review</h2>
+          </div>
+          <div className="admin-section-actions">
+            <span className="sw-badge sw-badge--info">Review only</span>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/finance">
+              Open finance
+            </Link>
+          </div>
+        </div>
+        <p className="ops-detail-note">
+          Review captured, pending, failed, and refund-review payment posture without automated refunds, payouts, or provider-side changes.
+        </p>
+      </section>
+
       {loadError ? (
         <section className="sw-empty-state admin-empty-state admin-empty-state-danger">
           <span className="empty-state-icon" aria-hidden="true">

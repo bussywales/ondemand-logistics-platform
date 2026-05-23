@@ -8,7 +8,7 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport, getLatestAdminValidationEvidence, getUserFacingApiError, listAdminDemoRequests, listAdminOperationalResets, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getAdminFinanceSummary, getLatestAdminValidationEvidence, getUserFacingApiError, listAdminDemoRequests, listAdminOperationalResets, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
 import { getPilotGuardrailState } from "../_lib/pilot-guardrails";
 import {
@@ -17,6 +17,7 @@ import {
   type DailyBriefingItem,
   type DemoRequest,
   type EndOfDayReport,
+  type FinanceSummary,
   type OperationalResetRun,
   type PilotWorkspace,
   type SupportEscalation,
@@ -272,6 +273,8 @@ export function AdminCommandView(props: {
   operationalResetsError?: string | null;
   validationEvidence: ValidationEvidenceLatest | null;
   validationEvidenceError?: string | null;
+  financeSummary?: FinanceSummary | null;
+  financeSummaryError?: string | null;
   supportError?: string | null;
   supportEscalations: SupportEscalation[];
 }) {
@@ -370,12 +373,39 @@ export function AdminCommandView(props: {
           <CountCard copy="Demo request notification outbox events not processed yet." label="Notification pending" tone={demoNotificationCounts.pending ? "info" : "success"} value={demoNotificationCounts.pending} />
           <CountCard copy="Demo request notification deliveries that need retry or investigation." label="Notification failed" tone={demoNotificationCounts.failed + demoNotificationCounts.retrying ? "warning" : "success"} value={demoNotificationCounts.failed + demoNotificationCounts.retrying} />
           <CountCard copy="Notification delivery skipped because optional email/webhook config is absent." label="Notification skipped" tone={demoNotificationCounts.skipped ? "info" : "success"} value={demoNotificationCounts.skipped} />
+          <CountCard copy="Captured payments visible in finance review." label="Captured payments" tone={props.financeSummary?.capturedPaymentCount ? "success" : "info"} value={props.financeSummary?.capturedPaymentCount ?? 0} />
+          <CountCard copy="Failed or pending payments needing finance attention." label="Finance review" tone={props.financeSummary?.ordersNeedingFinanceReview ? "warning" : "success"} value={props.financeSummary?.ordersNeedingFinanceReview ?? 0} />
+          <CountCard copy="Human refund-review candidates from payment/support signals." label="Refund review" tone={props.financeSummary?.refundReviewCandidates ? "warning" : "success"} value={props.financeSummary?.refundReviewCandidates ?? 0} />
           <CountCard copy="Completed non-destructive staging/demo tidy runs." label="Reset runs" tone={props.operationalResets.length ? "info" : "success"} value={props.operationalResets.length} />
           <CountCard copy="Latest stored release/proof/smoke evidence records currently passed." label="Validation evidence" tone={latestValidationPassed >= 3 ? "success" : "warning"} value={latestValidationPassed} />
         </div>
       </section>
 
       <CommandIntelligenceNote compact copy={COMMAND_INTELLIGENCE_EXPLAINER} />
+
+      <section className="sw-supporting-surface admin-command-section">
+        <div className="sw-card-header admin-section-header">
+          <div>
+            <p className="eyebrow">Finance posture</p>
+            <h2>{props.financeSummary ? `${props.financeSummary.refundReviewCandidates} refund review candidate${props.financeSummary.refundReviewCandidates === 1 ? "" : "s"}` : "Finance posture unavailable"}</h2>
+            <p className="ops-detail-note">Finance is read-only in v1. No automated refunds, payout automation, or payment-provider changes are available from command.</p>
+          </div>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/finance">
+            Open finance
+          </Link>
+        </div>
+        {props.financeSummaryError ? (
+          <div className="form-error-banner support-escalation-error">{props.financeSummaryError}</div>
+        ) : null}
+        {props.financeSummary ? (
+          <div className="admin-command-report-grid">
+            <div><span>Captured</span><strong>{props.financeSummary.capturedPaymentCount}</strong></div>
+            <div><span>Pending</span><strong>{props.financeSummary.pendingPaymentCount}</strong></div>
+            <div><span>Failed</span><strong>{props.financeSummary.failedPaymentCount}</strong></div>
+            <div><span>Needs review</span><strong>{props.financeSummary.ordersNeedingFinanceReview}</strong></div>
+          </div>
+        ) : null}
+      </section>
 
       <section className="sw-supporting-surface admin-command-section">
         <div className="sw-card-header admin-section-header">
@@ -855,10 +885,12 @@ export function AdminCommandShell() {
   const [demoRequests, setDemoRequests] = useState<DemoRequest[]>([]);
   const [operationalResets, setOperationalResets] = useState<OperationalResetRun[]>([]);
   const [validationEvidence, setValidationEvidence] = useState<ValidationEvidenceLatest | null>(null);
+  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [demoRequestsError, setDemoRequestsError] = useState<string | null>(null);
   const [operationalResetsError, setOperationalResetsError] = useState<string | null>(null);
   const [validationEvidenceError, setValidationEvidenceError] = useState<string | null>(null);
+  const [financeSummaryError, setFinanceSummaryError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -882,6 +914,7 @@ export function AdminCommandShell() {
     setDemoRequestsError(null);
     setOperationalResetsError(null);
     setValidationEvidenceError(null);
+    setFinanceSummaryError(null);
 
     void Promise.all([
       loadAdminCommandData(session, selectedDate),
@@ -901,9 +934,13 @@ export function AdminCommandShell() {
       getLatestAdminValidationEvidence(session).catch((issue) => {
         setValidationEvidenceError(getUserFacingApiError(issue, "Validation evidence posture unavailable. Refresh or contact support."));
         return null;
+      }),
+      getAdminFinanceSummary(session).catch((issue) => {
+        setFinanceSummaryError(getUserFacingApiError(issue, "Finance posture unavailable. Refresh or contact support."));
+        return null;
       })
     ])
-      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence]) => {
+      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence, nextFinanceSummary]) => {
         if (!active) {
           return;
         }
@@ -915,6 +952,7 @@ export function AdminCommandShell() {
         setDemoRequests(nextDemoRequests);
         setOperationalResets(nextOperationalResets);
         setValidationEvidence(nextValidationEvidence);
+        setFinanceSummary(nextFinanceSummary);
       })
       .catch((issue) => {
         if (!active) {
@@ -946,9 +984,10 @@ export function AdminCommandShell() {
     setDemoRequestsError(null);
     setOperationalResetsError(null);
     setValidationEvidenceError(null);
+    setFinanceSummaryError(null);
 
     try {
-      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence] = await Promise.all([
+      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence, nextFinanceSummary] = await Promise.all([
         loadAdminCommandData(nextSession, selectedDate),
         listAdminPilots(nextSession).catch(() => []),
         listAdminSupportEscalations(nextSession).catch((issue) => {
@@ -966,6 +1005,10 @@ export function AdminCommandShell() {
         getLatestAdminValidationEvidence(nextSession).catch((issue) => {
           setValidationEvidenceError(getUserFacingApiError(issue, "Validation evidence posture unavailable. Refresh or contact support."));
           return null;
+        }),
+        getAdminFinanceSummary(nextSession).catch((issue) => {
+          setFinanceSummaryError(getUserFacingApiError(issue, "Finance posture unavailable. Refresh or contact support."));
+          return null;
         })
       ]);
       setBriefing(commandData.briefing);
@@ -975,6 +1018,7 @@ export function AdminCommandShell() {
       setDemoRequests(nextDemoRequests);
       setOperationalResets(nextOperationalResets);
       setValidationEvidence(nextValidationEvidence);
+      setFinanceSummary(nextFinanceSummary);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
     } finally {
@@ -1104,6 +1148,8 @@ export function AdminCommandShell() {
           report={report}
           selectedDate={selectedDate}
           session={session}
+          financeSummary={financeSummary}
+          financeSummaryError={financeSummaryError}
           supportError={supportLogError}
           supportEscalations={supportEscalations}
           validationEvidence={validationEvidence}

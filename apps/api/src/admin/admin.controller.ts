@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
 import { AdminService } from "./admin.service.js";
 import { PlatformAdminGuard } from "../security/platform-admin.guard.js";
 import { PaymentsService } from "../payments/payments.service.js";
@@ -38,6 +38,18 @@ export class AdminController {
   async getPayments() {
     return {
       items: await this.paymentsService.listAdminPayments()
+    };
+  }
+
+  @Get("finance/summary")
+  getFinanceSummary(@Query() query: Record<string, string | undefined>) {
+    return this.paymentsService.getAdminFinanceSummary(query);
+  }
+
+  @Get("finance/transactions")
+  async getFinanceTransactions(@Query() query: Record<string, string | undefined>) {
+    return {
+      items: await this.paymentsService.listAdminFinanceTransactions(query)
     };
   }
 

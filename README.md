@@ -43,6 +43,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Public customer ordering route: `/restaurants/[slug]`
 - Business workspace: `/app`
 - Business orders: `/app/orders`
+- Business finance review: `/app/finance`
 - Driver execution route: `/driver`
 - Admin control plane: `/admin`
 - Admin pilot management: `/admin/pilots`
@@ -50,6 +51,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin driver fleet organisations: `/admin/fleets`
 - Admin demo requests: `/admin/demo-requests`
 - Admin product analytics: `/admin/analytics`
+- Admin finance review: `/admin/finance`
 - Admin notification diagnostics: `/admin/notifications`
 - Admin operational reset tools: `/admin/operational-resets`
 - Fleet manager workspace: `/fleet`, `/fleet/drivers/[driverId]`, `/fleet/team`
@@ -192,6 +194,8 @@ Current release-critical migrations include restaurant/menu, customer orders, fu
 Identity/team management now includes local invite lifecycle statuses (`PENDING`, `ACCEPTED`, `CANCELLED`, `EXPIRED`) and access-change audit visibility.
 Pilot management schema now tracks workspace mode, readiness stage, owners, readiness checklist evidence, and posture counts for admin-led controlled pilot review.
 Driver fleet organisations reuse the IAM organisation and membership model with `DRIVER_COMPANY` orgs and fleet roles. Fleet managers can review driver-level readiness at `/fleet/drivers/[driverId]` and manage pending fleet invitations at `/fleet/team`; v1 remains readiness/management visibility only, not fleet billing, payout, dispatch preference, or courier suspension automation.
+
+Payments / Finance v1 adds read-only settlement visibility at `/app/finance` and `/admin/finance`: captured, pending, failed, delivered, and refund-review payment posture is computed from existing order, job, payment, payout, and support escalation records. No automated refunds, payout automation, destructive payment mutation, or payment-provider changes are included.
 
 ## Strategic direction
 - current state: operational delivery and dispatch foundations

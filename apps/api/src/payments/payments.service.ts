@@ -12,6 +12,8 @@ import { randomUUID } from "node:crypto";
 import {
   AuthorizeJobPaymentSchema,
   BusinessPaymentListSchema,
+  FinanceSummarySchema,
+  FinanceTransactionListSchema,
   AdminPaymentListSchema,
   JobPaymentSummarySchema,
   PaymentSchema,
@@ -20,6 +22,8 @@ import {
   StripeWebhookAckSchema,
   type BusinessPaymentSummaryDto,
   type AdminPaymentSummaryDto,
+  type FinanceSummaryDto,
+  type FinanceTransactionDto,
   type JobPaymentSummaryDto,
   type PaymentDto,
   type StripeWebhookAck
@@ -133,6 +137,17 @@ type BusinessPaymentSummaryRow = {
 type AdminPaymentSummaryRow = BusinessPaymentSummaryRow & {
   org_id: string;
   org_name: string;
+};
+
+type FinanceFilters = {
+  from?: string;
+  to?: string;
+  orgId?: string;
+  status?: string;
+};
+
+type FinanceTransactionRow = AdminPaymentSummaryRow & {
+  support_refund_review_count: string | number;
 };
 
 const PAYMENT_COLUMNS = `p.id, p.job_id, p.provider, p.provider_payment_intent_id, p.status,
@@ -460,6 +475,26 @@ export class PaymentsService {
     return AdminPaymentListSchema.parse({
       items: result.rows.map((row) => this.mapAdminPaymentSummary(row))
     }).items;
+  }
+
+  async getBusinessFinanceSummary(userId: string, filters: FinanceFilters = {}): Promise<FinanceSummaryDto> {
+    const rows = await this.listFinanceRows({ userId, filters, limit: 500 });
+    return this.buildFinanceSummary("business", rows);
+  }
+
+  async getAdminFinanceSummary(filters: FinanceFilters = {}): Promise<FinanceSummaryDto> {
+    const rows = await this.listFinanceRows({ filters, limit: 500 });
+    return this.buildFinanceSummary("admin", rows);
+  }
+
+  async listBusinessFinanceTransactions(userId: string, filters: FinanceFilters = {}) {
+    const rows = await this.listFinanceRows({ userId, filters, limit: 100 });
+    return FinanceTransactionListSchema.parse({ items: rows.map((row) => this.mapFinanceTransaction(row, "business")) }).items;
+  }
+
+  async listAdminFinanceTransactions(filters: FinanceFilters = {}) {
+    const rows = await this.listFinanceRows({ filters, limit: 100 });
+    return FinanceTransactionListSchema.parse({ items: rows.map((row) => this.mapFinanceTransaction(row, "admin")) }).items;
   }
 
   async authorizeJobPayment(jobId: string, input: unknown, userId: string, idempotencyKey: string) {
@@ -972,6 +1007,187 @@ export class PaymentsService {
       createdAt: toIsoDateTime(row.created_at),
       updatedAt: toIsoDateTime(row.updated_at)
     });
+  }
+
+  private async listFinanceRows(input: { userId?: string; filters?: FinanceFilters; limit: number }) {
+    const values: unknown[] = [];
+    const clauses: string[] = [];
+    const filters = input.filters ?? {};
+
+    if (input.userId) {
+      values.push(input.userId);
+      clauses.push(`exists (
+        select 1
+        from public.org_memberships m
+        where m.org_id = o.org_id
+          and m.user_id = $${values.length}
+          and m.is_active = true
+          and m.role::text in ('BUSINESS_OPERATOR', 'ADMIN', 'OWNER', 'MANAGER', 'OPERATOR', 'FINANCE_VIEWER', 'SUPPORT_USER')
+      )`);
+    }
+    if (filters.orgId) {
+      values.push(filters.orgId);
+      clauses.push(`o.org_id = $${values.length}`);
+    }
+    if (filters.status) {
+      values.push(filters.status);
+      clauses.push(`p.status::text = $${values.length}`);
+    }
+    if (filters.from) {
+      values.push(filters.from);
+      clauses.push(`p.created_at >= $${values.length}::timestamptz`);
+    }
+    if (filters.to) {
+      values.push(filters.to);
+      clauses.push(`p.created_at <= $${values.length}::timestamptz`);
+    }
+
+    values.push(input.limit);
+    const limitParam = `$${values.length}`;
+    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const result = await this.pg.query<FinanceTransactionRow>(
+      `select
+          p.id,
+          o.org_id,
+          org.name as org_name,
+          o.id as order_id,
+          j.id as job_id,
+          r.id as restaurant_id,
+          r.name as restaurant_name,
+          r.slug as restaurant_slug,
+          o.customer_name,
+          o.status::text as order_status,
+          j.status::text as job_status,
+          p.status::text as payment_status,
+          p.customer_total_cents,
+          p.amount_authorized_cents,
+          p.amount_captured_cents,
+          p.amount_refunded_cents,
+          p.currency,
+          p.platform_fee_cents,
+          p.payout_gross_cents,
+          pl.status::text as payout_status,
+          pl.hold_reason as payout_hold_reason,
+          p.created_at,
+          p.updated_at,
+          coalesce(refund_support.count, 0) as support_refund_review_count
+       from public.customer_orders o
+       join public.orgs org on org.id = o.org_id
+       join public.restaurants r on r.id = o.restaurant_id
+       join public.jobs j on j.id = o.job_id
+       join public.payments p on p.id = o.payment_id
+       left join public.payout_ledger pl on pl.job_id = j.id
+       left join lateral (
+         select count(*)::int as count
+         from public.support_escalations se
+         where se.org_id = o.org_id
+           and se.category = 'REFUND_REVIEW'
+           and se.status in ('OPEN', 'IN_REVIEW', 'WAITING_ON_CUSTOMER', 'WAITING_ON_MERCHANT', 'WAITING_ON_COURIER')
+           and (se.order_id = o.id or se.job_id = j.id)
+       ) refund_support on true
+       ${where}
+       order by p.updated_at desc
+       limit ${limitParam}`,
+      values
+    );
+
+    return result.rows;
+  }
+
+  private buildFinanceSummary(scope: "business" | "admin", rows: FinanceTransactionRow[]): FinanceSummaryDto {
+    const transactions = rows.map((row) => this.mapFinanceTransaction(row, scope));
+    const pendingStatuses = new Set(["REQUIRES_PAYMENT_METHOD", "REQUIRES_CONFIRMATION", "AUTHORIZED"]);
+    const failedStatuses = new Set(["FAILED", "CANCELLED"]);
+    return FinanceSummarySchema.parse({
+      scope,
+      currency: transactions[0]?.currency ?? this.currency.toUpperCase(),
+      totalCapturedAmountCents: transactions.reduce((sum, row) => sum + row.capturedAmountCents, 0),
+      totalPendingAmountCents: transactions.reduce((sum, row) => sum + row.pendingAmountCents, 0),
+      totalFailedAmountCents: transactions
+        .filter((row) => failedStatuses.has(row.paymentStatus))
+        .reduce((sum, row) => sum + row.amountCents, 0),
+      capturedPaymentCount: transactions.filter((row) => row.paymentStatus === "CAPTURED" || row.paymentStatus === "PARTIALLY_REFUNDED" || row.paymentStatus === "REFUNDED").length,
+      pendingPaymentCount: transactions.filter((row) => pendingStatuses.has(row.paymentStatus)).length,
+      failedPaymentCount: transactions.filter((row) => failedStatuses.has(row.paymentStatus)).length,
+      fulfilledOrderCount: transactions.filter((row) => row.orderStatus === "FULFILLED").length,
+      deliveredJobCount: transactions.filter((row) => row.jobStatus === "DELIVERED").length,
+      ordersNeedingFinanceReview: transactions.filter((row) => row.financeReviewStatus !== "CLEAR").length,
+      refundReviewCandidates: transactions.filter((row) => row.refundReviewRequired).length,
+      latestFinanceEvents: transactions.slice(0, 5),
+      generatedAt: new Date().toISOString()
+    });
+  }
+
+  private mapFinanceTransaction(row: FinanceTransactionRow, scope: "business" | "admin"): FinanceTransactionDto {
+    const paymentStatus = row.payment_status as FinanceTransactionDto["paymentStatus"];
+    const orderStatus = this.normalizeOrderStatus(row.order_status) as FinanceTransactionDto["orderStatus"];
+    const jobStatus = row.job_status as FinanceTransactionDto["jobStatus"];
+    const supportRefundReviewCount = Number(row.support_refund_review_count ?? 0);
+    const captured = paymentStatus === "CAPTURED" || paymentStatus === "PARTIALLY_REFUNDED" || paymentStatus === "REFUNDED";
+    const pending = paymentStatus === "REQUIRES_PAYMENT_METHOD" || paymentStatus === "REQUIRES_CONFIRMATION" || paymentStatus === "AUTHORIZED";
+    const failed = paymentStatus === "FAILED" || paymentStatus === "CANCELLED";
+    const deliveredNotCaptured = jobStatus === "DELIVERED" && !captured;
+    const failedFulfillment = jobStatus === "CANCELLED" || jobStatus === "DISPATCH_FAILED" || orderStatus === "PAYMENT_FAILED";
+    const refundReviewRequired = (captured && failedFulfillment) || supportRefundReviewCount > 0;
+    const payoutReview = captured && jobStatus === "DELIVERED" && (row.payout_status === null || row.payout_status === "FAILED" || Boolean(row.payout_hold_reason));
+    const financeReviewStatus: FinanceTransactionDto["financeReviewStatus"] = refundReviewRequired ? "REFUND_REVIEW" : deliveredNotCaptured || failed || payoutReview ? "NEEDS_REVIEW" : "CLEAR";
+    const refundReviewReason = supportRefundReviewCount > 0
+      ? "Unresolved support escalation marked for refund review."
+      : captured && failedFulfillment
+        ? "Payment was captured but fulfilment or order state indicates cancellation/failure."
+        : null;
+
+    return {
+      orgId: scope === "admin" ? row.org_id : null,
+      orgName: scope === "admin" ? row.org_name : null,
+      restaurantId: row.restaurant_id,
+      restaurantName: row.restaurant_name,
+      orderId: row.order_id,
+      jobId: row.job_id,
+      paymentId: row.id,
+      customerReference: row.customer_name,
+      amountCents: row.customer_total_cents,
+      capturedAmountCents: row.amount_captured_cents,
+      pendingAmountCents: pending ? (row.amount_authorized_cents > 0 ? row.amount_authorized_cents : row.customer_total_cents) : 0,
+      refundedAmountCents: row.amount_refunded_cents,
+      currency: row.currency.toUpperCase(),
+      paymentStatus,
+      orderStatus,
+      jobStatus,
+      payoutStatus: row.payout_status,
+      capturedAt: captured ? toIsoDateTime(row.updated_at) : null,
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at),
+      financeReviewStatus,
+      refundReviewRequired,
+      refundReviewReason,
+      recommendedNextAction: this.getFinanceRecommendedAction({ financeReviewStatus, refundReviewReason, deliveredNotCaptured, payoutReview, failed })
+    };
+  }
+
+  private getFinanceRecommendedAction(input: {
+    financeReviewStatus: FinanceTransactionDto["financeReviewStatus"];
+    refundReviewReason: string | null;
+    deliveredNotCaptured: boolean;
+    payoutReview: boolean;
+    failed: boolean;
+  }) {
+    if (input.refundReviewReason) {
+      return "Review support log before refund decision. Confirm with merchant/customer before any refund.";
+    }
+    if (input.deliveredNotCaptured) {
+      return "Confirm delivery proof and payment capture state before closeout.";
+    }
+    if (input.payoutReview) {
+      return "Review payout ledger and payment closeout before settlement reporting.";
+    }
+    if (input.failed) {
+      return "Review failed payment state before further fulfilment action.";
+    }
+    if (input.financeReviewStatus === "NEEDS_REVIEW") {
+      return "Review order, job, and payment state before finance closeout.";
+    }
+    return "No finance action required.";
   }
 
   async applyCancellationSettlementForWorker(

@@ -112,6 +112,7 @@ Authenticated routes:
 - `/app/orders/[latestOrderId]`
 - `/app/jobs/[latestJobId]`
 - `/app/payments`
+- `/app/finance`
 - `/app/reports/end-of-day`
 - `/app/settings/team`
 - `/admin`
@@ -119,6 +120,7 @@ Authenticated routes:
 - `/admin/users`
 - `/admin/orgs`
 - `/admin/fleets`
+- `/admin/finance`
 - `/admin/demo-requests`
 - `/admin/notifications`
 - `/admin/operational-resets`
@@ -137,6 +139,8 @@ Commercial intake smoke should also check `/demo/request` structurally when demo
 When public conversion or pricing changes ship, staging verification should open `/admin/analytics` after public CTA or demo request activity and confirm analytics events are visible or the empty state renders. Analytics collection must never block public navigation or demo request persistence.
 
 When demo request follow-up or notification delivery changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, view append-only event history, see notification delivery posture in `/admin/demo-requests`, and open `/admin/notifications` to review configuration diagnostics plus recent test events.
+
+When finance visibility changes ship, staging verification should open `/app/finance`, `/admin/finance`, and `/admin/command` to confirm captured/pending/failed totals, refund-review counts, and transaction rows render. Finance v1 is review-only: no automated refunds, payout automation, or payment-provider mutation should appear.
 
 ## Smoke Users
 Use dedicated staging-only smoke accounts. Document roles, not secrets:
