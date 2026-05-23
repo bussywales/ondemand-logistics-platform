@@ -19,6 +19,7 @@ import {
   CancelJobSchema,
   CreateBusinessOrgSchema,
   CreateFleetOrganisationSchema,
+  CreateFleetInviteSchema,
   CreateAnalyticsEventSchema,
   CreateTeamInviteSchema,
   CreateJobRequestSchema,
@@ -29,6 +30,8 @@ import {
   CustomerOrderStatusSchema,
   EligibleDriverListSchema,
   FleetDriverListSchema,
+  FleetDriverDetailSchema,
+  FleetTeamSchema,
   FleetOrganisationListSchema,
   FleetReadinessSummarySchema,
   JobPaymentSummarySchema,
@@ -418,6 +421,7 @@ describe("fleet organisation schemas", () => {
     const now = new Date().toISOString();
 
     expect(CreateFleetOrganisationSchema.safeParse({ name: "Northside Couriers", contactEmail: "fleet@example.com" }).success).toBe(true);
+    expect(CreateFleetInviteSchema.safeParse({ email: "driver@example.com", role: "DRIVER" }).success).toBe(true);
     expect(AddFleetDriverSchema.safeParse({ email: "driver@example.com", role: "DRIVER" }).success).toBe(true);
     expect(AddFleetDriverSchema.safeParse({ role: "DRIVER" }).success).toBe(false);
     expect(UpdateFleetDriverMembershipSchema.safeParse({ role: "DISPATCHER" }).success).toBe(true);
@@ -482,9 +486,63 @@ describe("fleet organisation schemas", () => {
       humanReviewNote: "Fleet readiness is visibility-only."
     });
 
+    const detail = FleetDriverDetailSchema.parse({
+      driver: drivers.items[0],
+      recentWork: [
+        {
+          jobId: "66666666-6666-4666-8666-666666666666",
+          status: "COMPLETED",
+          pickupAddress: "1 Fleet Street",
+          dropoffAddress: "2 Commerce Yard",
+          completedAt: now,
+          createdAt: now
+        }
+      ],
+      readinessHistory: [],
+      readinessHistoryNote: "Readiness history appears after driver signals change."
+    });
+
+    const team = FleetTeamSchema.parse({
+      fleetOrgId: fleetId,
+      fleetOrgName: "Northside Couriers",
+      currentUserRole: "FLEET_MANAGER",
+      canManageInvites: true,
+      members: [
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          userId: "22222222-2222-4222-8222-222222222222",
+          orgId: fleetId,
+          orgName: "Northside Couriers",
+          orgType: "DRIVER_COMPANY",
+          orgStatus: "ONBOARDING",
+          email: "manager@example.com",
+          displayName: "Fleet Manager",
+          role: "FLEET_MANAGER",
+          isActive: true,
+          createdAt: now,
+          updatedAt: now
+        }
+      ],
+      invitations: [
+        {
+          id: "88888888-8888-4888-8888-888888888888",
+          orgId: fleetId,
+          email: "new-driver@example.com",
+          role: "DRIVER",
+          status: "PENDING",
+          invitedBy: "22222222-2222-4222-8222-222222222222",
+          createdAt: now,
+          updatedAt: now
+        }
+      ],
+      accessEvents: []
+    });
+
     expect(fleets.items[0]?.readyDriverCount).toBe(1);
     expect(drivers.items[0]?.readinessStatus).toBe("READY");
     expect(summary.readyDrivers).toBe(1);
+    expect(detail.recentWork[0]?.status).toBe("COMPLETED");
+    expect(team.invitations[0]?.status).toBe("PENDING");
   });
 });
 

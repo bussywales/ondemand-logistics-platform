@@ -1448,6 +1448,31 @@ export type FleetDriverList = {
   items: FleetDriver[];
 };
 
+export type FleetDriverRecentWork = {
+  jobId: string;
+  status: JobStatus;
+  pickupAddress: string | null;
+  dropoffAddress: string | null;
+  completedAt: string | null;
+  createdAt: string;
+};
+
+export type FleetReadinessHistoryEvent = {
+  id: string;
+  readinessStatus: AdminDriverReadinessStatus;
+  reason: string;
+  source: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type FleetDriverDetail = {
+  driver: FleetDriver;
+  recentWork: FleetDriverRecentWork[];
+  readinessHistory: FleetReadinessHistoryEvent[];
+  readinessHistoryNote: string;
+};
+
 export type FleetReadinessSummary = {
   fleetOrgId: string;
   fleetOrgName: string;
@@ -1458,6 +1483,16 @@ export type FleetReadinessSummary = {
   onlineDrivers: number;
   activeJobs: number;
   humanReviewNote: string;
+};
+
+export type FleetTeam = {
+  fleetOrgId: string;
+  fleetOrgName: string;
+  currentUserRole: OrgRole;
+  canManageInvites: boolean;
+  members: IdentityMembership[];
+  invitations: IdentityInvitation[];
+  accessEvents: IdentityAccessEvent[];
 };
 
 export type AdminSystemHealth = {

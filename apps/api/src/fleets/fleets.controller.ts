@@ -53,8 +53,33 @@ export class FleetController {
     return this.fleets.listScopedFleetDrivers(user);
   }
 
+  @Get("drivers/:driverId")
+  getFleetDriver(@Param("driverId") driverId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.fleets.getScopedFleetDriverDetail(user, driverId);
+  }
+
   @Get("readiness")
   getFleetReadiness(@RequestUser() user: AuthenticatedUser) {
     return this.fleets.getScopedFleetReadiness(user);
+  }
+
+  @Get("team")
+  getFleetTeam(@RequestUser() user: AuthenticatedUser) {
+    return this.fleets.getScopedFleetTeam(user);
+  }
+
+  @Post("team/invites")
+  createFleetInvite(@Body() body: unknown, @RequestUser() user: AuthenticatedUser) {
+    return this.fleets.createScopedFleetInvite(user, body);
+  }
+
+  @Post("team/invites/:inviteId/resend")
+  resendFleetInvite(@Param("inviteId") inviteId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.fleets.resendScopedFleetInvite(user, inviteId);
+  }
+
+  @Post("team/invites/:inviteId/cancel")
+  cancelFleetInvite(@Param("inviteId") inviteId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.fleets.cancelScopedFleetInvite(user, inviteId);
   }
 }

@@ -31,7 +31,12 @@ async function continueExistingSession(page: Page) {
     return false;
   }
 
-  await existingSessionLink.click();
+  const href = await existingSessionLink.getAttribute('href');
+  if (href) {
+    await page.goto(href, { waitUntil: 'domcontentloaded' });
+  } else {
+    await existingSessionLink.click();
+  }
   await page.waitForURL((url) => !url.pathname.includes('/get-started'), { timeout: 10000 }).catch(() => undefined);
   return !page.url().includes('/get-started');
 }

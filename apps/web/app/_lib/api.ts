@@ -72,7 +72,9 @@ import type {
   MenuRollbackResult,
   MenuItemSummary,
   FleetDriver,
+  FleetDriverDetail,
   FleetDriverList,
+  FleetTeam,
   FleetOrganisation,
   FleetOrganisationList,
   FleetReadinessSummary,
@@ -241,7 +243,9 @@ type FleetOrganisationListResponse = FleetOrganisationList;
 type FleetOrganisationResponse = FleetOrganisation;
 type FleetDriverListResponse = FleetDriverList;
 type FleetDriverResponse = FleetDriver;
+type FleetDriverDetailResponse = FleetDriverDetail;
 type FleetReadinessSummaryResponse = FleetReadinessSummary;
+type FleetTeamResponse = FleetTeam;
 type AdminOverviewResponse = AdminOverview;
 type AdminJobListResponse = {
   items: AdminJobSummary[];
@@ -1522,9 +1526,52 @@ export async function listFleetDrivers(session: BusinessSession): Promise<FleetD
   return result.items;
 }
 
+export async function getFleetDriverDetail(session: BusinessSession, driverId: string): Promise<FleetDriverDetail> {
+  return apiFetch<FleetDriverDetailResponse>(session, `/v1/fleet/drivers/${encodeURIComponent(driverId)}`, {
+    method: "GET"
+  });
+}
+
 export async function getFleetReadiness(session: BusinessSession): Promise<FleetReadinessSummary> {
   return apiFetch<FleetReadinessSummaryResponse>(session, "/v1/fleet/readiness", {
     method: "GET"
+  });
+}
+
+export async function getFleetTeam(session: BusinessSession): Promise<FleetTeam> {
+  return apiFetch<FleetTeamResponse>(session, "/v1/fleet/team", {
+    method: "GET"
+  });
+}
+
+export async function createFleetInvite(
+  session: BusinessSession,
+  input: { email: string; role: OrgRole }
+): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(session, "/v1/fleet/team/invites", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-fleet-invite`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function resendFleetInvite(session: BusinessSession, inviteId: string): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(session, `/v1/fleet/team/invites/${encodeURIComponent(inviteId)}/resend`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-fleet-invite-resend`
+    }
+  });
+}
+
+export async function cancelFleetInvite(session: BusinessSession, inviteId: string): Promise<IdentityInvitation> {
+  return apiFetch<IdentityInvitationResponse>(session, `/v1/fleet/team/invites/${encodeURIComponent(inviteId)}/cancel`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-fleet-invite-cancel`
+    }
   });
 }
 

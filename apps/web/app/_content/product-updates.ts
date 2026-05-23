@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "fleet-driver-detail-team-invites",
+    title: "Fleet workspace now includes driver detail and team invites",
+    summary: "Fleet managers can now open driver readiness detail, review pending fleet invites, and manage invitation follow-up without changing dispatch or payout rules.",
+    audience: ["driver", "platform_admin"],
+    routeContext: ["/fleet", "/fleet/team", "/admin/fleets"],
+    releasedAt: "2026-05-23T18:00:00.000Z",
+    version: "v3.1",
+    ctaLabel: "Open fleet workspace",
+    ctaHref: "/fleet"
+  },
+  {
     id: "product-analytics-v1",
     title: "Public funnel analytics are available",
     summary: "Platform admins can now review first-party page, CTA, pricing, and demo request funnel signals without adding an external analytics vendor.",

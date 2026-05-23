@@ -52,7 +52,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin product analytics: `/admin/analytics`
 - Admin notification diagnostics: `/admin/notifications`
 - Admin operational reset tools: `/admin/operational-resets`
-- Fleet manager workspace: `/fleet`
+- Fleet manager workspace: `/fleet`, `/fleet/drivers/[driverId]`, `/fleet/team`
 - Business team settings: `/app/settings/team`
 - Help centre: `/help`
 - Product updates: `/app/updates`, `/driver/updates`, `/admin/updates`
@@ -191,7 +191,7 @@ See the full migration history in:
 Current release-critical migrations include restaurant/menu, customer orders, fulfilled order state, notification read state, platform admin support, and identity/team management.
 Identity/team management now includes local invite lifecycle statuses (`PENDING`, `ACCEPTED`, `CANCELLED`, `EXPIRED`) and access-change audit visibility.
 Pilot management schema now tracks workspace mode, readiness stage, owners, readiness checklist evidence, and posture counts for admin-led controlled pilot review.
-Driver fleet organisations reuse the IAM organisation and membership model with `DRIVER_COMPANY` orgs and fleet roles; v1 is readiness/management visibility only, not fleet billing, payout, dispatch preference, or courier suspension automation.
+Driver fleet organisations reuse the IAM organisation and membership model with `DRIVER_COMPANY` orgs and fleet roles. Fleet managers can review driver-level readiness at `/fleet/drivers/[driverId]` and manage pending fleet invitations at `/fleet/team`; v1 remains readiness/management visibility only, not fleet billing, payout, dispatch preference, or courier suspension automation.
 
 ## Strategic direction
 - current state: operational delivery and dispatch foundations

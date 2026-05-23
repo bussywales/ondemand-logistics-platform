@@ -563,6 +563,40 @@ export const FleetDriverListSchema = z.object({
 });
 export type FleetDriverListDto = z.infer<typeof FleetDriverListSchema>;
 
+export const FleetDriverRecentWorkSchema = z.object({
+  jobId: z.string().uuid(),
+  status: JobStatusSchema,
+  pickupAddress: z.string().nullable(),
+  dropoffAddress: z.string().nullable(),
+  completedAt: IsoDateTimeSchema.nullable(),
+  createdAt: IsoDateTimeSchema
+});
+export type FleetDriverRecentWorkDto = z.infer<typeof FleetDriverRecentWorkSchema>;
+
+export const FleetReadinessHistoryEventSchema = z.object({
+  id: z.string(),
+  readinessStatus: AdminDriverReadinessStatusSchema,
+  reason: z.string(),
+  source: z.string(),
+  metadata: z.record(z.unknown()).default({}),
+  createdAt: IsoDateTimeSchema
+});
+export type FleetReadinessHistoryEventDto = z.infer<typeof FleetReadinessHistoryEventSchema>;
+
+export const FleetDriverDetailSchema = z.object({
+  driver: FleetDriverSchema,
+  recentWork: z.array(FleetDriverRecentWorkSchema),
+  readinessHistory: z.array(FleetReadinessHistoryEventSchema),
+  readinessHistoryNote: z.string().min(2)
+});
+export type FleetDriverDetailDto = z.infer<typeof FleetDriverDetailSchema>;
+
+export const CreateFleetInviteSchema = z.object({
+  email: z.string().email(),
+  role: OrgRoleSchema
+});
+export type CreateFleetInviteInput = z.infer<typeof CreateFleetInviteSchema>;
+
 export const AddFleetDriverSchema = z
   .object({
     userId: z.string().uuid().optional(),
@@ -744,6 +778,17 @@ export type IdentityOrgMembersDto = z.infer<typeof IdentityOrgMembersSchema>;
 
 export const BusinessTeamSchema = IdentityOrgMembersSchema;
 export type BusinessTeamDto = z.infer<typeof BusinessTeamSchema>;
+
+export const FleetTeamSchema = z.object({
+  fleetOrgId: z.string().uuid(),
+  fleetOrgName: z.string().min(2),
+  currentUserRole: OrgRoleSchema,
+  canManageInvites: z.boolean(),
+  members: z.array(IdentityMembershipSchema),
+  invitations: z.array(IdentityInvitationSchema),
+  accessEvents: z.array(IdentityAccessEventSchema)
+});
+export type FleetTeamDto = z.infer<typeof FleetTeamSchema>;
 
 export const CreateTeamInviteSchema = z.object({
   email: z.string().email(),

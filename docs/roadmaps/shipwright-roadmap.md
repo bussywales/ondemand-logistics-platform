@@ -199,7 +199,7 @@ Constraints:
 - no public checkout behaviour change beyond reading the updated menu data
 
 ## Workstream 5: Driver Fleet Organisations
-Status: Implemented v1 foundation; continue hardening after controlled fleet rehearsal.
+Status: Implemented v1 foundation and v1.2 fleet workspace hardening; continue with readiness event capture after controlled fleet rehearsal.
 
 Goal:
 Support driver-company-managed courier pools without weakening independent courier support.
@@ -210,8 +210,11 @@ Implemented scope:
 - platform admins can create and review fleet organisations at `/admin/fleets`
 - platform admins can add existing users or couriers to a fleet and update fleet role/active status
 - fleet manager-scoped API exposes driver list and readiness summary for driver-company members with manager, dispatcher, owner, or compliance roles
+- fleet managers, owners, dispatchers, and compliance leads can open `/fleet/drivers/[driverId]` for driver-level readiness detail, active/recent work, and non-punitive next actions
+- fleet owners, managers, and compliance leads can manage driver-company invitations from `/fleet/team`; dispatchers remain read-only for team management
 - admin driver readiness shows independent vs fleet-managed courier affiliation
 - fleet readiness remains compliance/readiness visibility, not dispatch preference automation
+- readiness history is currently an empty-state surface until driver signal changes are captured as append-only readiness events
 
 Constraints:
 - no punitive driver scoring
@@ -219,6 +222,7 @@ Constraints:
 - no silent driver assignment autonomy
 - keep compliance and approval human-reviewed
 - no fleet billing, payout automation, or dispatch prioritisation in v1
+- no automatic readiness event history capture yet
 
 ## Workstream 6: Operational Maturity Continuation
 Status: Continue in parallel only where it strengthens pilot readiness.

@@ -124,4 +124,134 @@ describe("FleetsService", () => {
 
     await expect(service.listScopedFleetDrivers({ id: DRIVER_USER_ID, token: {} })).rejects.toThrow(ForbiddenException);
   });
+
+  it("returns scoped fleet driver detail with recent work and empty readiness history", async () => {
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ org_id: FLEET_ORG_ID, org_name: "Northside Couriers", role: "FLEET_MANAGER" }] })
+        .mockResolvedValueOnce({ rows: [fleetDriverRow()] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              job_id: "66666666-6666-4666-8666-666666666666",
+              status: "DELIVERED",
+              pickup_address: "1 Market Street",
+              dropoff_address: "2 High Street",
+              completed_at: new Date("2026-05-19T11:00:00.000Z"),
+              created_at: new Date("2026-05-19T10:00:00.000Z")
+            }
+          ]
+        })
+    };
+    const service = new FleetsService(pg as never);
+
+    const detail = await service.getScopedFleetDriverDetail(actor, DRIVER_ID);
+
+    expect(detail.driver.driverId).toBe(DRIVER_ID);
+    expect(detail.recentWork).toHaveLength(1);
+    expect(detail.readinessHistory).toEqual([]);
+    expect(detail.readinessHistoryNote).toContain("Readiness history");
+  });
+
+  it("returns fleet team members, invitations, and access events", async () => {
+    const now = new Date("2026-05-19T10:00:00.000Z");
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ org_id: FLEET_ORG_ID, org_name: "Northside Couriers", role: "FLEET_MANAGER" }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              membership_id: MEMBERSHIP_ID,
+              org_id: FLEET_ORG_ID,
+              org_name: "Northside Couriers",
+              org_type: "DRIVER_COMPANY",
+              org_status: "ACTIVE",
+              user_id: DRIVER_USER_ID,
+              email: "driver@example.com",
+              display_name: "Fleet Driver",
+              role: "DRIVER",
+              is_active: true,
+              membership_created_at: now,
+              membership_updated_at: now
+            }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: "77777777-7777-4777-8777-777777777777",
+              org_id: FLEET_ORG_ID,
+              email: "new-driver@example.com",
+              role: "DRIVER",
+              status: "PENDING",
+              invited_by: USER_ID,
+              created_at: now,
+              updated_at: now
+            }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 1,
+              org_id: FLEET_ORG_ID,
+              action: "fleet_invite_created",
+              actor_name: "Fleet Manager",
+              actor_email: "manager@example.com",
+              metadata: { email: "new-driver@example.com", role: "DRIVER" },
+              created_at: now
+            }
+          ]
+        })
+    };
+    const service = new FleetsService(pg as never);
+
+    const team = await service.getScopedFleetTeam(actor);
+
+    expect(team.canManageInvites).toBe(true);
+    expect(team.members[0]?.role).toBe("DRIVER");
+    expect(team.invitations[0]?.status).toBe("PENDING");
+    expect(team.accessEvents[0]?.summary).toContain("Fleet invite created");
+  });
+
+  it("allows fleet managers to create driver invites and records audit/outbox", async () => {
+    const now = new Date("2026-05-19T10:00:00.000Z");
+    const invite = {
+      id: "77777777-7777-4777-8777-777777777777",
+      org_id: FLEET_ORG_ID,
+      email: "new-driver@example.com",
+      role: "DRIVER",
+      status: "PENDING",
+      invited_by: USER_ID,
+      created_at: now,
+      updated_at: now
+    };
+    const pg = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ org_id: FLEET_ORG_ID, org_name: "Northside Couriers", role: "FLEET_MANAGER" }] })
+        .mockResolvedValueOnce({ rows: [invite] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+    };
+    const service = new FleetsService(pg as never);
+
+    const result = await service.createScopedFleetInvite(actor, { email: "new-driver@example.com", role: "DRIVER" });
+
+    expect(result.email).toBe("new-driver@example.com");
+    expect(pg.query.mock.calls[1]?.[0]).toContain("insert into public.org_invitations");
+    expect(pg.query.mock.calls[2]?.[0]).toContain("insert into public.audit_log");
+    expect(pg.query.mock.calls[3]?.[0]).toContain("insert into public.outbox_messages");
+  });
+
+  it("prevents dispatchers from managing fleet invites", async () => {
+    const pg = { query: vi.fn().mockResolvedValueOnce({ rows: [] }) };
+    const service = new FleetsService(pg as never);
+
+    await expect(service.createScopedFleetInvite(actor, { email: "driver@example.com", role: "DRIVER" })).rejects.toThrow(
+      ForbiddenException
+    );
+  });
 });

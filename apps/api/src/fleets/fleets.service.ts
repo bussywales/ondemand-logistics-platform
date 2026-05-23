@@ -1,14 +1,21 @@
 import { ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import {
   AddFleetDriverSchema,
+  CreateFleetInviteSchema,
   CreateFleetOrganisationSchema,
+  FleetDriverDetailSchema,
   FleetDriverListSchema,
   FleetDriverSchema,
   FleetOrganisationListSchema,
   FleetOrganisationSchema,
   FleetReadinessSummarySchema,
+  FleetTeamSchema,
+  IdentityAccessEventSchema,
+  IdentityInvitationSchema,
+  IdentityMembershipSchema,
   UpdateFleetDriverMembershipSchema,
   type FleetDriverDto,
+  type FleetDriverRecentWorkDto,
   type FleetOrganisationDto,
   type OrgRole
 } from "@shipwright/contracts";
@@ -19,6 +26,16 @@ import { PgService } from "../database/pg.service.js";
 import type { AuthenticatedUser } from "../security/types.js";
 
 const FLEET_ROLES = new Set<OrgRole>(["FLEET_OWNER", "FLEET_MANAGER", "DISPATCHER", "DRIVER", "COMPLIANCE_MANAGER"]);
+const FLEET_WORKSPACE_ROLES = new Set<OrgRole>(["FLEET_OWNER", "FLEET_MANAGER", "DISPATCHER", "COMPLIANCE_MANAGER"]);
+const FLEET_INVITE_MANAGEMENT_ROLES = new Set<OrgRole>(["FLEET_OWNER", "FLEET_MANAGER", "COMPLIANCE_MANAGER"]);
+const FLEET_INVITE_BASE_ROLES = new Set<OrgRole>(["DRIVER", "DISPATCHER", "COMPLIANCE_MANAGER"]);
+const FLEET_ACCESS_AUDIT_ACTIONS = [
+  "fleet_driver_added",
+  "fleet_driver_membership_updated",
+  "fleet_invite_created",
+  "fleet_invite_resent",
+  "fleet_invite_cancelled"
+];
 
 type FleetOrgRow = QueryResultRow & {
   id: string;
@@ -62,6 +79,57 @@ type ResolvedFleetUserRow = QueryResultRow & {
   driver_id: string | null;
 };
 
+type FleetContextRow = QueryResultRow & {
+  org_id: string;
+  org_name: string;
+  role: OrgRole;
+};
+
+type FleetMembershipRow = QueryResultRow & {
+  membership_id: string;
+  org_id: string;
+  org_name: string;
+  org_type: string;
+  org_status: string;
+  user_id: string;
+  email: string;
+  display_name: string;
+  role: OrgRole;
+  is_active: boolean;
+  membership_created_at: string | Date;
+  membership_updated_at: string | Date;
+};
+
+type FleetInvitationRow = QueryResultRow & {
+  id: string;
+  org_id: string;
+  email: string;
+  role: OrgRole;
+  status: "PENDING" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+  invited_by: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
+type FleetAccessEventRow = QueryResultRow & {
+  id: string | number;
+  org_id: string;
+  action: string;
+  actor_name: string | null;
+  actor_email: string | null;
+  metadata: Record<string, unknown> | string | null;
+  created_at: string | Date;
+};
+
+type FleetDriverRecentWorkRow = QueryResultRow & {
+  job_id: string;
+  status: string;
+  pickup_address: string | null;
+  dropoff_address: string | null;
+  completed_at: string | Date | null;
+  created_at: string | Date;
+};
+
 function toNumber(value: string | number) {
   return typeof value === "number" ? value : Number.parseInt(value, 10);
 }
@@ -78,6 +146,26 @@ function assertFleetRole(role: OrgRole) {
   if (!FLEET_ROLES.has(role)) {
     throw new UnprocessableEntityException("role_not_assignable_to_fleet");
   }
+}
+
+function parseMetadata(value: Record<string, unknown> | string | null | undefined): Record<string, unknown> {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  return value;
+}
+
+function roleLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 @Injectable()
@@ -179,12 +267,24 @@ export class FleetsService {
   }
 
   async listScopedFleetDrivers(user: AuthenticatedUser) {
-    const fleetOrgId = await this.getManageableFleetOrgId(user.id);
+    const { orgId: fleetOrgId } = await this.getFleetContext(user.id, FLEET_WORKSPACE_ROLES);
     return FleetDriverListSchema.parse({ items: await this.listFleetDriversForOrg(fleetOrgId) });
   }
 
+  async getScopedFleetDriverDetail(user: AuthenticatedUser, driverId: string) {
+    const { orgId: fleetOrgId } = await this.getFleetContext(user.id, FLEET_WORKSPACE_ROLES);
+    const driver = await this.getFleetDriverByDriverOrUserId(fleetOrgId, driverId);
+    const recentWork = driver.driverId ? await this.listFleetDriverRecentWork(driver.driverId) : [];
+    return FleetDriverDetailSchema.parse({
+      driver,
+      recentWork,
+      readinessHistory: [],
+      readinessHistoryNote: "Readiness history will appear here after driver signal changes are captured as fleet readiness events."
+    });
+  }
+
   async getScopedFleetReadiness(user: AuthenticatedUser) {
-    const fleetOrgId = await this.getManageableFleetOrgId(user.id);
+    const { orgId: fleetOrgId } = await this.getFleetContext(user.id, FLEET_WORKSPACE_ROLES);
     const fleet = await this.getAdminFleet(fleetOrgId);
     return FleetReadinessSummarySchema.parse({
       fleetOrgId: fleet.id,
@@ -197,6 +297,120 @@ export class FleetsService {
       activeJobs: fleet.activeJobCount,
       humanReviewNote: "Fleet readiness is visibility-only in v1. Fleet managers remain responsible for compliance review and courier communication."
     });
+  }
+
+  async getScopedFleetTeam(user: AuthenticatedUser) {
+    const context = await this.getFleetContext(user.id, FLEET_WORKSPACE_ROLES);
+    const [members, invitations, accessEvents] = await Promise.all([
+      this.listFleetMembers(context.orgId),
+      this.listFleetInvitations(context.orgId),
+      this.listFleetAccessEvents(context.orgId)
+    ]);
+
+    return FleetTeamSchema.parse({
+      fleetOrgId: context.orgId,
+      fleetOrgName: context.orgName,
+      currentUserRole: context.role,
+      canManageInvites: FLEET_INVITE_MANAGEMENT_ROLES.has(context.role),
+      members,
+      invitations,
+      accessEvents
+    });
+  }
+
+  async createScopedFleetInvite(user: AuthenticatedUser, rawInput: unknown) {
+    const context = await this.getFleetContext(user.id, FLEET_INVITE_MANAGEMENT_ROLES);
+    const parsed = CreateFleetInviteSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({ message: "invalid_fleet_invite", issues: parsed.error.issues });
+    }
+    this.assertFleetInviteRole(parsed.data.role, context.role);
+
+    const invitation = await this.pg.query<FleetInvitationRow>(
+      `insert into public.org_invitations (org_id, email, role, status, invited_by)
+       values ($1, lower($2), $3::public.org_role, 'PENDING', $4)
+       on conflict (org_id, email) do update
+       set role = excluded.role,
+           status = 'PENDING',
+           invited_by = excluded.invited_by,
+           updated_at = now()
+       returning id, org_id, email, role::text as role, status, invited_by, created_at, updated_at`,
+      [context.orgId, parsed.data.email, parsed.data.role, user.id]
+    );
+
+    await this.insertAuditLog({
+      actorId: user.id,
+      orgId: context.orgId,
+      entityType: "org_invitation",
+      entityId: invitation.rows[0].id,
+      action: "fleet_invite_created",
+      metadata: { email: parsed.data.email, role: parsed.data.role }
+    });
+    await this.enqueueFleetInviteOutbox("ORG_INVITE_CREATED", invitation.rows[0], user.id, "created");
+
+    return IdentityInvitationSchema.parse(this.mapFleetInvitation(invitation.rows[0]));
+  }
+
+  async resendScopedFleetInvite(user: AuthenticatedUser, inviteId: string) {
+    const context = await this.getFleetContext(user.id, FLEET_INVITE_MANAGEMENT_ROLES);
+    const existing = await this.getFleetInvitation(context.orgId, inviteId);
+    if (existing.status === "ACCEPTED" || existing.status === "CANCELLED") {
+      throw new UnprocessableEntityException("invite_not_resendable");
+    }
+
+    const result = await this.pg.query<FleetInvitationRow>(
+      `update public.org_invitations
+       set status = 'PENDING',
+           invited_by = $3,
+           updated_at = now()
+       where id = $1 and org_id = $2
+       returning id, org_id, email, role::text as role, status, invited_by, created_at, updated_at`,
+      [inviteId, context.orgId, user.id]
+    );
+    const invite = result.rows[0];
+    await this.insertAuditLog({
+      actorId: user.id,
+      orgId: context.orgId,
+      entityType: "org_invitation",
+      entityId: inviteId,
+      action: "fleet_invite_resent",
+      metadata: { email: invite.email, role: invite.role, previousStatus: existing.status, nextStatus: invite.status }
+    });
+    await this.enqueueFleetInviteOutbox("ORG_INVITE_RESENT", invite, user.id, "resent", existing.status);
+
+    return IdentityInvitationSchema.parse(this.mapFleetInvitation(invite));
+  }
+
+  async cancelScopedFleetInvite(user: AuthenticatedUser, inviteId: string) {
+    const context = await this.getFleetContext(user.id, FLEET_INVITE_MANAGEMENT_ROLES);
+    const existing = await this.getFleetInvitation(context.orgId, inviteId);
+    if (existing.status === "ACCEPTED") {
+      throw new UnprocessableEntityException("accepted_invite_cannot_be_cancelled");
+    }
+    if (existing.status === "CANCELLED") {
+      throw new UnprocessableEntityException("invite_already_cancelled");
+    }
+
+    const result = await this.pg.query<FleetInvitationRow>(
+      `update public.org_invitations
+       set status = 'CANCELLED',
+           updated_at = now()
+       where id = $1 and org_id = $2
+       returning id, org_id, email, role::text as role, status, invited_by, created_at, updated_at`,
+      [inviteId, context.orgId]
+    );
+    const invite = result.rows[0];
+    await this.insertAuditLog({
+      actorId: user.id,
+      orgId: context.orgId,
+      entityType: "org_invitation",
+      entityId: inviteId,
+      action: "fleet_invite_cancelled",
+      metadata: { email: invite.email, role: invite.role, previousStatus: existing.status, nextStatus: invite.status }
+    });
+    await this.enqueueFleetInviteOutbox("ORG_INVITE_CANCELLED", invite, user.id, "cancelled", existing.status);
+
+    return IdentityInvitationSchema.parse(this.mapFleetInvitation(invite));
   }
 
   private fleetOrgSelectSql(whereClause: string, suffix = "") {
@@ -342,29 +556,153 @@ export class FleetsService {
     return this.getFleetDriverByMembership(fleetOrgId, membershipId);
   }
 
-  private async getManageableFleetOrgId(userId: string) {
-    const result = await this.pg.query<{ org_id: string }>(
-      `select m.org_id
+  private async getFleetContext(userId: string, allowedRoles: Set<OrgRole>) {
+    const result = await this.pg.query<FleetContextRow>(
+      `select m.org_id, o.name as org_name, m.role::text as role
        from public.org_memberships m
        join public.orgs o on o.id = m.org_id
        where m.user_id = $1
          and m.is_active = true
          and o.org_type = 'DRIVER_COMPANY'
-         and m.role::text in ('FLEET_OWNER', 'FLEET_MANAGER', 'DISPATCHER', 'COMPLIANCE_MANAGER')
+         and m.role::text = any($2::text[])
        order by m.created_at desc
        limit 1`,
-      [userId]
+      [userId, [...allowedRoles]]
     );
-    const orgId = result.rows[0]?.org_id;
-    if (!orgId) {
+    const row = result.rows[0];
+    if (!row) {
       throw new ForbiddenException("fleet_management_role_required");
     }
-    return orgId;
+    return {
+      orgId: row.org_id,
+      orgName: row.org_name,
+      role: row.role
+    };
+  }
+
+  private assertFleetInviteRole(role: OrgRole, currentUserRole: OrgRole) {
+    if (role === "FLEET_MANAGER" && currentUserRole === "FLEET_OWNER") {
+      return;
+    }
+    if (!FLEET_INVITE_BASE_ROLES.has(role)) {
+      throw new UnprocessableEntityException("role_not_assignable_to_fleet_invite");
+    }
   }
 
   private async listFleetDriversForOrg(fleetOrgId: string) {
     const result = await this.pg.query<FleetDriverRow>(this.fleetDriverSelectSql("where m.org_id = $1 order by m.updated_at desc"), [fleetOrgId]);
     return result.rows.map((row) => this.mapFleetDriver(row));
+  }
+
+  private async getFleetDriverByDriverOrUserId(fleetOrgId: string, driverId: string) {
+    const result = await this.pg.query<FleetDriverRow>(
+      this.fleetDriverSelectSql("where m.org_id = $1 and (d.id = $2::uuid or u.id = $2::uuid) limit 1"),
+      [fleetOrgId, driverId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      throw new NotFoundException("fleet_driver_not_found");
+    }
+    return FleetDriverSchema.parse(this.mapFleetDriver(row));
+  }
+
+  private async listFleetDriverRecentWork(driverId: string): Promise<FleetDriverRecentWorkDto[]> {
+    const result = await this.pg.query<FleetDriverRecentWorkRow>(
+      `select id as job_id,
+              status::text as status,
+              pickup_address,
+              dropoff_address,
+              case when status::text in ('DELIVERED', 'COMPLETED', 'CANCELLED', 'DISPATCH_FAILED') then updated_at else null end as completed_at,
+              created_at
+       from public.jobs
+       where assigned_driver_id = $1
+       order by created_at desc
+       limit 8`,
+      [driverId]
+    );
+
+    return result.rows.map((row) => ({
+      jobId: row.job_id,
+      status: row.status as FleetDriverRecentWorkDto["status"],
+      pickupAddress: row.pickup_address,
+      dropoffAddress: row.dropoff_address,
+      completedAt: toNullableIsoDateTime(row.completed_at),
+      createdAt: toIsoDateTime(row.created_at)
+    }));
+  }
+
+  private async listFleetMembers(fleetOrgId: string) {
+    const result = await this.pg.query<FleetMembershipRow>(
+      `select
+          m.id as membership_id,
+          o.id as org_id,
+          o.name as org_name,
+          coalesce(o.org_type, 'DRIVER_COMPANY') as org_type,
+          coalesce(o.status, 'ACTIVE') as org_status,
+          u.id as user_id,
+          u.email,
+          u.display_name,
+          m.role::text as role,
+          m.is_active,
+          m.created_at as membership_created_at,
+          m.updated_at as membership_updated_at
+       from public.org_memberships m
+       join public.users u on u.id = m.user_id
+       join public.orgs o on o.id = m.org_id and o.org_type = 'DRIVER_COMPANY'
+       where m.org_id = $1
+         and m.role::text in ('FLEET_OWNER', 'FLEET_MANAGER', 'DISPATCHER', 'DRIVER', 'COMPLIANCE_MANAGER')
+       order by m.created_at desc`,
+      [fleetOrgId]
+    );
+    return result.rows.map((row) => IdentityMembershipSchema.parse(this.mapFleetMembership(row)));
+  }
+
+  private async listFleetInvitations(fleetOrgId: string) {
+    const result = await this.pg.query<FleetInvitationRow>(
+      `select id, org_id, email, role::text as role, status, invited_by, created_at, updated_at
+       from public.org_invitations
+       where org_id = $1
+         and role::text in ('FLEET_OWNER', 'FLEET_MANAGER', 'DISPATCHER', 'DRIVER', 'COMPLIANCE_MANAGER')
+       order by created_at desc`,
+      [fleetOrgId]
+    );
+    return result.rows.map((row) => IdentityInvitationSchema.parse(this.mapFleetInvitation(row)));
+  }
+
+  private async listFleetAccessEvents(fleetOrgId: string) {
+    const result = await this.pg.query<FleetAccessEventRow>(
+      `select
+          a.id,
+          a.org_id,
+          a.action,
+          u.display_name as actor_name,
+          u.email as actor_email,
+          a.metadata,
+          a.created_at
+       from public.audit_log a
+       left join public.users u on u.id = a.actor_id
+       where a.org_id = $1
+         and a.action = any($2::text[])
+       order by a.created_at desc
+       limit 30`,
+      [fleetOrgId, FLEET_ACCESS_AUDIT_ACTIONS]
+    );
+    return result.rows.map((row) => IdentityAccessEventSchema.parse(this.mapFleetAccessEvent(row)));
+  }
+
+  private async getFleetInvitation(fleetOrgId: string, inviteId: string) {
+    const result = await this.pg.query<FleetInvitationRow>(
+      `select id, org_id, email, role::text as role, status, invited_by, created_at, updated_at
+       from public.org_invitations
+       where id = $1 and org_id = $2
+       limit 1`,
+      [inviteId, fleetOrgId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      throw new NotFoundException("invite_not_found");
+    }
+    return row;
   }
 
   private async getFleetDriverByMembership(fleetOrgId: string, membershipId: string) {
@@ -464,6 +802,69 @@ export class FleetsService {
     });
   }
 
+  private mapFleetMembership(row: FleetMembershipRow) {
+    return {
+      id: row.membership_id,
+      orgId: row.org_id,
+      orgName: row.org_name,
+      orgType: row.org_type,
+      orgStatus: row.org_status,
+      userId: row.user_id,
+      email: row.email,
+      displayName: row.display_name,
+      role: row.role,
+      isActive: row.is_active,
+      createdAt: toIsoDateTime(row.membership_created_at),
+      updatedAt: toIsoDateTime(row.membership_updated_at)
+    };
+  }
+
+  private mapFleetInvitation(row: FleetInvitationRow) {
+    return {
+      id: row.id,
+      orgId: row.org_id,
+      email: row.email,
+      role: row.role,
+      status: row.status,
+      invitedBy: row.invited_by,
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
+    };
+  }
+
+  private mapFleetAccessEvent(row: FleetAccessEventRow) {
+    const metadata = parseMetadata(row.metadata);
+    return {
+      id: String(row.id),
+      orgId: row.org_id,
+      eventType: row.action,
+      actorName: row.actor_name,
+      actorEmail: row.actor_email,
+      createdAt: toIsoDateTime(row.created_at),
+      summary: this.fleetAccessEventSummary(row.action, metadata),
+      metadata
+    };
+  }
+
+  private fleetAccessEventSummary(action: string, metadata: Record<string, unknown>) {
+    const email = typeof metadata.email === "string" ? metadata.email : "fleet member";
+    const role = typeof metadata.role === "string" ? ` as ${roleLabel(metadata.role)}` : "";
+    switch (action) {
+      case "fleet_invite_created":
+        return `Fleet invite created for ${email}${role}.`;
+      case "fleet_invite_resent":
+        return `Fleet invite resent to ${email}.`;
+      case "fleet_invite_cancelled":
+        return `Fleet invite cancelled for ${email}.`;
+      case "fleet_driver_added":
+        return `Fleet membership added${role}.`;
+      case "fleet_driver_membership_updated":
+        return "Fleet membership updated.";
+      default:
+        return role ? `Fleet access changed${role}.` : "Fleet access changed.";
+    }
+  }
+
   private computeReadiness(row: FleetDriverRow): "READY" | "NEEDS_REVIEW" | "NOT_ELIGIBLE" {
     if (!row.membership_active) {
       return "NOT_ELIGIBLE";
@@ -522,6 +923,44 @@ export class FleetsService {
       `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
        values ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
       [randomUUID(), input.actorId, input.orgId, input.entityType, input.entityId, input.action, JSON.stringify(input.metadata)]
+    );
+  }
+
+  private async enqueueFleetInviteOutbox(
+    eventType: "ORG_INVITE_CREATED" | "ORG_INVITE_RESENT" | "ORG_INVITE_CANCELLED",
+    invite: FleetInvitationRow,
+    actorId: string,
+    action: "created" | "resent" | "cancelled",
+    previousStatus?: string
+  ) {
+    await this.pg.query(
+      `insert into public.outbox_messages (
+         aggregate_type,
+         aggregate_id,
+         event_type,
+         payload,
+         idempotency_key
+       )
+       values ($1, $2, $3, $4::jsonb, $5)
+       on conflict (event_type, idempotency_key) do nothing`,
+      [
+        "org_invitation",
+        invite.id,
+        eventType,
+        JSON.stringify({
+          inviteId: invite.id,
+          orgId: invite.org_id,
+          email: invite.email,
+          role: invite.role,
+          status: invite.status,
+          action,
+          actorId,
+          previousStatus: previousStatus ?? null,
+          createdAt: toIsoDateTime(invite.created_at),
+          updatedAt: toIsoDateTime(invite.updated_at)
+        }),
+        `${eventType.toLowerCase()}:fleet:${invite.id}:${toIsoDateTime(invite.updated_at)}`
+      ]
     );
   }
 }
