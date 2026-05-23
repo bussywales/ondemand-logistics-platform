@@ -218,6 +218,66 @@ export type DemoRequestEvent = {
   createdAt: string;
 };
 
+export type AnalyticsEventName =
+  | "PUBLIC_PAGE_VIEW"
+  | "CTA_CLICKED"
+  | "PRICING_CTA_CLICKED"
+  | "DEMO_REQUEST_FORM_STARTED"
+  | "DEMO_REQUEST_SUBMITTED"
+  | "DEMO_REQUEST_FAILED"
+  | "MEGA_MENU_OPENED";
+
+export type CreateAnalyticsEventInput = {
+  eventName: AnalyticsEventName;
+  source?: string;
+  path?: string | null;
+  referrer?: string | null;
+  sessionId?: string | null;
+  visitorId?: string | null;
+  demoRequestId?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type AnalyticsEvent = {
+  id: string;
+  eventName: AnalyticsEventName;
+  source: string;
+  path: string | null;
+  referrer: string | null;
+  sessionId: string | null;
+  visitorId: string | null;
+  demoRequestId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type AnalyticsMetricWindow = {
+  pageViews: number;
+  ctaClicks: number;
+  demoFormStarts: number;
+  demoRequestSubmits: number;
+  demoRequestFailures: number;
+  formStartToSubmitRate: number | null;
+  ctaToDemoRequestRate: number | null;
+};
+
+export type AnalyticsBreakdownRow = {
+  label: string;
+  source?: string | null;
+  count: number;
+};
+
+export type AdminAnalyticsSummary = {
+  generatedAt: string;
+  windows: {
+    last7Days: AnalyticsMetricWindow;
+    last30Days: AnalyticsMetricWindow;
+  };
+  ctaPerformance: AnalyticsBreakdownRow[];
+  pricingInterest: AnalyticsBreakdownRow[];
+  recentEvents: AnalyticsEvent[];
+};
+
 export type OperationalResetMode =
   | "PREVIEW"
   | "ARCHIVE_DEMO_REQUESTS"

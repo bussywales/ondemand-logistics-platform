@@ -4,6 +4,7 @@ import Link from "next/link";
 import React from "react";
 import { useState, type FormEvent } from "react";
 import { createDemoRequest, getUserFacingApiError } from "../_lib/api";
+import { trackAnalyticsEvent } from "../_lib/analytics";
 import type { DemoRequestInterestType } from "../_lib/product-state";
 
 const INTEREST_OPTIONS: Array<{ label: string; value: DemoRequestInterestType }> = [
@@ -34,7 +35,17 @@ export function DemoRequestFeedback(props: { status: "success" | "error"; error?
 export function DemoRequestForm(props: { defaultInterestType?: DemoRequestInterestType } = {}) {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [formStarted, setFormStarted] = useState(false);
   const defaultInterestType = props.defaultInterestType ?? "PILOT_MERCHANT";
+
+  function trackFormStarted() {
+    if (formStarted) return;
+    setFormStarted(true);
+    trackAnalyticsEvent({
+      eventName: "DEMO_REQUEST_FORM_STARTED",
+      metadata: { interestType: defaultInterestType, source: "demo_request_form" }
+    });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,15 +56,21 @@ export function DemoRequestForm(props: { defaultInterestType?: DemoRequestIntere
     setError(null);
 
     try {
-      await createDemoRequest({
+      const interestType = String(data.get("interestType") ?? "OTHER") as DemoRequestInterestType;
+      const request = await createDemoRequest({
         name: String(data.get("name") ?? ""),
         email: String(data.get("email") ?? ""),
         organisation: String(data.get("organisation") ?? "") || null,
         role: String(data.get("role") ?? "") || null,
-        interestType: String(data.get("interestType") ?? "OTHER") as DemoRequestInterestType,
+        interestType,
         message: String(data.get("message") ?? "") || null,
         source: "landing_page",
         website: String(data.get("website") ?? "")
+      });
+      trackAnalyticsEvent({
+        eventName: "DEMO_REQUEST_SUBMITTED",
+        demoRequestId: request.id,
+        metadata: { interestType, source: "demo_request_form" }
       });
 
       form.reset();
@@ -61,11 +78,24 @@ export function DemoRequestForm(props: { defaultInterestType?: DemoRequestIntere
     } catch (issue) {
       setStatus("error");
       setError(getUserFacingApiError(issue, "Demo request capture is unavailable. Use the email fallback and we will follow up manually."));
+      trackAnalyticsEvent({
+        eventName: "DEMO_REQUEST_FAILED",
+        metadata: {
+          interestType: String(data.get("interestType") ?? "OTHER"),
+          source: "demo_request_form",
+          reason: getUserFacingApiError(issue, "request_failed")
+        }
+      });
     }
   }
 
   return (
-    <form className="demo-request-form" aria-describedby="demo-request-note" onSubmit={(event) => void handleSubmit(event)}>
+    <form
+      className="demo-request-form"
+      aria-describedby="demo-request-note"
+      onFocusCapture={trackFormStarted}
+      onSubmit={(event) => void handleSubmit(event)}
+    >
       <div className="demo-request-field-grid">
         <label>
           <span>Name</span>

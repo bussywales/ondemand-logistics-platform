@@ -1,5 +1,6 @@
 import type {
   AdminPaymentSummary,
+  AdminAnalyticsSummary,
   AdminDriverReadinessItem,
   AdminDriverReadinessList,
   AdminJobSummary,
@@ -11,10 +12,12 @@ import type {
   DailyBriefing,
   EndOfDayReport,
   CreateDemoRequestInput,
+  CreateAnalyticsEventInput,
   DispatchRecoverySuggestion,
   DemoRequest,
   DemoRequestEvent,
   DemoRequestStatus,
+  AnalyticsEvent,
   ExecuteOperationalResetInput,
   OperationalResetPreview,
   OperationalResetRequestInput,
@@ -204,6 +207,8 @@ type SupportEscalationListResponse = SupportEscalationList;
 type SupportEscalationResponse = SupportEscalation;
 type SupportEscalationEventListResponse = SupportEscalationEventList;
 type DemoRequestResponse = DemoRequest;
+type AnalyticsEventResponse = AnalyticsEvent;
+type AdminAnalyticsSummaryResponse = AdminAnalyticsSummary;
 type DemoRequestListResponse = {
   items: DemoRequest[];
 };
@@ -1293,6 +1298,13 @@ export async function createDemoRequest(input: CreateDemoRequestInput): Promise<
   });
 }
 
+export async function createAnalyticsEvent(input: CreateAnalyticsEventInput): Promise<AnalyticsEvent> {
+  return publicApiFetch<AnalyticsEventResponse>("/v1/analytics/events", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function getAdminOverview(session: BusinessSession): Promise<AdminOverview> {
   return apiFetch<AdminOverviewResponse>(session, "/v1/admin/overview", {
     method: "GET"
@@ -1413,6 +1425,12 @@ export async function getAdminReleaseReadiness(
     `/v1/admin/release-readiness?environment=${encodeURIComponent(environment)}`,
     { method: "GET" }
   );
+}
+
+export async function getAdminAnalyticsSummary(session: BusinessSession): Promise<AdminAnalyticsSummary> {
+  return apiFetch<AdminAnalyticsSummaryResponse>(session, "/v1/admin/analytics/summary", {
+    method: "GET"
+  });
 }
 
 export async function previewAdminOperationalReset(

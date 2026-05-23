@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { AnalyticsLink } from "./_components/analytics-link";
 import { PublicMarketingFooter } from "./_components/public-marketing-footer";
 import { PublicMarketingNav } from "./_components/public-marketing-nav";
+import { PublicAnalyticsPageView } from "./_components/public-analytics-page-view";
 import { ShipWrightIcon, type ShipWrightIconName } from "./_components/shipwright-icon";
 
 const proofPoints = [
@@ -359,10 +361,16 @@ function ConversionSection() {
             <span>{path.value}</span>
             <h3>{path.audience}</h3>
             <p>{path.body}</p>
-            <Link className="landing-conversion-link" href={path.href}>
+            <AnalyticsLink
+              analyticsLabel={path.cta}
+              analyticsMetadata={{ audience: path.value }}
+              analyticsSource="landing_conversion"
+              className="landing-conversion-link"
+              href={path.href}
+            >
               {path.cta}
               <ShipWrightIcon name="arrow" size={16} />
-            </Link>
+            </AnalyticsLink>
           </article>
         ))}
       </div>
@@ -459,6 +467,7 @@ function IntelligenceScene() {
 export default function HomePage() {
   return (
     <main className="landing-page landing-page-premium landing-page-story">
+      <PublicAnalyticsPageView page="landing" />
       <PublicMarketingNav />
 
       <section className="landing-story-hero">
@@ -470,12 +479,12 @@ export default function HomePage() {
             assistive operations intelligence into one calm command centre.
           </p>
           <div className="landing-hero-actions">
-            <Link className="button button-primary landing-button-primary" href="/pricing">
+            <AnalyticsLink analyticsLabel="Start a controlled pilot" analyticsSource="landing_hero" className="button button-primary landing-button-primary" href="/pricing">
               Start a controlled pilot
-            </Link>
-            <Link className="button button-secondary landing-button-secondary" href="/demo/investor">
+            </AnalyticsLink>
+            <AnalyticsLink analyticsLabel="View demo walkthrough" analyticsSource="landing_hero" className="button button-secondary landing-button-secondary" href="/demo/investor">
               View demo walkthrough
-            </Link>
+            </AnalyticsLink>
           </div>
         </div>
         <RouteOrchestrationScene />
@@ -605,12 +614,12 @@ export default function HomePage() {
           </p>
         </div>
         <div className="landing-cta-row">
-          <Link className="button button-primary landing-button-primary" href="/demo/request">
+          <AnalyticsLink analyticsLabel="Start controlled pilot" analyticsSource="landing_final" className="button button-primary landing-button-primary" href="/demo/request">
             Start controlled pilot
-          </Link>
-          <Link className="button button-secondary landing-button-secondary" href="/demo/investor">
+          </AnalyticsLink>
+          <AnalyticsLink analyticsLabel="View demo walkthrough" analyticsSource="landing_final" className="button button-secondary landing-button-secondary" href="/demo/investor">
             View demo walkthrough
-          </Link>
+          </AnalyticsLink>
         </div>
       </section>
 

@@ -57,6 +57,8 @@ import { OperationalResetsService } from "./operational-resets/operational-reset
 import { AdminValidationEvidenceController } from "./validation-evidence/validation-evidence.controller.js";
 import { ValidationEvidenceService } from "./validation-evidence/validation-evidence.service.js";
 import { AdminReleaseReadinessController } from "./release-readiness/release-readiness.controller.js";
+import { AdminAnalyticsController, PublicAnalyticsController } from "./analytics/analytics.controller.js";
+import { AnalyticsService } from "./analytics/analytics.service.js";
 
 @Module({
   imports: [],
@@ -85,6 +87,8 @@ import { AdminReleaseReadinessController } from "./release-readiness/release-rea
     AdminOperationalResetsController,
     AdminValidationEvidenceController,
     AdminReleaseReadinessController,
+    PublicAnalyticsController,
+    AdminAnalyticsController,
     AdminMenuHistoryController,
     AdminController,
     BusinessOrdersController,
@@ -112,6 +116,7 @@ import { AdminReleaseReadinessController } from "./release-readiness/release-rea
     DemoRequestsService,
     OperationalResetsService,
     ValidationEvidenceService,
+    AnalyticsService,
     DispatchRecoveryService,
     IncidentIntelligenceService,
     RestaurantsService,

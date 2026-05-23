@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AdminPaymentListSchema,
+  AdminAnalyticsSummarySchema,
   AdminMenuHistorySchema,
   CreateNotificationTestSchema,
   NotificationDiagnosticsSchema,
@@ -18,6 +19,7 @@ import {
   CancelJobSchema,
   CreateBusinessOrgSchema,
   CreateFleetOrganisationSchema,
+  CreateAnalyticsEventSchema,
   CreateTeamInviteSchema,
   CreateJobRequestSchema,
   CreateProofOfDeliverySchema,
@@ -285,6 +287,73 @@ describe("Menu item schemas", () => {
         appliedAt: new Date().toISOString()
       }).success
     ).toBe(true);
+  });
+});
+
+describe("Analytics schemas", () => {
+  it("parses allowlisted public analytics events", () => {
+    const parsed = CreateAnalyticsEventSchema.safeParse({
+      eventName: "CTA_CLICKED",
+      path: "/pricing",
+      sessionId: "session_123456",
+      metadata: { label: "Start controlled pilot", source: "pricing_hero" }
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects unknown or oversized analytics events", () => {
+    expect(CreateAnalyticsEventSchema.safeParse({ eventName: "UNKNOWN_EVENT" }).success).toBe(false);
+    expect(
+      CreateAnalyticsEventSchema.safeParse({
+        eventName: "CTA_CLICKED",
+        metadata: { blob: "x".repeat(5000) }
+      }).success
+    ).toBe(false);
+  });
+
+  it("parses admin analytics summaries", () => {
+    const parsed = AdminAnalyticsSummarySchema.safeParse({
+      generatedAt: new Date().toISOString(),
+      windows: {
+        last7Days: {
+          pageViews: 10,
+          ctaClicks: 4,
+          demoFormStarts: 2,
+          demoRequestSubmits: 1,
+          demoRequestFailures: 0,
+          formStartToSubmitRate: 0.5,
+          ctaToDemoRequestRate: 0.25
+        },
+        last30Days: {
+          pageViews: 20,
+          ctaClicks: 8,
+          demoFormStarts: 3,
+          demoRequestSubmits: 2,
+          demoRequestFailures: 1,
+          formStartToSubmitRate: 0.6667,
+          ctaToDemoRequestRate: 0.25
+        }
+      },
+      ctaPerformance: [{ label: "Start controlled pilot", source: "hero", count: 4 }],
+      pricingInterest: [{ label: "pilot", source: "pricing", count: 2 }],
+      recentEvents: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          eventName: "PUBLIC_PAGE_VIEW",
+          source: "public_site",
+          path: "/",
+          referrer: null,
+          sessionId: "session_123456",
+          visitorId: null,
+          demoRequestId: null,
+          metadata: {},
+          createdAt: new Date().toISOString()
+        }
+      ]
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });
 

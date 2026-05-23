@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import React from "react";
+import { AnalyticsLink } from "../_components/analytics-link";
+import { PublicAnalyticsPageView } from "../_components/public-analytics-page-view";
 import { PublicMarketingFooter } from "../_components/public-marketing-footer";
 import { PublicMarketingNav } from "../_components/public-marketing-nav";
 import { ShipWrightIcon, type ShipWrightIconName } from "../_components/shipwright-icon";
@@ -140,9 +141,16 @@ function PackageCard(props: { item: (typeof packages)[number] }) {
           </li>
         ))}
       </ul>
-      <Link className="button button-primary landing-button-primary pricing-package-cta" href={props.item.href}>
+      <AnalyticsLink
+        analyticsEventName="PRICING_CTA_CLICKED"
+        analyticsLabel={props.item.cta}
+        analyticsMetadata={{ package: props.item.label, interestType: props.item.href.includes("operator") ? "operator" : props.item.href.includes("investor") ? "investor" : "pilot" }}
+        analyticsSource="pricing_package"
+        className="button button-primary landing-button-primary pricing-package-cta"
+        href={props.item.href}
+      >
         {props.item.cta}
-      </Link>
+      </AnalyticsLink>
     </article>
   );
 }
@@ -166,6 +174,7 @@ function PricingList(props: { items: string[]; title: string; tone: "included" |
 export default function PricingPage() {
   return (
     <main className="pricing-page landing-page-story">
+      <PublicAnalyticsPageView page="pricing" />
       <PublicMarketingNav />
 
       <section className="pricing-hero">
@@ -178,12 +187,26 @@ export default function PricingPage() {
             support needs.
           </p>
           <div className="pricing-hero-actions">
-            <Link className="button button-primary landing-button-primary" href="/demo/request?interest=pilot">
+            <AnalyticsLink
+              analyticsEventName="PRICING_CTA_CLICKED"
+              analyticsLabel="Start controlled pilot"
+              analyticsMetadata={{ interestType: "pilot" }}
+              analyticsSource="pricing_hero"
+              className="button button-primary landing-button-primary"
+              href="/demo/request?interest=pilot"
+            >
               Start controlled pilot
-            </Link>
-            <Link className="button button-secondary landing-button-secondary" href="/demo/request?interest=operator">
+            </AnalyticsLink>
+            <AnalyticsLink
+              analyticsEventName="PRICING_CTA_CLICKED"
+              analyticsLabel="Book operator walkthrough"
+              analyticsMetadata={{ interestType: "operator" }}
+              analyticsSource="pricing_hero"
+              className="button button-secondary landing-button-secondary"
+              href="/demo/request?interest=operator"
+            >
               Book operator walkthrough
-            </Link>
+            </AnalyticsLink>
           </div>
         </div>
         <div className="pricing-hero-scene" aria-hidden="true">
@@ -246,12 +269,26 @@ export default function PricingPage() {
           </p>
         </div>
         <div className="pricing-final-actions">
-          <Link className="button button-primary landing-button-primary" href="/demo/request?interest=pilot">
+          <AnalyticsLink
+            analyticsEventName="PRICING_CTA_CLICKED"
+            analyticsLabel="Start controlled pilot"
+            analyticsMetadata={{ interestType: "pilot" }}
+            analyticsSource="pricing_final"
+            className="button button-primary landing-button-primary"
+            href="/demo/request?interest=pilot"
+          >
             Start controlled pilot
-          </Link>
-          <Link className="button button-secondary landing-button-secondary" href="/demo/request?interest=investor">
+          </AnalyticsLink>
+          <AnalyticsLink
+            analyticsEventName="PRICING_CTA_CLICKED"
+            analyticsLabel="Request investor walkthrough"
+            analyticsMetadata={{ interestType: "investor" }}
+            analyticsSource="pricing_final"
+            className="button button-secondary landing-button-secondary"
+            href="/demo/request?interest=investor"
+          >
             Request investor walkthrough
-          </Link>
+          </AnalyticsLink>
         </div>
       </section>
 

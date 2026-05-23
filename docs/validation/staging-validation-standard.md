@@ -63,6 +63,7 @@ The paid-delivery proof must confirm:
 - demo request creation records internal admin notification posture through `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` outbox events or an explicitly documented fallback
 - demo request/admin notification delivery no-ops safely when `DEMO_REQUEST_WEBHOOK_URL`, `ADMIN_NOTIFICATION_EMAIL`, or Resend sender env is absent
 - notification diagnostics at `/admin/notifications` can create marked test events for configured email/webhook channels and must not expose secrets
+- first-party analytics at `/admin/analytics` remains admin-only and does not store raw IP addresses or raw user agents
 - release readiness checks green
 
 ## Stored Validation Evidence
@@ -132,6 +133,8 @@ Browser smoke must validate both unauthenticated and authenticated surfaces when
 For release/full smoke mode, set `SMOKE_REQUIRE_AUTH=true`; the smoke suite then fails when tracking or authenticated credentials are missing instead of skipping.
 
 Commercial intake smoke should also check `/demo/request` structurally when demo request capture changes. A staging verification may submit one non-sensitive test request and confirm it appears in `/admin/demo-requests` and is reflected in `/admin/command` commercial intake posture.
+
+When public conversion or pricing changes ship, staging verification should open `/admin/analytics` after public CTA or demo request activity and confirm analytics events are visible or the empty state renders. Analytics collection must never block public navigation or demo request persistence.
 
 When demo request follow-up or notification delivery changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, view append-only event history, see notification delivery posture in `/admin/demo-requests`, and open `/admin/notifications` to review configuration diagnostics plus recent test events.
 
@@ -211,6 +214,7 @@ Playwright artifacts remain local and ignored:
 - Authenticated smoke should skip cleanly when env/session is absent, but must pass when smoke credentials are configured.
 - Public smoke should not require authentication.
 - Demo request follow-up changes should keep `/admin/demo-requests` and `/admin/command` calm, admin-only, event-audited, and free of CRM/email overclaims.
+- Product analytics changes should remain first-party, admin-only for reporting, privacy-conscious, and non-blocking for public conversion flows.
 - Operational reset changes should keep `/admin/operational-resets` admin-only, preview-first, per-record selectable, typed-confirmation gated, and non-destructive. Proof orders, jobs, payments, audit events, and proof artifacts must remain historical.
 - Release readiness must include support/escalation schema dependencies because order, job, admin command, closeout, and support history surfaces depend on them.
 - Support history events must be system-created from support create/update operations; new work must not add manual event creation or deletion paths.

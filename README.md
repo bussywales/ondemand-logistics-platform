@@ -49,6 +49,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin identity and access: `/admin/users`, `/admin/orgs`, `/admin/orgs/[orgId]/members`
 - Admin driver fleet organisations: `/admin/fleets`
 - Admin demo requests: `/admin/demo-requests`
+- Admin product analytics: `/admin/analytics`
 - Admin notification diagnostics: `/admin/notifications`
 - Admin operational reset tools: `/admin/operational-resets`
 - Fleet manager workspace: `/fleet`
@@ -91,6 +92,16 @@ Commercial notifications v2 adds platform-admin delivery diagnostics at `/admin/
 - invite lifecycle events (`ORG_INVITE_CREATED`, `ORG_INVITE_RESENT`, `ORG_INVITE_CANCELLED`) follow the same worker skip/send/fail metadata conventions
 
 CRM sync and automated follow-up delivery remain deferred.
+
+## Product Analytics
+Product Analytics v1 adds first-party public funnel analytics without an external analytics vendor.
+
+- Public analytics events are written to `public.analytics_events` through `POST /v1/analytics/events`.
+- Tracked public signals include page views, CTA clicks, pricing CTA clicks, demo request form starts, demo request submits/failures, and mega menu opens.
+- `/admin/analytics` shows page views, CTA performance, pricing interest, form start-to-submit conversion, recent events, and a privacy note.
+- Raw IP addresses and raw user agents are not stored; the API stores hashes or omits request metadata.
+- Analytics failures must not block CTA navigation, pricing navigation, or demo request submission.
+- Demo request persistence remains the source of commercial truth.
 
 ## Operational Reset Tools
 `/admin/operational-resets` provides platform-admin-only staging/demo tidy controls.

@@ -17,6 +17,7 @@ describe("product updates content", () => {
   it("includes the current key product updates", () => {
     expect(productUpdates.map((update) => update.id)).toEqual(
       expect.arrayContaining([
+        "product-analytics-v1",
         "commercial-notification-diagnostics",
         "iam-invite-lifecycle-audit",
         "operational-reset-selection",

@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "product-analytics-v1",
+    title: "Public funnel analytics are available",
+    summary: "Platform admins can now review first-party page, CTA, pricing, and demo request funnel signals without adding an external analytics vendor.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin", "/admin/command", "/admin/analytics"],
+    releasedAt: "2026-05-23T10:00:00.000Z",
+    version: "v3.0",
+    ctaLabel: "Open analytics",
+    ctaHref: "/admin/analytics"
+  },
+  {
     id: "commercial-notification-diagnostics",
     title: "Commercial notification diagnostics are available",
     summary: "Platform admins can now review notification delivery posture and queue safe email or webhook tests without exposing secrets.",

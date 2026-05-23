@@ -4,6 +4,7 @@ import Link from "next/link";
 import React, { useEffect, useId, useRef, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
+import { trackCtaClick, trackMenuOpened } from "../_lib/analytics";
 
 type PublicMenuItem = {
   description: string;
@@ -122,6 +123,13 @@ export function PublicMarketingNav() {
     setMobileOpen(false);
   }
 
+  function openMenu(menuKey: string) {
+    setActiveMenuKey(menuKey);
+    if (activeMenuKey !== menuKey) {
+      trackMenuOpened(menuKey);
+    }
+  }
+
   return (
     <header className="topbar landing-topbar landing-story-topbar public-marketing-header" ref={headerRef}>
       <div className="public-marketing-header-row">
@@ -134,25 +142,46 @@ export function PublicMarketingNav() {
               aria-expanded={activeMenuKey === menu.key}
               className="landing-mega-trigger"
               key={menu.key}
-              onClick={() => setActiveMenuKey(menu.key)}
-              onFocus={() => setActiveMenuKey(menu.key)}
-              onMouseEnter={() => setActiveMenuKey(menu.key)}
+              onClick={() => openMenu(menu.key)}
+              onFocus={() => openMenu(menu.key)}
+              onMouseEnter={() => openMenu(menu.key)}
               type="button"
             >
               <span>{menu.label}</span>
               <ShipWrightIcon name="arrow" size={14} />
             </button>
           ))}
-          <Link className="landing-nav-link landing-nav-pricing-link" href="/pricing" onClick={closeMenus}>
+          <Link
+            className="landing-nav-link landing-nav-pricing-link"
+            href="/pricing"
+            onClick={() => {
+              trackCtaClick("Pricing", "public_nav");
+              closeMenus();
+            }}
+          >
             Pricing
           </Link>
         </nav>
 
         <div className="landing-nav-actions public-marketing-desktop-actions">
-          <Link className="landing-nav-link" href="/get-started" onClick={closeMenus}>
+          <Link
+            className="landing-nav-link"
+            href="/get-started"
+            onClick={() => {
+              trackCtaClick("Get started", "public_nav");
+              closeMenus();
+            }}
+          >
             Get started
           </Link>
-          <Link className="landing-nav-cta" href="/demo/request" onClick={closeMenus}>
+          <Link
+            className="landing-nav-cta"
+            href="/demo/request"
+            onClick={() => {
+              trackCtaClick("Start controlled pilot", "public_nav");
+              closeMenus();
+            }}
+          >
             Start controlled pilot
           </Link>
         </div>
@@ -199,7 +228,13 @@ export function PublicMarketingNav() {
           <div className="public-mega-proof-card">
             <span>{activeMenu.label}</span>
             <strong>{activeMenu.proof}</strong>
-            <Link href={activeMenu.key === "resources" ? "/demo/request" : "/pricing"} onClick={closeMenus}>
+            <Link
+              href={activeMenu.key === "resources" ? "/demo/request" : "/pricing"}
+              onClick={() => {
+                trackCtaClick(activeMenu.key === "resources" ? "Request walkthrough" : "See pilot packages", `mega_menu_${activeMenu.key}`);
+                closeMenus();
+              }}
+            >
               {activeMenu.key === "resources" ? "Request walkthrough" : "See pilot packages"}
               <ShipWrightIcon name="arrow" size={15} />
             </Link>
@@ -208,7 +243,14 @@ export function PublicMarketingNav() {
       ) : null}
 
       <nav className={mobileOpen ? "public-mobile-menu is-open" : "public-mobile-menu"} aria-label="Mobile marketing navigation">
-        <Link className="public-mobile-direct-link" href="/pricing" onClick={closeMenus}>
+        <Link
+          className="public-mobile-direct-link"
+          href="/pricing"
+          onClick={() => {
+            trackCtaClick("Pricing", "mobile_nav");
+            closeMenus();
+          }}
+        >
           Pricing
         </Link>
         {publicMenus.map((menu) => (
@@ -225,10 +267,24 @@ export function PublicMarketingNav() {
           </details>
         ))}
         <div className="public-mobile-actions">
-          <Link className="landing-nav-link" href="/get-started" onClick={closeMenus}>
+          <Link
+            className="landing-nav-link"
+            href="/get-started"
+            onClick={() => {
+              trackCtaClick("Get started", "mobile_nav");
+              closeMenus();
+            }}
+          >
             Get started
           </Link>
-          <Link className="landing-nav-cta" href="/demo/request" onClick={closeMenus}>
+          <Link
+            className="landing-nav-cta"
+            href="/demo/request"
+            onClick={() => {
+              trackCtaClick("Start controlled pilot", "mobile_nav");
+              closeMenus();
+            }}
+          >
             Start controlled pilot
           </Link>
         </div>

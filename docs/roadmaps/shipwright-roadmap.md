@@ -26,6 +26,7 @@ ShipWright is a Stage 1 controlled-pilot logistics command centre with:
 - Playwright browser smoke testing
 - demo readiness package
 - public landing page with platform navigation and demo request path
+- first-party public funnel analytics and admin analytics view
 
 The current product is ready for controlled demos and tightly managed staging testers. It is not yet positioned as an unattended real-world pilot.
 
@@ -243,7 +244,7 @@ Constraints:
 - no automatic customer messaging, refund, cancellation, or driver assignment
 
 ## Workstream 7: Commercial Conversion Layer
-Status: In progress. Demo request persistence, internal notification posture, admin notification diagnostics, admin follow-up pipeline preparation, and controlled pilot package positioning are active.
+Status: In progress. Demo request persistence, internal notification posture, admin notification diagnostics, admin follow-up pipeline preparation, controlled pilot package positioning, and first-party public funnel analytics are active.
 
 Scope:
 - real demo request persistence
@@ -267,13 +268,16 @@ Current posture:
 - `/admin/notifications` shows safe configuration booleans, delivery status counts, recent test events, and safe error summaries without exposing secrets
 - invite lifecycle outbox events use the same worker skip/send/fail metadata conventions as demo request notifications
 - pricing CTAs preselect the correct demo request interest type
-- CRM sync and analytics workflows remain deferred; outbound email/webhook delivery is optional and only considered proven when configured and separately tested
+- first-party analytics records public page, CTA, pricing, and demo request form intent in `analytics_events`
+- `/admin/analytics` summarises first-party funnel performance without storing raw IP addresses or raw user agents
+- CRM sync remains deferred; outbound email/webhook delivery is optional and only considered proven when configured and separately tested
 
 Constraints:
 - do not imply CRM/email automation is live until it is wired and verified
 - do not expose notification secrets, sender credentials, or full webhook URLs in admin diagnostics
 - do not expose internal docs or proof artifacts publicly without review
 - do not expose demo request lists outside platform-admin surfaces
+- do not add external analytics vendors, cookies, raw IP storage, or raw user-agent storage without an explicit privacy review
 - do not add delete/destructive lead management in the follow-up pipeline
 
 ## Workstream 8: Brand/Product Marketing

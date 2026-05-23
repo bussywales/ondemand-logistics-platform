@@ -2181,6 +2181,78 @@ export const DemoRequestEventListSchema = z.object({
 });
 export type DemoRequestEventListDto = z.infer<typeof DemoRequestEventListSchema>;
 
+export const AnalyticsEventNameSchema = z.enum([
+  "PUBLIC_PAGE_VIEW",
+  "CTA_CLICKED",
+  "PRICING_CTA_CLICKED",
+  "DEMO_REQUEST_FORM_STARTED",
+  "DEMO_REQUEST_SUBMITTED",
+  "DEMO_REQUEST_FAILED",
+  "MEGA_MENU_OPENED"
+]);
+export type AnalyticsEventName = z.infer<typeof AnalyticsEventNameSchema>;
+
+const AnalyticsMetadataSchema = z.record(z.string(), z.unknown()).refine(
+  (value) => JSON.stringify(value).length <= 4096,
+  { message: "analytics_metadata_too_large" }
+);
+
+export const CreateAnalyticsEventSchema = z.object({
+  eventName: AnalyticsEventNameSchema,
+  source: z.string().trim().min(2).max(80).default("public_site"),
+  path: z.string().trim().max(500).nullable().optional(),
+  referrer: z.string().trim().max(500).nullable().optional(),
+  sessionId: z.string().trim().min(6).max(120).nullable().optional(),
+  visitorId: z.string().trim().min(6).max(120).nullable().optional(),
+  demoRequestId: z.string().uuid().nullable().optional(),
+  metadata: AnalyticsMetadataSchema.default({})
+});
+export type CreateAnalyticsEventInput = z.infer<typeof CreateAnalyticsEventSchema>;
+
+export const AnalyticsEventSchema = z.object({
+  id: z.string().uuid(),
+  eventName: AnalyticsEventNameSchema,
+  source: z.string(),
+  path: z.string().nullable(),
+  referrer: z.string().nullable(),
+  sessionId: z.string().nullable(),
+  visitorId: z.string().nullable(),
+  demoRequestId: z.string().uuid().nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+  createdAt: IsoDateTimeSchema
+});
+export type AnalyticsEventDto = z.infer<typeof AnalyticsEventSchema>;
+
+export const AnalyticsMetricWindowSchema = z.object({
+  pageViews: z.number().int().nonnegative(),
+  ctaClicks: z.number().int().nonnegative(),
+  demoFormStarts: z.number().int().nonnegative(),
+  demoRequestSubmits: z.number().int().nonnegative(),
+  demoRequestFailures: z.number().int().nonnegative(),
+  formStartToSubmitRate: z.number().nullable(),
+  ctaToDemoRequestRate: z.number().nullable()
+});
+export type AnalyticsMetricWindowDto = z.infer<typeof AnalyticsMetricWindowSchema>;
+
+export const AnalyticsBreakdownRowSchema = z.object({
+  label: z.string(),
+  source: z.string().nullable().optional(),
+  count: z.number().int().nonnegative()
+});
+export type AnalyticsBreakdownRowDto = z.infer<typeof AnalyticsBreakdownRowSchema>;
+
+export const AdminAnalyticsSummarySchema = z.object({
+  generatedAt: IsoDateTimeSchema,
+  windows: z.object({
+    last7Days: AnalyticsMetricWindowSchema,
+    last30Days: AnalyticsMetricWindowSchema
+  }),
+  ctaPerformance: z.array(AnalyticsBreakdownRowSchema),
+  pricingInterest: z.array(AnalyticsBreakdownRowSchema),
+  recentEvents: z.array(AnalyticsEventSchema)
+});
+export type AdminAnalyticsSummaryDto = z.infer<typeof AdminAnalyticsSummarySchema>;
+
 export const OperationalResetModeSchema = z.enum([
   "PREVIEW",
   "ARCHIVE_DEMO_REQUESTS",

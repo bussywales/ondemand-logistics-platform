@@ -451,6 +451,9 @@ export function AdminCommandView(props: {
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/demo-requests">
               Open demo requests
             </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/analytics">
+              Funnel analytics
+            </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/notifications">
               Test notifications
             </Link>
