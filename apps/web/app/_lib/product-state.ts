@@ -1623,6 +1623,43 @@ export type EligibleDriver = {
   suitabilityReason: string;
 };
 
+export type DispatchOverrideType =
+  | "ASSIGN_DRIVER"
+  | "REASSIGN_DRIVER"
+  | "UNASSIGN_DRIVER"
+  | "MARK_DISPATCH_REVIEWED"
+  | "MARK_DISPATCH_BLOCKED"
+  | "MANUAL_RECOVERY_NOTE";
+
+export type DispatchCourierAffiliation = {
+  courierType: "INDEPENDENT_COURIER" | "FLEET_MANAGED_COURIER" | "UNKNOWN";
+  fleetOrgId: string | null;
+  fleetOrgName: string | null;
+  fleetRole: string | null;
+};
+
+export type DispatchAuditEvent = {
+  id: string;
+  orgId: string | null;
+  orgName: string | null;
+  jobId: string;
+  orderId: string | null;
+  eventType: string;
+  overrideType: DispatchOverrideType | null;
+  reason: string | null;
+  note: string | null;
+  actorId: string | null;
+  actorLabel: string | null;
+  previousDriverId: string | null;
+  previousDriverName: string | null;
+  previousDriverAffiliation: DispatchCourierAffiliation | null;
+  newDriverId: string | null;
+  newDriverName: string | null;
+  newDriverAffiliation: DispatchCourierAffiliation | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
 export type DriverJob = {
   id: string;
   orgId: string | null;

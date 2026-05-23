@@ -59,6 +59,7 @@ The paid-delivery proof must confirm:
 - pilot rehearsal cockpit remains read-only and uses stored validation evidence when `validation_evidence_runs` has current release/proof/smoke records
 - validation evidence older than 24 hours is treated as stale for rehearsal readiness
 - driver fleet organisation surfaces remain visibility-first and do not change dispatch preference, payout, billing, or courier suspension behavior
+- dispatch governance remains human-reviewed: manual assignment override requires reason and typed confirmation, audit history is append-only/read-only for admins, and no driver scoring, suspension, payout, or autonomous reassignment appears
 - demo request persistence remains available for public commercial intake and platform-admin review
 - demo request creation records internal admin notification posture through `NOTIFY_ADMIN_DEMO_REQUEST_CREATED` outbox events or an explicitly documented fallback
 - demo request/admin notification delivery no-ops safely when `DEMO_REQUEST_WEBHOOK_URL`, `ADMIN_NOTIFICATION_EMAIL`, or Resend sender env is absent
@@ -141,6 +142,8 @@ When public conversion or pricing changes ship, staging verification should open
 When demo request follow-up or notification delivery changes ship, staging verification should also confirm an admin can assign an owner, set a next follow-up date, mark contact, view append-only event history, see notification delivery posture in `/admin/demo-requests`, and open `/admin/notifications` to review configuration diagnostics plus recent test events.
 
 When finance visibility changes ship, staging verification should open `/app/finance`, `/admin/finance`, and `/admin/command` to confirm captured/pending/failed totals, refund-review counts, and transaction rows render. Finance v1 is review-only: no automated refunds, payout automation, or payment-provider mutation should appear.
+
+When dispatch governance changes ship, staging verification should open a recent `/app/jobs/[latestJobId]` detail page and `/admin/dispatch-audit` to confirm manual review controls, assignment audit rows or empty state, courier affiliation copy, and the absence of autonomous scoring/suspension language.
 
 ## Smoke Users
 Use dedicated staging-only smoke accounts. Document roles, not secrets:

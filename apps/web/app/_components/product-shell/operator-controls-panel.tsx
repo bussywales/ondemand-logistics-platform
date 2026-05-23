@@ -14,7 +14,7 @@ type OperatorControlsPanelProps = {
   eligibleDriversLoading: boolean;
   filteredEligibleDrivers: EligibleDriver[];
   job: AppJob;
-  onAssignDriver: (driverId: string) => void;
+  onAssignDriver: (driverId: string, governance: { reason: string; confirmation: string; note?: string | null }) => void;
   onCancelJob: (job: AppJob) => void;
   onCancelReasonChange: (value: string) => void;
   onCloseDriverPicker: () => void;

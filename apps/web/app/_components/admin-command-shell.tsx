@@ -8,7 +8,7 @@ import { BrandLogo } from "./brand-logo";
 import { ProductUpdateAnnouncement } from "./product-updates";
 import { ShipWrightIcon, type ShipWrightIconName } from "./shipwright-icon";
 import { useBusinessAuth } from "./business-auth-provider";
-import { getAdminDailyBriefing, getAdminEndOfDayReport, getAdminFinanceSummary, getLatestAdminValidationEvidence, getUserFacingApiError, listAdminDemoRequests, listAdminOperationalResets, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
+import { getAdminDailyBriefing, getAdminEndOfDayReport, getAdminFinanceSummary, getLatestAdminValidationEvidence, getUserFacingApiError, listAdminDemoRequests, listAdminDispatchAudit, listAdminOperationalResets, listAdminPilots, listAdminSupportEscalations } from "../_lib/api";
 import { canOpenOrgConsole } from "../_lib/admin-state";
 import { getPilotGuardrailState } from "../_lib/pilot-guardrails";
 import {
@@ -16,6 +16,7 @@ import {
   type DailyBriefing,
   type DailyBriefingItem,
   type DemoRequest,
+  type DispatchAuditEvent,
   type EndOfDayReport,
   type FinanceSummary,
   type OperationalResetRun,
@@ -275,6 +276,8 @@ export function AdminCommandView(props: {
   validationEvidenceError?: string | null;
   financeSummary?: FinanceSummary | null;
   financeSummaryError?: string | null;
+  dispatchAudit: DispatchAuditEvent[];
+  dispatchAuditError?: string | null;
   supportError?: string | null;
   supportEscalations: SupportEscalation[];
 }) {
@@ -332,6 +335,12 @@ export function AdminCommandView(props: {
       ]
     : [];
   const newDemoRequests = props.demoRequests.filter((request) => request.status === "NEW");
+  const dispatchAudit = props.dispatchAudit ?? [];
+  const dispatchOverrideCount = dispatchAudit.length;
+  const dispatchBlockedCount = dispatchAudit.filter((event) => event.overrideType === "MARK_DISPATCH_BLOCKED").length;
+  const dispatchReassignmentCount = dispatchAudit.filter(
+    (event) => event.overrideType === "ASSIGN_DRIVER" || event.overrideType === "REASSIGN_DRIVER" || event.eventType === "JOB_REASSIGNED"
+  ).length;
   const oldestNewDemoRequestAge =
     newDemoRequests.length > 0
       ? Math.max(...newDemoRequests.map((request) => minutesSince(request.createdAt)))
@@ -360,6 +369,9 @@ export function AdminCommandView(props: {
           <CountCard copy="Operator-approved follow-up items remaining for closeout." label="Unresolved actions" tone={props.report.unresolvedCount ? "warning" : "success"} value={props.report.unresolvedCount} />
           <CountCard copy="Human support records that remain open or in review." label="Support follow-up" tone={supportPosture.highCriticalSupportEscalations ? "warning" : supportPosture.openSupportEscalations ? "info" : "success"} value={supportPosture.openSupportEscalations} />
           <CountCard copy="Support records resolved or cancelled during the selected closeout date." label="Support closed today" tone="success" value={props.report.incidentsSummary.supportClosedToday} />
+          <CountCard copy="Human-reviewed dispatch override or recovery events recorded for the selected date." label="Dispatch reviews" tone={dispatchOverrideCount ? "info" : "success"} value={dispatchOverrideCount} />
+          <CountCard copy="Manual assignment or reassignment events recorded for the selected date." label="Assignment overrides" tone={dispatchReassignmentCount ? "info" : "success"} value={dispatchReassignmentCount} />
+          <CountCard copy="Dispatch records marked blocked for human review." label="Dispatch blocked" tone={dispatchBlockedCount ? "warning" : "success"} value={dispatchBlockedCount} />
           <CountCard copy="Pilot profiles tracked for controlled operations." label="Pilot workspaces" tone={props.pilots.length ? "info" : "success"} value={props.pilots.length} />
           <CountCard copy="Controlled pilot workspaces currently active." label="Active controlled pilots" tone={activeControlledPilots ? "info" : "success"} value={activeControlledPilots} />
           <CountCard copy="Workspaces marked live-ready with pilot-ready evidence." label="Live-ready pilots" tone={liveReadyPilots ? "success" : "info"} value={liveReadyPilots} />
@@ -886,11 +898,13 @@ export function AdminCommandShell() {
   const [operationalResets, setOperationalResets] = useState<OperationalResetRun[]>([]);
   const [validationEvidence, setValidationEvidence] = useState<ValidationEvidenceLatest | null>(null);
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
+  const [dispatchAudit, setDispatchAudit] = useState<DispatchAuditEvent[]>([]);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
   const [demoRequestsError, setDemoRequestsError] = useState<string | null>(null);
   const [operationalResetsError, setOperationalResetsError] = useState<string | null>(null);
   const [validationEvidenceError, setValidationEvidenceError] = useState<string | null>(null);
   const [financeSummaryError, setFinanceSummaryError] = useState<string | null>(null);
+  const [dispatchAuditError, setDispatchAuditError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -915,6 +929,7 @@ export function AdminCommandShell() {
     setOperationalResetsError(null);
     setValidationEvidenceError(null);
     setFinanceSummaryError(null);
+    setDispatchAuditError(null);
 
     void Promise.all([
       loadAdminCommandData(session, selectedDate),
@@ -938,9 +953,17 @@ export function AdminCommandShell() {
       getAdminFinanceSummary(session).catch((issue) => {
         setFinanceSummaryError(getUserFacingApiError(issue, "Finance posture unavailable. Refresh or contact support."));
         return null;
+      }),
+      listAdminDispatchAudit(session, {
+        from: `${selectedDate}T00:00:00.000Z`,
+        to: `${selectedDate}T23:59:59.999Z`,
+        limit: 100
+      }).catch((issue) => {
+        setDispatchAuditError(getUserFacingApiError(issue, "Dispatch audit unavailable. Refresh or contact support."));
+        return [];
       })
     ])
-      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence, nextFinanceSummary]) => {
+      .then(([commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence, nextFinanceSummary, nextDispatchAudit]) => {
         if (!active) {
           return;
         }
@@ -953,6 +976,7 @@ export function AdminCommandShell() {
         setOperationalResets(nextOperationalResets);
         setValidationEvidence(nextValidationEvidence);
         setFinanceSummary(nextFinanceSummary);
+        setDispatchAudit(nextDispatchAudit);
       })
       .catch((issue) => {
         if (!active) {
@@ -985,9 +1009,10 @@ export function AdminCommandShell() {
     setOperationalResetsError(null);
     setValidationEvidenceError(null);
     setFinanceSummaryError(null);
+    setDispatchAuditError(null);
 
     try {
-      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence, nextFinanceSummary] = await Promise.all([
+      const [commandData, nextPilots, nextSupportEscalations, nextDemoRequests, nextOperationalResets, nextValidationEvidence, nextFinanceSummary, nextDispatchAudit] = await Promise.all([
         loadAdminCommandData(nextSession, selectedDate),
         listAdminPilots(nextSession).catch(() => []),
         listAdminSupportEscalations(nextSession).catch((issue) => {
@@ -1009,6 +1034,14 @@ export function AdminCommandShell() {
         getAdminFinanceSummary(nextSession).catch((issue) => {
           setFinanceSummaryError(getUserFacingApiError(issue, "Finance posture unavailable. Refresh or contact support."));
           return null;
+        }),
+        listAdminDispatchAudit(nextSession, {
+          from: `${selectedDate}T00:00:00.000Z`,
+          to: `${selectedDate}T23:59:59.999Z`,
+          limit: 100
+        }).catch((issue) => {
+          setDispatchAuditError(getUserFacingApiError(issue, "Dispatch audit unavailable. Refresh or contact support."));
+          return [];
         })
       ]);
       setBriefing(commandData.briefing);
@@ -1019,6 +1052,7 @@ export function AdminCommandShell() {
       setOperationalResets(nextOperationalResets);
       setValidationEvidence(nextValidationEvidence);
       setFinanceSummary(nextFinanceSummary);
+      setDispatchAudit(nextDispatchAudit);
     } catch (issue) {
       setLoadError(getUserFacingApiError(issue, COMMAND_INTELLIGENCE_UNAVAILABLE_MESSAGE));
     } finally {
@@ -1097,6 +1131,9 @@ export function AdminCommandShell() {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/menu-history">
             Menu history
           </Link>
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/dispatch-audit">
+            Dispatch audit
+          </Link>
           <button className="button button-secondary" onClick={() => void handleRefresh()} type="button">
             Refresh
           </button>
@@ -1148,6 +1185,8 @@ export function AdminCommandShell() {
           report={report}
           selectedDate={selectedDate}
           session={session}
+          dispatchAudit={dispatchAudit}
+          dispatchAuditError={dispatchAuditError}
           financeSummary={financeSummary}
           financeSummaryError={financeSummaryError}
           supportError={supportLogError}

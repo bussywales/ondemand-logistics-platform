@@ -13,6 +13,8 @@ import type {
   EndOfDayReport,
   CreateDemoRequestInput,
   CreateAnalyticsEventInput,
+  DispatchAuditEvent,
+  DispatchOverrideType,
   DispatchRecoverySuggestion,
   DemoRequest,
   DemoRequestEvent,
@@ -281,6 +283,13 @@ type DriverStateResponse = DriverState;
 type DriverOfferResponse = DriverOffer;
 type EligibleDriverListResponse = {
   items: EligibleDriver[];
+};
+type DispatchAuditListResponse = {
+  items: DispatchAuditEvent[];
+};
+type DispatchOverrideResponse = {
+  event: DispatchAuditEvent | null;
+  job: JobResponse | null;
 };
 type DriverJobResponse = DriverJob | null;
 type DriverOfferAcceptResponse = DriverOfferAcceptResult;
@@ -1296,6 +1305,33 @@ export async function reassignDriver(session: BusinessSession, jobId: string, dr
   return toAppJob(job, tracking, payment ? { payment } : null);
 }
 
+export async function listBusinessDispatchAudit(session: BusinessSession, jobId: string): Promise<DispatchAuditEvent[]> {
+  const result = await apiFetch<DispatchAuditListResponse>(session, `/v1/business/jobs/${jobId}/dispatch-audit`, {
+    method: "GET"
+  });
+  return result.items;
+}
+
+export async function createDispatchOverride(
+  session: BusinessSession,
+  jobId: string,
+  input: {
+    overrideType: DispatchOverrideType;
+    reason: string;
+    note?: string | null;
+    newDriverId?: string | null;
+    confirmation?: string | null;
+  }
+): Promise<DispatchOverrideResponse> {
+  return apiFetch<DispatchOverrideResponse>(session, `/v1/business/jobs/${jobId}/dispatch-override`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-dispatch-override`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
 export async function listEligibleDrivers(session: BusinessSession, jobId: string): Promise<EligibleDriver[]> {
   const result = await apiFetch<EligibleDriverListResponse>(session, `/v1/jobs/${jobId}/eligible-drivers`, {
     method: "GET"
@@ -1369,6 +1405,21 @@ export async function listAdminFinanceTransactions(session: BusinessSession): Pr
     method: "GET"
   });
 
+  return result.items;
+}
+
+export async function listAdminDispatchAudit(
+  session: BusinessSession,
+  filters: { orgId?: string; jobId?: string; overrideType?: string; from?: string; to?: string; limit?: number } = {}
+): Promise<DispatchAuditEvent[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, String(value));
+  }
+  const query = params.toString();
+  const result = await apiFetch<DispatchAuditListResponse>(session, `/v1/admin/dispatch-audit${query ? `?${query}` : ""}`, {
+    method: "GET"
+  });
   return result.items;
 }
 

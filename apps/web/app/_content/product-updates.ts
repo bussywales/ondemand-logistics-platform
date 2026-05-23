@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "dispatch-governance-assignment-audit",
+    title: "Dispatch governance is now auditable",
+    summary: "Operators can record human dispatch review context, while platform admins can inspect assignment and override history across organisations.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/jobs", "/admin/dispatch-audit", "/admin/command"],
+    releasedAt: "2026-05-23T21:00:00.000Z",
+    version: "v3.3",
+    ctaLabel: "Open dispatch audit",
+    ctaHref: "/admin/dispatch-audit"
+  },
+  {
     id: "finance-settlement-refund-review",
     title: "Finance review surfaces are available",
     summary: "Business operators and platform admins can now review captured, pending, failed, and refund-review payment posture without automated refunds or payouts.",

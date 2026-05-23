@@ -3,6 +3,7 @@ import type {
   AppJob,
   BusinessSession,
   CreateSupportEscalationInput,
+  DispatchAuditEvent,
   EligibleDriver,
   SupportEscalation,
   SupportEscalationEvent,
@@ -11,6 +12,7 @@ import type {
 import type { DriverAssignmentFailureModel } from "../../_lib/driver-assignment";
 import { getDispatchIntelligence } from "../../_lib/dispatch-intelligence";
 import { DispatchTimelinePanel } from "./dispatch-timeline-panel";
+import { DispatchGovernancePanel } from "./dispatch-governance-panel";
 import { JobIncidentSummaryPanel } from "./job-incident-summary-panel";
 import { JobDecisionSurface } from "./job-decision-surface";
 import { JobRouteAndDriverPanel } from "./job-route-and-driver-panel";
@@ -25,16 +27,24 @@ type JobDetailViewProps = {
   driverAssignmentError: DriverAssignmentFailureModel | null;
   driverPickerOpen: boolean;
   driverPickerQuery: string;
+  dispatchAudit: DispatchAuditEvent[];
+  dispatchGovernanceError?: string | null;
+  dispatchOverrideSubmitting: boolean;
   eligibleDrivers: EligibleDriver[];
   eligibleDriversLoading: boolean;
   filteredEligibleDrivers: EligibleDriver[];
   job: AppJob;
-  onAssignDriver: (driverId: string) => void;
+  onAssignDriver: (driverId: string, governance: { reason: string; confirmation: string; note?: string | null }) => void;
   onAuthorizePayment: (job: AppJob) => void;
   onCancelJob: (job: AppJob) => void;
   onCancelReasonChange: (value: string) => void;
   onCloseDriverPicker: () => void;
   onCollectedPaymentMethod: (paymentMethod: CollectedPaymentMethod) => void;
+  onCreateDispatchOverride: (input: {
+    overrideType: "MARK_DISPATCH_REVIEWED" | "MARK_DISPATCH_BLOCKED" | "MANUAL_RECOVERY_NOTE";
+    reason: string;
+    note?: string | null;
+  }) => Promise<void> | void;
   onDriverPickerQueryChange: (value: string) => void;
   onOpenDriverPicker: () => void;
   onOpenOrRefreshDriverPicker: () => void;
@@ -75,6 +85,13 @@ export function JobDetailView(props: JobDetailViewProps) {
         submitting={props.supportSubmitting}
       />
       <JobRouteAndDriverPanel job={props.job} />
+      <DispatchGovernancePanel
+        audit={props.dispatchAudit}
+        error={props.dispatchGovernanceError}
+        job={props.job}
+        onCreateOverride={props.onCreateDispatchOverride}
+        submitting={props.dispatchOverrideSubmitting}
+      />
       <DispatchTimelinePanel job={props.job} />
       <PaymentStatusPanel
         collectedPaymentMethod={props.collectedPaymentMethod}

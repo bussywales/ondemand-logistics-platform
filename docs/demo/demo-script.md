@@ -100,6 +100,22 @@ Say:
 - human support notes can be recorded against the order without sending messages or executing refunds automatically
 - support history is append-only audit context; operators can see who changed what, when, and why
 
+### 5A. Job dispatch governance
+Open:
+- `/app/jobs/<latestJobId>`
+
+Show:
+- dispatch assignment posture
+- independent vs fleet-managed courier context where available
+- manual review note controls
+- assignment audit timeline
+- typed confirmation requirement before manual assignment override
+
+Say:
+- dispatch recovery remains human-reviewed
+- assignment changes are recorded for accountability
+- ShipWright does not autonomously reassign, score, suspend, or financially penalise couriers
+
 ### 6. Payment risk page
 Open:
 - `/app/payments`
@@ -211,6 +227,7 @@ Show:
 - support escalation counts in the top command posture
 - support records closed today in the closeout posture
 - link to `/admin/menu-history` for read-only investigation of merchant menu edits across organisations
+- link to `/admin/dispatch-audit` for read-only investigation of manual dispatch review and assignment history
 
 Say:
 - this is deterministic command intelligence for platform oversight
@@ -218,6 +235,7 @@ Say:
 - support escalation visibility is oversight-only for admins in this pass; business operators still own direct follow-up unless delegated
 - business operators close support records with a resolution note and final action; ShipWright records the support history as append-only audit context but does not message, refund, cancel, or assign automatically
 - platform support can inspect menu change history for pilot troubleshooting, but admins cannot mutate or roll back merchant menus from the history view
+- platform support can inspect dispatch audit history, but admins do not trigger autonomous reassignment from the audit view
 - menu history now labels whether a change has enough structured metadata for rollback
 - business operators can preview prepared rollback events and must type `ROLLBACK MENU CHANGE` before ShipWright restores the audited previous values
 - rollback is human-reviewed and audit-backed; it does not delete menu records and remains unavailable from the admin cross-org history view

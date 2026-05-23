@@ -462,6 +462,9 @@ export function AdminShell(props: { latestProof: AdminProofSummary | null }) {
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/drivers">
               Driver readiness
             </Link>
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/dispatch-audit">
+              Dispatch audit
+            </Link>
             <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/fleets">
               Fleet companies
             </Link>

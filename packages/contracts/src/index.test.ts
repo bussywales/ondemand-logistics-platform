@@ -21,6 +21,7 @@ import {
   CreateFleetOrganisationSchema,
   CreateFleetInviteSchema,
   CreateAnalyticsEventSchema,
+  CreateDispatchOverrideSchema,
   CreateTeamInviteSchema,
   CreateJobRequestSchema,
   CreateProofOfDeliverySchema,
@@ -28,6 +29,7 @@ import {
   CreateSupportEscalationSchema,
   CreatePilotWorkspaceSchema,
   CustomerOrderStatusSchema,
+  DispatchAuditListSchema,
   EligibleDriverListSchema,
   FleetDriverListSchema,
   FleetDriverDetailSchema,
@@ -120,6 +122,60 @@ describe("CreateJobRequestSchema", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+});
+
+describe("dispatch governance schemas", () => {
+  it("parses dispatch overrides and audit rows", () => {
+    const now = new Date().toISOString();
+    const jobId = "11111111-1111-4111-8111-111111111111";
+    const driverId = "22222222-2222-4222-8222-222222222222";
+
+    expect(CreateDispatchOverrideSchema.safeParse({
+      overrideType: "MANUAL_RECOVERY_NOTE",
+      reason: "Support escalation",
+      note: "Operator reviewed courier availability."
+    }).success).toBe(true);
+
+    expect(CreateDispatchOverrideSchema.safeParse({
+      overrideType: "REASSIGN_DRIVER",
+      newDriverId: driverId,
+      reason: "Courier unavailable",
+      confirmation: "CONFIRM DISPATCH OVERRIDE"
+    }).success).toBe(true);
+
+    const audit = DispatchAuditListSchema.parse({
+      items: [
+        {
+          id: "1",
+          orgId: "33333333-3333-4333-8333-333333333333",
+          orgName: "Pilot Kitchen",
+          jobId,
+          orderId: null,
+          eventType: "DISPATCH_MANUAL_RECOVERY_NOTE",
+          overrideType: "MANUAL_RECOVERY_NOTE",
+          reason: "Support escalation",
+          note: "Operator reviewed courier availability.",
+          actorId: "44444444-4444-4444-8444-444444444444",
+          actorLabel: "Operator",
+          previousDriverId: null,
+          previousDriverName: null,
+          previousDriverAffiliation: null,
+          newDriverId: driverId,
+          newDriverName: "Courier One",
+          newDriverAffiliation: {
+            courierType: "FLEET_MANAGED_COURIER",
+            fleetOrgId: "55555555-5555-4555-8555-555555555555",
+            fleetOrgName: "Northside Couriers",
+            fleetRole: "DRIVER"
+          },
+          metadata: { humanReviewed: true },
+          createdAt: now
+        }
+      ]
+    });
+
+    expect(audit.items[0].newDriverAffiliation?.courierType).toBe("FLEET_MANAGED_COURIER");
   });
 });
 

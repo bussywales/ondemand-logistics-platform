@@ -15,6 +15,7 @@ ShipWright is a Stage 1 controlled-pilot logistics command centre with:
 - admin command intelligence
 - courier readiness
 - driver fleet organisation management
+- dispatch governance and assignment audit visibility
 - support escalation logging
 - support closeout workflow
 - append-only support audit history
@@ -223,6 +224,27 @@ Constraints:
 - keep compliance and approval human-reviewed
 - no fleet billing, payout automation, or dispatch prioritisation in v1
 - no automatic readiness event history capture yet
+
+## Workstream 5A: Dispatch Governance
+Status: Implemented v1 for human-reviewed override recording and cross-org assignment audit visibility.
+
+Goal:
+Make dispatch intervention accountable without introducing autonomous assignment changes, driver scoring, or punitive automation.
+
+Implemented scope:
+- business job detail includes a Dispatch Governance section for current assignment posture, courier affiliation, manual review notes, blocked/reviewed markers, and assignment audit history
+- business driver assignment from the eligible pool requires a reason and typed confirmation before recording an assignment override
+- `GET /v1/business/jobs/:jobId/dispatch-audit` returns org-scoped assignment and override history
+- `POST /v1/business/jobs/:jobId/dispatch-override` records human-reviewed assignment, reassignment, unassignment, review, blocked, or manual recovery events with idempotency
+- `GET /v1/admin/dispatch-audit` gives platform admins read-only cross-org visibility into dispatch override and assignment history
+- `/admin/dispatch-audit` shows recent override decisions with courier affiliation, fleet organisation context where available, actor, reason, and job/order links
+- fleet-managed vs independent courier context is surfaced in dispatch audit rows
+
+Constraints:
+- no autonomous dispatch override
+- no driver scoring, suspension, payout, or billing automation
+- no destructive dispatch workflow
+- admin dispatch audit remains read-only
 
 ## Workstream 6: Operational Maturity Continuation
 Status: Continue in parallel only where it strengthens pilot readiness.

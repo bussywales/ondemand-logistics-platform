@@ -21,6 +21,7 @@ import {
   authorizePayment,
   cancelJob,
   createBusinessSupportEscalation,
+  createDispatchOverride,
   createLiveJob,
   getDriverAssignmentIneligibility,
   getBusinessDailyBriefing,
@@ -30,9 +31,9 @@ import {
   listBusinessSupportEscalations,
   listBusinessSupportEscalationEvents,
   listBusinessOrders,
+  listBusinessDispatchAudit,
   listEligibleDrivers,
   listLiveJobs,
-  reassignDriver,
   retryDispatch,
   updateBusinessSupportEscalation
 } from "../_lib/api";
@@ -50,6 +51,7 @@ import {
   type BusinessSession,
   type CreateSupportEscalationInput,
   type DeliveryFormInput,
+  type DispatchAuditEvent,
   type EligibleDriver,
   type SupportEscalation,
   type SupportEscalationEvent,
@@ -96,7 +98,9 @@ export function ProductShell(props: ProductShellProps) {
   const [selectedJob, setSelectedJob] = useState<AppJob | null>(null);
   const [selectedJobEscalations, setSelectedJobEscalations] = useState<SupportEscalation[]>([]);
   const [selectedJobEscalationEvents, setSelectedJobEscalationEvents] = useState<Record<string, SupportEscalationEvent[]>>({});
+  const [dispatchAudit, setDispatchAudit] = useState<DispatchAuditEvent[]>([]);
   const [supportLogError, setSupportLogError] = useState<string | null>(null);
+  const [dispatchGovernanceError, setDispatchGovernanceError] = useState<string | null>(null);
   const [dailyBriefing, setDailyBriefing] = useState<DailyBriefing | null>(null);
   const [briefingError, setBriefingError] = useState<string | null>(null);
   const [pilotStatus, setPilotStatus] = useState<BusinessPilotStatus | null>(null);
@@ -115,6 +119,7 @@ export function ProductShell(props: ProductShellProps) {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("Operator cancelled");
   const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [dispatchOverrideSubmitting, setDispatchOverrideSubmitting] = useState(false);
 
   useEffect(() => {
     if (!session) {
@@ -129,7 +134,9 @@ export function ProductShell(props: ProductShellProps) {
       setSelectedJob(null);
       setSelectedJobEscalations([]);
       setSelectedJobEscalationEvents({});
+      setDispatchAudit([]);
       setSupportLogError(null);
+      setDispatchGovernanceError(null);
       return;
     }
 
@@ -222,9 +229,14 @@ export function ProductShell(props: ProductShellProps) {
           return [];
         })
       ]);
+      const auditItems = await listBusinessDispatchAudit(currentSession, jobId).catch((issue) => {
+        setDispatchGovernanceError(getUserFacingApiError(issue, "Dispatch governance unavailable. Refresh or contact support."));
+        return [];
+      });
       setSelectedJob(job);
-        setSelectedJobEscalations(escalationItems);
-        setSelectedJobEscalationEvents(await loadSupportEscalationEvents(currentSession, escalationItems));
+      setSelectedJobEscalations(escalationItems);
+      setSelectedJobEscalationEvents(await loadSupportEscalationEvents(currentSession, escalationItems));
+      setDispatchAudit(auditItems);
       setJobs((current) =>
         [job, ...current.filter((item) => item.id !== job.id)].sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       );
@@ -232,6 +244,25 @@ export function ProductShell(props: ProductShellProps) {
       setError(issue instanceof Error ? issue.message : "Unable to load job.");
       setSelectedJobEscalations([]);
       setSelectedJobEscalationEvents({});
+      setDispatchAudit([]);
+    }
+  }
+
+  async function handleCreateDispatchOverride(input: { overrideType: "MARK_DISPATCH_REVIEWED" | "MARK_DISPATCH_BLOCKED" | "MANUAL_RECOVERY_NOTE"; reason: string; note?: string | null }) {
+    if (!session || !selectedJob) {
+      return;
+    }
+
+    setDispatchOverrideSubmitting(true);
+    setDispatchGovernanceError(null);
+
+    try {
+      await createDispatchOverride(session, selectedJob.id, input);
+      setDispatchAudit(await listBusinessDispatchAudit(session, selectedJob.id));
+    } catch (issue) {
+      setDispatchGovernanceError(getUserFacingApiError(issue, "Dispatch governance unavailable. Refresh or contact support."));
+    } finally {
+      setDispatchOverrideSubmitting(false);
     }
   }
 
@@ -388,7 +419,11 @@ export function ProductShell(props: ProductShellProps) {
     await loadEligibleDriversForJob(job);
   }
 
-  async function handleAssignEligibleDriver(job: AppJob, driverId: string) {
+  async function handleAssignEligibleDriver(
+    job: AppJob,
+    driverId: string,
+    governance: { reason: string; confirmation: string; note?: string | null }
+  ) {
     if (!session) {
       return;
     }
@@ -399,11 +434,17 @@ export function ProductShell(props: ProductShellProps) {
     setSelectedDriverId(driverId);
 
     try {
-      const nextJob = await reassignDriver(session, job.id, driverId);
-      syncJob(nextJob);
+      await createDispatchOverride(session, job.id, {
+        overrideType: job.tracking.assignedDriverName ? "REASSIGN_DRIVER" : "ASSIGN_DRIVER",
+        newDriverId: driverId,
+        reason: governance.reason,
+        confirmation: governance.confirmation,
+        note: governance.note
+      });
+      await refreshLiveJob(job.id, session);
       setDriverPickerOpen(false);
       setSelectedDriverId(null);
-      await loadEligibleDriversForJob(nextJob);
+      await loadEligibleDriversForJob(job);
     } catch (issue) {
       const structured = getDriverAssignmentIneligibility(issue);
       if (structured) {
@@ -454,6 +495,7 @@ export function ProductShell(props: ProductShellProps) {
     setSelectedJob(null);
     setSelectedJobEscalations([]);
     setSelectedJobEscalationEvents({});
+    setDispatchAudit([]);
     setSupportLogError(null);
     router.push("/get-started");
   }
@@ -618,11 +660,14 @@ export function ProductShell(props: ProductShellProps) {
                 driverAssignmentError={driverAssignmentError}
                 driverPickerOpen={driverPickerOpen}
                 driverPickerQuery={driverPickerQuery}
+                dispatchAudit={dispatchAudit}
+                dispatchGovernanceError={dispatchGovernanceError}
+                dispatchOverrideSubmitting={dispatchOverrideSubmitting}
                 eligibleDrivers={eligibleDrivers}
                 eligibleDriversLoading={eligibleDriversLoading}
                 filteredEligibleDrivers={filteredEligibleDrivers}
                 job={job}
-                onAssignDriver={(driverId) => void handleAssignEligibleDriver(job, driverId)}
+                onAssignDriver={(driverId, governance) => void handleAssignEligibleDriver(job, driverId, governance)}
                 onAuthorizePayment={(nextJob) => void handleAuthorizePayment(nextJob)}
                 onCancelJob={(nextJob) => void handleCancelJob(nextJob)}
                 onCancelReasonChange={setCancelReason}
@@ -631,6 +676,7 @@ export function ProductShell(props: ProductShellProps) {
                   setCollectedPaymentMethod(paymentMethod);
                   setError(null);
                 }}
+                onCreateDispatchOverride={handleCreateDispatchOverride}
                 onDriverPickerQueryChange={setDriverPickerQuery}
                 onOpenDriverPicker={() => void openDriverPicker(job)}
                 onOpenOrRefreshDriverPicker={() =>

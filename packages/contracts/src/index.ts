@@ -432,6 +432,69 @@ export const ReassignJobSchema = z.object({
 });
 export type ReassignJobInput = z.infer<typeof ReassignJobSchema>;
 
+export const DispatchOverrideTypeSchema = z.enum([
+  "ASSIGN_DRIVER",
+  "REASSIGN_DRIVER",
+  "UNASSIGN_DRIVER",
+  "MARK_DISPATCH_REVIEWED",
+  "MARK_DISPATCH_BLOCKED",
+  "MANUAL_RECOVERY_NOTE"
+]);
+export type DispatchOverrideType = z.infer<typeof DispatchOverrideTypeSchema>;
+
+export const DispatchCourierTypeSchema = z.enum(["INDEPENDENT_COURIER", "FLEET_MANAGED_COURIER", "UNKNOWN"]);
+export type DispatchCourierType = z.infer<typeof DispatchCourierTypeSchema>;
+
+export const DispatchCourierAffiliationSchema = z.object({
+  courierType: DispatchCourierTypeSchema,
+  fleetOrgId: z.string().uuid().nullable(),
+  fleetOrgName: z.string().min(2).nullable(),
+  fleetRole: OrgRoleSchema.nullable()
+});
+export type DispatchCourierAffiliationDto = z.infer<typeof DispatchCourierAffiliationSchema>;
+
+export const DispatchOverrideReasonSchema = z
+  .string()
+  .min(3)
+  .max(160);
+
+export const CreateDispatchOverrideSchema = z.object({
+  overrideType: DispatchOverrideTypeSchema,
+  newDriverId: z.string().uuid().nullable().optional(),
+  reason: DispatchOverrideReasonSchema,
+  note: z.string().max(1000).nullable().optional(),
+  confirmation: z.string().max(80).nullable().optional()
+});
+export type CreateDispatchOverrideInput = z.infer<typeof CreateDispatchOverrideSchema>;
+
+export const DispatchOverrideEventSchema = z.object({
+  id: z.string(),
+  orgId: z.string().uuid().nullable(),
+  orgName: z.string().min(2).nullable(),
+  jobId: z.string().uuid(),
+  orderId: z.string().uuid().nullable(),
+  eventType: z.string().min(2),
+  overrideType: DispatchOverrideTypeSchema.nullable(),
+  reason: z.string().min(2).nullable(),
+  note: z.string().nullable(),
+  actorId: z.string().uuid().nullable(),
+  actorLabel: z.string().nullable(),
+  previousDriverId: z.string().uuid().nullable(),
+  previousDriverName: z.string().nullable(),
+  previousDriverAffiliation: DispatchCourierAffiliationSchema.nullable(),
+  newDriverId: z.string().uuid().nullable(),
+  newDriverName: z.string().nullable(),
+  newDriverAffiliation: DispatchCourierAffiliationSchema.nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+  createdAt: IsoDateTimeSchema
+});
+export type DispatchOverrideEventDto = z.infer<typeof DispatchOverrideEventSchema>;
+
+export const DispatchAuditListSchema = z.object({
+  items: z.array(DispatchOverrideEventSchema)
+});
+export type DispatchAuditListDto = z.infer<typeof DispatchAuditListSchema>;
+
 export const EligibleDriverVerificationStatusSchema = z.enum(["APPROVED", "PENDING", "REJECTED", "MISSING"]);
 export type EligibleDriverVerificationStatus = z.infer<typeof EligibleDriverVerificationStatusSchema>;
 

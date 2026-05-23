@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -8,12 +9,19 @@ import {
 import { randomUUID } from "node:crypto";
 import {
   CancelJobSchema,
+  CreateDispatchOverrideSchema,
   CreateJobRequestSchema,
+  DispatchAuditListSchema,
   EligibleDriverListSchema,
   JobSchema,
   JobTrackingSchema,
   PaginatedJobsSchema,
   ReassignJobSchema,
+  type CreateDispatchOverrideInput,
+  type DispatchAuditListDto,
+  type DispatchCourierAffiliationDto,
+  type DispatchOverrideEventDto,
+  type DispatchOverrideType,
   type EligibleDriverDto,
   type JobAttentionLevel,
   type JobDto,
@@ -123,6 +131,29 @@ type EligibleDriverRow = {
   distance_miles: string | null;
 };
 
+type DispatchAuditRow = {
+  id: string | number;
+  org_id: string | null;
+  org_name: string | null;
+  job_id: string;
+  order_id: string | null;
+  event_type: string;
+  actor_id: string | null;
+  actor_label: string | null;
+  previous_driver_id: string | null;
+  previous_driver_name: string | null;
+  previous_driver_fleet_org_id: string | null;
+  previous_driver_fleet_org_name: string | null;
+  previous_driver_fleet_role: string | null;
+  new_driver_id: string | null;
+  new_driver_name: string | null;
+  new_driver_fleet_org_id: string | null;
+  new_driver_fleet_org_name: string | null;
+  new_driver_fleet_role: string | null;
+  created_at: string | Date;
+  payload: Record<string, unknown>;
+};
+
 const JOB_COLUMNS = `j.id, j.org_id, j.consumer_id, j.assigned_driver_id, j.quote_id, j.status,
   j.pickup_address, j.dropoff_address, j.pickup_latitude, j.pickup_longitude,
   j.dropoff_latitude, j.dropoff_longitude, j.distance_miles, j.eta_minutes,
@@ -154,7 +185,16 @@ const ACCESS_CONDITION = `(
 const CANCELLABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED", "EN_ROUTE_PICKUP", "DISPATCH_FAILED"] as const;
 const RETRYABLE_JOB_STATUSES = ["REQUESTED", "DISPATCH_FAILED"] as const;
 const REASSIGNABLE_JOB_STATUSES = ["REQUESTED", "ASSIGNED", "DISPATCH_FAILED"] as const;
+const DISPATCH_AUDIT_EVENT_TYPES = [
+  "JOB_REASSIGNED",
+  "DISPATCH_OVERRIDE_APPLIED",
+  "DISPATCH_MANUAL_RECOVERY_NOTE",
+  "DISPATCH_REVIEWED",
+  "DISPATCH_BLOCKED",
+  "JOB_DISPATCH_RETRIED"
+] as const;
 const DISPATCH_OFFER_TTL_SECONDS = Number(process.env.DISPATCH_OFFER_TTL_SECONDS ?? 30);
+const DISPATCH_OVERRIDE_CONFIRMATION = "CONFIRM DISPATCH OVERRIDE";
 
 @Injectable()
 export class JobsService {
@@ -662,6 +702,106 @@ export class JobsService {
 
     return EligibleDriverListSchema.parse({
       items: rows.map((row) => this.mapEligibleDriver(row))
+    });
+  }
+
+  async listBusinessDispatchAudit(jobId: string, userId: string): Promise<DispatchAuditListDto> {
+    await this.loadOperatorJob(jobId, userId);
+    const rows = await this.queryDispatchAudit({ jobId, limit: 50 });
+    return DispatchAuditListSchema.parse({ items: rows.map((row) => this.mapDispatchAuditRow(row)) });
+  }
+
+  async listAdminDispatchAudit(query: Record<string, string | undefined>): Promise<DispatchAuditListDto> {
+    const rows = await this.queryDispatchAudit({
+      jobId: query.jobId,
+      orgId: query.orgId,
+      overrideType: query.overrideType,
+      from: query.from,
+      to: query.to,
+      limit: this.normalizeLimit(Number(query.limit ?? "50"))
+    });
+    return DispatchAuditListSchema.parse({ items: rows.map((row) => this.mapDispatchAuditRow(row)) });
+  }
+
+  async createDispatchOverride(jobId: string, input: unknown, userId: string, idempotencyKey: string) {
+    const parsed = CreateDispatchOverrideSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_dispatch_override_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    const payload = parsed.data;
+    this.assertDispatchOverridePolicy(payload);
+    const requestId = getRequestContext()?.requestId ?? randomUUID();
+
+    return this.pg.withIdempotency({
+      actorId: userId,
+      endpoint: `/v1/business/jobs/${jobId}/dispatch-override`,
+      idempotencyKey,
+      execute: async (client) => {
+        const job = await this.loadOperatorJobForUpdate(client, jobId, userId);
+        const metadata = {
+          requestId,
+          overrideType: payload.overrideType,
+          reason: payload.reason,
+          note: payload.note ?? null,
+          previousDriverId: job.assigned_driver_id,
+          newDriverId: payload.newDriverId ?? null,
+          confirmation: payload.confirmation ?? null,
+          humanReviewed: true,
+          autonomousAction: false
+        };
+
+        let eventType = "DISPATCH_OVERRIDE_APPLIED";
+        let updatedJob: JobRow | null = null;
+
+        if (payload.overrideType === "ASSIGN_DRIVER" || payload.overrideType === "REASSIGN_DRIVER") {
+          const driver = await this.loadEligibleDriverForReassign(
+            client,
+            payload.newDriverId as string,
+            jobId,
+            job.vehicle_required
+          );
+          updatedJob = await this.applyManualReassign(client, job, driver.driver_id, userId, requestId, metadata);
+          eventType = "JOB_REASSIGNED";
+        } else if (payload.overrideType === "UNASSIGN_DRIVER") {
+          updatedJob = await this.applyManualUnassign(client, job, metadata);
+        } else if (payload.overrideType === "MANUAL_RECOVERY_NOTE") {
+          eventType = "DISPATCH_MANUAL_RECOVERY_NOTE";
+        } else if (payload.overrideType === "MARK_DISPATCH_REVIEWED") {
+          eventType = "DISPATCH_REVIEWED";
+        } else if (payload.overrideType === "MARK_DISPATCH_BLOCKED") {
+          eventType = "DISPATCH_BLOCKED";
+        }
+
+        const eventId = await this.insertJobEvent(client, {
+          jobId,
+          eventType,
+          actorId: userId,
+          payload: metadata
+        });
+
+        await this.insertAuditLog(client, {
+          requestId,
+          actorId: userId,
+          orgId: job.org_id,
+          entityType: "job",
+          entityId: jobId,
+          action: "dispatch_override_recorded",
+          metadata
+        });
+
+        const rows = await this.queryDispatchAudit({ jobId, eventId, limit: 1 }, client);
+        return {
+          responseCode: 200,
+          body: {
+            event: rows[0] ? this.mapDispatchAuditRow(rows[0]) : null,
+            job: updatedJob ? this.mapJob(updatedJob) : null
+          }
+        };
+      }
     });
   }
 
@@ -1317,15 +1457,342 @@ export class JobsService {
     return Math.min(Math.max(Math.floor(limit), 1), 100);
   }
 
+  private assertDispatchOverridePolicy(payload: CreateDispatchOverrideInput) {
+    if (
+      (payload.overrideType === "ASSIGN_DRIVER" || payload.overrideType === "REASSIGN_DRIVER") &&
+      !payload.newDriverId
+    ) {
+      throw new BadRequestException("dispatch_override_driver_required");
+    }
+
+    if (
+      ["ASSIGN_DRIVER", "REASSIGN_DRIVER", "UNASSIGN_DRIVER"].includes(payload.overrideType) &&
+      payload.confirmation !== DISPATCH_OVERRIDE_CONFIRMATION
+    ) {
+      throw new BadRequestException("dispatch_override_confirmation_required");
+    }
+  }
+
+  private async applyManualReassign(
+    client: PoolClient,
+    job: OperatorJobRow,
+    driverId: string,
+    userId: string,
+    requestId: string,
+    metadata: Record<string, unknown>
+  ) {
+    if (!REASSIGNABLE_JOB_STATUSES.includes(job.status as (typeof REASSIGNABLE_JOB_STATUSES)[number])) {
+      throw new ConflictException("job_not_reassignable");
+    }
+
+    if (job.assigned_driver_id) {
+      await client.query(
+        `update public.drivers
+         set active_job_id = null,
+             availability_status = 'ONLINE',
+             available_since = now()
+         where id = $1
+           and active_job_id = $2`,
+        [job.assigned_driver_id, job.id]
+      );
+    }
+
+    await client.query(
+      `update public.job_offers
+       set status = 'EXPIRED',
+           responded_at = coalesce(responded_at, now())
+       where job_id = $1
+         and status in ('OFFERED', 'ACCEPTED')`,
+      [job.id]
+    );
+
+    const updated = await client.query<JobRow>(
+      `update public.jobs
+       set status = 'REQUESTED',
+           assigned_driver_id = null,
+           dispatch_requested_at = now(),
+           dispatch_failed_at = null,
+           updated_at = now()
+       where id = $1
+       returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
+      [job.id]
+    );
+
+    const offer = await client.query<{ id: string }>(
+      `insert into public.job_offers (
+         job_id,
+         driver_id,
+         offered_at,
+         expires_at,
+         status,
+         payout_gross_snapshot,
+         distance_miles_snapshot,
+         eta_minutes_snapshot
+       ) values (
+         $1,
+         $2,
+         now(),
+         now() + make_interval(secs => $3),
+         'OFFERED',
+         $4,
+         $5,
+         $6
+       )
+       returning id`,
+      [
+        job.id,
+        driverId,
+        DISPATCH_OFFER_TTL_SECONDS,
+        updated.rows[0].driver_payout_gross_cents,
+        Number(updated.rows[0].distance_miles),
+        updated.rows[0].eta_minutes
+      ]
+    );
+
+    const attemptNumber = await this.nextDispatchAttemptNumber(client, job.id);
+    await this.insertDispatchAttempt(client, {
+      jobId: job.id,
+      attemptNumber,
+      triggerSource: "operator_override",
+      outcome: "MANUAL_REASSIGN",
+      driverId,
+      offerId: offer.rows[0].id,
+      notes: typeof metadata.reason === "string" ? metadata.reason : "Operator selected a specific driver"
+    });
+
+    await this.insertOutboxMessage(client, {
+      aggregateType: "job_offer",
+      aggregateId: offer.rows[0].id,
+      eventType: "JOB_OFFER_EXPIRY_CHECK",
+      payload: {
+        jobId: job.id,
+        offerId: offer.rows[0].id,
+        requestId
+      },
+      idempotencyKey: `offer-expiry:${offer.rows[0].id}`,
+      nextAttemptAt: new Date(Date.now() + DISPATCH_OFFER_TTL_SECONDS * 1000).toISOString()
+    });
+
+    metadata.offerId = offer.rows[0].id;
+    return updated.rows[0];
+  }
+
+  private async applyManualUnassign(
+    client: PoolClient,
+    job: OperatorJobRow,
+    metadata: Record<string, unknown>
+  ) {
+    if (!job.assigned_driver_id) {
+      throw new ConflictException("job_has_no_assigned_driver");
+    }
+
+    await client.query(
+      `update public.drivers
+       set active_job_id = null,
+           availability_status = 'ONLINE',
+           available_since = now()
+       where id = $1
+         and active_job_id = $2`,
+      [job.assigned_driver_id, job.id]
+    );
+
+    await client.query(
+      `update public.job_offers
+       set status = 'EXPIRED',
+           responded_at = coalesce(responded_at, now())
+       where job_id = $1
+         and status in ('OFFERED', 'ACCEPTED')`,
+      [job.id]
+    );
+
+    const updated = await client.query<JobRow>(
+      `update public.jobs
+       set status = 'REQUESTED',
+           assigned_driver_id = null,
+           dispatch_requested_at = now(),
+           dispatch_failed_at = null,
+           updated_at = now()
+       where id = $1
+       returning ${JOB_COLUMNS.replaceAll("j.", "")}`,
+      [job.id]
+    );
+
+    metadata.newDriverId = null;
+    return updated.rows[0];
+  }
+
+  private async queryDispatchAudit(
+    input: {
+      jobId?: string;
+      orgId?: string;
+      eventId?: string;
+      overrideType?: string;
+      from?: string;
+      to?: string;
+      limit: number;
+    },
+    runner: { query: (text: string, values?: unknown[]) => Promise<{ rows: DispatchAuditRow[] }> } = this.pg as unknown as {
+      query: (text: string, values?: unknown[]) => Promise<{ rows: DispatchAuditRow[] }>;
+    }
+  ): Promise<DispatchAuditRow[]> {
+    const values: unknown[] = [DISPATCH_AUDIT_EVENT_TYPES];
+    const filters = [`e.event_type = any($1::text[])`];
+
+    if (input.jobId) {
+      values.push(input.jobId);
+      filters.push(`j.id = $${values.length}`);
+    }
+    if (input.orgId) {
+      values.push(input.orgId);
+      filters.push(`j.org_id = $${values.length}`);
+    }
+    if (input.eventId) {
+      values.push(input.eventId);
+      filters.push(`e.id::text = $${values.length}`);
+    }
+    if (input.overrideType) {
+      values.push(input.overrideType);
+      filters.push(`coalesce(e.payload->>'overrideType', case when e.event_type = 'JOB_REASSIGNED' then 'REASSIGN_DRIVER' else null end) = $${values.length}`);
+    }
+    if (input.from) {
+      values.push(input.from);
+      filters.push(`e.created_at >= $${values.length}::timestamptz`);
+    }
+    if (input.to) {
+      values.push(input.to);
+      filters.push(`e.created_at <= $${values.length}::timestamptz`);
+    }
+
+    values.push(this.normalizeLimit(input.limit));
+
+    const result = await runner.query(
+      `select
+          e.id::text,
+          j.org_id,
+          org.name as org_name,
+          j.id as job_id,
+          co.id as order_id,
+          e.event_type,
+          e.actor_id,
+          coalesce(actor.display_name, actor.email) as actor_label,
+          nullif(coalesce(e.payload->>'previousDriverId', e.payload->>'previous_driver_id'), '') as previous_driver_id,
+          prev_user.display_name as previous_driver_name,
+          prev_fleet.org_id as previous_driver_fleet_org_id,
+          prev_fleet.org_name as previous_driver_fleet_org_name,
+          prev_fleet.role as previous_driver_fleet_role,
+          nullif(coalesce(e.payload->>'newDriverId', e.payload->>'driverId'), '') as new_driver_id,
+          next_user.display_name as new_driver_name,
+          next_fleet.org_id as new_driver_fleet_org_id,
+          next_fleet.org_name as new_driver_fleet_org_name,
+          next_fleet.role as new_driver_fleet_role,
+          e.created_at,
+          e.payload
+       from public.job_events e
+       join public.jobs j on j.id = e.job_id
+       left join public.orgs org on org.id = j.org_id
+       left join public.customer_orders co on co.job_id = j.id
+       left join public.users actor on actor.id = e.actor_id
+       left join public.drivers prev_driver on prev_driver.id = nullif(coalesce(e.payload->>'previousDriverId', e.payload->>'previous_driver_id'), '')::uuid
+       left join public.users prev_user on prev_user.id = prev_driver.user_id
+       left join lateral (
+         select m.org_id, o.name as org_name, m.role::text as role
+         from public.org_memberships m
+         join public.orgs o on o.id = m.org_id
+         where m.user_id = prev_driver.user_id
+           and m.is_active = true
+           and o.org_type = 'DRIVER_COMPANY'
+         order by m.updated_at desc
+         limit 1
+       ) prev_fleet on true
+       left join public.drivers next_driver on next_driver.id = nullif(coalesce(e.payload->>'newDriverId', e.payload->>'driverId'), '')::uuid
+       left join public.users next_user on next_user.id = next_driver.user_id
+       left join lateral (
+         select m.org_id, o.name as org_name, m.role::text as role
+         from public.org_memberships m
+         join public.orgs o on o.id = m.org_id
+         where m.user_id = next_driver.user_id
+           and m.is_active = true
+           and o.org_type = 'DRIVER_COMPANY'
+         order by m.updated_at desc
+         limit 1
+       ) next_fleet on true
+       where ${filters.join(" and ")}
+       order by e.created_at desc, e.id desc
+       limit $${values.length}`,
+      values
+    );
+
+    return result.rows;
+  }
+
+  private mapDriverAffiliation(
+    driverId: string | null,
+    fleetOrgId: string | null,
+    fleetOrgName: string | null,
+    fleetRole: string | null
+  ): DispatchCourierAffiliationDto | null {
+    if (!driverId) {
+      return null;
+    }
+
+    return {
+      courierType: fleetOrgId ? "FLEET_MANAGED_COURIER" : "INDEPENDENT_COURIER",
+      fleetOrgId,
+      fleetOrgName,
+      fleetRole: fleetRole as DispatchCourierAffiliationDto["fleetRole"]
+    };
+  }
+
+  private mapDispatchAuditRow(row: DispatchAuditRow): DispatchOverrideEventDto {
+    const payload = row.payload ?? {};
+    const overrideType =
+      (typeof payload.overrideType === "string" ? payload.overrideType : null) ??
+      (row.event_type === "JOB_REASSIGNED" ? "REASSIGN_DRIVER" : null);
+
+    return {
+      id: String(row.id),
+      orgId: row.org_id,
+      orgName: row.org_name,
+      jobId: row.job_id,
+      orderId: row.order_id,
+      eventType: row.event_type,
+      overrideType: overrideType as DispatchOverrideType | null,
+      reason: typeof payload.reason === "string" ? payload.reason : null,
+      note: typeof payload.note === "string" ? payload.note : null,
+      actorId: row.actor_id,
+      actorLabel: row.actor_label,
+      previousDriverId: row.previous_driver_id,
+      previousDriverName: row.previous_driver_name,
+      previousDriverAffiliation: this.mapDriverAffiliation(
+        row.previous_driver_id,
+        row.previous_driver_fleet_org_id,
+        row.previous_driver_fleet_org_name,
+        row.previous_driver_fleet_role
+      ),
+      newDriverId: row.new_driver_id,
+      newDriverName: row.new_driver_name,
+      newDriverAffiliation: this.mapDriverAffiliation(
+        row.new_driver_id,
+        row.new_driver_fleet_org_id,
+        row.new_driver_fleet_org_name,
+        row.new_driver_fleet_role
+      ),
+      metadata: payload,
+      createdAt: toIsoDateTime(row.created_at)
+    };
+  }
+
   private async insertJobEvent(
     client: PoolClient,
     input: { jobId: string; eventType: string; actorId: string | null; payload: Record<string, unknown> }
   ) {
-    await client.query(
+    const result = await client.query<{ id: string }>(
       `insert into public.job_events (job_id, event_type, payload, actor_id)
-       values ($1, $2, $3::jsonb, $4)`,
+       values ($1, $2, $3::jsonb, $4)
+       returning id::text as id`,
       [input.jobId, input.eventType, JSON.stringify(input.payload), input.actorId]
     );
+    return result.rows[0]?.id ?? null;
   }
 
   private async insertAuditLog(

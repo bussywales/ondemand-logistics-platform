@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { IdempotencyKey } from "../security/idempotency-key.decorator.js";
+import { PlatformAdminGuard } from "../security/platform-admin.guard.js";
 import { RequestUser } from "../security/request-user.decorator.js";
 import type { AuthenticatedUser } from "../security/types.js";
 import { JobsService } from "./jobs.service.js";
@@ -48,6 +49,35 @@ export class JobsController {
   @Get("jobs/:jobId/eligible-drivers")
   async listEligibleDrivers(@Param("jobId") jobId: string, @RequestUser() user: AuthenticatedUser) {
     return this.jobsService.listEligibleDrivers(jobId, user.id);
+  }
+
+  @Get("business/jobs/:jobId/dispatch-audit")
+  async getBusinessDispatchAudit(@Param("jobId") jobId: string, @RequestUser() user: AuthenticatedUser) {
+    return this.jobsService.listBusinessDispatchAudit(jobId, user.id);
+  }
+
+  @Post("business/jobs/:jobId/dispatch-override")
+  @HttpCode(200)
+  async createDispatchOverride(
+    @Param("jobId") jobId: string,
+    @Body() body: unknown,
+    @IdempotencyKey() idempotencyKey: string,
+    @RequestUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.jobsService.createDispatchOverride(jobId, body, user.id, idempotencyKey);
+    if (result.replay) {
+      response.status(result.responseCode);
+      response.setHeader("x-idempotent-replay", "true");
+    }
+
+    return result.body;
+  }
+
+  @UseGuards(PlatformAdminGuard)
+  @Get("admin/dispatch-audit")
+  async getAdminDispatchAudit(@Query() query: Record<string, string | undefined>) {
+    return this.jobsService.listAdminDispatchAudit(query);
   }
 
   @Post("jobs/:jobId/retry-dispatch")

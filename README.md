@@ -52,6 +52,7 @@ This is still a controlled pilot system, not a production-scale marketplace. AI-
 - Admin demo requests: `/admin/demo-requests`
 - Admin product analytics: `/admin/analytics`
 - Admin finance review: `/admin/finance`
+- Admin dispatch audit: `/admin/dispatch-audit`
 - Admin notification diagnostics: `/admin/notifications`
 - Admin operational reset tools: `/admin/operational-resets`
 - Fleet manager workspace: `/fleet`, `/fleet/drivers/[driverId]`, `/fleet/team`
@@ -196,6 +197,8 @@ Pilot management schema now tracks workspace mode, readiness stage, owners, read
 Driver fleet organisations reuse the IAM organisation and membership model with `DRIVER_COMPANY` orgs and fleet roles. Fleet managers can review driver-level readiness at `/fleet/drivers/[driverId]` and manage pending fleet invitations at `/fleet/team`; v1 remains readiness/management visibility only, not fleet billing, payout, dispatch preference, or courier suspension automation.
 
 Payments / Finance v1 adds read-only settlement visibility at `/app/finance` and `/admin/finance`: captured, pending, failed, delivered, and refund-review payment posture is computed from existing order, job, payment, payout, and support escalation records. No automated refunds, payout automation, destructive payment mutation, or payment-provider changes are included.
+
+Dispatch Maturity v1 adds human-reviewed dispatch governance: business operators can record assignment/recovery context on job detail, driver assignment requires a reason plus typed override confirmation, and platform admins can inspect append-only assignment/override history at `/admin/dispatch-audit`. This does not introduce autonomous dispatch override, punitive driver scoring, suspension, billing, or payout automation.
 
 ## Strategic direction
 - current state: operational delivery and dispatch foundations

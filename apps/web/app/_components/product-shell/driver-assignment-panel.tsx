@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { ShipWrightIcon } from "../shipwright-icon";
 import { formatDateTime, type EligibleDriver } from "../../_lib/product-state";
 import {
@@ -15,13 +16,30 @@ type DriverAssignmentPanelProps = {
   eligibleDrivers: EligibleDriver[];
   eligibleDriversLoading: boolean;
   filteredEligibleDrivers: EligibleDriver[];
-  onAssignDriver: (driverId: string) => void;
+  onAssignDriver: (driverId: string, governance: { reason: string; confirmation: string; note?: string | null }) => void;
   onClose: () => void;
   onQueryChange: (value: string) => void;
   selectedDriverId: string | null;
 };
 
+const DISPATCH_OVERRIDE_CONFIRMATION = "CONFIRM DISPATCH OVERRIDE";
+
+const assignmentReasons = [
+  "Courier unavailable",
+  "Customer timing issue",
+  "Merchant preparation delay",
+  "Failed delivery recovery",
+  "Support escalation",
+  "Fleet manager instruction",
+  "Other"
+];
+
 export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
+  const [reason, setReason] = useState("Courier unavailable");
+  const [note, setNote] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const confirmationReady = confirmation.trim() === DISPATCH_OVERRIDE_CONFIRMATION;
+
   return (
     <div className="sw-supporting-surface sw-stack assignment-picker">
       <div className="assignment-picker-header">
@@ -43,6 +61,47 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
           value={props.driverPickerQuery}
         />
       </label>
+
+      <div className="sw-supporting-surface sw-stack-sm">
+        <div>
+          <p className="eyebrow">Dispatch governance</p>
+          <strong>Record why this manual assignment is being made.</strong>
+          <p className="ops-detail-note">
+            Assignment remains human-reviewed. This does not score, suspend, or automatically prefer any courier.
+          </p>
+        </div>
+        <div className="form-grid two-column">
+          <label className="sw-field">
+            <span className="sw-label">Reason</span>
+            <select className="sw-input" onChange={(event) => setReason(event.target.value)} value={reason}>
+              {assignmentReasons.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="sw-field">
+            <span className="sw-label">Typed confirmation</span>
+            <input
+              className="sw-input"
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder={DISPATCH_OVERRIDE_CONFIRMATION}
+              value={confirmation}
+            />
+          </label>
+        </div>
+        <label className="sw-field">
+          <span className="sw-label">Note optional</span>
+          <textarea
+            className="sw-input"
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Add operator context for the dispatch audit."
+            rows={3}
+            value={note}
+          />
+        </label>
+      </div>
 
       {props.driverAssignmentError ? (
         <div className="sw-decision-surface assignment-error-panel" role="alert">
@@ -134,9 +193,16 @@ export function DriverAssignmentPanel(props: DriverAssignmentPanelProps) {
               <div className="sw-queue-row-actions assignment-row-actions">
                 <button
                   className="sw-button sw-button--primary button button-primary"
-                  disabled={props.actionSubmitting || !driver.eligible}
-                  onClick={() => props.onAssignDriver(driver.id)}
+                  disabled={props.actionSubmitting || !driver.eligible || !confirmationReady}
+                  onClick={() =>
+                    props.onAssignDriver(driver.id, {
+                      reason,
+                      confirmation: confirmation.trim(),
+                      note: note.trim() || null
+                    })
+                  }
                   type="button"
+                  title={!confirmationReady ? `Type ${DISPATCH_OVERRIDE_CONFIRMATION} before assigning` : undefined}
                 >
                   <ShipWrightIcon name="assign" />
                   <span>
