@@ -28,11 +28,12 @@ describe("HomePage", () => {
     expect(html).toContain('href="/demo/request?interest=pilot"');
   });
 
-  it("keeps proof visual slots safe when reviewed screenshots are missing", () => {
+  it("marks reviewed proof screenshots as available when assets exist", () => {
     const html = renderToStaticMarkup(<HomePage />);
 
     expect(html).toContain('data-proof-asset="release-readiness-ready.png"');
     expect(html).toContain('data-proof-asset="merchant-menu-operations.png"');
-    expect(html).toContain('data-proof-asset-status="fallback"');
+    expect(html).toContain('data-proof-asset="finance-review.png"');
+    expect(html).toContain('data-proof-asset-status="available"');
   });
 });

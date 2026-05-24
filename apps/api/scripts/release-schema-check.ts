@@ -95,7 +95,9 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     ["public", "demo_requests"],
     ["public", "operational_reset_runs"],
     ["public", "operational_reset_items"],
-    ["public", "validation_evidence_runs"]
+    ["public", "validation_evidence_runs"],
+    ["public", "analytics_events"],
+    ["public", "finance_review_records"]
   ] as const) {
     const exists = await tableExists(client, schema, table);
     items.push({
@@ -233,6 +235,54 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
     const exists = await columnExists(client, "public", "validation_evidence_runs", column);
     items.push({
       name: `public.validation_evidence_runs.${column}`,
+      ok: exists,
+      detail: exists ? "column_present" : "column_missing"
+    });
+  }
+
+  for (const column of [
+    "event_name",
+    "source",
+    "path",
+    "session_id",
+    "visitor_id",
+    "demo_request_id",
+    "metadata",
+    "user_agent_hash",
+    "ip_hash",
+    "created_at"
+  ]) {
+    const exists = await columnExists(client, "public", "analytics_events", column);
+    items.push({
+      name: `public.analytics_events.${column}`,
+      ok: exists,
+      detail: exists ? "column_present" : "column_missing"
+    });
+  }
+
+  for (const column of [
+    "org_id",
+    "order_id",
+    "job_id",
+    "payment_id",
+    "support_escalation_id",
+    "review_type",
+    "status",
+    "severity",
+    "reason",
+    "owner_user_id",
+    "owner_label",
+    "resolution",
+    "resolution_reason",
+    "resolved_at",
+    "resolved_by",
+    "metadata",
+    "created_at",
+    "updated_at"
+  ]) {
+    const exists = await columnExists(client, "public", "finance_review_records", column);
+    items.push({
+      name: `public.finance_review_records.${column}`,
       ok: exists,
       detail: exists ? "column_present" : "column_missing"
     });

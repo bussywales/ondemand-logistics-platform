@@ -101,8 +101,8 @@ Captured and reviewed in Public Proof Assets v1.1:
 - `governance-controls.png`
 - `demo-request-pipeline.png`
 
-Deferred:
-- `finance-review.png` - staging finance page returned an unavailable state during capture; keep CSS fallback until the page is verified with representative data.
-- `analytics-dashboard.png` - staging analytics page returned an unavailable state during capture; keep this asset deferred until analytics summary loads cleanly.
+Captured and reviewed in Public Proof Assets v1.2:
+- `finance-review.png` - captured from `/admin/finance` after applying the missing staging `finance_review_records` schema; reflects current staging finance-review data.
+- `analytics-dashboard.png` - captured from `/admin/analytics` after applying the missing staging `analytics_events` schema; reflects current staging funnel data.
 
 Do not use unavailable/error-state screenshots as proof assets.

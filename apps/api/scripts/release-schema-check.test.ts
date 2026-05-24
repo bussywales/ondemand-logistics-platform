@@ -17,6 +17,8 @@ const BASE_TABLES = new Set([
   "operational_reset_runs",
   "operational_reset_items",
   "validation_evidence_runs",
+  "analytics_events",
+  "finance_review_records",
   "notification_reads",
   "platform_admins"
 ]);
@@ -75,7 +77,35 @@ const BASE_COLUMNS = new Set([
   "validation_evidence_runs.artifact_path",
   "validation_evidence_runs.related_order_id",
   "validation_evidence_runs.related_job_id",
-  "validation_evidence_runs.created_at"
+  "validation_evidence_runs.created_at",
+  "analytics_events.event_name",
+  "analytics_events.source",
+  "analytics_events.path",
+  "analytics_events.session_id",
+  "analytics_events.visitor_id",
+  "analytics_events.demo_request_id",
+  "analytics_events.metadata",
+  "analytics_events.user_agent_hash",
+  "analytics_events.ip_hash",
+  "analytics_events.created_at",
+  "finance_review_records.org_id",
+  "finance_review_records.order_id",
+  "finance_review_records.job_id",
+  "finance_review_records.payment_id",
+  "finance_review_records.support_escalation_id",
+  "finance_review_records.review_type",
+  "finance_review_records.status",
+  "finance_review_records.severity",
+  "finance_review_records.reason",
+  "finance_review_records.owner_user_id",
+  "finance_review_records.owner_label",
+  "finance_review_records.resolution",
+  "finance_review_records.resolution_reason",
+  "finance_review_records.resolved_at",
+  "finance_review_records.resolved_by",
+  "finance_review_records.metadata",
+  "finance_review_records.created_at",
+  "finance_review_records.updated_at"
 ]);
 
 function buildClient(options?: {
@@ -406,6 +436,58 @@ describe("runReleaseSchemaCheck", () => {
       expect.arrayContaining([
         expect.objectContaining({
           name: "public.validation_evidence_runs.evidence_type",
+          ok: false,
+          detail: "column_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when analytics events schema is missing", async () => {
+    const missingTable = await runReleaseSchemaCheck(buildClient({ missingTables: ["analytics_events"] }) as never);
+    expect(missingTable.ok).toBe(false);
+    expect(missingTable.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.analytics_events",
+          ok: false,
+          detail: "table_missing"
+        })
+      ])
+    );
+
+    const missingColumn = await runReleaseSchemaCheck(buildClient({ missingColumns: ["analytics_events.metadata"] }) as never);
+    expect(missingColumn.ok).toBe(false);
+    expect(missingColumn.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.analytics_events.metadata",
+          ok: false,
+          detail: "column_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when finance review schema is missing", async () => {
+    const missingTable = await runReleaseSchemaCheck(buildClient({ missingTables: ["finance_review_records"] }) as never);
+    expect(missingTable.ok).toBe(false);
+    expect(missingTable.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.finance_review_records",
+          ok: false,
+          detail: "table_missing"
+        })
+      ])
+    );
+
+    const missingColumn = await runReleaseSchemaCheck(buildClient({ missingColumns: ["finance_review_records.status"] }) as never);
+    expect(missingColumn.ok).toBe(false);
+    expect(missingColumn.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.finance_review_records.status",
           ok: false,
           detail: "column_missing"
         })

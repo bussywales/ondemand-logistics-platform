@@ -315,6 +315,46 @@ const CRITICAL_SCHEMA_REQUIREMENTS = {
       "created_by",
       "created_at"
     ]
+  },
+  analytics: {
+    analytics_events: [
+      "id",
+      "event_name",
+      "source",
+      "path",
+      "referrer",
+      "session_id",
+      "visitor_id",
+      "demo_request_id",
+      "metadata",
+      "user_agent_hash",
+      "ip_hash",
+      "created_at"
+    ]
+  },
+  financeReviews: {
+    finance_review_records: [
+      "id",
+      "org_id",
+      "order_id",
+      "job_id",
+      "payment_id",
+      "support_escalation_id",
+      "review_type",
+      "status",
+      "severity",
+      "reason",
+      "summary",
+      "owner_user_id",
+      "owner_label",
+      "resolution",
+      "resolution_reason",
+      "resolved_at",
+      "resolved_by",
+      "metadata",
+      "created_at",
+      "updated_at"
+    ]
   }
 } as const;
 

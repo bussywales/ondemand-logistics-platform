@@ -31,13 +31,11 @@ Captured and reviewed:
 - `validation-evidence.png`
 - `admin-command.png`
 - `merchant-menu-operations.png`
+- `finance-review.png`
 - `dispatch-audit.png`
 - `fleet-workspace.png`
 - `governance-controls.png`
+- `analytics-dashboard.png`
 - `demo-request-pipeline.png`
 
-Deferred because staging showed unavailable states during capture:
-- `finance-review.png`
-- `analytics-dashboard.png`
-
-The landing page will continue to use CSS-native fallback visuals for deferred or missing files.
+The finance and analytics captures reflect the current staging data state after the missing staging schema for `analytics_events` and `finance_review_records` was applied. The landing page will continue to use CSS-native fallback visuals for any future missing files.

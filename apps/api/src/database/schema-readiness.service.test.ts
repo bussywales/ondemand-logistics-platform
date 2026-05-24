@@ -283,6 +283,70 @@ describe("SchemaReadinessService", () => {
     } satisfies Partial<SchemaCompatibilityError>);
   });
 
+  it("fails when analytics events schema is missing", async () => {
+    const missingTable = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows().filter((row) => row.table_name !== "analytics_events")
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows()
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    await expect(new SchemaReadinessService({ query: missingTable } as never).assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.analytics_events (table missing)"])
+    } satisfies Partial<SchemaCompatibilityError>);
+
+    const missingColumn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows()
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter((row) => !(row.table_name === "analytics_events" && row.column_name === "metadata"))
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    await expect(new SchemaReadinessService({ query: missingColumn } as never).assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.analytics_events.metadata"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
+
+  it("fails when finance review schema is missing", async () => {
+    const missingTable = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows().filter((row) => row.table_name !== "finance_review_records")
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows()
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    await expect(new SchemaReadinessService({ query: missingTable } as never).assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.finance_review_records (table missing)"])
+    } satisfies Partial<SchemaCompatibilityError>);
+
+    const missingColumn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: buildTableRows()
+      })
+      .mockResolvedValueOnce({
+        rows: buildColumnsRows().filter((row) => !(row.table_name === "finance_review_records" && row.column_name === "status"))
+      })
+      .mockResolvedValueOnce(fulfilledConstraintRow());
+
+    await expect(new SchemaReadinessService({ query: missingColumn } as never).assertCriticalSchemaCompatibility()).rejects.toMatchObject({
+      name: "SchemaCompatibilityError",
+      missingElements: expect.arrayContaining(["public.finance_review_records.status"])
+    } satisfies Partial<SchemaCompatibilityError>);
+  });
+
   it("queries post-0011 release-critical tables during readiness checks", async () => {
     const query = vi
       .fn()
