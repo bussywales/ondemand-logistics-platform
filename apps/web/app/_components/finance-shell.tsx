@@ -77,33 +77,11 @@ function FinanceTransactionRow(props: { admin?: boolean; transaction: FinanceTra
   );
 }
 
-export function FinanceView(props: { admin?: boolean; summary: FinanceSummary; transactions: FinanceTransaction[]; session?: BusinessSession | null }) {
-  const title = props.admin ? "Platform finance review" : "Finance and settlement visibility";
-  const subtitle = props.admin
-    ? "Cross-organisation payment, closeout, and refund-review posture. Finance review only; no automated refunds or payouts."
-    : "Payment, closeout, and refund-review posture for this workspace. Finance review only; no automated refunds or payouts.";
+function FinancePanels(props: { admin?: boolean; summary: FinanceSummary; transactions: FinanceTransaction[] }) {
   const refundCandidates = useMemo(() => props.transactions.filter((tx) => tx.refundReviewRequired), [props.transactions]);
 
   return (
-    <main className={`app-shell ${props.admin ? "admin-shell-page" : "ops-shell"}`}>
-      <div className="sw-row-between admin-shell-header">
-        <div>
-          <BrandLogo />
-          <p className="eyebrow">Finance</p>
-          <h1>{title}</h1>
-          <p>{subtitle}</p>
-        </div>
-        <div className="hero-actions">
-          {props.admin ? <AdminWorkspaceLink /> : null}
-          <Link className="sw-button sw-button--secondary button button-secondary" href={props.admin ? "/admin/command" : "/app/payments"}>
-            {props.admin ? "Admin command" : "Payment risk"}
-          </Link>
-        </div>
-      </div>
-
-      {!props.admin && props.session ? <WorkspaceNav active="finance" platformAdmin={Boolean(props.session.context.platformAdmin)} /> : null}
-      <ProductUpdateAnnouncement routePath={props.admin ? "/admin/finance" : "/app/finance"} viewer={props.admin ? "platform_admin" : "business"} viewerKey={props.session?.userId ?? "finance"} />
-
+    <>
       <section className="sw-command-surface admin-command-page-hero">
         <div>
           <span className="sw-badge sw-badge--info">Review only</span>
@@ -157,6 +135,103 @@ export function FinanceView(props: { admin?: boolean; summary: FinanceSummary; t
           ) : props.transactions.map((transaction) => (
             <FinanceTransactionRow admin={props.admin} key={transaction.paymentId} transaction={transaction} />
           ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+export function FinanceView(props: { admin?: boolean; summary: FinanceSummary; transactions: FinanceTransaction[]; session?: BusinessSession | null }) {
+  const title = props.admin ? "Platform finance review" : "Finance and settlement visibility";
+  const subtitle = props.admin
+    ? "Cross-organisation payment, closeout, and refund-review posture. Finance review only; no automated refunds or payouts."
+    : "Payment, closeout, and refund-review posture for this workspace. Finance review only; no automated refunds or payouts.";
+
+  if (props.admin) {
+    return (
+      <main className="app-shell admin-shell-page">
+        <div className="sw-row-between admin-shell-header">
+          <div>
+            <BrandLogo />
+            <p className="eyebrow">Finance</p>
+            <h1>{title}</h1>
+            <p>{subtitle}</p>
+          </div>
+          <div className="hero-actions">
+            <AdminWorkspaceLink />
+            <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/command">
+              Admin command
+            </Link>
+          </div>
+        </div>
+
+        <ProductUpdateAnnouncement routePath="/admin/finance" viewer="platform_admin" viewerKey={props.session?.userId ?? "finance"} />
+        <FinancePanels admin summary={props.summary} transactions={props.transactions} />
+      </main>
+    );
+  }
+
+  const displayName = props.session?.context.displayName ?? "Business operator";
+  const email = props.session?.context.email ?? "Signed-in workspace";
+  const workspaceName = props.session?.context.currentOrg?.name ?? "Current workspace";
+
+  return (
+    <main className="app-shell ops-shell finance-shell-page">
+      <header className="ops-topbar">
+        <div className="ops-branding">
+          <BrandLogo href="/" mode="responsive" />
+          <p className="eyebrow">Finance</p>
+          <h1>{title}</h1>
+          <p>{subtitle}</p>
+        </div>
+        <div className="ops-topbar-actions">
+          <Link className="sw-button sw-button--secondary button button-secondary" href="/app/payments">
+            Payment risk
+          </Link>
+        </div>
+      </header>
+
+      <section className="ops-layout">
+        <aside className="ops-sidebar" aria-label="Workspace finance navigation">
+          <WorkspaceNav active="finance" platformAdmin={Boolean(props.session?.context.platformAdmin)} />
+
+          <section className="ops-sidebar-section">
+            <span className="ops-section-label">Operator</span>
+            <strong>{displayName}</strong>
+            <p>{email}</p>
+          </section>
+
+          <section className="ops-sidebar-section">
+            <span className="ops-section-label">Finance posture</span>
+            <div className="ops-summary-list">
+              <div>
+                <strong>{props.summary.capturedPaymentCount}</strong>
+                <span>Captured</span>
+              </div>
+              <div>
+                <strong>{props.summary.pendingPaymentCount}</strong>
+                <span>Pending</span>
+              </div>
+              <div>
+                <strong>{props.summary.refundReviewCandidates}</strong>
+                <span>Review</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="ops-sidebar-section ops-sidebar-live">
+            <span className="ops-section-label">Workspace</span>
+            <strong>{workspaceName}</strong>
+            <p>Finance visibility is review-only. No refunds or payouts are automated from this surface.</p>
+            <span className="sidebar-live-action">
+              Review support and order context before any manual finance decision.
+            </span>
+          </section>
+        </aside>
+
+        <div className="ops-main">
+          <ProductUpdateAnnouncement routePath="/app/finance" viewer="business" viewerKey={props.session?.userId ?? "finance"} />
+          <FinancePanels summary={props.summary} transactions={props.transactions} />
         </div>
       </section>
     </main>

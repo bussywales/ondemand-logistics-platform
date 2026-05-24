@@ -58,6 +58,26 @@ async function customerOrdersSupportsFulfilled(client: Client) {
   };
 }
 
+async function orgsStatusSupportsGovernance(client: Client) {
+  const result = await client.query<{ definition: string }>(
+    `select pg_get_constraintdef(c.oid) as definition
+     from pg_constraint c
+     join pg_class t on t.oid = c.conrelid
+     join pg_namespace n on n.oid = t.relnamespace
+     where n.nspname = 'public'
+       and t.relname = 'orgs'
+       and c.conname = 'orgs_status_allowed'
+     limit 1`
+  );
+
+  const definition = result.rows[0]?.definition ?? "";
+  const requiredStatuses = ["'ACTIVE'", "'SUSPENDED'", "'CLOSED'"];
+  return {
+    ok: requiredStatuses.every((status) => definition.includes(status)),
+    detail: definition || "constraint_missing"
+  };
+}
+
 export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheckResult> {
   const items: SchemaCheckItem[] = [];
 
@@ -127,6 +147,20 @@ export async function runReleaseSchemaCheck(client: Client): Promise<SchemaCheck
       detail: exists ? "column_present" : "column_missing"
     });
   }
+
+  const usersStatus = await columnExists(client, "public", "users", "status");
+  items.push({
+    name: "public.users.status",
+    ok: usersStatus,
+    detail: usersStatus ? "column_present" : "column_missing"
+  });
+
+  const orgsGovernanceStatus = await orgsStatusSupportsGovernance(client);
+  items.push({
+    name: "public.orgs.status supports governance statuses",
+    ok: orgsGovernanceStatus.ok,
+    detail: orgsGovernanceStatus.detail
+  });
 
   for (const column of ["email", "role", "status", "invited_by"]) {
     const exists = await columnExists(client, "public", "org_invitations", column);

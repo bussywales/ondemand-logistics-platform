@@ -34,6 +34,7 @@ const BASE_COLUMNS = new Set([
   "support_escalation_events.created_at",
   "orgs.org_type",
   "orgs.status",
+  "users.status",
   "org_invitations.email",
   "org_invitations.role",
   "org_invitations.status",
@@ -81,6 +82,7 @@ function buildClient(options?: {
   missingTables?: string[];
   missingColumns?: string[];
   fulfilledStatus?: boolean;
+  orgGovernanceStatuses?: boolean;
 }) {
   const tables = new Set(BASE_TABLES);
   const columns = new Set(BASE_COLUMNS);
@@ -103,13 +105,25 @@ function buildClient(options?: {
       return { rows: [{ exists: columns.has(`${table}.${column}`) }] };
     }
 
-    if (sql.includes("pg_get_constraintdef")) {
+    if (sql.includes("pg_get_constraintdef") && sql.includes("customer_orders")) {
       return {
         rows: [
           {
             definition: options?.fulfilledStatus === false
               ? "CHECK ((status = ANY (ARRAY['SUBMITTED'::text, 'PAYMENT_AUTHORIZED'::text, 'PAYMENT_FAILED'::text, 'COMPLETED'::text])))"
               : "CHECK ((status = ANY (ARRAY['SUBMITTED'::text, 'PAYMENT_AUTHORIZED'::text, 'PAYMENT_FAILED'::text, 'FULFILLED'::text])))"
+          }
+        ]
+      };
+    }
+
+    if (sql.includes("pg_get_constraintdef") && sql.includes("orgs")) {
+      return {
+        rows: [
+          {
+            definition: options?.orgGovernanceStatuses === false
+              ? "CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text, 'ONBOARDING'::text, 'SUSPENDED'::text])))"
+              : "CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text, 'ONBOARDING'::text, 'SUSPENDED'::text, 'CLOSED'::text])))"
           }
         ]
       };
@@ -129,6 +143,8 @@ describe("runReleaseSchemaCheck", () => {
     expect(result.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "public.support_escalations.resolved_at", ok: true }),
+        expect.objectContaining({ name: "public.users.status", ok: true }),
+        expect.objectContaining({ name: "public.orgs.status supports governance statuses", ok: true }),
         expect.objectContaining({ name: "public.customer_orders.status includes FULFILLED", ok: true })
       ])
     );
@@ -244,6 +260,31 @@ describe("runReleaseSchemaCheck", () => {
           name: "public.orgs.org_type",
           ok: false,
           detail: "column_missing"
+        })
+      ])
+    );
+  });
+
+  it("fails when enterprise governance user status schema is missing", async () => {
+    const missingUserStatus = await runReleaseSchemaCheck(buildClient({ missingColumns: ["users.status"] }) as never);
+    expect(missingUserStatus.ok).toBe(false);
+    expect(missingUserStatus.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.users.status",
+          ok: false,
+          detail: "column_missing"
+        })
+      ])
+    );
+
+    const missingClosedStatus = await runReleaseSchemaCheck(buildClient({ orgGovernanceStatuses: false }) as never);
+    expect(missingClosedStatus.ok).toBe(false);
+    expect(missingClosedStatus.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "public.orgs.status supports governance statuses",
+          ok: false
         })
       ])
     );

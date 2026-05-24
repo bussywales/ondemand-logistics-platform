@@ -64,5 +64,11 @@ describe("FinanceView", () => {
 
     expect(markup).toContain("Finance and settlement visibility");
     expect(markup).toContain("Payment, closeout, and refund-review posture for this workspace");
+    expect(markup).toContain("class=\"ops-layout\"");
+    expect(markup).toContain("class=\"ops-sidebar\"");
+    expect(markup).toContain("Workspace finance navigation");
+    expect(markup).toContain("href=\"/app/finance\"");
+    expect(markup).toContain("ops-nav-link active");
+    expect(markup).toContain("Finance posture");
   });
 });
