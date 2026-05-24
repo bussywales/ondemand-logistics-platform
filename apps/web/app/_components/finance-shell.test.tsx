@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { FinanceView } from "./finance-shell";
-import type { FinanceSummary, FinanceTransaction } from "../_lib/product-state";
+import type { FinanceReviewRecord, FinanceSummary, FinanceTransaction } from "../_lib/product-state";
 
 const transaction: FinanceTransaction = {
   orgId: "33333333-3333-4333-8333-333333333333",
@@ -44,31 +44,77 @@ const summary: FinanceSummary = {
   deliveredJobCount: 0,
   ordersNeedingFinanceReview: 1,
   refundReviewCandidates: 1,
+  openFinanceReviewCount: 1,
+  waitingSupportFinanceReviewCount: 0,
+  recentlyResolvedFinanceReviewCount: 0,
   latestFinanceEvents: [transaction],
   generatedAt: "2026-05-02T09:30:00.000Z"
 };
 
+const review: FinanceReviewRecord = {
+  id: "11111111-1111-4111-8111-111111111111",
+  orgId: "33333333-3333-4333-8333-333333333333",
+  orgName: "Pilot Org",
+  orderId: transaction.orderId,
+  jobId: transaction.jobId,
+  paymentId: transaction.paymentId,
+  supportEscalationId: null,
+  reviewType: "REFUND_REVIEW",
+  status: "OPEN",
+  severity: "MEDIUM",
+  reason: "Captured payment needs manual refund review.",
+  summary: "Payment captured but fulfilment failed.",
+  ownerUserId: null,
+  ownerLabel: "Finance operator",
+  resolution: null,
+  resolutionReason: null,
+  resolvedAt: null,
+  resolvedBy: null,
+  metadata: {},
+  createdAt: "2026-05-02T09:31:00.000Z",
+  updatedAt: "2026-05-02T09:31:00.000Z"
+};
+
 describe("FinanceView", () => {
   it("renders admin finance posture and refund-review copy", () => {
-    const markup = renderToStaticMarkup(<FinanceView admin summary={summary} transactions={[transaction]} />);
+    const markup = renderToStaticMarkup(<FinanceView admin reviews={[review]} summary={summary} transactions={[transaction]} />);
 
     expect(markup).toContain("Platform finance review");
     expect(markup).toContain("Review only");
+    expect(markup).toContain("Persistent review workflow");
+    expect(markup).toContain("Admin view is read-only in v1.1");
     expect(markup).toContain("No refund button is available in v1");
     expect(markup).toContain("Refund Review");
     expect(markup).not.toMatch(/card number|client secret|provider payment intent/i);
   });
 
   it("renders business finance posture", () => {
-    const markup = renderToStaticMarkup(<FinanceView summary={{ ...summary, scope: "business" }} transactions={[{ ...transaction, orgId: null, orgName: null }]} />);
+    const markup = renderToStaticMarkup(
+      <FinanceView
+        onUpdateReview={() => undefined}
+        reviews={[{ ...review, orgName: null }]}
+        summary={{ ...summary, scope: "business" }}
+        transactions={[{ ...transaction, orgId: null, orgName: null }]}
+      />
+    );
 
     expect(markup).toContain("Finance and settlement visibility");
     expect(markup).toContain("Payment, closeout, and refund-review posture for this workspace");
+    expect(markup).toContain("Review exists");
+    expect(markup).toContain("Update review");
+    expect(markup).toContain("No automated refunds are performed");
     expect(markup).toContain("class=\"ops-layout\"");
     expect(markup).toContain("class=\"ops-sidebar\"");
     expect(markup).toContain("Workspace finance navigation");
     expect(markup).toContain("href=\"/app/finance\"");
     expect(markup).toContain("ops-nav-link active");
     expect(markup).toContain("Finance posture");
+  });
+
+  it("renders create review action for untracked refund candidates", () => {
+    const markup = renderToStaticMarkup(<FinanceView summary={{ ...summary, scope: "business", openFinanceReviewCount: 0 }} transactions={[{ ...transaction, orgId: null, orgName: null }]} />);
+
+    expect(markup).toContain("Create review");
+    expect(markup).toContain("No automated refunds are performed");
   });
 });

@@ -14626,3 +14626,37 @@ select:hover,
     width: 100%;
   }
 }
+
+/* Finance v1.1: persistent refund-review workflow. */
+.finance-review-workflow {
+  border-color: rgba(37, 99, 235, 0.12);
+}
+
+.finance-review-candidate-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.62);
+}
+
+.finance-review-row {
+  align-items: flex-start;
+}
+
+.finance-review-editor {
+  display: grid;
+  gap: 0.75rem;
+  width: min(520px, 100%);
+  padding: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.finance-review-editor textarea {
+  min-height: 96px;
+  resize: vertical;
+}

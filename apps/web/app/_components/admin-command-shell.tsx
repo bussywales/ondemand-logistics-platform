@@ -388,6 +388,9 @@ export function AdminCommandView(props: {
           <CountCard copy="Captured payments visible in finance review." label="Captured payments" tone={props.financeSummary?.capturedPaymentCount ? "success" : "info"} value={props.financeSummary?.capturedPaymentCount ?? 0} />
           <CountCard copy="Failed or pending payments needing finance attention." label="Finance review" tone={props.financeSummary?.ordersNeedingFinanceReview ? "warning" : "success"} value={props.financeSummary?.ordersNeedingFinanceReview ?? 0} />
           <CountCard copy="Human refund-review candidates from payment/support signals." label="Refund review" tone={props.financeSummary?.refundReviewCandidates ? "warning" : "success"} value={props.financeSummary?.refundReviewCandidates ?? 0} />
+          <CountCard copy="Persistent finance reviews still open for human closeout." label="Open finance reviews" tone={props.financeSummary?.openFinanceReviewCount ? "warning" : "success"} value={props.financeSummary?.openFinanceReviewCount ?? 0} />
+          <CountCard copy="Finance reviews waiting on support context." label="Waiting support" tone={props.financeSummary?.waitingSupportFinanceReviewCount ? "warning" : "success"} value={props.financeSummary?.waitingSupportFinanceReviewCount ?? 0} />
+          <CountCard copy="Finance reviews closed in the last 24 hours." label="Resolved finance" tone={props.financeSummary?.recentlyResolvedFinanceReviewCount ? "success" : "info"} value={props.financeSummary?.recentlyResolvedFinanceReviewCount ?? 0} />
           <CountCard copy="Completed non-destructive staging/demo tidy runs." label="Reset runs" tone={props.operationalResets.length ? "info" : "success"} value={props.operationalResets.length} />
           <CountCard copy="Latest stored release/proof/smoke evidence records currently passed." label="Validation evidence" tone={latestValidationPassed >= 3 ? "success" : "warning"} value={latestValidationPassed} />
         </div>
@@ -399,8 +402,8 @@ export function AdminCommandView(props: {
         <div className="sw-card-header admin-section-header">
           <div>
             <p className="eyebrow">Finance posture</p>
-            <h2>{props.financeSummary ? `${props.financeSummary.refundReviewCandidates} refund review candidate${props.financeSummary.refundReviewCandidates === 1 ? "" : "s"}` : "Finance posture unavailable"}</h2>
-            <p className="ops-detail-note">Finance is read-only in v1. No automated refunds, payout automation, or payment-provider changes are available from command.</p>
+            <h2>{props.financeSummary ? `${props.financeSummary.openFinanceReviewCount} persistent finance review${props.financeSummary.openFinanceReviewCount === 1 ? "" : "s"} open` : "Finance posture unavailable"}</h2>
+            <p className="ops-detail-note">Finance reviews are human-reviewed only. No automated refunds, payout automation, or payment-provider changes are available from command.</p>
           </div>
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin/finance">
             Open finance
@@ -415,6 +418,8 @@ export function AdminCommandView(props: {
             <div><span>Pending</span><strong>{props.financeSummary.pendingPaymentCount}</strong></div>
             <div><span>Failed</span><strong>{props.financeSummary.failedPaymentCount}</strong></div>
             <div><span>Needs review</span><strong>{props.financeSummary.ordersNeedingFinanceReview}</strong></div>
+            <div><span>Open reviews</span><strong>{props.financeSummary.openFinanceReviewCount}</strong></div>
+            <div><span>Waiting support</span><strong>{props.financeSummary.waitingSupportFinanceReviewCount}</strong></div>
           </div>
         ) : null}
       </section>

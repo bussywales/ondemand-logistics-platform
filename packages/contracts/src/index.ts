@@ -2616,10 +2616,108 @@ export const FinanceSummarySchema = z.object({
   deliveredJobCount: z.number().int().nonnegative(),
   ordersNeedingFinanceReview: z.number().int().nonnegative(),
   refundReviewCandidates: z.number().int().nonnegative(),
+  openFinanceReviewCount: z.number().int().nonnegative().default(0),
+  waitingSupportFinanceReviewCount: z.number().int().nonnegative().default(0),
+  recentlyResolvedFinanceReviewCount: z.number().int().nonnegative().default(0),
   latestFinanceEvents: z.array(FinanceTransactionSchema),
   generatedAt: IsoDateTimeSchema
 });
 export type FinanceSummaryDto = z.infer<typeof FinanceSummarySchema>;
+
+export const FinanceReviewRecordTypeSchema = z.enum([
+  "REFUND_REVIEW",
+  "PAYMENT_RECONCILIATION",
+  "FAILED_CAPTURE_REVIEW",
+  "DELIVERY_PAYMENT_MISMATCH"
+]);
+export type FinanceReviewRecordType = z.infer<typeof FinanceReviewRecordTypeSchema>;
+
+export const FinanceReviewRecordStatusSchema = z.enum(["OPEN", "IN_REVIEW", "WAITING_SUPPORT", "RESOLVED", "CANCELLED"]);
+export type FinanceReviewRecordStatus = z.infer<typeof FinanceReviewRecordStatusSchema>;
+
+export const FinanceReviewRecordSeveritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
+export type FinanceReviewRecordSeverity = z.infer<typeof FinanceReviewRecordSeveritySchema>;
+
+export const FinanceReviewRecordSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  orgName: z.string().min(2).nullable(),
+  orderId: z.string().uuid().nullable(),
+  jobId: z.string().uuid().nullable(),
+  paymentId: z.string().uuid().nullable(),
+  supportEscalationId: z.string().uuid().nullable(),
+  reviewType: FinanceReviewRecordTypeSchema,
+  status: FinanceReviewRecordStatusSchema,
+  severity: FinanceReviewRecordSeveritySchema,
+  reason: z.string().min(4),
+  summary: z.string().nullable(),
+  ownerUserId: z.string().uuid().nullable(),
+  ownerLabel: z.string().nullable(),
+  resolution: z.string().nullable(),
+  resolutionReason: z.string().nullable(),
+  resolvedAt: IsoDateTimeSchema.nullable(),
+  resolvedBy: z.string().uuid().nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema
+});
+export type FinanceReviewRecordDto = z.infer<typeof FinanceReviewRecordSchema>;
+
+export const FinanceReviewListSchema = z.object({
+  items: z.array(FinanceReviewRecordSchema)
+});
+export type FinanceReviewListDto = z.infer<typeof FinanceReviewListSchema>;
+
+export const CreateFinanceReviewSchema = z.object({
+  orderId: z.string().uuid().nullable().optional(),
+  jobId: z.string().uuid().nullable().optional(),
+  paymentId: z.string().uuid().nullable().optional(),
+  supportEscalationId: z.string().uuid().nullable().optional(),
+  reviewType: FinanceReviewRecordTypeSchema.default("REFUND_REVIEW"),
+  severity: FinanceReviewRecordSeveritySchema.default("MEDIUM"),
+  reason: z.string().trim().min(4).max(1000),
+  summary: z.string().trim().min(1).max(2000).nullable().optional(),
+  ownerUserId: z.string().uuid().nullable().optional(),
+  ownerLabel: z.string().trim().min(1).max(200).nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional()
+}).superRefine((value, ctx) => {
+  if (!value.orderId && !value.jobId && !value.paymentId && !value.supportEscalationId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["paymentId"],
+      message: "finance_review_requires_reference"
+    });
+  }
+});
+export type CreateFinanceReviewDto = z.infer<typeof CreateFinanceReviewSchema>;
+
+export const UpdateFinanceReviewSchema = z.object({
+  status: FinanceReviewRecordStatusSchema.optional(),
+  severity: FinanceReviewRecordSeveritySchema.optional(),
+  ownerUserId: z.string().uuid().nullable().optional(),
+  ownerLabel: z.string().trim().min(1).max(200).nullable().optional(),
+  reason: z.string().trim().min(4).max(1000).optional(),
+  summary: z.string().trim().min(1).max(2000).nullable().optional(),
+  resolution: z.string().trim().min(4).max(2000).nullable().optional(),
+  resolutionReason: z.string().trim().min(2).max(500).nullable().optional(),
+  confirmation: z.string().optional()
+}).superRefine((value, ctx) => {
+  if ((value.status === "RESOLVED" || value.status === "CANCELLED") && value.confirmation !== "CONFIRM FINANCE REVIEW") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["confirmation"],
+      message: "finance_review_confirmation_required"
+    });
+  }
+  if ((value.status === "RESOLVED" || value.status === "CANCELLED") && !value.resolution) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["resolution"],
+      message: "finance_review_resolution_required"
+    });
+  }
+});
+export type UpdateFinanceReviewDto = z.infer<typeof UpdateFinanceReviewSchema>;
 
 export const PaymentSchema = z.object({
   id: z.string().uuid(),

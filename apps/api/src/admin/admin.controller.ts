@@ -53,6 +53,13 @@ export class AdminController {
     };
   }
 
+  @Get("finance/reviews")
+  async getFinanceReviews(@Query() query: Record<string, string | undefined>) {
+    return {
+      items: await this.paymentsService.listAdminFinanceReviews(query)
+    };
+  }
+
   @Get("drivers/readiness")
   getDriverReadiness() {
     return this.adminService.listDriverReadiness();

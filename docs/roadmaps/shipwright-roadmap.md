@@ -289,11 +289,13 @@ Implemented scope:
 - read-only finance summary endpoints for captured, pending, failed, delivered, and refund-review posture
 - transaction rows avoid sensitive card/provider details and link operators back to order/job context
 - refund review candidates are computed from captured payments with failed/cancelled fulfilment and unresolved `REFUND_REVIEW` support escalations
-- Admin Command includes finance counts and links to the finance surface
+- persistent finance review records now track owner, status, waiting-support posture, resolution, closeout reason, and audit metadata
+- Admin Command includes computed finance counts, persistent review counts, waiting-support reviews, and links to the finance surface
 
 Constraints:
 - no automated refunds
 - no payout automation or settlement-to-bank automation
+- no payment-provider mutation from finance review workflow
 - no destructive payment mutation
 - refund decisions remain human-reviewed and support-context dependent
 

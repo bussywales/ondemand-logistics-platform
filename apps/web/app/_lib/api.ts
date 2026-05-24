@@ -79,9 +79,13 @@ import type {
   FleetDriverDetail,
   FleetDriverList,
   FleetTeam,
+  CreateFinanceReviewInput,
   FinanceSummary,
+  FinanceReviewList,
+  FinanceReviewRecord,
   FinanceTransaction,
   FinanceTransactionList,
+  UpdateFinanceReviewInput,
   FleetOrganisation,
   FleetOrganisationList,
   FleetReadinessSummary,
@@ -212,6 +216,8 @@ type BusinessPaymentListResponse = {
 };
 type FinanceSummaryResponse = FinanceSummary;
 type FinanceTransactionListResponse = FinanceTransactionList;
+type FinanceReviewListResponse = FinanceReviewList;
+type FinanceReviewResponse = FinanceReviewRecord;
 type DailyBriefingResponse = DailyBriefing;
 type EndOfDayReportResponse = EndOfDayReport;
 type SupportEscalationListResponse = SupportEscalationList;
@@ -753,6 +759,41 @@ export async function listBusinessFinanceTransactions(session: BusinessSession):
   });
 
   return payload.items;
+}
+
+export async function listBusinessFinanceReviews(session: BusinessSession): Promise<FinanceReviewRecord[]> {
+  const payload = await apiFetch<FinanceReviewListResponse>(session, "/v1/business/finance/reviews", {
+    method: "GET"
+  });
+
+  return payload.items;
+}
+
+export async function createBusinessFinanceReview(
+  session: BusinessSession,
+  input: CreateFinanceReviewInput
+): Promise<FinanceReviewRecord> {
+  return apiFetch<FinanceReviewResponse>(session, "/v1/business/finance/reviews", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-finance-review`
+    },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateBusinessFinanceReview(
+  session: BusinessSession,
+  reviewId: string,
+  input: UpdateFinanceReviewInput
+): Promise<FinanceReviewRecord> {
+  return apiFetch<FinanceReviewResponse>(session, `/v1/business/finance/reviews/${reviewId}`, {
+    method: "PATCH",
+    headers: {
+      "Idempotency-Key": `${createId("idem")}-finance-review-update`
+    },
+    body: JSON.stringify(input)
+  });
 }
 
 export async function getBusinessDailyBriefing(session: BusinessSession): Promise<DailyBriefing> {
@@ -1447,6 +1488,14 @@ export async function getAdminFinanceSummary(session: BusinessSession): Promise<
 
 export async function listAdminFinanceTransactions(session: BusinessSession): Promise<FinanceTransaction[]> {
   const result = await apiFetch<FinanceTransactionListResponse>(session, "/v1/admin/finance/transactions", {
+    method: "GET"
+  });
+
+  return result.items;
+}
+
+export async function listAdminFinanceReviews(session: BusinessSession): Promise<FinanceReviewRecord[]> {
+  const result = await apiFetch<FinanceReviewListResponse>(session, "/v1/admin/finance/reviews", {
     method: "GET"
   });
 

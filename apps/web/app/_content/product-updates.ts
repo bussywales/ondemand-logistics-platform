@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "persistent-finance-review-workflow",
+    title: "Finance reviews can now be tracked through closeout",
+    summary: "Business operators can create persistent refund-review records, assign ownership, update status, and document manual resolution without triggering refunds or payment-provider changes.",
+    audience: ["business", "platform_admin"],
+    routeContext: ["/app/finance", "/admin/finance", "/admin/command"],
+    releasedAt: "2026-05-24T12:00:00.000Z",
+    version: "v3.7",
+    ctaLabel: "Open finance",
+    ctaHref: "/app/finance"
+  },
+  {
     id: "public-site-product-storytelling-proof",
     title: "Public site now tells the controlled-pilot proof story",
     summary: "The landing and pricing pages now explain ShipWright’s pilot workflow, validation evidence, support and dispatch audit posture, finance visibility, and fleet readiness without overclaiming automation.",

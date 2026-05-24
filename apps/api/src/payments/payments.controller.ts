@@ -5,6 +5,7 @@ import {
   Headers,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -45,6 +46,27 @@ export class PaymentsController {
     return {
       items: await this.paymentsService.listBusinessFinanceTransactions(user.id, query)
     };
+  }
+
+  @Get("business/finance/reviews")
+  async listBusinessFinanceReviews(@Query() query: Record<string, string | undefined>, @RequestUser() user: AuthenticatedUser) {
+    return {
+      items: await this.paymentsService.listBusinessFinanceReviews(user.id, query)
+    };
+  }
+
+  @Post("business/finance/reviews")
+  async createBusinessFinanceReview(@Body() body: unknown, @RequestUser() user: AuthenticatedUser) {
+    return this.paymentsService.createBusinessFinanceReview(user.id, body);
+  }
+
+  @Patch("business/finance/reviews/:reviewId")
+  async updateBusinessFinanceReview(
+    @Param("reviewId") reviewId: string,
+    @Body() body: unknown,
+    @RequestUser() user: AuthenticatedUser
+  ) {
+    return this.paymentsService.updateBusinessFinanceReview(user.id, reviewId, body);
   }
 
   @Post("jobs/:jobId/payment/authorize")

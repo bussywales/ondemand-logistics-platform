@@ -417,4 +417,121 @@ describe("PaymentsService", () => {
     expect(transactions[0]?.refundReviewReason).toContain("support escalation");
     expect(String(pg.query.mock.calls[0]?.[0])).toContain("support_escalations");
   });
+
+  it("creates a persistent finance review from a scoped candidate and writes audit", async () => {
+    const now = new Date("2026-05-02T09:35:00.000Z");
+    const reviewRow = {
+      id: "11111111-1111-4111-8111-111111111111",
+      org_id: "33333333-3333-4333-8333-333333333333",
+      org_name: "Pilot Org",
+      order_id: "44444444-4444-4444-8444-444444444444",
+      job_id: JOB_ID,
+      payment_id: PAYMENT_ID,
+      support_escalation_id: null,
+      review_type: "REFUND_REVIEW",
+      status: "OPEN",
+      severity: "MEDIUM",
+      reason: "Captured payment needs manual refund review.",
+      summary: "Payment captured but fulfilment failed.",
+      owner_user_id: null,
+      owner_label: null,
+      resolution: null,
+      resolution_reason: null,
+      resolved_at: null,
+      resolved_by: null,
+      metadata: {},
+      created_at: now,
+      updated_at: now
+    };
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{
+          org_id: reviewRow.org_id,
+          order_id: reviewRow.order_id,
+          job_id: reviewRow.job_id,
+          payment_id: reviewRow.payment_id,
+          support_escalation_id: null
+        }]
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [reviewRow] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    const pg = {
+      withTransaction: vi.fn().mockImplementation(async (callback) => callback({ query }))
+    };
+
+    const service = new PaymentsService(pg as never, providerStub() as never);
+    const result = await service.createBusinessFinanceReview(USER_ID, {
+      paymentId: PAYMENT_ID,
+      reason: "Captured payment needs manual refund review.",
+      summary: "Payment captured but fulfilment failed."
+    });
+
+    expect(result.status).toBe("OPEN");
+    expect(result.paymentId).toBe(PAYMENT_ID);
+    expect(String(query.mock.calls[3]?.[0])).toContain("insert into public.audit_log");
+  });
+
+  it("requires confirmation to resolve finance reviews and records closeout audit", async () => {
+    const now = new Date("2026-05-02T09:35:00.000Z");
+    const reviewRow = {
+      id: "11111111-1111-4111-8111-111111111111",
+      org_id: "33333333-3333-4333-8333-333333333333",
+      org_name: "Pilot Org",
+      order_id: "44444444-4444-4444-8444-444444444444",
+      job_id: JOB_ID,
+      payment_id: PAYMENT_ID,
+      support_escalation_id: null,
+      review_type: "REFUND_REVIEW",
+      status: "OPEN",
+      severity: "MEDIUM",
+      reason: "Captured payment needs manual refund review.",
+      summary: null,
+      owner_user_id: null,
+      owner_label: null,
+      resolution: null,
+      resolution_reason: null,
+      resolved_at: null,
+      resolved_by: null,
+      metadata: {},
+      created_at: now,
+      updated_at: now
+    };
+    const service = new PaymentsService({ withTransaction: vi.fn() } as never, providerStub() as never);
+    await expect(service.updateBusinessFinanceReview(USER_ID, reviewRow.id, { status: "RESOLVED" })).rejects.toThrow("invalid_finance_review_update_payload");
+
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [reviewRow] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{
+          ...reviewRow,
+          status: "RESOLVED",
+          resolution: "Manual refund decision completed outside ShipWright.",
+          resolution_reason: "Customer confirmed",
+          resolved_at: now,
+          resolved_by: USER_ID,
+          updated_at: now
+        }]
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    const pg = {
+      withTransaction: vi.fn().mockImplementation(async (callback) => callback({ query }))
+    };
+
+    const resolvingService = new PaymentsService(pg as never, providerStub() as never);
+    const result = await resolvingService.updateBusinessFinanceReview(USER_ID, reviewRow.id, {
+      status: "RESOLVED",
+      resolution: "Manual refund decision completed outside ShipWright.",
+      resolutionReason: "Customer confirmed",
+      confirmation: "CONFIRM FINANCE REVIEW"
+    });
+
+    expect(result.status).toBe("RESOLVED");
+    expect(result.resolvedBy).toBe(USER_ID);
+    expect(String(query.mock.calls[2]?.[0])).toContain("insert into public.audit_log");
+  });
 });

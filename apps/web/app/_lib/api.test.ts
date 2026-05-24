@@ -10,6 +10,7 @@ import {
   addAdminFleetDriver,
   createAdminFleet,
   createBusinessTeamInvite,
+  createBusinessFinanceReview,
   createBusinessSupportEscalation,
   createRestaurant,
   getAdminDailyBriefing,
@@ -41,12 +42,14 @@ import {
   listAdminUsers,
   listAdminPayments,
   listAdminFinanceTransactions,
+  listAdminFinanceReviews,
   listAdminValidationEvidence,
   listEligibleDrivers,
   listBusinessNotifications,
   listBusinessOrders,
   listBusinessPayments,
   listBusinessFinanceTransactions,
+  listBusinessFinanceReviews,
   listBusinessSupportEscalations,
   listBusinessSupportEscalationEvents,
   listAdminSupportEscalations,
@@ -68,6 +71,7 @@ import {
   updateMenuCategory,
   updateMenuItem,
   updateBusinessTeamMembership,
+  updateBusinessFinanceReview,
   updateBusinessSupportEscalation,
   updateDriverAvailability
 } from './api';
@@ -547,6 +551,9 @@ describe('authorizePayment', () => {
       deliveredJobCount: 0,
       ordersNeedingFinanceReview: 1,
       refundReviewCandidates: 1,
+      openFinanceReviewCount: 1,
+      waitingSupportFinanceReviewCount: 0,
+      recentlyResolvedFinanceReviewCount: 0,
       latestFinanceEvents: [],
       generatedAt: new Date().toISOString()
     };
@@ -841,6 +848,9 @@ describe('authorizePayment', () => {
       deliveredJobCount: 0,
       ordersNeedingFinanceReview: 1,
       refundReviewCandidates: 1,
+      openFinanceReviewCount: 1,
+      waitingSupportFinanceReviewCount: 0,
+      recentlyResolvedFinanceReviewCount: 0,
       latestFinanceEvents: [],
       generatedAt: new Date().toISOString()
     };
@@ -857,6 +867,59 @@ describe('authorizePayment', () => {
     expect((fetchMock.mock.calls[1]?.[0] as string)).toContain('/v1/admin/finance/transactions');
     expect(summary.capturedPaymentCount).toBe(1);
     expect(transactions).toEqual([]);
+  });
+
+  it('manages business finance reviews with bearer auth', async () => {
+    const now = new Date().toISOString();
+    const review = {
+      id: '11111111-1111-4111-8111-111111111111',
+      orgId: '33333333-3333-4333-8333-333333333333',
+      orgName: 'Pilot Org',
+      orderId: '44444444-4444-4444-8444-444444444444',
+      jobId: '57bf7cf0-7ac2-47a7-8fd5-83a96be6c848',
+      paymentId: '97077fd3-d5dc-4c4d-9d40-db262f6eab54',
+      supportEscalationId: null,
+      reviewType: 'REFUND_REVIEW',
+      status: 'OPEN',
+      severity: 'MEDIUM',
+      reason: 'Manual finance review needed.',
+      summary: null,
+      ownerUserId: null,
+      ownerLabel: null,
+      resolution: null,
+      resolutionReason: null,
+      resolvedAt: null,
+      resolvedBy: null,
+      metadata: {},
+      createdAt: now,
+      updatedAt: now
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [review] }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(review) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ ...review, status: 'IN_REVIEW' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const reviews = await listBusinessFinanceReviews(session);
+    await createBusinessFinanceReview(session, { paymentId: review.paymentId, reason: 'Manual finance review needed.' });
+    const updated = await updateBusinessFinanceReview(session, review.id, { status: 'IN_REVIEW', ownerLabel: 'Finance owner' });
+
+    expect((fetchMock.mock.calls[0]?.[0] as string)).toContain('/v1/business/finance/reviews');
+    expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[2]?.[1]?.method).toBe('PATCH');
+    expect(reviews[0]?.reviewType).toBe('REFUND_REVIEW');
+    expect(updated.status).toBe('IN_REVIEW');
+  });
+
+  it('reads admin finance reviews with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const reviews = await listAdminFinanceReviews(session);
+
+    expect((fetchMock.mock.calls[0]?.[0] as string)).toContain('/v1/admin/finance/reviews');
+    expect(reviews).toEqual([]);
   });
 
   it('reads admin driver readiness with bearer auth', async () => {

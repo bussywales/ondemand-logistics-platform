@@ -28,7 +28,8 @@ const requiredTables = [
   "demo_request_events",
   "operational_reset_runs",
   "operational_reset_items",
-  "validation_evidence_runs"
+  "validation_evidence_runs",
+  "finance_review_records"
 ];
 
 if (files.length < 2) {

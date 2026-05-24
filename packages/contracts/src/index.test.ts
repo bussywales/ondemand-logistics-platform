@@ -40,6 +40,9 @@ import {
   FleetOrganisationListSchema,
   FleetReadinessSummarySchema,
   FinanceSummarySchema,
+  FinanceReviewListSchema,
+  CreateFinanceReviewSchema,
+  UpdateFinanceReviewSchema,
   FinanceTransactionListSchema,
   JobPaymentSummarySchema,
   JobTrackingSchema,
@@ -653,10 +656,46 @@ describe("finance schemas", () => {
         deliveredJobCount: 0,
         ordersNeedingFinanceReview: 1,
         refundReviewCandidates: 1,
+        openFinanceReviewCount: 1,
+        waitingSupportFinanceReviewCount: 0,
+        recentlyResolvedFinanceReviewCount: 0,
         latestFinanceEvents: [transaction],
         generatedAt: now
       }).refundReviewCandidates
     ).toBe(1);
+
+    const review = {
+      id: "11111111-1111-4111-8111-111111111111",
+      orgId: "33333333-3333-4333-8333-333333333333",
+      orgName: "Pilot Org",
+      orderId: transaction.orderId,
+      jobId: transaction.jobId,
+      paymentId: transaction.paymentId,
+      supportEscalationId: null,
+      reviewType: "REFUND_REVIEW",
+      status: "OPEN",
+      severity: "MEDIUM",
+      reason: "Captured payment needs manual refund review.",
+      summary: "Payment captured but fulfilment failed.",
+      ownerUserId: null,
+      ownerLabel: "Finance operator",
+      resolution: null,
+      resolutionReason: null,
+      resolvedAt: null,
+      resolvedBy: null,
+      metadata: {},
+      createdAt: now,
+      updatedAt: now
+    };
+
+    expect(FinanceReviewListSchema.parse({ items: [review] }).items[0]?.status).toBe("OPEN");
+    expect(CreateFinanceReviewSchema.parse({ paymentId: transaction.paymentId, reason: "Review candidate" }).reviewType).toBe("REFUND_REVIEW");
+    expect(() => UpdateFinanceReviewSchema.parse({ status: "RESOLVED", resolution: "Manual refund reviewed externally." })).toThrow();
+    expect(UpdateFinanceReviewSchema.parse({
+      status: "RESOLVED",
+      resolution: "Manual refund reviewed externally.",
+      confirmation: "CONFIRM FINANCE REVIEW"
+    }).status).toBe("RESOLVED");
   });
 });
 

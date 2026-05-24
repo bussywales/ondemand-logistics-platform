@@ -12,7 +12,10 @@ import { randomUUID } from "node:crypto";
 import {
   AuthorizeJobPaymentSchema,
   BusinessPaymentListSchema,
+  CreateFinanceReviewSchema,
   FinanceSummarySchema,
+  FinanceReviewListSchema,
+  FinanceReviewRecordSchema,
   FinanceTransactionListSchema,
   AdminPaymentListSchema,
   JobPaymentSummarySchema,
@@ -20,9 +23,12 @@ import {
   RefundSchema,
   PayoutLedgerSchema,
   StripeWebhookAckSchema,
+  UpdateFinanceReviewSchema,
   type BusinessPaymentSummaryDto,
   type AdminPaymentSummaryDto,
+  type CreateFinanceReviewDto,
   type FinanceSummaryDto,
+  type FinanceReviewRecordDto,
   type FinanceTransactionDto,
   type JobPaymentSummaryDto,
   type PaymentDto,
@@ -149,6 +155,40 @@ type FinanceFilters = {
 type FinanceTransactionRow = AdminPaymentSummaryRow & {
   support_refund_review_count: string | number;
 };
+
+type FinanceReviewRow = {
+  id: string;
+  org_id: string;
+  org_name: string | null;
+  order_id: string | null;
+  job_id: string | null;
+  payment_id: string | null;
+  support_escalation_id: string | null;
+  review_type: string;
+  status: string;
+  severity: string;
+  reason: string;
+  summary: string | null;
+  owner_user_id: string | null;
+  owner_label: string | null;
+  resolution: string | null;
+  resolution_reason: string | null;
+  resolved_at: string | Date | null;
+  resolved_by: string | null;
+  metadata: Record<string, unknown> | string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
+type FinanceReviewContextRow = {
+  org_id: string;
+  order_id: string | null;
+  job_id: string | null;
+  payment_id: string | null;
+  support_escalation_id: string | null;
+};
+
+const FINANCE_REVIEW_ACTIVE_STATUSES = ["OPEN", "IN_REVIEW", "WAITING_SUPPORT"];
 
 const PAYMENT_COLUMNS = `p.id, p.job_id, p.provider, p.provider_payment_intent_id, p.status,
   p.amount_authorized_cents, p.amount_captured_cents, p.amount_refunded_cents,
@@ -478,13 +518,19 @@ export class PaymentsService {
   }
 
   async getBusinessFinanceSummary(userId: string, filters: FinanceFilters = {}): Promise<FinanceSummaryDto> {
-    const rows = await this.listFinanceRows({ userId, filters, limit: 500 });
-    return this.buildFinanceSummary("business", rows);
+    const [rows, reviewCounts] = await Promise.all([
+      this.listFinanceRows({ userId, filters, limit: 500 }),
+      this.getFinanceReviewCounts({ userId, filters })
+    ]);
+    return this.buildFinanceSummary("business", rows, reviewCounts);
   }
 
   async getAdminFinanceSummary(filters: FinanceFilters = {}): Promise<FinanceSummaryDto> {
-    const rows = await this.listFinanceRows({ filters, limit: 500 });
-    return this.buildFinanceSummary("admin", rows);
+    const [rows, reviewCounts] = await Promise.all([
+      this.listFinanceRows({ filters, limit: 500 }),
+      this.getFinanceReviewCounts({ filters })
+    ]);
+    return this.buildFinanceSummary("admin", rows, reviewCounts);
   }
 
   async listBusinessFinanceTransactions(userId: string, filters: FinanceFilters = {}) {
@@ -495,6 +541,206 @@ export class PaymentsService {
   async listAdminFinanceTransactions(filters: FinanceFilters = {}) {
     const rows = await this.listFinanceRows({ filters, limit: 100 });
     return FinanceTransactionListSchema.parse({ items: rows.map((row) => this.mapFinanceTransaction(row, "admin")) }).items;
+  }
+
+  async listBusinessFinanceReviews(userId: string, filters: FinanceFilters = {}) {
+    return FinanceReviewListSchema.parse({
+      items: await this.listFinanceReviewRows({ userId, filters, limit: 100 }).then((rows) => rows.map((row) => this.mapFinanceReviewRow(row)))
+    }).items;
+  }
+
+  async listAdminFinanceReviews(filters: FinanceFilters = {}) {
+    return FinanceReviewListSchema.parse({
+      items: await this.listFinanceReviewRows({ filters, limit: 100 }).then((rows) => rows.map((row) => this.mapFinanceReviewRow(row)))
+    }).items;
+  }
+
+  async createBusinessFinanceReview(userId: string, input: unknown): Promise<FinanceReviewRecordDto> {
+    const parsed = CreateFinanceReviewSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_finance_review_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    return this.pg.withTransaction(async (client) => {
+      const context = await this.loadFinanceReviewCreateContext(client, userId, parsed.data);
+      const existing = await client.query<FinanceReviewRow>(
+        `select fr.*, org.name as org_name
+         from public.finance_review_records fr
+         join public.orgs org on org.id = fr.org_id
+         where fr.org_id = $1
+           and fr.review_type = $2
+           and fr.status = any($3::text[])
+           and (
+             ($4::uuid is not null and fr.payment_id = $4::uuid)
+             or ($5::uuid is not null and fr.order_id = $5::uuid)
+             or ($6::uuid is not null and fr.job_id = $6::uuid)
+             or ($7::uuid is not null and fr.support_escalation_id = $7::uuid)
+           )
+         order by fr.created_at desc
+         limit 1`,
+        [
+          context.org_id,
+          parsed.data.reviewType,
+          FINANCE_REVIEW_ACTIVE_STATUSES,
+          context.payment_id,
+          context.order_id,
+          context.job_id,
+          context.support_escalation_id
+        ]
+      );
+
+      if (existing.rowCount) {
+        return this.mapFinanceReviewRow(existing.rows[0]);
+      }
+
+      const inserted = await client.query<FinanceReviewRow>(
+        `insert into public.finance_review_records (
+           org_id,
+           order_id,
+           job_id,
+           payment_id,
+           support_escalation_id,
+           review_type,
+           status,
+           severity,
+           reason,
+           summary,
+           owner_user_id,
+           owner_label,
+           metadata
+         )
+         values ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8, $9, $10, $11, $12::jsonb)
+         returning *, (select name from public.orgs where id = $1) as org_name`,
+        [
+          context.org_id,
+          context.order_id,
+          context.job_id,
+          context.payment_id,
+          context.support_escalation_id,
+          parsed.data.reviewType,
+          parsed.data.severity,
+          parsed.data.reason,
+          parsed.data.summary ?? null,
+          parsed.data.ownerUserId ?? null,
+          parsed.data.ownerLabel ?? null,
+          JSON.stringify({
+            ...(parsed.data.metadata ?? {}),
+            createdFrom: "finance_candidate",
+            noProviderMutation: true
+          })
+        ]
+      );
+
+      const row = inserted.rows[0];
+      await this.insertFinanceReviewAudit(client, {
+        actorId: userId,
+        orgId: row.org_id,
+        reviewId: row.id,
+        action: "finance_review_created",
+        metadata: {
+          reviewType: row.review_type,
+          status: row.status,
+          severity: row.severity,
+          orderId: row.order_id,
+          jobId: row.job_id,
+          paymentId: row.payment_id,
+          supportEscalationId: row.support_escalation_id
+        }
+      });
+
+      return this.mapFinanceReviewRow(row);
+    });
+  }
+
+  async updateBusinessFinanceReview(userId: string, reviewId: string, input: unknown): Promise<FinanceReviewRecordDto> {
+    const parsed = UpdateFinanceReviewSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UnprocessableEntityException({
+        message: "invalid_finance_review_update_payload",
+        issues: parsed.error.issues
+      });
+    }
+
+    return this.pg.withTransaction(async (client) => {
+      const existing = await client.query<FinanceReviewRow>(
+        `select fr.*, org.name as org_name
+         from public.finance_review_records fr
+         join public.orgs org on org.id = fr.org_id
+         where fr.id = $1
+           and exists (
+             select 1
+             from public.org_memberships m
+             where m.org_id = fr.org_id
+               and m.user_id = $2
+               and m.is_active = true
+               and m.role::text in ('BUSINESS_OPERATOR', 'ADMIN', 'OWNER', 'MANAGER', 'OPERATOR', 'FINANCE_VIEWER', 'SUPPORT_USER')
+           )
+         for update`,
+        [reviewId, userId]
+      );
+      if (existing.rowCount !== 1) {
+        throw new NotFoundException("finance_review_not_found");
+      }
+
+      const current = existing.rows[0];
+      const nextStatus = parsed.data.status ?? current.status;
+      const isCloseout = nextStatus === "RESOLVED" || nextStatus === "CANCELLED";
+      const resolvedAt = isCloseout ? new Date().toISOString() : null;
+      const resolvedBy = isCloseout ? userId : null;
+      const updated = await client.query<FinanceReviewRow>(
+        `update public.finance_review_records
+         set status = $1,
+             severity = coalesce($2, severity),
+             reason = coalesce($3, reason),
+             summary = $4,
+             owner_user_id = $5,
+             owner_label = $6,
+             resolution = $7,
+             resolution_reason = $8,
+             resolved_at = $9::timestamptz,
+             resolved_by = $10
+         where id = $11
+         returning *, (select name from public.orgs where id = finance_review_records.org_id) as org_name`,
+        [
+          nextStatus,
+          parsed.data.severity ?? null,
+          parsed.data.reason ?? null,
+          parsed.data.summary === undefined ? current.summary : parsed.data.summary,
+          parsed.data.ownerUserId === undefined ? current.owner_user_id : parsed.data.ownerUserId,
+          parsed.data.ownerLabel === undefined ? current.owner_label : parsed.data.ownerLabel,
+          parsed.data.resolution === undefined ? current.resolution : parsed.data.resolution,
+          parsed.data.resolutionReason === undefined ? current.resolution_reason : parsed.data.resolutionReason,
+          isCloseout ? resolvedAt : current.resolved_at,
+          isCloseout ? resolvedBy : current.resolved_by,
+          reviewId
+        ]
+      );
+
+      const row = updated.rows[0];
+      await this.insertFinanceReviewAudit(client, {
+        actorId: userId,
+        orgId: row.org_id,
+        reviewId: row.id,
+        action: nextStatus === "RESOLVED"
+          ? "finance_review_resolved"
+          : nextStatus === "CANCELLED"
+            ? "finance_review_cancelled"
+            : "finance_review_updated",
+        metadata: {
+          previousStatus: current.status,
+          newStatus: row.status,
+          previousOwner: current.owner_label,
+          newOwner: row.owner_label,
+          severity: row.severity,
+          noProviderMutation: true
+        }
+      });
+
+      return this.mapFinanceReviewRow(row);
+    });
   }
 
   async authorizeJobPayment(jobId: string, input: unknown, userId: string, idempotencyKey: string) {
@@ -1094,7 +1340,102 @@ export class PaymentsService {
     return result.rows;
   }
 
-  private buildFinanceSummary(scope: "business" | "admin", rows: FinanceTransactionRow[]): FinanceSummaryDto {
+  private async listFinanceReviewRows(input: { userId?: string; filters?: FinanceFilters; limit: number }) {
+    const values: unknown[] = [];
+    const clauses: string[] = [];
+    const filters = input.filters ?? {};
+
+    if (input.userId) {
+      values.push(input.userId);
+      clauses.push(`exists (
+        select 1
+        from public.org_memberships m
+        where m.org_id = fr.org_id
+          and m.user_id = $${values.length}
+          and m.is_active = true
+          and m.role::text in ('BUSINESS_OPERATOR', 'ADMIN', 'OWNER', 'MANAGER', 'OPERATOR', 'FINANCE_VIEWER', 'SUPPORT_USER')
+      )`);
+    }
+    if (filters.orgId) {
+      values.push(filters.orgId);
+      clauses.push(`fr.org_id = $${values.length}`);
+    }
+    if (filters.status) {
+      values.push(filters.status);
+      clauses.push(`fr.status = $${values.length}`);
+    }
+    if (filters.from) {
+      values.push(filters.from);
+      clauses.push(`fr.created_at >= $${values.length}::timestamptz`);
+    }
+    if (filters.to) {
+      values.push(filters.to);
+      clauses.push(`fr.created_at <= $${values.length}::timestamptz`);
+    }
+
+    values.push(input.limit);
+    const limitParam = `$${values.length}`;
+    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const result = await this.pg.query<FinanceReviewRow>(
+      `select fr.*, org.name as org_name
+       from public.finance_review_records fr
+       join public.orgs org on org.id = fr.org_id
+       ${where}
+       order by fr.updated_at desc
+       limit ${limitParam}`,
+      values
+    );
+
+    return result.rows;
+  }
+
+  private async getFinanceReviewCounts(input: { userId?: string; filters?: FinanceFilters }) {
+    const values: unknown[] = [];
+    const clauses: string[] = [];
+    const filters = input.filters ?? {};
+
+    if (input.userId) {
+      values.push(input.userId);
+      clauses.push(`exists (
+        select 1
+        from public.org_memberships m
+        where m.org_id = fr.org_id
+          and m.user_id = $${values.length}
+          and m.is_active = true
+          and m.role::text in ('BUSINESS_OPERATOR', 'ADMIN', 'OWNER', 'MANAGER', 'OPERATOR', 'FINANCE_VIEWER', 'SUPPORT_USER')
+      )`);
+    }
+    if (filters.orgId) {
+      values.push(filters.orgId);
+      clauses.push(`fr.org_id = $${values.length}`);
+    }
+    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const result = await this.pg.query<{
+      open_count: string | number;
+      waiting_support_count: string | number;
+      recently_resolved_count: string | number;
+    }>(
+      `select
+         count(*) filter (where fr.status in ('OPEN', 'IN_REVIEW', 'WAITING_SUPPORT'))::int as open_count,
+         count(*) filter (where fr.status = 'WAITING_SUPPORT')::int as waiting_support_count,
+         count(*) filter (where fr.status in ('RESOLVED', 'CANCELLED') and fr.resolved_at >= now() - interval '24 hours')::int as recently_resolved_count
+       from public.finance_review_records fr
+       ${where}`,
+      values
+    );
+
+    return {
+      openFinanceReviewCount: Number(result.rows[0]?.open_count ?? 0),
+      waitingSupportFinanceReviewCount: Number(result.rows[0]?.waiting_support_count ?? 0),
+      recentlyResolvedFinanceReviewCount: Number(result.rows[0]?.recently_resolved_count ?? 0)
+    };
+  }
+
+  private buildFinanceSummary(
+    scope: "business" | "admin",
+    rows: FinanceTransactionRow[],
+    reviewCounts: { openFinanceReviewCount: number; waitingSupportFinanceReviewCount: number; recentlyResolvedFinanceReviewCount: number }
+  ): FinanceSummaryDto {
     const transactions = rows.map((row) => this.mapFinanceTransaction(row, scope));
     const pendingStatuses = new Set(["REQUIRES_PAYMENT_METHOD", "REQUIRES_CONFIRMATION", "AUTHORIZED"]);
     const failedStatuses = new Set(["FAILED", "CANCELLED"]);
@@ -1113,9 +1454,108 @@ export class PaymentsService {
       deliveredJobCount: transactions.filter((row) => row.jobStatus === "DELIVERED").length,
       ordersNeedingFinanceReview: transactions.filter((row) => row.financeReviewStatus !== "CLEAR").length,
       refundReviewCandidates: transactions.filter((row) => row.refundReviewRequired).length,
+      ...reviewCounts,
       latestFinanceEvents: transactions.slice(0, 5),
       generatedAt: new Date().toISOString()
     });
+  }
+
+  private async loadFinanceReviewCreateContext(client: Pick<PoolClient, "query">, userId: string, input: CreateFinanceReviewDto): Promise<FinanceReviewContextRow> {
+    const result = await client.query<FinanceReviewContextRow>(
+      `with selected_support as (
+         select id, org_id, order_id, job_id
+         from public.support_escalations
+         where id = $4::uuid
+       ),
+       selected_payment as (
+         select id
+         from public.payments
+         where id = $2::uuid
+       )
+       select
+         coalesce(o.org_id, j.org_id, se.org_id) as org_id,
+         o.id as order_id,
+         j.id as job_id,
+         p.id as payment_id,
+         se.id as support_escalation_id
+       from (select 1) seed
+       left join selected_support se on true
+       left join selected_payment p on true
+       left join public.customer_orders o
+         on o.id = coalesce($1::uuid, se.order_id, (select co.id from public.customer_orders co where co.payment_id = p.id limit 1))
+       left join public.jobs j
+         on j.id = coalesce($3::uuid, se.job_id, o.job_id)
+       where (o.id is not null or j.id is not null or p.id is not null or se.id is not null)
+         and exists (
+           select 1
+           from public.org_memberships m
+           where m.org_id = coalesce(o.org_id, j.org_id, se.org_id)
+             and m.user_id = $5
+             and m.is_active = true
+             and m.role::text in ('BUSINESS_OPERATOR', 'ADMIN', 'OWNER', 'MANAGER', 'OPERATOR', 'FINANCE_VIEWER', 'SUPPORT_USER')
+         )
+       limit 1`,
+      [
+        input.orderId ?? null,
+        input.paymentId ?? null,
+        input.jobId ?? null,
+        input.supportEscalationId ?? null,
+        userId
+      ]
+    );
+
+    if (result.rowCount !== 1) {
+      throw new NotFoundException("finance_review_context_not_found");
+    }
+
+    return result.rows[0];
+  }
+
+  private mapFinanceReviewRow(row: FinanceReviewRow): FinanceReviewRecordDto {
+    const metadata = typeof row.metadata === "string"
+      ? JSON.parse(row.metadata || "{}") as Record<string, unknown>
+      : row.metadata ?? {};
+    return FinanceReviewRecordSchema.parse({
+      id: row.id,
+      orgId: row.org_id,
+      orgName: row.org_name,
+      orderId: row.order_id,
+      jobId: row.job_id,
+      paymentId: row.payment_id,
+      supportEscalationId: row.support_escalation_id,
+      reviewType: row.review_type,
+      status: row.status,
+      severity: row.severity,
+      reason: row.reason,
+      summary: row.summary,
+      ownerUserId: row.owner_user_id,
+      ownerLabel: row.owner_label,
+      resolution: row.resolution,
+      resolutionReason: row.resolution_reason,
+      resolvedAt: toNullableIsoDateTime(row.resolved_at),
+      resolvedBy: row.resolved_by,
+      metadata,
+      createdAt: toIsoDateTime(row.created_at),
+      updatedAt: toIsoDateTime(row.updated_at)
+    });
+  }
+
+  private async insertFinanceReviewAudit(
+    client: Pick<PoolClient, "query">,
+    input: { actorId: string; orgId: string; reviewId: string; action: string; metadata: Record<string, unknown> }
+  ) {
+    await client.query(
+      `insert into public.audit_log (request_id, actor_id, org_id, entity_type, entity_id, action, metadata)
+       values ($1, $2, $3, 'finance_review', $4, $5, $6::jsonb)`,
+      [
+        getRequestContext()?.requestId ?? randomUUID(),
+        input.actorId,
+        input.orgId,
+        input.reviewId,
+        input.action,
+        JSON.stringify(input.metadata)
+      ]
+    );
   }
 
   private mapFinanceTransaction(row: FinanceTransactionRow, scope: "business" | "admin"): FinanceTransactionDto {

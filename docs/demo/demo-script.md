@@ -136,11 +136,13 @@ Show:
 - captured, pending, and failed payment totals
 - fulfilled/delivered closeout posture
 - refund review candidates when support or fulfilment signals require human review
+- persistent finance reviews for assigning an owner, tracking status, waiting on support, and documenting manual closeout
 
 Say:
 - finance visibility is review-only in v1
 - ShipWright does not automatically refund customers or automate payouts
 - refund decisions require support context and human confirmation
+- resolving a finance review records the decision; it does not mutate Stripe, payouts, orders, jobs, or payments
 
 ### 6B. End-of-day report
 Open:

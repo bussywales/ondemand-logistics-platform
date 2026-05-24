@@ -1367,8 +1367,69 @@ export type FinanceSummary = {
   deliveredJobCount: number;
   ordersNeedingFinanceReview: number;
   refundReviewCandidates: number;
+  openFinanceReviewCount: number;
+  waitingSupportFinanceReviewCount: number;
+  recentlyResolvedFinanceReviewCount: number;
   latestFinanceEvents: FinanceTransaction[];
   generatedAt: string;
+};
+
+export type FinanceReviewRecordType = "REFUND_REVIEW" | "PAYMENT_RECONCILIATION" | "FAILED_CAPTURE_REVIEW" | "DELIVERY_PAYMENT_MISMATCH";
+export type FinanceReviewRecordStatus = "OPEN" | "IN_REVIEW" | "WAITING_SUPPORT" | "RESOLVED" | "CANCELLED";
+export type FinanceReviewRecordSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export type FinanceReviewRecord = {
+  id: string;
+  orgId: string;
+  orgName: string | null;
+  orderId: string | null;
+  jobId: string | null;
+  paymentId: string | null;
+  supportEscalationId: string | null;
+  reviewType: FinanceReviewRecordType;
+  status: FinanceReviewRecordStatus;
+  severity: FinanceReviewRecordSeverity;
+  reason: string;
+  summary: string | null;
+  ownerUserId: string | null;
+  ownerLabel: string | null;
+  resolution: string | null;
+  resolutionReason: string | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FinanceReviewList = {
+  items: FinanceReviewRecord[];
+};
+
+export type CreateFinanceReviewInput = {
+  orderId?: string | null;
+  jobId?: string | null;
+  paymentId?: string | null;
+  supportEscalationId?: string | null;
+  reviewType?: FinanceReviewRecordType;
+  severity?: FinanceReviewRecordSeverity;
+  reason: string;
+  summary?: string | null;
+  ownerUserId?: string | null;
+  ownerLabel?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type UpdateFinanceReviewInput = {
+  status?: FinanceReviewRecordStatus;
+  severity?: FinanceReviewRecordSeverity;
+  ownerUserId?: string | null;
+  ownerLabel?: string | null;
+  reason?: string;
+  summary?: string | null;
+  resolution?: string | null;
+  resolutionReason?: string | null;
+  confirmation?: string;
 };
 
 export type AdminOutboxItem = {
