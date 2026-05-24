@@ -24,3 +24,20 @@ Expected filenames:
 - `demo-request-pipeline.png`
 
 The landing page is asset-ready: it will use reviewed files that exist here and fall back to CSS-native product visuals when files are absent.
+
+## Current asset status
+Captured and reviewed:
+- `release-readiness-ready.png`
+- `validation-evidence.png`
+- `admin-command.png`
+- `merchant-menu-operations.png`
+- `dispatch-audit.png`
+- `fleet-workspace.png`
+- `governance-controls.png`
+- `demo-request-pipeline.png`
+
+Deferred because staging showed unavailable states during capture:
+- `finance-review.png`
+- `analytics-dashboard.png`
+
+The landing page will continue to use CSS-native fallback visuals for deferred or missing files.

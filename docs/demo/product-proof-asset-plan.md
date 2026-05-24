@@ -89,3 +89,20 @@ Avoid:
 
 ## Automation note
 `pnpm proof:capture-assets` is intentionally not implemented in this pass. Manual capture keeps review/redaction explicit before assets are exposed on public pages.
+
+## Current capture status
+Captured and reviewed in Public Proof Assets v1.1:
+- `release-readiness-ready.png`
+- `validation-evidence.png`
+- `admin-command.png`
+- `merchant-menu-operations.png`
+- `dispatch-audit.png`
+- `fleet-workspace.png`
+- `governance-controls.png`
+- `demo-request-pipeline.png`
+
+Deferred:
+- `finance-review.png` - staging finance page returned an unavailable state during capture; keep CSS fallback until the page is verified with representative data.
+- `analytics-dashboard.png` - staging analytics page returned an unavailable state during capture; keep this asset deferred until analytics summary loads cleanly.
+
+Do not use unavailable/error-state screenshots as proof assets.
