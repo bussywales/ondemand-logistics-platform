@@ -26,10 +26,13 @@ The current release is consolidated as the **Controlled Pilot Readiness Pack**.
 Start here for handover, demo, and pilot-readiness review:
 - release notes: `docs/release-notes/v1-controlled-pilot.md`
 - known limitations: `docs/known-limitations.md`
+- pilot launch checklist: `docs/pilot-launch-checklist.md`
+- investor deck outline: `docs/investor-deck-outline.md`
 - operator guide: `docs/operator-guide.md`
 - admin route index: `docs/admin-route-index.md`
 - controlled demo runbook: `docs/demo/controlled-demo-runbook.md`
 - final demo script: `docs/demo/demo-script.md`
+- pilot readiness summary: `docs/demo/pilot-readiness-summary.md`
 
 Current posture:
 - ready for controlled demos, managed rehearsals, and tightly supervised early pilot operation
@@ -44,6 +47,11 @@ Audience-specific demo packs live in `docs/demo/`:
 - operator partner demo pack: `docs/demo/operator-demo-pack.md`
 - shared talk track: `docs/demo/demo-talk-track.md`
 - final pre-demo checklist: `docs/demo/demo-checklist-final.md`
+- pilot readiness summary: `docs/demo/pilot-readiness-summary.md`
+
+Launch and investor-prep references:
+- pilot launch checklist: `docs/pilot-launch-checklist.md`
+- investor deck outline: `docs/investor-deck-outline.md`
 
 Before any investor, merchant, or operator demo, run `pnpm rehearsal:verify-staging`, confirm `/admin/release-readiness` is `READY`, confirm required-auth smoke is `7/7`, and record the latest proof IDs.
 
