@@ -289,13 +289,56 @@ function GovernanceStatusControl(props: {
 export function AdminUsersView(props: {
   users: IdentityUser[];
   search: string;
+  accessEvents?: IdentityAccessEvent[];
+  initialSelectedUserId?: string | null;
   onSearch: (value: string) => void;
   onPreviewImpersonation?: (user: IdentityUser) => void;
   onUpdateStatus?: (user: IdentityUser, input: { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string }) => void;
   pending?: boolean;
 }) {
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(props.initialSelectedUserId ?? null);
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const normalizedSearch = props.search.trim().toLowerCase();
+  const statusOptions = useMemo(() => ["ALL", ...Array.from(new Set(props.users.map((user) => user.status))).sort()], [props.users]);
+  const roleOptions = useMemo(() => {
+    const roles = new Set<string>();
+    for (const user of props.users) {
+      if (user.platformAdmin) roles.add("PLATFORM_ADMIN");
+      for (const membership of user.memberships) roles.add(membership.role);
+    }
+    return ["ALL", ...Array.from(roles).sort()];
+  }, [props.users]);
+  const filteredUsers = useMemo(() => props.users.filter((user) => {
+    const roleValues = [user.platformAdmin ? "PLATFORM_ADMIN" : null, ...user.memberships.map((membership) => membership.role)].filter(Boolean);
+    const searchable = [
+      user.displayName,
+      user.email,
+      user.status,
+      user.platformAdmin ? "platform admin" : "",
+      ...user.memberships.flatMap((membership) => [membership.orgName, membership.role, membership.orgType])
+    ].join(" ").toLowerCase();
+    return (
+      (!normalizedSearch || searchable.includes(normalizedSearch)) &&
+      (statusFilter === "ALL" || user.status === statusFilter) &&
+      (roleFilter === "ALL" || roleValues.includes(roleFilter))
+    );
+  }), [normalizedSearch, props.users, roleFilter, statusFilter]);
+  const selectedUser = props.users.find((user) => user.id === selectedUserId) ?? null;
+
+  const selectedUserEvents = useMemo(() => {
+    if (!selectedUser) return [];
+    const userTokens = [selectedUser.id, selectedUser.email.toLowerCase(), selectedUser.displayName.toLowerCase()];
+    return (props.accessEvents ?? []).filter((event) => {
+      const summary = event.summary.toLowerCase();
+      const actorEmail = event.actorEmail?.toLowerCase() ?? "";
+      const metadata = JSON.stringify(event.metadata ?? {}).toLowerCase();
+      return userTokens.some((token) => summary.includes(token) || actorEmail.includes(token) || metadata.includes(token));
+    });
+  }, [props.accessEvents, selectedUser]);
+
   return (
-    <main className="app-shell admin-shell-page">
+    <main className="app-shell admin-shell-page admin-users-directory-page">
       <div className="sw-row-between admin-shell-header">
         <div>
           <BrandLogo />
@@ -310,65 +353,276 @@ export function AdminUsersView(props: {
           <Link className="sw-button sw-button--secondary button button-secondary" href="/admin">Admin home</Link>
         </div>
       </div>
-      <section className="sw-command-surface">
+      <section className="sw-command-surface admin-users-model-strip">
         <div className="sw-card-header">
           <div>
             <p className="eyebrow">Identity model</p>
             <h2>Identity, membership, role, profile</h2>
             <p>Identity is who someone is. Membership is where they belong. Role controls what they can do. Profile stores operational details.</p>
           </div>
+          <div className="admin-users-directory-metrics">
+            <span><strong>{props.users.length}</strong> users</span>
+            <span><strong>{props.users.filter((user) => user.platformAdmin).length}</strong> platform</span>
+            <span><strong>{props.users.filter((user) => user.status !== "ACTIVE").length}</strong> restricted</span>
+          </div>
         </div>
       </section>
-      <section className="sw-operational-surface">
-        <div className="sw-card-header">
+      <section className="sw-operational-surface admin-users-directory">
+        <div className="sw-card-header admin-users-directory-header">
           <div>
             <p className="eyebrow">Global user list</p>
-            <h2>{props.users.length} users</h2>
+            <h2>{filteredUsers.length} visible users</h2>
+            <p className="ops-detail-note">Scan first, then open a user for governance controls, affiliations, and support-access preparation.</p>
           </div>
-          <input aria-label="Search users" onChange={(event) => props.onSearch(event.target.value)} placeholder="Search users" value={props.search} />
+          <div className="admin-users-toolbar" role="search">
+            <label className="sw-field">
+              <span className="sw-label">Search</span>
+              <input aria-label="Search users" className="sw-input" onChange={(event) => props.onSearch(event.target.value)} placeholder="Name, email, org, role" value={props.search} />
+            </label>
+            <label className="sw-field">
+              <span className="sw-label">Status</span>
+              <select aria-label="Filter users by status" className="sw-input" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
+                {statusOptions.map((option) => <option key={option} value={option}>{option === "ALL" ? "All statuses" : formatLabel(option)}</option>)}
+              </select>
+            </label>
+            <label className="sw-field">
+              <span className="sw-label">Role</span>
+              <select aria-label="Filter users by role" className="sw-input" onChange={(event) => setRoleFilter(event.target.value)} value={roleFilter}>
+                {roleOptions.map((option) => <option key={option} value={option}>{option === "ALL" ? "All roles" : formatLabel(option)}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
-        <div className="sw-stack">
-          {props.users.length === 0 ? (
+        <div className="admin-users-table" aria-label="Admin user directory">
+          <div className="admin-users-table-head" aria-hidden="true">
+            <span>User</span>
+            <span>Status</span>
+            <span>Platform role</span>
+            <span>Organisations</span>
+            <span>Last active</span>
+            <span>Governance</span>
+            <span>Actions</span>
+          </div>
+          {filteredUsers.length === 0 ? (
             <div className="sw-empty-state">
               <strong className="sw-empty-title">No users found</strong>
-              <p className="sw-empty-copy">Users appear here after onboarding, team invite, or seeded staging setup.</p>
+              <p className="sw-empty-copy">Adjust search or filters. Users appear after onboarding, team invite, or seeded staging setup.</p>
             </div>
-          ) : props.users.map((user) => (
-            <article className="sw-list-row" key={user.id}>
-              <div className="sw-stack-sm">
-                <div className="sw-row">
-                  <strong>{user.displayName}</strong>
-                  <span className={`sw-badge ${statusBadgeClass(user.status)}`}>{formatLabel(user.status)}</span>
-                  {user.platformAdmin ? <span className="sw-badge sw-badge--info">Platform admin</span> : null}
-                </div>
-                <p className="ops-detail-note">{user.email}</p>
-                <p className="ops-detail-note">Last sign-in {user.lastSignInAt ?? "not available"}</p>
-              </div>
-              <div className="sw-stack-sm">
-                {user.memberships.length ? user.memberships.map((membership) => (
-                  <Link className="sw-button sw-button--ghost button button-secondary" href={`/admin/orgs/${membership.orgId}/members`} key={membership.id}>
-                    {membership.orgName} · {formatLabel(membership.role)}
-                  </Link>
-                )) : <span className="sw-badge sw-badge--neutral">No memberships</span>}
-                {props.onUpdateStatus ? (
-                  <GovernanceStatusControl
-                    currentStatus={user.status}
-                    disabled={props.pending}
-                    kind="user"
-                    onSubmit={(input) => props.onUpdateStatus?.(user, input as { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string })}
-                  />
-                ) : null}
-                {props.onPreviewImpersonation ? (
-                  <button className="sw-button sw-button--ghost button button-secondary" disabled={props.pending} onClick={() => props.onPreviewImpersonation?.(user)} type="button">
-                    Preview impersonation requirements
-                  </button>
-                ) : null}
-              </div>
-            </article>
+          ) : filteredUsers.map((user) => (
+            <button
+              className={`admin-users-row ${selectedUserId === user.id ? "admin-users-row-active" : ""}`}
+              key={user.id}
+              onClick={() => setSelectedUserId(user.id)}
+              aria-label={`Open details for ${user.displayName}`}
+              type="button"
+            >
+              <span className="admin-user-primary admin-users-cell">
+                <strong>{user.displayName}</strong>
+                <span>{user.email}</span>
+              </span>
+              <span className="admin-users-cell"><span className={`sw-badge ${statusBadgeClass(user.status)}`}>{formatLabel(user.status)}</span></span>
+              <span className="admin-users-cell">
+                {user.platformAdmin ? <span className="sw-badge sw-badge--info">Platform Admin</span> : <span className="sw-badge sw-badge--neutral">None</span>}
+              </span>
+              <span className="admin-users-org-cell admin-users-cell">
+                {user.memberships.length ? (
+                  <>
+                    <strong>{user.memberships.length}</strong>
+                    <span>{user.memberships.slice(0, 2).map((membership) => membership.orgName).join(", ")}{user.memberships.length > 2 ? ` +${user.memberships.length - 2}` : ""}</span>
+                  </>
+                ) : (
+                  <span>No memberships</span>
+                )}
+              </span>
+              <span className="admin-users-cell">{user.lastSignInAt ? new Date(user.lastSignInAt).toLocaleDateString() : "Not available"}</span>
+              <span className="admin-users-cell">
+                {user.status === "ACTIVE" ? <span className="sw-badge sw-badge--success">Clear</span> : <span className="sw-badge sw-badge--warning">Review</span>}
+              </span>
+              <span className="admin-users-cell"><span className="admin-users-row-action">Open details</span></span>
+            </button>
           ))}
         </div>
       </section>
+      {selectedUser ? (
+        <UserDetailDrawer
+          accessEvents={selectedUserEvents}
+          onClose={() => setSelectedUserId(null)}
+          onPreviewImpersonation={props.onPreviewImpersonation}
+          onUpdateStatus={props.onUpdateStatus}
+          pending={props.pending}
+          user={selectedUser}
+        />
+      ) : null}
     </main>
+  );
+}
+
+function UserRoleChips(props: { user: IdentityUser }) {
+  const roleChips = [
+    props.user.platformAdmin ? "PLATFORM_ADMIN" : null,
+    ...props.user.memberships.map((membership) => membership.role)
+  ].filter((role): role is string => Boolean(role));
+  const uniqueRoles = Array.from(new Set(roleChips));
+  return (
+    <div className="admin-user-role-chips">
+      {uniqueRoles.length === 0 ? (
+        <span className="sw-badge sw-badge--neutral">No roles</span>
+      ) : uniqueRoles.map((role) => (
+        <span className={`sw-badge ${role === "PLATFORM_ADMIN" ? "sw-badge--info" : "sw-badge--neutral"}`} key={role}>{formatLabel(role)}</span>
+      ))}
+    </div>
+  );
+}
+
+function UserDetailDrawer(props: {
+  accessEvents: IdentityAccessEvent[];
+  onClose: () => void;
+  onPreviewImpersonation?: (user: IdentityUser) => void;
+  onUpdateStatus?: (user: IdentityUser, input: { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string }) => void;
+  pending?: boolean;
+  user: IdentityUser;
+}) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") props.onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [props.onClose]);
+
+  const fleetAffiliations = props.user.memberships.filter((membership) => membership.orgType === "DRIVER_COMPANY");
+  const businessAffiliations = props.user.memberships.filter((membership) => membership.orgType === "RESTAURANT" || membership.orgType === "RETAILER");
+  const otherAffiliations = props.user.memberships.filter((membership) => !fleetAffiliations.includes(membership) && !businessAffiliations.includes(membership));
+  return (
+    <div className="admin-user-drawer-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) props.onClose();
+    }} role="presentation">
+      <aside aria-label={`User details for ${props.user.displayName}`} className="admin-user-drawer" role="dialog" aria-modal="true">
+        <div className="admin-user-drawer-header">
+          <div>
+            <p className="eyebrow">User detail</p>
+            <h2>{props.user.displayName}</h2>
+            <p className="ops-detail-note">{props.user.email}</p>
+          </div>
+          <button className="sw-button sw-button--ghost button button-secondary" onClick={props.onClose} type="button">Close</button>
+        </div>
+
+        <section className="admin-user-drawer-section">
+          <div className="sw-row">
+            <span className={`sw-badge ${statusBadgeClass(props.user.status)}`}>{formatLabel(props.user.status)}</span>
+            {props.user.platformAdmin ? <span className="sw-badge sw-badge--info">Global platform role</span> : null}
+          </div>
+          <dl className="admin-user-detail-grid">
+            <div><dt>User ID</dt><dd>{props.user.id}</dd></div>
+            <div><dt>Created</dt><dd>{new Date(props.user.createdAt).toLocaleString()}</dd></div>
+            <div><dt>Updated</dt><dd>{new Date(props.user.updatedAt).toLocaleString()}</dd></div>
+            <div><dt>Last active</dt><dd>{props.user.lastSignInAt ? new Date(props.user.lastSignInAt).toLocaleString() : "Not available"}</dd></div>
+          </dl>
+        </section>
+
+        <section className="admin-user-drawer-section">
+          <div className="sw-card-header">
+            <div>
+              <p className="eyebrow">Roles</p>
+              <h3>Global and organisation roles</h3>
+            </div>
+          </div>
+          <UserRoleChips user={props.user} />
+        </section>
+
+        <section className="admin-user-drawer-section">
+          <div className="sw-card-header">
+            <div>
+              <p className="eyebrow">Affiliations</p>
+              <h3>{props.user.memberships.length} organisation memberships</h3>
+            </div>
+          </div>
+          <div className="admin-user-memberships">
+            {props.user.memberships.length === 0 ? <p className="ops-detail-note">No organisation memberships recorded.</p> : props.user.memberships.map((membership) => (
+              <Link className="admin-user-membership-row" href={`/admin/orgs/${membership.orgId}/members`} key={membership.id}>
+                <span>
+                  <strong>{membership.orgName}</strong>
+                  <small>{formatLabel(membership.orgType)} · {formatLabel(membership.role)}</small>
+                </span>
+                <span className={`sw-badge ${statusBadgeClass(membership.isActive ? "ACTIVE" : "INACTIVE")}`}>{membership.isActive ? "Active" : "Inactive"}</span>
+              </Link>
+            ))}
+          </div>
+          <div className="admin-user-affiliation-summary">
+            <span>Business: {businessAffiliations.length}</span>
+            <span>Fleet: {fleetAffiliations.length}</span>
+            <span>Other: {otherAffiliations.length}</span>
+          </div>
+        </section>
+
+        <section className="admin-user-drawer-section admin-user-governance-section">
+          <div className="sw-card-header">
+            <div>
+              <p className="eyebrow">Governance</p>
+              <h3>Suspend or reactivate access</h3>
+              <p className="ops-detail-note">No account deletion. Restricted status changes require reason and typed confirmation.</p>
+            </div>
+          </div>
+          {props.onUpdateStatus ? (
+            <GovernanceStatusControl
+              currentStatus={props.user.status}
+              disabled={props.pending}
+              kind="user"
+              onSubmit={(input) => props.onUpdateStatus?.(props.user, input as { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string })}
+            />
+          ) : <p className="ops-detail-note">Governance mutation controls are unavailable in this context.</p>}
+        </section>
+
+        <section className="admin-user-drawer-section">
+          <div className="sw-card-header">
+            <div>
+              <p className="eyebrow">Support access</p>
+              <h3>Impersonation preview</h3>
+              <p className="ops-detail-note">Live impersonation is disabled. Preview only lists requirements for a future audited support session.</p>
+            </div>
+          </div>
+          {props.onPreviewImpersonation ? (
+            <button className="sw-button sw-button--secondary button button-secondary" disabled={props.pending} onClick={() => props.onPreviewImpersonation?.(props.user)} type="button">
+              Preview impersonation requirements
+            </button>
+          ) : null}
+        </section>
+
+        <section className="admin-user-drawer-section">
+          <div className="sw-card-header">
+            <div>
+              <p className="eyebrow">Access history</p>
+              <h3>{props.accessEvents.length} recent matching events</h3>
+            </div>
+          </div>
+          {props.accessEvents.length === 0 ? (
+            <p className="ops-detail-note">No recent governance events matched this user. Organisation-level invite history is available from membership detail pages.</p>
+          ) : (
+            <div className="admin-user-access-list">
+              {props.accessEvents.slice(0, 6).map((event) => (
+                <div className="sw-list-row" key={event.id}>
+                  <div>
+                    <strong>{event.summary}</strong>
+                    <p className="ops-detail-note">{event.actorName ?? event.actorEmail ?? "System"} · {new Date(event.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className="sw-badge sw-badge--neutral">{formatLabel(event.eventType)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="admin-user-drawer-section">
+          <div className="sw-card-header">
+            <div>
+              <p className="eyebrow">Invitation history</p>
+              <h3>Organisation invite records</h3>
+              <p className="ops-detail-note">Invitation records are scoped to organisations. Open an affiliation above to review resend, cancel, and invite audit history.</p>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
   );
 }
 
@@ -798,6 +1052,7 @@ export function AdminUsersShell() {
   const { status, session } = useBusinessAuth();
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<IdentityUser[]>([]);
+  const [accessEvents, setAccessEvents] = useState<IdentityAccessEvent[]>([]);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -810,9 +1065,22 @@ export function AdminUsersShell() {
     void listAdminUsers(session, search).then(setUsers);
   }, [search, session, status]);
 
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.context.platformAdmin) return;
+    void getAdminGovernanceSummary(session)
+      .then((summary) => setAccessEvents(summary.recentEvents))
+      .catch(() => setAccessEvents([]));
+  }, [session, status]);
+
   async function refresh(currentSession = session) {
     if (!currentSession) return;
     setUsers(await listAdminUsers(currentSession, search));
+    try {
+      const summary = await getAdminGovernanceSummary(currentSession);
+      setAccessEvents(summary.recentEvents);
+    } catch {
+      setAccessEvents([]);
+    }
   }
 
   async function handleUpdateStatus(user: IdentityUser, input: { status: "ACTIVE" | "SUSPENDED" | "DISABLED"; reason?: string; note?: string | null; confirmation?: string }) {
@@ -853,6 +1121,7 @@ export function AdminUsersShell() {
       {message ? <div className="form-error-banner support-escalation-error">{message}</div> : null}
       <AdminUsersView
         users={users}
+        accessEvents={accessEvents}
         search={search}
         onPreviewImpersonation={handlePreviewImpersonation}
         onSearch={setSearch}

@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { AdminGovernanceView, AdminOrgsView, AdminUsersView, BusinessTeamView, OrgMembersView } from "./identity-shell";
-import type { BusinessTeam, IdentityOrg, IdentityOrgMembers, IdentityUser } from "../_lib/product-state";
+import type { BusinessTeam, IdentityAccessEvent, IdentityOrg, IdentityOrgMembers, IdentityUser } from "../_lib/product-state";
 
 const org: IdentityOrg = {
   id: "22222222-2222-4222-8222-222222222222",
@@ -33,6 +33,35 @@ const member = {
   updatedAt: "2026-05-19T10:00:00.000Z"
 };
 
+const fleetOrg: IdentityOrg = {
+  id: "55555555-5555-4555-8555-555555555555",
+  name: "Staging Fleet",
+  type: "DRIVER_COMPANY",
+  status: "ACTIVE",
+  contactName: null,
+  contactEmail: "fleet@example.com",
+  city: "London",
+  memberCount: 1,
+  activeMemberCount: 1,
+  createdAt: "2026-05-19T10:00:00.000Z",
+  updatedAt: "2026-05-19T10:00:00.000Z"
+};
+
+const fleetMember = {
+  id: "66666666-6666-4666-8666-666666666666",
+  orgId: fleetOrg.id,
+  orgName: fleetOrg.name,
+  orgType: fleetOrg.type,
+  orgStatus: fleetOrg.status,
+  userId: "77777777-7777-4777-8777-777777777777",
+  email: "fleet@example.com",
+  displayName: "Fleet Manager",
+  role: "FLEET_MANAGER" as const,
+  isActive: true,
+  createdAt: "2026-05-19T10:00:00.000Z",
+  updatedAt: "2026-05-19T10:00:00.000Z"
+};
+
 const invitation = {
   id: "44444444-4444-4444-8444-444444444444",
   orgId: org.id,
@@ -44,7 +73,7 @@ const invitation = {
   updatedAt: "2026-05-19T10:00:00.000Z"
 };
 
-const accessEvent = {
+const accessEvent: IdentityAccessEvent = {
   id: "1",
   orgId: org.id,
   eventType: "team_invite_created",
@@ -56,7 +85,7 @@ const accessEvent = {
 };
 
 describe("identity shells", () => {
-  it("renders admin users with membership links", () => {
+  it("renders admin users as a compact directory with drawer detail", () => {
     const users: IdentityUser[] = [
       {
         id: member.userId,
@@ -71,10 +100,65 @@ describe("identity shells", () => {
       }
     ];
 
-    const html = renderToStaticMarkup(<AdminUsersView users={users} search="" onSearch={vi.fn()} />);
+    const html = renderToStaticMarkup(
+      <AdminUsersView
+        accessEvents={[{ ...accessEvent, summary: "operator@example.com user status changed from Active to Suspended." }]}
+        initialSelectedUserId={member.userId}
+        onPreviewImpersonation={vi.fn()}
+        onSearch={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        search=""
+        users={users}
+      />
+    );
     expect(html).toContain("Identity, membership, role, profile");
+    expect(html).toContain("Admin user directory");
     expect(html).toContain("operator@example.com");
+    expect(html).toContain("Open details");
+    expect(html).toContain("User detail");
+    expect(html).toContain("Platform Admin");
+    expect(html).toContain("Operator");
+    expect(html).toContain("Governance");
+    expect(html).toContain("Suspend or reactivate access");
+    expect(html).toContain("Preview impersonation requirements");
+    expect(html).toContain("Access history");
+    expect(html).toContain("Invitation records are scoped to organisations");
     expect(html).toContain("/admin/orgs/22222222-2222-4222-8222-222222222222/members");
+    expect(html).not.toMatch(/delete account|delete user|permanent delete/i);
+  });
+
+  it("filters the admin user directory by search text", () => {
+    const users: IdentityUser[] = [
+      {
+        id: member.userId,
+        email: member.email,
+        displayName: member.displayName,
+        status: "ACTIVE",
+        platformAdmin: true,
+        lastSignInAt: null,
+        createdAt: "2026-05-19T10:00:00.000Z",
+        updatedAt: "2026-05-19T10:00:00.000Z",
+        memberships: [member]
+      },
+      {
+        id: fleetMember.userId,
+        email: fleetMember.email,
+        displayName: fleetMember.displayName,
+        status: "ACTIVE",
+        platformAdmin: false,
+        lastSignInAt: null,
+        createdAt: "2026-05-19T10:00:00.000Z",
+        updatedAt: "2026-05-19T10:00:00.000Z",
+        memberships: [fleetMember]
+      }
+    ];
+
+    const html = renderToStaticMarkup(<AdminUsersView users={users} search="fleet" onSearch={vi.fn()} />);
+    expect(html).toContain("Admin user directory");
+    expect(html).toContain("Fleet Manager");
+    expect(html).toContain("Fleet Manager");
+    expect(html).toContain("Staging Fleet");
+    expect(html).not.toContain("operator@example.com");
   });
 
   it("renders admin orgs and org member controls", () => {
