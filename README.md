@@ -37,6 +37,16 @@ Current posture:
 - human-reviewed for support, finance, dispatch, menu rollback, governance, and reset actions
 - not positioned as an unattended public marketplace or autonomous logistics/finance platform
 
+## Demo package
+Audience-specific demo packs live in `docs/demo/`:
+- investor demo pack: `docs/demo/investor-demo-pack.md`
+- pilot merchant demo pack: `docs/demo/pilot-merchant-demo-pack.md`
+- operator partner demo pack: `docs/demo/operator-demo-pack.md`
+- shared talk track: `docs/demo/demo-talk-track.md`
+- final pre-demo checklist: `docs/demo/demo-checklist-final.md`
+
+Before any investor, merchant, or operator demo, run `pnpm rehearsal:verify-staging`, confirm `/admin/release-readiness` is `READY`, confirm required-auth smoke is `7/7`, and record the latest proof IDs.
+
 ## Core guarantees
 - server-side RBAC
 - Postgres RLS
