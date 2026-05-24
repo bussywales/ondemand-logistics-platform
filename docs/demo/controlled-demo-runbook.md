@@ -26,21 +26,29 @@ Optional attendees:
 
 ## Staging URLs
 Core routes:
+- public site: `https://ondemand-logistics-platform-web.vercel.app/`
+- controlled pilot packages: `https://ondemand-logistics-platform-web.vercel.app/pricing`
+- demo request form: `https://ondemand-logistics-platform-web.vercel.app/demo/request`
 - public restaurant ordering: `https://ondemand-logistics-platform-web.vercel.app/restaurants/pilot-kitchen-1777370757`
 - public tracking pattern: `https://ondemand-logistics-platform-web.vercel.app/track/<orderId>`
 - business workspace: `https://ondemand-logistics-platform-web.vercel.app/app`
 - business orders: `https://ondemand-logistics-platform-web.vercel.app/app/orders`
 - payment risk: `https://ondemand-logistics-platform-web.vercel.app/app/payments`
+- business finance: `https://ondemand-logistics-platform-web.vercel.app/app/finance`
 - end-of-day report: `https://ondemand-logistics-platform-web.vercel.app/app/reports/end-of-day`
 - notifications: `https://ondemand-logistics-platform-web.vercel.app/app/notifications`
 - restaurant setup: `https://ondemand-logistics-platform-web.vercel.app/app/restaurant`
 - driver route: `https://ondemand-logistics-platform-web.vercel.app/driver`
 - admin control plane: `https://ondemand-logistics-platform-web.vercel.app/admin`
+- admin command: `https://ondemand-logistics-platform-web.vercel.app/admin/command`
 - pilot management: `https://ondemand-logistics-platform-web.vercel.app/admin/pilots`
 - pilot rehearsal cockpit pattern: `https://ondemand-logistics-platform-web.vercel.app/admin/pilots/<pilotId>/rehearsal`
-- controlled pilot packages: `https://ondemand-logistics-platform-web.vercel.app/pricing`
-- demo request form: `https://ondemand-logistics-platform-web.vercel.app/demo/request`
 - demo request admin review: `https://ondemand-logistics-platform-web.vercel.app/admin/demo-requests`
+- release readiness: `https://ondemand-logistics-platform-web.vercel.app/admin/release-readiness`
+- validation evidence: `https://ondemand-logistics-platform-web.vercel.app/admin/validation-evidence`
+- admin finance: `https://ondemand-logistics-platform-web.vercel.app/admin/finance`
+- dispatch audit: `https://ondemand-logistics-platform-web.vercel.app/admin/dispatch-audit`
+- operational reset tools: `https://ondemand-logistics-platform-web.vercel.app/admin/operational-resets`
 - product analytics: `https://ondemand-logistics-platform-web.vercel.app/admin/analytics`
 - notification diagnostics: `https://ondemand-logistics-platform-web.vercel.app/admin/notifications`
 - help: `https://ondemand-logistics-platform-web.vercel.app/help`
@@ -110,27 +118,23 @@ Record the latest ids before the session:
 
 ## Safe Demo Flow
 Recommended order:
-1. confirm release verification and proof artifacts exist
-2. open the public restaurant menu
-3. place a paid order or reference the latest proven order if live ordering is not appropriate for the session
-4. show the customer success state
-5. open the public tracking route
-6. show the business orders queue
-7. show the payment risk surface
-8. show the end-of-day report
-9. show the daily briefing / command-intelligence layer on `/app`
-10. show notifications
-11. show the driver execution route
-12. show the admin control plane
-13. show admin command intelligence
+1. confirm `pnpm rehearsal:verify-staging` passed and stored evidence is fresh
+2. open the public site and explain the controlled-pilot product story
+3. open `/pricing` and explain pilot packages without fake self-serve pricing
+4. show `/demo/request`, then `/admin/demo-requests` for follow-up workflow
+5. show pilot workspace readiness, guardrails, and the selected rehearsal cockpit
+6. show restaurant/menu setup, menu history, availability, order controls, and rollback preview/confirmation
+7. place a paid public order or reference the latest proven order if live ordering is not appropriate
+8. show customer success and public tracking
+9. show business orders, jobs, support escalation, and dispatch governance
+10. show finance visibility and persistent finance review handling
+11. show `/admin/dispatch-audit` for read-only assignment accountability
+12. show daily briefing, end-of-day report, and admin command posture
+13. open `/admin/release-readiness` and `/admin/validation-evidence`; confirm stored release/proof/smoke evidence is current or explain any missing/stale posture
 14. show `/admin/operational-resets` only if the audience asks how staging/demo clutter is prepared; explain preview, per-record selection, typed confirmation, reset-run evidence, and no hard deletes
-15. show pilot management mode, readiness stage, owners, and checklist evidence
-16. open `/admin/release-readiness`, `/admin/validation-evidence`, and the selected pilot rehearsal cockpit; confirm stored release/proof/smoke evidence is current or explain any missing/stale posture
-17. show soft pilot guardrails on business surfaces; explain that they warn and guide but do not block workflows in v1
-18. show `/pricing` as the controlled pilot package page; explain that ShipWright does not publish fake self-serve pricing and starts with fit review
-19. show the public demo request form, `/admin/demo-requests`, `/admin/analytics`, `/admin/notifications`, and the commercial intake signal in `/admin/command`; explain that requests are persisted, first-party funnel analytics are admin-readable, and notification channels can be tested when optional email/webhook env is configured
-20. show help and pilot playbooks
-21. close by referencing the proof artifacts and current known limitations
+15. show `/admin/analytics` and `/admin/notifications` if commercial or operational diagnostics are in scope
+16. show help and pilot playbooks
+17. close by referencing proof artifacts and current known limitations
 
 Audience-specific walkthroughs:
 - use `investor-walkthrough.md` for investor or strategic partner sessions
@@ -149,7 +153,11 @@ Do not claim:
 - open public pilot readiness
 - unattended real-world reliability
 - full payout automation
+- automated refunds
+- autonomous dispatch decisions
 - autonomous end-of-day closeout or AI-led incident resolution
+- live impersonation
+- SSO/SCIM
 - live-map courier movement
 - outbound email delivery as proven unless Resend sender/domain is verified and separately proven
 - CRM automation for demo requests; internal admin command/outbox visibility, owner assignment, follow-up scheduling, contact recording, event history, and optional webhook/admin-email notification delivery are available, but outbound follow-up remains manual unless configured and separately proven

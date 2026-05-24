@@ -5,25 +5,59 @@ Walk a stakeholder through the current Stage 1 ShipWright loop without overstati
 
 ## Setup
 Have ready:
-- latest release verification result
-- latest paid-delivery proof artifact
+- latest `pnpm rehearsal:verify-staging` result
+- latest release verification, paid-delivery proof, and required-auth smoke evidence in `/admin/validation-evidence`
 - latest order id, job id, payment id, and POD id from the proof output
 - seeded business operator session
 - seeded driver session
 - seeded platform admin session
-- public restaurant route open in a clean tab
+- public site, pricing page, demo request page, and public restaurant route open in clean tabs
 
 Minimum demo readiness standard:
 
 ```bash
-pnpm release:verify-staging
-pnpm proof:staging-paid-delivery
-pnpm --filter @shipwright/web test:smoke
+pnpm rehearsal:verify-staging
 ```
 
-Use `demo-reset-checklist.md` before the session and `demo-known-limitations-talk-track.md` during Q&A.
+Use `demo-reset-checklist.md` before the session, `controlled-demo-runbook.md` as the facilitator runbook, and `demo-known-limitations-talk-track.md` during Q&A.
+
+## Final Controlled Pilot Demo Flow
+Use this order for a complete readiness demonstration:
+1. Public site `/` - explain the controlled-pilot story and operational proof posture.
+2. Pricing `/pricing` - show controlled pilot packages without fake public pricing.
+3. Demo request `/demo/request` - submit or reference a safe staging request.
+4. Admin demo request follow-up `/admin/demo-requests` - show owner, priority, status, notes, and history.
+5. Pilot workspace and rehearsal readiness `/admin/pilots`, `/admin/pilots/<pilotId>/rehearsal` - show mode, guardrails, checklist, support posture, and validation posture.
+6. Restaurant/menu setup `/app/restaurant` - show menu editing, availability, order, history, and rollback controls.
+7. Public order `/restaurants/<slug>` - place or reference a paid proof order.
+8. Order, job, and dispatch tracking `/app/orders`, `/app/jobs/<jobId>`, `/track/<orderId>` - show customer tracking and human-reviewed dispatch governance.
+9. Support escalation - log, update, resolve, and review history on the linked order/job.
+10. Finance review `/app/finance` - show settlement visibility and persistent finance review workflow.
+11. Dispatch audit `/admin/dispatch-audit` - show read-only assignment and override accountability.
+12. Release readiness/evidence `/admin/release-readiness`, `/admin/validation-evidence` - confirm current stored proof.
+13. Operational reset `/admin/operational-resets` - explain preview, per-record selection, typed confirmation, and no hard deletes.
+
+Keep the talk track explicit: ShipWright is human-reviewed for support, finance, dispatch, menu rollback, governance, and reset decisions. It does not automate refunds, payouts, autonomous dispatch, or customer messaging in this release.
 
 ## Step-By-Step Walkthrough
+
+### 0. Public product story and commercial intake
+Open:
+- `/`
+- `/pricing`
+- `/demo/request`
+- `/admin/demo-requests`
+
+Show:
+- controlled pilot positioning
+- package structure without public fixed pricing
+- demo request persistence
+- admin owner, priority, status, note, and follow-up history
+
+Say:
+- ShipWright starts with controlled pilots and fit review
+- commercial requests are stored and reviewable, not pushed into a CRM automatically
+- notification delivery is optional and depends on configured webhook/email env
 
 ### 1. Public restaurant menu
 Open:
@@ -284,13 +318,21 @@ Say:
 - these are part of the controlled pilot discipline, not hidden tribal knowledge
 
 ### 11. Proof evidence
+Open:
+- `/admin/release-readiness`
+- `/admin/validation-evidence`
+
 Reference the latest proof artifacts in `docs/proofs/`.
 
 Call out:
 - latest release verification artifact
 - latest paid-delivery proof artifact
+- latest stored release verification evidence
+- latest stored paid-delivery proof evidence
+- latest stored required-auth smoke evidence
 - final `DELIVERED`, `CAPTURED`, `FULFILLED` chain
 - processed outbox signals including order, driver, delivery, and payment notifications
+- release readiness is read-only and does not run proof commands from the UI
 
 ## Optional fallback path
 If live ordering is unstable during the session:

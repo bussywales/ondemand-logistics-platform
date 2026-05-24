@@ -31,6 +31,23 @@ ShipWright is a Stage 1 controlled-pilot logistics command centre with:
 
 The current product is ready for controlled demos and tightly managed staging testers. It is not yet positioned as an unattended real-world pilot.
 
+## Final Release Pack v1
+Status: consolidated for controlled pilot readiness.
+
+Release/handover docs:
+- release notes: `docs/release-notes/v1-controlled-pilot.md`
+- known limitations: `docs/known-limitations.md`
+- operator guide: `docs/operator-guide.md`
+- admin route index: `docs/admin-route-index.md`
+- controlled demo runbook: `docs/demo/controlled-demo-runbook.md`
+- final demo script: `docs/demo/demo-script.md`
+
+Current readiness rule:
+- run `pnpm rehearsal:verify-staging` before controlled demos or pilot handover
+- confirm `/admin/release-readiness` is `READY` or explicitly explain any accepted `NEEDS_REVIEW` posture
+- confirm `/admin/validation-evidence` has fresh release verification, paid-delivery proof, and required-auth smoke evidence
+- keep proof artifacts local and uncommitted unless intentionally exported
+
 ## Roadmap Principles
 - Finish active pilot-readiness work before starting broad platform expansion.
 - Keep proof, smoke, and release verification as non-negotiable staging gates.

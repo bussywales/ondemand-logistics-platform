@@ -1,4 +1,4 @@
-# ShipWright (Stage 1 Pilot MVP)
+# ShipWright (Controlled Pilot Readiness)
 
 ShipWright is evolving from a Stage 1 pilot logistics platform into an AI-assisted logistics command centre for local commerce.
 
@@ -19,6 +19,23 @@ Current repo state is beyond foundations-only work. The platform now includes a 
 - admin control plane, business notifications, help, product updates, and staging proof tooling
 
 This is still a controlled pilot system, not a production-scale marketplace. AI-assisted command-centre capabilities are a roadmap direction, not a current autonomous product claim.
+
+## Controlled pilot release pack
+The current release is consolidated as the **Controlled Pilot Readiness Pack**.
+
+Start here for handover, demo, and pilot-readiness review:
+- release notes: `docs/release-notes/v1-controlled-pilot.md`
+- known limitations: `docs/known-limitations.md`
+- operator guide: `docs/operator-guide.md`
+- admin route index: `docs/admin-route-index.md`
+- controlled demo runbook: `docs/demo/controlled-demo-runbook.md`
+- final demo script: `docs/demo/demo-script.md`
+
+Current posture:
+- ready for controlled demos, managed rehearsals, and tightly supervised early pilot operation
+- evidence-backed through stored validation evidence and paid-delivery proof
+- human-reviewed for support, finance, dispatch, menu rollback, governance, and reset actions
+- not positioned as an unattended public marketplace or autonomous logistics/finance platform
 
 ## Core guarantees
 - server-side RBAC
@@ -138,6 +155,7 @@ If no What’s New entry is needed, note the reason in the release notes.
 
 ## Key commands
 ```bash
+pnpm rehearsal:verify-staging
 pnpm release:verify-staging
 pnpm proof:staging-paid-delivery
 pnpm --filter @shipwright/web test
@@ -148,7 +166,7 @@ pnpm --filter @shipwright/web test:smoke
 
 The required staging-ready quality gate is documented in `docs/validation/staging-validation-standard.md`.
 
-Validation evidence must be stored for controlled demo readiness after successful gates:
+Validation evidence must be stored for controlled demo readiness after successful gates. The canonical command is:
 
 ```bash
 pnpm rehearsal:verify-staging
@@ -157,6 +175,19 @@ pnpm rehearsal:verify-staging
 The wrapper runs release verification, paid-delivery proof, required-auth browser smoke, and required-auth smoke evidence recording in sequence. It stops on the first failed required step and prints proof IDs plus stored evidence IDs when available.
 
 Stored evidence is visible at `/admin/validation-evidence`, `/admin/release-readiness`, and in pilot rehearsal cockpits. It stores summary IDs/status, not secrets; proof JSON artifacts remain local and uncommitted. The admin UI reads stored evidence only and does not run release verification, paid proof, or smoke commands.
+
+## No-secret and proof artifact policy
+- Do not commit `.env.smoke`, `.env.proof`, provider keys, smoke credentials, webhook URLs, or notification secrets.
+- Do not commit generated proof JSON unless a release explicitly asks for an exported artifact.
+- Treat `docs/proofs/` as local operational evidence by default.
+- Stored validation evidence contains summary status and identifiers, not secrets or full local artifacts.
+
+## Staging deployment note
+Before declaring readiness, confirm the staging web deployment is on the expected commit. If GitHub/Vercel integration stalls or a route appears stale despite `origin/main` being current, manually redeploy staging web and rerun:
+
+```bash
+pnpm rehearsal:verify-staging
+```
 
 ## Browser smoke testing (Playwright)
 Commit `4975b8c` adds a minimal Playwright setup for staging smoke checks.
