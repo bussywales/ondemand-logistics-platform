@@ -74,6 +74,8 @@ Public demo and controlled-pilot requests are captured through:
 
 `/pricing` is positioned as **Controlled pilot packages**, not a public self-serve pricing table. It explains merchant, operator/platform, and investor/partner pilot paths without inventing public prices.
 
+The public site now tells the controlled-pilot product story more explicitly: commerce enters the network, operations coordinate movement, exceptions are reviewed, proof closes the loop, and finance/readiness stay visible. Landing visuals use CSS-native, staging-safe product cards for command, menu operations, fleet workspace, finance visibility, and release readiness; they are not customer screenshots or fabricated production metrics.
+
 Demo request capture is persistence-only in v1. It does not send email, sync a CRM, or promise automatic follow-up.
 
 Commercial intake v2 adds internal operational visibility:

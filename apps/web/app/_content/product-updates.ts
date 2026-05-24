@@ -16,6 +16,17 @@ export type ProductUpdate = {
 // Keep entries concise: title, summary, audience, release date/version, and an optional CTA.
 export const productUpdates: ProductUpdate[] = [
   {
+    id: "public-site-product-storytelling-proof",
+    title: "Public site now tells the controlled-pilot proof story",
+    summary: "The landing and pricing pages now explain ShipWright’s pilot workflow, validation evidence, support and dispatch audit posture, finance visibility, and fleet readiness without overclaiming automation.",
+    audience: ["platform_admin"],
+    routeContext: ["/admin", "/admin/updates"],
+    releasedAt: "2026-05-24T09:00:00.000Z",
+    version: "v3.5",
+    ctaLabel: "Open public site",
+    ctaHref: "/"
+  },
+  {
     id: "enterprise-governance-suspension-audit",
     title: "Enterprise governance controls are available",
     summary: "Platform admins can now suspend or reactivate organisations and users with typed confirmation, reason capture, and access audit history. Impersonation remains disabled pending audited session controls.",

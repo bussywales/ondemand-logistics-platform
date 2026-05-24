@@ -345,6 +345,9 @@ Continue only where needed:
 
 Current posture:
 - landing page has premium visual direction, platform navigation, ecosystem framing, and demo request pathways
+- Public Site v2 adds product storytelling around controlled pilot readiness, proof-backed delivery operations, merchant menu operations, dispatch/fleet workflow, support closeout, finance visibility, release readiness, and validation evidence.
+- The landing page now includes staging-safe product visual cards and a pilot story from order to proof. These visuals use generic examples only; they do not claim customer logos, production metrics, or private customer data.
+- `/pricing` remains a controlled-pilot package page and now references release readiness, validation evidence, finance visibility, support and dispatch audit, menu audit, and fleet-ready pilot operations.
 - next design work should be targeted and evidence-driven, not another broad redesign cycle
 
 ## AI-Assisted Command Centre Alignment

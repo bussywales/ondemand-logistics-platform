@@ -1,4 +1,4 @@
-import Link from "next/link";
+import React from "react";
 import { AnalyticsLink } from "./_components/analytics-link";
 import { PublicMarketingFooter } from "./_components/public-marketing-footer";
 import { PublicMarketingNav } from "./_components/public-marketing-nav";
@@ -7,9 +7,9 @@ import { ShipWrightIcon, type ShipWrightIconName } from "./_components/shipwrigh
 
 const proofPoints = [
   "Paid order to delivered proof",
-  "Human-in-the-loop recovery",
-  "Payment state visible",
-  "Pilot-ready operating evidence"
+  "Release readiness visible",
+  "Support and dispatch audit",
+  "Fleet and finance posture"
 ];
 
 const operatingMoments = [
@@ -83,6 +83,95 @@ const confidenceSignals = [
   "Payment capture visibility",
   "Pilot fallback playbooks"
 ];
+
+const productProofPoints = [
+  {
+    body: "A staged order can move through payment authorisation, dispatch, delivery, proof of delivery, and captured payment evidence.",
+    label: "Paid-delivery proof flow",
+    tone: "commerce"
+  },
+  {
+    body: "Release readiness and validation evidence show whether proof, smoke, and release checks are current before a controlled demo.",
+    label: "Release readiness dashboard",
+    tone: "command"
+  },
+  {
+    body: "Support escalations, closeout notes, and append-only history keep human follow-up visible instead of buried in chat.",
+    label: "Support audit history",
+    tone: "proof"
+  },
+  {
+    body: "Manual dispatch overrides and assignment changes are recorded with reason, actor, and review context.",
+    label: "Dispatch override audit",
+    tone: "command"
+  },
+  {
+    body: "Menu changes, price updates, visibility changes, and rollback actions are traceable for merchant pilots.",
+    label: "Menu rollback audit",
+    tone: "commerce"
+  },
+  {
+    body: "Fleet managers and platform admins can review driver readiness without punitive scoring or automated suspension.",
+    label: "Fleet readiness",
+    tone: "proof"
+  }
+] satisfies Array<{ body: string; label: string; tone: "commerce" | "command" | "proof" }>;
+
+const productVisualCards = [
+  {
+    title: "Command centre",
+    eyebrow: "Cross-org posture",
+    rows: ["Release ready: needs review", "Support open: 2", "Dispatch overrides: reviewed"],
+    status: "Human review"
+  },
+  {
+    title: "Merchant menu operations",
+    eyebrow: "Pilot Kitchen",
+    rows: ["Mains live", "Price rollback prepared", "Menu history visible"],
+    status: "Audit-backed"
+  },
+  {
+    title: "Fleet workspace",
+    eyebrow: "Staging Fleet",
+    rows: ["Ready drivers: 4", "Invite pending: 1", "No scoring language"],
+    status: "Readiness only"
+  },
+  {
+    title: "Finance visibility",
+    eyebrow: "Example order",
+    rows: ["Captured: visible", "Refund review: human", "No payout automation"],
+    status: "Review-only"
+  },
+  {
+    title: "Release readiness",
+    eyebrow: "Validation evidence",
+    rows: ["Release verify", "Paid proof", "Required-auth smoke"],
+    status: "Evidence-backed"
+  }
+] satisfies Array<{ eyebrow: string; rows: string[]; status: string; title: string }>;
+
+const pilotStorySteps = [
+  {
+    body: "A customer orders from a staging-safe restaurant menu and creates a paid fulfilment record.",
+    label: "Commerce enters",
+    title: "Order placed"
+  },
+  {
+    body: "Merchant, dispatch, courier readiness, and customer tracking stay connected as the job moves.",
+    label: "Movement coordinated",
+    title: "Operations watch"
+  },
+  {
+    body: "If something drifts, operators can log support follow-up or dispatch recovery without silent automation.",
+    label: "Exceptions reviewed",
+    title: "Human approval"
+  },
+  {
+    body: "Proof of delivery, payment state, closeout, and validation evidence make the pilot defensible.",
+    label: "Proof closes",
+    title: "Evidence retained"
+  }
+] satisfies Array<{ body: string; label: string; title: string }>;
 
 const orchestrationSignals = [
   { label: "Order signal", value: "Authorised" },
@@ -344,6 +433,111 @@ function PlatformEcosystemSection() {
   );
 }
 
+function ProductVisualCard(props: { item: (typeof productVisualCards)[number]; index: number }) {
+  return (
+    <article className="landing-product-visual-card">
+      <div className="landing-product-visual-header">
+        <span>{props.item.eyebrow}</span>
+        <strong>{props.item.title}</strong>
+      </div>
+      <div className="landing-product-visual-body" aria-hidden="true">
+        <span className="landing-product-route" />
+        <span className="landing-product-node landing-product-node-commerce" />
+        <span className="landing-product-node landing-product-node-command" />
+        <span className="landing-product-node landing-product-node-proof" />
+        <div className="landing-product-signal">
+          <small>{props.item.status}</small>
+          <b>{String(props.index + 1).padStart(2, "0")}</b>
+        </div>
+      </div>
+      <div className="landing-product-visual-rows">
+        {props.item.rows.map((row) => (
+          <div key={row}>
+            <ShipWrightIcon name="check" size={14} />
+            <span>{row}</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function ProductProofSection() {
+  return (
+    <section className="landing-product-proof-section" id="product-proof">
+      <div className="landing-section-lead">
+        <EditorialEyebrow>Operational proof</EditorialEyebrow>
+        <h2>Built for controlled operations, not guesswork.</h2>
+        <p>
+          ShipWright’s public promise is intentionally narrow: run controlled pilots with evidence, audit visibility,
+          human review, and clear readiness posture before teams rely on the workflow.
+        </p>
+      </div>
+      <div className="landing-product-proof-grid">
+        {productProofPoints.map((point) => (
+          <article className={`landing-product-proof-card landing-product-proof-card-${point.tone}`} key={point.label}>
+            <span>{point.label}</span>
+            <p>{point.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProductVisualsSection() {
+  return (
+    <section className="landing-product-visuals-section" aria-label="ShipWright product proof visuals">
+      <div className="landing-section-lead">
+        <EditorialEyebrow>Product maturity</EditorialEyebrow>
+        <h2>Five operating surfaces, one proof-backed story.</h2>
+        <p>
+          These are styled product visual cards using safe staging language. They show platform posture without
+          pretending to be customer logos, private data, or fabricated production metrics.
+        </p>
+      </div>
+      <div className="landing-product-visual-grid">
+        {productVisualCards.map((item, index) => (
+          <ProductVisualCard item={item} index={index} key={item.title} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PilotStorySection() {
+  return (
+    <section className="landing-pilot-story-section">
+      <div className="landing-pilot-story-copy">
+        <EditorialEyebrow>Pilot story</EditorialEyebrow>
+        <h2>Pilot story: from order to proof.</h2>
+        <p>
+          A controlled ShipWright walkthrough follows a real operating spine: order intake, coordinated movement,
+          exception review, proof, finance posture, and release evidence.
+        </p>
+        <AnalyticsLink
+          analyticsLabel="Request demo from pilot story"
+          analyticsMetadata={{ section: "pilot_story" }}
+          analyticsSource="landing_pilot_story"
+          className="button button-primary landing-button-primary"
+          href="/demo/request?interest=pilot"
+        >
+          Request demo
+        </AnalyticsLink>
+      </div>
+      <div className="landing-pilot-story-timeline">
+        {pilotStorySteps.map((step, index) => (
+          <article key={step.label}>
+            <span>{String(index + 1).padStart(2, "0")} · {step.label}</span>
+            <strong>{step.title}</strong>
+            <p>{step.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ConversionSection() {
   return (
     <section className="landing-conversion-section" id="pilot">
@@ -475,8 +669,8 @@ export default function HomePage() {
           <EditorialEyebrow>Modern logistics infrastructure</EditorialEyebrow>
           <h1>The operating system for local commerce in motion.</h1>
           <p>
-            ShipWright brings paid ordering, dispatch, courier execution, customer tracking, payment capture, and
-            assistive operations intelligence into one calm command centre.
+            ShipWright brings merchant menus, paid ordering, dispatch governance, fleet readiness, support closeout,
+            finance visibility, and release evidence into one calm controlled-pilot command layer.
           </p>
           <div className="landing-hero-actions">
             <AnalyticsLink analyticsLabel="Start a controlled pilot" analyticsSource="landing_hero" className="button button-primary landing-button-primary" href="/pricing">
@@ -501,6 +695,10 @@ export default function HomePage() {
       <SignatureSystemSection />
 
       <PlatformEcosystemSection />
+
+      <ProductProofSection />
+
+      <ProductVisualsSection />
 
       <section className="landing-statement-section" id="story">
         <p>Local delivery is not a dashboard problem.</p>
@@ -601,6 +799,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <PilotStorySection />
 
       <ConversionSection />
 

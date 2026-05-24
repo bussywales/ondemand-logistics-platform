@@ -23,6 +23,7 @@ const packages = [
       "Dispatch and job workflow",
       "Customer tracking and payment visibility",
       "Support escalation logging",
+      "Menu audit and rollback posture",
       "Pilot guardrails and rehearsal support"
     ],
     label: "Controlled Pilot",
@@ -37,9 +38,10 @@ const packages = [
       "Admin Command Intelligence",
       "Pilot workspace management",
       "Support closeout workflow",
+      "Dispatch override audit",
       "Fleet and courier readiness visibility",
       "End-of-day reporting",
-      "Proof and smoke validation process"
+      "Release readiness and validation evidence"
     ],
     label: "Operator / Platform Pilot",
     tone: "command"
@@ -54,6 +56,7 @@ const packages = [
       "Staging proof flow",
       "Roadmap overview",
       "Operational maturity review",
+      "Finance visibility and governance review",
       "Commercial pilot discussion",
       "Known limitation review"
     ],
@@ -76,7 +79,9 @@ const included = [
   "Tracking and status visibility",
   "Support escalation workflow",
   "Admin oversight",
-  "Proof-driven validation"
+  "Proof-driven validation",
+  "Finance visibility and refund-review posture",
+  "Dispatch, support, menu, and access audit visibility"
 ];
 
 const notYetIncluded = [
@@ -120,6 +125,29 @@ const faqs = [
     question: "What happens after a pilot?"
   }
 ];
+
+const proofStandards = [
+  {
+    body: "Release readiness and validation evidence show whether release verification, paid proof, and required-auth smoke are current.",
+    label: "Evidence",
+    title: "Readiness before demos"
+  },
+  {
+    body: "Support closeout, dispatch override history, menu rollback, and enterprise access events remain audit-visible.",
+    label: "Audit",
+    title: "Human decisions visible"
+  },
+  {
+    body: "Finance surfaces show captured, pending, failed, and refund-review posture without automated refunds or payout automation.",
+    label: "Finance",
+    title: "Review-only payment posture"
+  },
+  {
+    body: "Fleet workspace and driver readiness are available for managed courier groups without scoring or automatic suspension.",
+    label: "Fleet",
+    title: "Courier readiness context"
+  }
+] satisfies Array<{ body: string; label: string; title: string }>;
 
 function PackageCard(props: { item: (typeof packages)[number] }) {
   return (
@@ -237,6 +265,26 @@ export default function PricingPage() {
           ShipWright does not publish generic self-serve pricing yet because the pilot shape depends on operating
           scope, courier coverage, order volume, payment posture, and support ownership.
         </p>
+      </section>
+
+      <section className="pricing-proof-standard" aria-label="Pilot readiness proof standards">
+        <div className="landing-section-lead">
+          <p className="landing-kicker">Readiness standard</p>
+          <h2>Every package starts with proof, not a promise.</h2>
+          <p>
+            Controlled pilots include release readiness, validation evidence, finance visibility, dispatch and support
+            audit posture, and fleet-ready operational context where relevant.
+          </p>
+        </div>
+        <div className="pricing-proof-grid">
+          {proofStandards.map((standard) => (
+            <article className="pricing-proof-card" key={standard.title}>
+              <span>{standard.label}</span>
+              <strong>{standard.title}</strong>
+              <p>{standard.body}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="pricing-boundaries">

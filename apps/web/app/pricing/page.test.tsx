@@ -12,6 +12,7 @@ describe("PricingPage", () => {
     expect(html).toContain("Controlled pilot packages");
     expect(html).toContain("Commercial entry without public-price theatre.");
     expect(html).toContain("Pilot pricing discussed after fit review");
+    expect(html).toContain("Every package starts with proof, not a promise.");
   });
 
   it("renders the shared public footer", () => {
@@ -41,5 +42,7 @@ describe("PricingPage", () => {
     expect(html).toContain("Autonomous dispatch override");
     expect(html).toContain("Full settlement or payout automation");
     expect(html).toContain("Command Intelligence is deterministic and human-in-the-loop");
+    expect(html).toContain("Finance surfaces show captured, pending, failed, and refund-review posture");
+    expect(html).toContain("Dispatch override audit");
   });
 });
