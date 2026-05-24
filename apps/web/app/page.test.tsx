@@ -27,4 +27,12 @@ describe("HomePage", () => {
     expect(html).toContain('href="/pricing"');
     expect(html).toContain('href="/demo/request?interest=pilot"');
   });
+
+  it("keeps proof visual slots safe when reviewed screenshots are missing", () => {
+    const html = renderToStaticMarkup(<HomePage />);
+
+    expect(html).toContain('data-proof-asset="release-readiness-ready.png"');
+    expect(html).toContain('data-proof-asset="merchant-menu-operations.png"');
+    expect(html).toContain('data-proof-asset-status="fallback"');
+  });
 });

@@ -72,3 +72,24 @@ Say:
 - This is staging. We do not hide failed checks.
 - I will switch to the latest proof-backed state and identify whether this is environment, data, or product behavior.
 - The readiness standard is `pnpm rehearsal:verify-staging`, stored validation evidence, and a `READY` release-readiness verdict.
+
+## Proof asset narration
+When showing captured product assets, describe them as staging-safe proof visuals.
+
+Recommended sequence:
+1. `release-readiness-ready.png` - "This is the current readiness verdict from stored evidence."
+2. `validation-evidence.png` - "These records show release verification, paid proof, and smoke coverage."
+3. `admin-command.png` - "This is the cross-org command posture operators use to see reviewable work."
+4. `merchant-menu-operations.png` - "Merchant menu operations are audit-visible and rollback-prepared where metadata is complete."
+5. `finance-review.png` - "Finance review is persistent and human-owned; no refund or payout is executed here."
+6. `dispatch-audit.png` - "Manual dispatch intervention is recorded with actor, reason, and context."
+7. `fleet-workspace.png` - "Fleet readiness is visibility, not scoring or automatic dispatch preference."
+8. `governance-controls.png` - "Enterprise controls are reversible and audited; impersonation is preview-only."
+9. `analytics-dashboard.png` - "Analytics are first-party funnel signals, not an external tracking vendor claim."
+10. `demo-request-pipeline.png` - "Commercial requests are persisted and managed, not synced to CRM yet."
+
+## Proof asset boundaries
+- Say "staging-safe product capture" instead of "customer screenshot" unless the customer explicitly approves use.
+- Say "evidence-backed readiness" instead of "guaranteed readiness".
+- Say "human-reviewed workflow" instead of "automation" for finance, dispatch, support, governance, and rollback.
+- Do not show unredacted personal data, secrets, internal tokens, or fake metrics.

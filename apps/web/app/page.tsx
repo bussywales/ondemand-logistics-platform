@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import React from "react";
 import { AnalyticsLink } from "./_components/analytics-link";
 import { PublicMarketingFooter } from "./_components/public-marketing-footer";
@@ -119,36 +121,41 @@ const productProofPoints = [
 
 const productVisualCards = [
   {
+    asset: "admin-command.png",
     title: "Command centre",
     eyebrow: "Cross-org posture",
     rows: ["Release ready: needs review", "Support open: 2", "Dispatch overrides: reviewed"],
     status: "Human review"
   },
   {
+    asset: "merchant-menu-operations.png",
     title: "Merchant menu operations",
     eyebrow: "Pilot Kitchen",
     rows: ["Mains live", "Price rollback prepared", "Menu history visible"],
     status: "Audit-backed"
   },
   {
+    asset: "fleet-workspace.png",
     title: "Fleet workspace",
     eyebrow: "Staging Fleet",
     rows: ["Ready drivers: 4", "Invite pending: 1", "No scoring language"],
     status: "Readiness only"
   },
   {
+    asset: "finance-review.png",
     title: "Finance visibility",
     eyebrow: "Example order",
     rows: ["Captured: visible", "Refund review: human", "No payout automation"],
     status: "Review-only"
   },
   {
+    asset: "release-readiness-ready.png",
     title: "Release readiness",
     eyebrow: "Validation evidence",
     rows: ["Release verify", "Paid proof", "Required-auth smoke"],
     status: "Evidence-backed"
   }
-] satisfies Array<{ eyebrow: string; rows: string[]; status: string; title: string }>;
+] satisfies Array<{ asset: string; eyebrow: string; rows: string[]; status: string; title: string }>;
 
 const pilotStorySteps = [
   {
@@ -434,21 +441,39 @@ function PlatformEcosystemSection() {
 }
 
 function ProductVisualCard(props: { item: (typeof productVisualCards)[number]; index: number }) {
+  const assetPath = join(process.cwd(), "public", "proof", props.item.asset);
+  const hasReviewedAsset = existsSync(assetPath);
+
   return (
-    <article className="landing-product-visual-card">
+    <article
+      className="landing-product-visual-card"
+      data-proof-asset={props.item.asset}
+      data-proof-asset-status={hasReviewedAsset ? "available" : "fallback"}
+    >
       <div className="landing-product-visual-header">
         <span>{props.item.eyebrow}</span>
         <strong>{props.item.title}</strong>
       </div>
       <div className="landing-product-visual-body" aria-hidden="true">
-        <span className="landing-product-route" />
-        <span className="landing-product-node landing-product-node-commerce" />
-        <span className="landing-product-node landing-product-node-command" />
-        <span className="landing-product-node landing-product-node-proof" />
-        <div className="landing-product-signal">
-          <small>{props.item.status}</small>
-          <b>{String(props.index + 1).padStart(2, "0")}</b>
-        </div>
+        {hasReviewedAsset ? (
+          <img
+            alt=""
+            className="landing-product-proof-image"
+            loading="lazy"
+            src={`/proof/${props.item.asset}`}
+          />
+        ) : (
+          <>
+            <span className="landing-product-route" />
+            <span className="landing-product-node landing-product-node-commerce" />
+            <span className="landing-product-node landing-product-node-command" />
+            <span className="landing-product-node landing-product-node-proof" />
+            <div className="landing-product-signal">
+              <small>{props.item.status}</small>
+              <b>{String(props.index + 1).padStart(2, "0")}</b>
+            </div>
+          </>
+        )}
       </div>
       <div className="landing-product-visual-rows">
         {props.item.rows.map((row) => (
@@ -492,8 +517,9 @@ function ProductVisualsSection() {
         <EditorialEyebrow>Product maturity</EditorialEyebrow>
         <h2>Five operating surfaces, one proof-backed story.</h2>
         <p>
-          These are styled product visual cards using safe staging language. They show platform posture without
-          pretending to be customer logos, private data, or fabricated production metrics.
+          These proof slots can show reviewed staging-safe screenshots when available, and otherwise fall back to
+          CSS-native visuals. They show platform posture without pretending to be customer logos, private data, or
+          fabricated production metrics.
         </p>
       </div>
       <div className="landing-product-visual-grid">

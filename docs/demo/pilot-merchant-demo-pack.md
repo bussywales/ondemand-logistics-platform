@@ -93,3 +93,25 @@ Before the session, confirm:
 
 ## Merchant close line
 ShipWright gives merchants a controlled way to manage menu, orders, delivery visibility, finance review, and support follow-up while keeping risky decisions in human hands.
+
+## Recommended screenshots to capture
+Use these assets for merchant-facing pilot materials:
+- `merchant-menu-operations.png` - menu editing, availability, history, and rollback controls.
+- `release-readiness-ready.png` - proof that the demo/pilot environment was checked.
+- `validation-evidence.png` - stored validation evidence for the session.
+- `finance-review.png` - finance review visibility without automated refund claims.
+- `dispatch-audit.png` - human-reviewed delivery recovery accountability.
+- `fleet-workspace.png` - courier readiness context if a driver company is involved.
+- `demo-request-pipeline.png` - follow-up workflow after the merchant requests a pilot.
+
+## How to narrate proof assets
+- Keep the merchant story practical: menu readiness, order visibility, delivery progress, exception handling, and finance review.
+- Use release readiness and validation evidence to explain demo discipline, not technical complexity.
+- Use menu rollback as confidence for pilot operations: changes can be audited and, when prepared, restored by a human.
+- Use finance review to make the refund boundary clear: ShipWright records review and resolution context but does not issue refunds.
+
+## What not to claim from screenshots
+- Do not claim open self-serve onboarding.
+- Do not claim refunds, payouts, dispatch decisions, or customer messages are automatic.
+- Do not use real customer names, addresses, phone numbers, or emails.
+- Do not show fake customer logos or invented merchant performance metrics.

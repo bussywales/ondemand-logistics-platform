@@ -98,3 +98,29 @@ Before the call, confirm:
 
 ## Close line
 ShipWright is controlled-pilot-ready because it can show proof, govern exceptions, expose readiness, and record human decisions without pretending risky automation is already solved.
+
+## Recommended screenshots to capture
+Use these reviewed proof assets when building an investor deck or follow-up email:
+- `release-readiness-ready.png` - opens with a concrete READY verdict.
+- `validation-evidence.png` - proves readiness is stored evidence, not a verbal claim.
+- `admin-command.png` - shows command posture and operational maturity.
+- `merchant-menu-operations.png` - shows product depth beyond dispatch.
+- `finance-review.png` - shows finance visibility without refund automation.
+- `dispatch-audit.png` - shows assignment accountability.
+- `fleet-workspace.png` - shows driver-company expansion path.
+- `governance-controls.png` - shows enterprise readiness controls.
+- `analytics-dashboard.png` - shows first-party funnel visibility.
+- `demo-request-pipeline.png` - shows commercial intake is persisted.
+
+## How to narrate proof assets
+- Start with release readiness and validation evidence to establish that the demo is evidence-backed.
+- Use admin command to explain the control-plane thesis.
+- Use merchant, finance, dispatch, and fleet assets to show platform breadth without turning the demo into a feature dump.
+- Use governance to show enterprise discipline: reversible controls, audit trail, and no live impersonation.
+- Use analytics and demo request pipeline to show commercial learning without claiming CRM automation.
+
+## What not to claim from screenshots
+- Do not imply screenshots are customer production deployments.
+- Do not claim production metrics, customer logos, or guaranteed delivery outcomes.
+- Do not claim AI autonomously dispatches, refunds, messages, or resolves incidents.
+- Do not claim notification/email/webhook delivery is proven unless configured and separately tested.

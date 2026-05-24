@@ -115,3 +115,28 @@ Before the session, confirm:
 
 ## Operator close line
 ShipWright is useful to operators because it makes readiness, exceptions, financial review, dispatch intervention, and proof visible in one accountable system without hiding risky actions behind automation.
+
+## Recommended screenshots to capture
+Use these assets in operator-partner materials:
+- `admin-command.png` - cross-org operating posture and command intelligence.
+- `dispatch-audit.png` - assignment override and manual recovery accountability.
+- `finance-review.png` - review-only finance posture and unresolved review workflow.
+- `merchant-menu-operations.png` - merchant readiness, menu audit, rollback controls.
+- `fleet-workspace.png` - fleet readiness and driver-company visibility.
+- `release-readiness-ready.png` - release/demo readiness gate.
+- `validation-evidence.png` - stored proof, smoke, and release evidence.
+- `governance-controls.png` - suspension and support-access governance foundation.
+- `demo-request-pipeline.png` - commercial intake handoff when discussing operator pilots.
+- `analytics-dashboard.png` - first-party funnel and commercial signal visibility.
+
+## How to narrate proof assets
+- Tie each screenshot to an operator question: what is happening, what needs review, who owns it, and what evidence remains.
+- Use dispatch audit and finance review to show human-reviewed controls rather than automated action.
+- Use fleet readiness to discuss managed courier groups without implying scoring, suspension, or dispatch preference automation.
+- Use validation evidence and release readiness as the operational standard before demos or rehearsals.
+
+## What not to claim from screenshots
+- Do not present readiness counts as driver scores.
+- Do not present finance review as refund execution or payout automation.
+- Do not present dispatch audit as autonomous dispatch logic.
+- Do not show unredacted personal data, exact payment provider IDs, webhook URLs, or internal secrets.
