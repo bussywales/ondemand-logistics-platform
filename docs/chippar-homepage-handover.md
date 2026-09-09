@@ -37,6 +37,16 @@ A stricter direct `tsc --noEmit --incremental false` check still reports seven p
 
 ## Release and rollback
 
+### Conversion analytics correction (9 September 2026)
+
+PR #5's unresolved P2 correctly identified missing conversion-click analytics in the new homepage. The correction restores the existing `AnalyticsLink` / `CTA_CLICKED` contract to seven placements: desktop and mobile pilot/walkthrough links, hero walkthrough, footer pilot/pricing, and tour-dialog walkthrough. Metadata remains only `label` (the visible link text) and `source` (the placement). Section anchors, login, brand links and illustrative tour/stage controls are not conversion events. The existing page-view component is unchanged. No telemetry service, field, dependency or backend change is introduced.
+
+All destinations, visible labels, icons, classes and accessible anchor semantics are preserved. `prefetch={false}` avoids adding automatic route prefetch traffic. Navigation uses the existing shared Next Link component; tests prove href forwarding and that its analytics handler does not cancel the click, not a live destination's operational acceptance.
+
+Focused tests exercise the real shared link click handler with mocked analytics, requiring exactly one `CTA_CLICKED` per activation and exact metadata. Static rendering for both mobile-menu states is compared with equivalent plain anchors, with fetch forbidden. These are offline component/handler tests, not hydrated browser or live telemetry receipts. No live analytics or provider endpoint may be exercised during correction validation. Exact candidate and independent review evidence are recorded separately; the original release candidate must not be published while this review finding is outstanding.
+
+Local validation: Node 22.22.2 with existing installed Vitest 3.2.4 / Next 15.5.12, no dependency installation. All 61 web test files / 243 tests pass, including ten new analytics assertions and six existing homepage/interaction assertions. The Next build/type validation passes with 48 static pages. Both final runs were wrapped in macOS `sandbox-exec` denying all network. Unit tests retain their existing mocked URL expectations; the build uses explicit inert loopback API/Supabase values. Initial SSR comparisons failed because Next Link emits `href` after `class`; the expected plain anchors were reordered without dropping any attribute/content comparison. An initial full-suite run with loopback API values failed three unrelated mocked URL assertions; the no-override, network-denied rerun passes without changing those tests. These failed attempts remain part of the evidence, not waived application failures.
+
 Require final visual QA, exact-SHA independent review, green normal integration checks, verified target and rollback before release. Domain attachment/DNS is independent: Chippar origin is currently rejected by API CORS; Supabase callback/site URL and managed GoDaddy rollback still need reconciliation. Do not change auth/API/database/provider settings as part of the homepage release.
 
 Rollback uses the previously verified exact frontend deployment or a normal reviewed source revert. Keep existing Vercel hostname, old assets, operational routes and backend untouched. Releasing a homepage does not certify checkout, payments, dispatch, owner/customer access, or the whole platform.

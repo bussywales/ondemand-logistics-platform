@@ -13,6 +13,7 @@ import { List } from "@phosphor-icons/react/dist/csr/List";
 import { X } from "@phosphor-icons/react/dist/csr/X";
 import { chipparStages, nextChipparStage } from "./chippar-demo";
 import { PublicAnalyticsPageView } from "./public-analytics-page-view";
+import { AnalyticsLink } from "./analytics-link";
 import styles from "./chippar-landing.module.css";
 
 const benefits = [
@@ -64,15 +65,28 @@ export function ChipparLanding() {
           <nav aria-label="Primary navigation" className={styles.desktopNav}>
             <a href="#product">Product</a>
             <a href="#operators">For operators</a>
-            <a href="/demo/request?interest=pilot">Pilot programme</a>
+            <AnalyticsLink
+              href="/demo/request?interest=pilot"
+              prefetch={false}
+              analyticsLabel="Pilot programme"
+              analyticsSource="landing_navigation"
+            >
+              Pilot programme
+            </AnalyticsLink>
           </nav>
           <div className={styles.headerActions}>
             <a href="/get-started" className={styles.login}>
               Log in
             </a>
-            <a href="/demo/request" className={styles.primary}>
+            <AnalyticsLink
+              href="/demo/request"
+              prefetch={false}
+              className={styles.primary}
+              analyticsLabel="Book a walkthrough"
+              analyticsSource="landing_navigation"
+            >
               Book a walkthrough <ArrowRight size={20} aria-hidden="true" />
-            </a>
+            </AnalyticsLink>
           </div>
           <button
             ref={menuButton}
@@ -110,9 +124,23 @@ export function ChipparLanding() {
               <a href="#operators" onClick={() => setMenuOpen(false)}>
                 For operators
               </a>
-              <a href="/demo/request?interest=pilot">Pilot programme</a>
+              <AnalyticsLink
+                href="/demo/request?interest=pilot"
+                prefetch={false}
+                analyticsLabel="Pilot programme"
+                analyticsSource="landing_mobile_navigation"
+              >
+                Pilot programme
+              </AnalyticsLink>
               <a href="/get-started">Log in</a>
-              <a href="/demo/request">Book a walkthrough</a>
+              <AnalyticsLink
+                href="/demo/request"
+                prefetch={false}
+                analyticsLabel="Book a walkthrough"
+                analyticsSource="landing_mobile_navigation"
+              >
+                Book a walkthrough
+              </AnalyticsLink>
             </nav>
           )}
         </header>
@@ -131,9 +159,15 @@ export function ChipparLanding() {
                 take.
               </p>
               <div className={styles.heroActions}>
-                <a href="/demo/request" className={styles.primary}>
+                <AnalyticsLink
+                  href="/demo/request"
+                  prefetch={false}
+                  className={styles.primary}
+                  analyticsLabel="Book a walkthrough"
+                  analyticsSource="landing_hero"
+                >
                   Book a walkthrough <ArrowRight size={21} aria-hidden="true" />
-                </a>
+                </AnalyticsLink>
                 <button
                   ref={tourButton}
                   type="button"
@@ -294,9 +328,14 @@ export function ChipparLanding() {
             Chippar
           </a>
           <p>Built for a more connected local economy.</p>
-          <a href="/pricing">
+          <AnalyticsLink
+            href="/pricing"
+            prefetch={false}
+            analyticsLabel="Explore the pilot"
+            analyticsSource="landing_footer"
+          >
             Explore the pilot <ArrowRight size={14} aria-hidden="true" />
-          </a>
+          </AnalyticsLink>
         </footer>
       </div>
       <dialog
@@ -356,7 +395,14 @@ export function ChipparLanding() {
               {selected === 3 ? "Back to dispatch" : "Next stage"}{" "}
               <ArrowRight size={18} aria-hidden="true" />
             </button>
-            <a href="/demo/request">Book a walkthrough</a>
+            <AnalyticsLink
+              href="/demo/request"
+              prefetch={false}
+              analyticsLabel="Book a walkthrough"
+              analyticsSource="landing_tour"
+            >
+              Book a walkthrough
+            </AnalyticsLink>
           </div>
         </div>
       </dialog>
