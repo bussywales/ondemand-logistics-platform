@@ -259,7 +259,17 @@ export function ChipparLanding() {
                 <dd>1 item · Standard</dd>
               </div>
             </dl>
-            <button type="button" className={styles.review} onClick={openTour}>
+            <button
+              type="button"
+              className={styles.review}
+              onClick={() => {
+                if (selected === chipparStages.length - 1) {
+                  setSelected(1);
+                } else {
+                  openTour();
+                }
+              }}
+            >
               {stage.action} <ArrowRight size={18} aria-hidden="true" />
             </button>
           </aside>

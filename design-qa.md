@@ -33,6 +33,7 @@ Browser DOM scroll width equals viewport width at 390, 768 and 320 pixels: no ho
 3. **P2, closed:** body/CTA and sequence sat about 12–22 pixels too low and clipped the footer at the reference viewport. Tightened hero-to-body, hero-to-sequence and footer spacing. Settled v3 comparison confirms the complete composition fits.
 4. **P3, accepted:** Helvetica Neue/Arial uses the existing local system-font approach and closely matches the selected visual without a network font dependency. The responsive detail panel is slightly left of the source. Neither impairs hierarchy or usability.
 5. **Intentional truth correction:** generated illustration assets depict a hypothetical workflow; pending pickup/delivery do not acquire fake completed timestamps. “Explore product tour” opens an interactive tour rather than promising a video.
+6. **P2, independent-review correction:** initial commit `db4da87df4909aed4751e082fd172df818c4e153` made the final inspector's “Back to dispatch” button open the final-stage tour. The actual inspector handler now selects dispatch (index 1) without opening a dialog; other inspector actions retain their existing tour behaviour. A new two-test actual-element event-handler regression checks both branches; the failed review remains in the central evidence directory. Final browser retest and exact-head independent re-review are recorded centrally before release admission.
 
 ## Interaction and accessibility evidence
 
